@@ -1,20 +1,28 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "School Management System - API",
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node tests/app.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "minimist": "^1.2.8",
+    "paystack-node": "*",
     "pg": "^8.19.0"
   },
   "devDependencies": {

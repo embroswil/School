@@ -2,8 +2,10 @@
 node_modules/
 npm-debug.log*
 
-# Environment variables
+# Environment variables (ne jamais committer de secrets)
 .env
+.env.*
+!.env.example
 
 # Build output
 dist/
