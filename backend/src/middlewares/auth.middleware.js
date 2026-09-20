@@ -30,4 +30,8 @@ const authorize = (...roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, authorize };
+// Raccourcis importés par attendance.routes.js
+const isAdmin = authorize("admin");
+const isAdminOrTeacher = authorize("admin", "teacher");
+
+module.exports = { authenticate, authorize, isAdmin, isAdminOrTeacher };

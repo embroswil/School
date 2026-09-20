@@ -146,7 +146,39 @@ const deleteSessionsOfUser = async (userId) => {
   await db.query("DELETE FROM sessions WHERE user_id = $1", [userId]);
 };
 
+// --- fonctions attendues par les autres modules ---------------------------
+
+// students, attendance, classes, payments et timetable appellent findUserById
+// (et une fois getUserById) pour vérifier qu'un utilisateur existe et a le bon rôle.
+const findUserById = findById;
+const getUserById = findById;
+
+// payments : parents à notifier après un paiement.
+const getParentsByStudent = async (studentId) => {
+  const { rows } = await db.query(
+    `SELECT psl.parent_id, psl.relationship, psl.is_primary, u.email, u.first_name, u.last_name
+     FROM parent_student_links psl
+     JOIN users u ON u.id = psl.parent_id
+     WHERE psl.student_id = $1`,
+    [studentId]
+  );
+  return rows;
+};
+
+// classes / timetable l'appellent (via ce module) pour vérifier une matière.
+const getSubjectById = async (id) => {
+  const { rows } = await db.query(
+    "SELECT id, name, code, description, is_active FROM subjects WHERE id = $1",
+    [id]
+  );
+  return rows[0] || null;
+};
+
 module.exports = {
+  findUserById,
+  getUserById,
+  getParentsByStudent,
+  getSubjectById,
   findByEmail,
   findWithPasswordById,
   findById,
