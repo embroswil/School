@@ -7,7 +7,12 @@ const ApiError = require("../../utils/ApiError");
 const logger = require("../../utils/logger");
 const userSql = require("./user.sql");
 
-const ROLES = ["admin", "teacher", "parent", "student"];
+// admin : administrateur de la plateforme ; principal : administrateur d'un
+// etablissement (une personne du personnel choisie par l'etablissement)
+const ROLES = ["admin", "principal", "teacher", "parent", "student"];
+// Roles qu'un administrateur d'etablissement peut attribuer
+const ROLES_ETABLISSEMENT = ["teacher", "parent", "student"];
+const { ecoleCourante } = require("../../utils/contexte");
 const BCRYPT_ROUNDS = 10;
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MINUTES = 15;
@@ -33,6 +38,8 @@ const toPublicUser = (u) => ({
   isActive: u.is_active,
   lastLogin: u.last_login,
   createdAt: u.created_at,
+  schoolId: u.school_id || null,
+  status: u.status || "active",
 });
 
 const assertPassword = (password, label = "Password") => {
@@ -45,7 +52,7 @@ const assertPassword = (password, label = "Password") => {
 };
 
 const issueTokens = async (user, { ip, userAgent }) => {
-  const accessToken = jwt.sign({ role: user.role, email: user.email }, env.jwt.secret, {
+  const accessToken = jwt.sign({ role: user.role, email: user.email, schoolId: user.school_id || null }, env.jwt.secret, {
     subject: String(user.id),
     expiresIn: env.jwt.expiresIn,
     algorithm: "HS256",
@@ -98,6 +105,14 @@ const login = async ({ email, password, ip, userAgent }) => {
     await userSql.addLoginAudit({ userId: user.id, ip, userAgent, status: "failed", reason: "Account deactivated" });
     throw new ApiError(403, "Account is deactivated");
   }
+  if (user.status === "pending") {
+    await userSql.addLoginAudit({ userId: user.id, ip, userAgent, status: "failed", reason: "Pending validation" });
+    throw new ApiError(403, "Votre compte est en attente de validation par l'établissement");
+  }
+  if (user.status === "rejected") {
+    await userSql.addLoginAudit({ userId: user.id, ip, userAgent, status: "failed", reason: "Rejected" });
+    throw new ApiError(403, "Votre demande d'inscription a été refusée par l'établissement");
+  }
 
   await userSql.addLoginAudit({ userId: user.id, ip, userAgent, status: "success" });
   await userSql.touchLastLogin(user.id);
@@ -119,6 +134,7 @@ const refresh = async ({ refreshToken, ip, userAgent }) => {
   await userSql.deleteSession(tokenHash);
 
   if (!session.is_active) throw new ApiError(403, "Account is deactivated");
+  if (session.status && session.status !== "active") throw new ApiError(403, "Compte non validé");
 
   const tokens = await issueTokens(session, { ip, userAgent });
   return { ...tokens, user: toPublicUser(session) };
@@ -163,6 +179,15 @@ const createUser = async (data) => {
 
   if (!EMAIL_RE.test(email)) throw new ApiError(400, "A valid email is required");
   if (!ROLES.includes(role)) throw new ApiError(400, `Role must be one of: ${ROLES.join(", ")}`);
+
+  // Administrateur d'etablissement : comptes de SON etablissement seulement,
+  // et jamais administrateur. Administrateur de la plateforme : etablissement au choix.
+  const ecole = ecoleCourante();
+  if (ecole && !ROLES_ETABLISSEMENT.includes(role)) {
+    throw new ApiError(403, "Vous pouvez créer des comptes enseignant, parent ou élève uniquement");
+  }
+  const schoolId = ecole || (data.schoolId ? Number(data.schoolId) : null);
+  if (role !== "admin" && !schoolId) throw new ApiError(400, "Indiquez l'établissement");
   if (!firstName || !lastName) throw new ApiError(400, "First name and last name are required");
   assertPassword(password);
 
@@ -176,11 +201,19 @@ const createUser = async (data) => {
     lastName: String(lastName).trim(),
     phone,
     address,
+    schoolId: role === "admin" ? null : schoolId,
+    status: "active",
   });
   return toPublicUser(created);
 };
 
-const listUsers = async ({ role, isActive, search, page, limit }) => {
+// Verifie qu'un administrateur d'etablissement ne touche qu'a SON etablissement
+const verifierMemeEcole = (user) => {
+  const ecole = ecoleCourante();
+  if (ecole && user.school_id !== ecole) throw new ApiError(404, "User not found");
+};
+
+const listUsers = async ({ role, isActive, search, status, page, limit }) => {
   if (role && !ROLES.includes(role)) throw new ApiError(400, `Role must be one of: ${ROLES.join(", ")}`);
 
   const safePage = Math.max(parseInt(page, 10) || 1, 1);
@@ -190,6 +223,7 @@ const listUsers = async ({ role, isActive, search, page, limit }) => {
     role,
     isActive: isActive === undefined ? undefined : isActive === "true" || isActive === true,
     search: search ? String(search).trim() : undefined,
+    status: ["pending", "active", "rejected"].includes(status) ? status : undefined,
     limit: safeLimit,
     offset: (safePage - 1) * safeLimit,
   });
@@ -203,11 +237,15 @@ const listUsers = async ({ role, isActive, search, page, limit }) => {
 const getUser = async (id) => {
   const user = await userSql.findById(id);
   if (!user) throw new ApiError(404, "User not found");
+  verifierMemeEcole(user);
   return toPublicUser(user);
 };
 
 const updateUser = async (id, data, actorId) => {
   const fields = {};
+  const cible = await userSql.findById(id);
+  if (!cible) throw new ApiError(404, "User not found");
+  verifierMemeEcole(cible);
 
   if (data.firstName !== undefined) fields.first_name = String(data.firstName).trim();
   if (data.lastName !== undefined) fields.last_name = String(data.lastName).trim();
@@ -224,8 +262,11 @@ const updateUser = async (id, data, actorId) => {
 
   if (data.role !== undefined) {
     if (!ROLES.includes(data.role)) throw new ApiError(400, `Role must be one of: ${ROLES.join(", ")}`);
-    if (id === actorId && data.role !== "admin") {
-      throw new ApiError(400, "You cannot remove your own admin role");
+    if (id === actorId && data.role !== cible.role) {
+      throw new ApiError(400, "Vous ne pouvez pas modifier votre propre rôle");
+    }
+    if (data.role !== cible.role && ecoleCourante() && !ROLES_ETABLISSEMENT.includes(data.role)) {
+      throw new ApiError(403, "Rôle non autorisé");
     }
     fields.role = data.role;
   }
@@ -242,6 +283,9 @@ const updateUser = async (id, data, actorId) => {
 const setUserActive = async (id, isActive, actorId) => {
   if (typeof isActive !== "boolean") throw new ApiError(400, "isActive must be true or false");
   if (id === actorId && !isActive) throw new ApiError(400, "You cannot deactivate your own account");
+  const cible = await userSql.findById(id);
+  if (!cible) throw new ApiError(404, "User not found");
+  verifierMemeEcole(cible);
 
   const updated = await userSql.update(id, { is_active: isActive });
   if (!updated) throw new ApiError(404, "User not found");

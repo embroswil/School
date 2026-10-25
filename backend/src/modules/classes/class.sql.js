@@ -1,4 +1,5 @@
 const db = require("../../config/db");
+const { ecoleFiltre } = require("../../utils/contexte");
 
 const createClass = async (classData) => {
   const { name, academicYearId, level, section, classTeacherId, capacity, isActive } = classData;
@@ -33,6 +34,12 @@ const getAllClasses = async (academicYearId = null, activeOnly = false) => {
 
   const values = [];
   const conditions = [];
+
+  const ecole = ecoleFiltre();
+  if (ecole) {
+    values.push(ecole);
+    conditions.push(`ay.school_id = $${values.length}`);
+  }
 
   if (academicYearId) {
     conditions.push(`c.academic_year_id = $${values.length + 1}`);

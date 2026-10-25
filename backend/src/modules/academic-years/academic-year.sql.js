@@ -1,15 +1,16 @@
 const db = require("../../config/db");
+const { ecoleFiltre, ecoleCourante } = require("../../utils/contexte");
 
 const createAcademicYear = async (yearData) => {
   const { name, startDate, endDate, isActive, isCurrent } = yearData;
 
   const query = `
-    INSERT INTO academic_years (name, start_date, end_date, is_active, is_current)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING id, name, start_date, end_date, is_active, is_current, created_at
+    INSERT INTO academic_years (name, start_date, end_date, is_active, is_current, school_id)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id, name, start_date, end_date, is_active, is_current, created_at, school_id
   `;
 
-  const result = await db.query(query, [name, startDate, endDate, isActive || false, isCurrent || false]);
+  const result = await db.query(query, [name, startDate, endDate, isActive || false, isCurrent || false, yearData.schoolId || ecoleCourante()]);
   return result.rows[0];
 };
 
@@ -18,14 +19,19 @@ const getAllAcademicYears = async (activeOnly = false) => {
     SELECT id, name, start_date, end_date, is_active, is_current, created_at, updated_at
     FROM academic_years
   `;
-
-  if (activeOnly) {
-    query += ` WHERE is_active = true`;
+  const conditions = [];
+  const values = [];
+  const ecole = ecoleFiltre();
+  if (ecole) {
+    values.push(ecole);
+    conditions.push(`school_id = $${values.length}`);
   }
+  if (activeOnly) conditions.push(`is_active = true`);
+  if (conditions.length) query += ` WHERE ${conditions.join(" AND ")}`;
 
   query += ` ORDER BY start_date DESC`;
 
-  const result = await db.query(query);
+  const result = await db.query(query, values);
   return result.rows;
 };
 
@@ -42,9 +48,10 @@ const getCurrentAcademicYear = async () => {
   const query = `
     SELECT id, name, start_date, end_date, is_active, is_current, created_at, updated_at
     FROM academic_years WHERE is_current = true
+      AND ($1::int IS NULL OR school_id = $1)
     LIMIT 1
   `;
-  const result = await db.query(query);
+  const result = await db.query(query, [ecoleFiltre()]);
   return result.rows[0];
 };
 
@@ -78,7 +85,12 @@ const deleteAcademicYear = async (id) => {
 
 const setCurrentAcademicYear = async (id) => {
 
-  await db.query(`UPDATE academic_years SET is_current = false, is_active = false WHERE is_current = true`);
+  // Seulement les annees du meme etablissement
+  await db.query(
+    `UPDATE academic_years SET is_current = false, is_active = false
+     WHERE is_current = true AND school_id IS NOT DISTINCT FROM (SELECT school_id FROM academic_years WHERE id = $1)`,
+    [id]
+  );
 
   const query = `
     UPDATE academic_years
@@ -91,11 +103,11 @@ const setCurrentAcademicYear = async (id) => {
 };
 
 const academicYearNameExists = async (name, excludeId = null) => {
-  let query = `SELECT id FROM academic_years WHERE name = $1`;
-  const values = [name];
+  let query = `SELECT id FROM academic_years WHERE name = $1 AND ($2::int IS NULL OR school_id = $2)`;
+  const values = [name, ecoleFiltre()];
 
   if (excludeId) {
-    query += ` AND id != $2`;
+    query += ` AND id != $3`;
     values.push(excludeId);
   }
 

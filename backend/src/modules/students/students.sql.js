@@ -1,4 +1,5 @@
 const db = require("../../config/db");
+const { ecoleFiltre } = require("../../utils/contexte");
 
 
 const createStudentRecord = async (data) => {
@@ -115,6 +116,11 @@ const getAllStudents = async (academicYearId = null, classId = null, status = nu
   `;
   
   const params = [];
+  const ecole = ecoleFiltre();
+  if (ecole) {
+    query += ` AND u.school_id = $${params.length + 1}`;
+    params.push(ecole);
+  }
   
   if (academicYearId) {
     query += ` AND cs.academic_year_id = $${params.length + 1}`;
@@ -145,13 +151,14 @@ const getStudentsNotInClass = async (classId, academicYearId) => {
     FROM users u
     JOIN student_records sr ON u.id = sr.student_id
     WHERE u.role = 'student' AND u.is_active = true
+    AND ($3::int IS NULL OR u.school_id = $3)
     AND u.id NOT IN (
       SELECT student_id FROM class_students 
       WHERE class_id = $1 AND academic_year_id = $2 AND status = 'active'
     )
     ORDER BY u.last_name, u.first_name
   `;
-  const result = await db.query(query, [classId, academicYearId]);
+  const result = await db.query(query, [classId, academicYearId, ecoleFiltre()]);
   return result.rows;
 };
 

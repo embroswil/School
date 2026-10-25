@@ -31,6 +31,8 @@ app.get("/health/db", async (req, res, next) => {
 
 // --- routes -----------------------------------------------------------------
 app.use("/api/auth", require("./modules/users/auth.routes"));
+app.use("/api/schools", require("./modules/schools/schools.routes"));
+app.use("/api/demandes-parents", require("./modules/parent-requests/parent-requests.routes"));
 app.use("/api/users", require("./modules/users/user.routes"));
 app.use("/api/academic", require("./modules/academic-years/academic-year.routes"));
 app.use("/api/students", require("./modules/students/students.routes"));

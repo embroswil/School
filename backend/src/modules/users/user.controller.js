@@ -78,8 +78,8 @@ const createUser = async (req, res, next) => {
 
 const listUsers = async (req, res, next) => {
   try {
-    const { role, isActive, search, page, limit } = req.query;
-    const { users, meta } = await userService.listUsers({ role, isActive, search, page, limit });
+    const { role, isActive, search, status, page, limit } = req.query;
+    const { users, meta } = await userService.listUsers({ role, isActive, search, status, page, limit });
     res.json({ success: true, data: users, meta });
   } catch (error) {
     next(error);

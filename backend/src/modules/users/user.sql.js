@@ -1,12 +1,13 @@
 const db = require("../../config/db");
+const { ecoleFiltre } = require("../../utils/contexte");
 
 const USER_COLUMNS = `id, email, role, first_name, last_name, phone, address,
-  profile_picture, is_active, last_login, created_at, updated_at`;
+  profile_picture, is_active, last_login, created_at, updated_at, school_id, status`;
 
 const findByEmail = async (email) => {
   const { rows } = await db.query(
     `SELECT id, email, password_hash, role, first_name, last_name, phone, address,
-            profile_picture, is_active, last_login, created_at, updated_at
+            profile_picture, is_active, last_login, created_at, updated_at, school_id, status
      FROM users WHERE email = $1`,
     [email]
   );
@@ -26,19 +27,30 @@ const findById = async (id) => {
   return rows[0] || null;
 };
 
-const create = async ({ email, passwordHash, role, firstName, lastName, phone, address }) => {
+const create = async ({ email, passwordHash, role, firstName, lastName, phone, address, schoolId, status }) => {
   const { rows } = await db.query(
-    `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, address)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, address, school_id, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING ${USER_COLUMNS}`,
-    [email, passwordHash, role, firstName, lastName, phone || null, address || null]
+    [email, passwordHash, role, firstName, lastName, phone || null, address || null, schoolId || null, status || "active"]
   );
   return rows[0];
 };
 
-const list = async ({ role, isActive, search, limit, offset }) => {
+const list = async ({ role, isActive, search, status, limit, offset }) => {
   const where = [];
   const params = [];
+
+  // Administrateur d'etablissement, enseignant… : uniquement son etablissement
+  const ecole = ecoleFiltre();
+  if (ecole) {
+    params.push(ecole);
+    where.push(`school_id = $${params.length}`);
+  }
+  if (status) {
+    params.push(status);
+    where.push(`status = $${params.length}`);
+  }
 
   if (role) {
     params.push(role);
@@ -130,7 +142,8 @@ const createSession = async ({ userId, tokenHash, days, ip, userAgent }) => {
 const findActiveSession = async (tokenHash) => {
   const { rows } = await db.query(
     `SELECT s.id AS session_id, u.id, u.email, u.role, u.first_name, u.last_name, u.phone,
-            u.address, u.profile_picture, u.is_active, u.last_login, u.created_at, u.updated_at
+            u.address, u.profile_picture, u.is_active, u.last_login, u.created_at, u.updated_at,
+            u.school_id, u.status
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.refresh_token = $1 AND s.expires_at > NOW()`,
     [tokenHash]
