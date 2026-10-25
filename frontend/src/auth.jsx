@@ -18,6 +18,11 @@ export function AuthProvider({ children }) {
     setUser(data.user)
   }
 
+  async function signup(donnees) {
+    const res = await api.post('/api/inscriptions', donnees, { auth: false })
+    return res
+  }
+
   async function logout() {
     const refreshToken = session.get()?.refreshToken
     try {
@@ -27,9 +32,10 @@ export function AuthProvider({ children }) {
     }
     session.clear()
     setUser(null)
+    window.location.hash = '/'
   }
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, logout, signup }}>{children}</AuthContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

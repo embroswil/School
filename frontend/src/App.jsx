@@ -2,13 +2,17 @@ import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './auth.jsx'
 import { usePath } from './router.js'
 import Shell from './layout.jsx'
+import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
+import Signup from './pages/Signup.jsx'
 import Home from './pages/Home.jsx'
 import Account from './pages/Account.jsx'
 import Users from './pages/Users.jsx'
 import Classes from './pages/Classes.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
 import Years from './pages/Years.jsx'
+import Schools from './pages/Schools.jsx'
+import TeacherRequests from './pages/TeacherRequests.jsx'
 
 function Message({ title, children }) {
   return (
@@ -21,18 +25,20 @@ function Message({ title, children }) {
 
 function Pages({ path }) {
   const { user } = useAuth()
-  const isAdmin = user.role === 'admin'
-  const adminOnly = (page) =>
-    isAdmin ? page : <Message title="Accès réservé">Cette page est réservée à l’administration de l’école.</Message>
+  const gestion = user.role === 'admin' || user.role === 'principal'
+  const reserve = (ok, page) =>
+    ok ? page : <Message title="Accès réservé">Cette page est réservée à l’administration.</Message>
 
   if (path === '/') return <Home />
   if (path === '/compte') return <Account />
-  if (path === '/utilisateurs') return adminOnly(<Users />)
-  if (path === '/classes') return adminOnly(<Classes />)
-  if (path === '/annees') return adminOnly(<Years />)
+  if (path === '/etablissements') return reserve(user.role === 'admin', <Schools />)
+  if (path === '/enseignants') return reserve(gestion, <TeacherRequests />)
+  if (path === '/utilisateurs') return reserve(gestion, <Users />)
+  if (path === '/classes') return reserve(gestion, <Classes />)
+  if (path === '/annees') return reserve(gestion, <Years />)
 
   const classMatch = path.match(/^\/classes\/(\d+)$/)
-  if (classMatch) return adminOnly(<ClassDetail key={classMatch[1]} id={Number(classMatch[1])} />)
+  if (classMatch) return reserve(gestion, <ClassDetail key={classMatch[1]} id={Number(classMatch[1])} />)
 
   return (
     <Message title="Page introuvable">
@@ -49,7 +55,11 @@ function Root() {
     window.scrollTo(0, 0)
   }, [path])
 
-  if (!user) return <Login />
+  if (!user) {
+    if (path === '/connexion') return <Login />
+    if (path === '/inscription') return <Signup />
+    return <Landing />
+  }
   return (
     <Shell path={path}>
       <Pages path={path} />

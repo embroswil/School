@@ -39,6 +39,7 @@ const toPublicUser = (u) => ({
   lastLogin: u.last_login,
   createdAt: u.created_at,
   schoolId: u.school_id || null,
+  schoolName: u.school_name || null,
   status: u.status || "active",
 });
 
@@ -107,11 +108,11 @@ const login = async ({ email, password, ip, userAgent }) => {
   }
   if (user.status === "pending") {
     await userSql.addLoginAudit({ userId: user.id, ip, userAgent, status: "failed", reason: "Pending validation" });
-    throw new ApiError(403, "Votre compte est en attente de validation par l'établissement");
+    throw new ApiError(403, "Votre compte enseignant est en attente de validation par l'établissement");
   }
   if (user.status === "rejected") {
     await userSql.addLoginAudit({ userId: user.id, ip, userAgent, status: "failed", reason: "Rejected" });
-    throw new ApiError(403, "Votre demande d'inscription a été refusée par l'établissement");
+    throw new ApiError(403, "Votre compte enseignant a été refusé par l'établissement");
   }
 
   await userSql.addLoginAudit({ userId: user.id, ip, userAgent, status: "success" });

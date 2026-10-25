@@ -23,6 +23,7 @@ export const session = {
 const MESSAGES = {
   'Invalid email or password': 'E-mail ou mot de passe incorrect.',
   'Account is deactivated': 'Ce compte est désactivé. Contactez l’administration de l’école.',
+  'Compte non validé': 'Votre compte n’est pas encore validé par l’établissement.',
   'Email already in use': 'Cette adresse e-mail est déjà utilisée.',
   'Authentication required': 'Votre session a expiré. Reconnectez-vous.',
   'Invalid token': 'Votre session a expiré. Reconnectez-vous.',

@@ -33,3 +33,20 @@ CREATE TABLE IF NOT EXISTS parent_requests (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_parent_requests_school_status ON parent_requests(school_id, status);
+
+-- Inscription libre (enseignants valides par l'etablissement)
+CREATE TABLE IF NOT EXISTS teacher_requests (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subjects TEXT,
+  qualification VARCHAR(255),
+  experience VARCHAR(255),
+  message TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  decision_reason TEXT,
+  decided_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  decided_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+ALTER TABLE student_records ADD COLUMN IF NOT EXISTS declared_class VARCHAR(100);

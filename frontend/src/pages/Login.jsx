@@ -9,12 +9,13 @@ export default function Login() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  async function submit(event) {
-    event.preventDefault()
-    setBusy(true)
+  async function onSubmit(e) {
+    e.preventDefault()
     setError('')
+    setBusy(true)
     try {
-      await login(email.trim(), password)
+      await login(email, password)
+      window.location.hash = '/'
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -22,24 +23,25 @@ export default function Login() {
   }
 
   return (
-    <div className="login">
-      <main className="sheet">
-        <p className="brand-line">School</p>
-        <h1 className="page-title">Connexion</h1>
-        <p className="lede">Utilisez l’adresse e-mail que l’école vous a communiquée.</p>
-        <div className="gap" />
-        <form onSubmit={submit}>
+    <div className="public login">
+      <header className="public-top">
+        <a className="brand" href="#/">
+          School<span>.</span>
+        </a>
+      </header>
+      <main className="public-main">
+        <h1 className="page-title">Bon retour 👋</h1>
+        <p className="lede">Connectez-vous à votre espace.</p>
+        <form className="card" onSubmit={onSubmit}>
           <Field label="Adresse e-mail">
             <input
               className="input"
               type="email"
-              inputMode="email"
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              required
+              autoComplete="email"
+              placeholder="vous@exemple.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </Field>
           <Field label="Mot de passe">
@@ -47,18 +49,19 @@ export default function Login() {
               className="input"
               type="password"
               autoComplete="current-password"
-              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
             />
           </Field>
           <Note>{error}</Note>
-          <div className="actions">
-            <button className="btn" type="submit" disabled={busy}>
-              {busy ? 'Connexion…' : 'Se connecter'}
-            </button>
-          </div>
+          <button className="btn btn-block" type="submit" disabled={busy}>
+            {busy ? 'Connexion…' : 'Se connecter'}
+          </button>
         </form>
+        <p className="muted" style={{ textAlign: 'center', marginTop: 20 }}>
+          Pas encore de compte ? <a href="#/inscription">Créer un compte</a>
+        </p>
       </main>
     </div>
   )
