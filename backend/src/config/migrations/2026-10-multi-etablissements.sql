@@ -50,3 +50,25 @@ CREATE TABLE IF NOT EXISTS teacher_requests (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 ALTER TABLE student_records ADD COLUMN IF NOT EXISTS declared_class VARCHAR(100);
+
+-- « Inscrire mon etablissement »
+CREATE TABLE IF NOT EXISTS school_requests (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('maternelle','primaire','college','lycee')),
+  city VARCHAR(100),
+  address TEXT,
+  student_count VARCHAR(50),
+  contact_first_name VARCHAR(100) NOT NULL,
+  contact_last_name VARCHAR(100) NOT NULL,
+  contact_function VARCHAR(100),
+  contact_email VARCHAR(255) NOT NULL,
+  contact_phone VARCHAR(30),
+  password_hash VARCHAR(255) NOT NULL,
+  message TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL,
+  decision_reason TEXT,
+  decided_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

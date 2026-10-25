@@ -10,9 +10,9 @@ const NAV = {
   ],
   principal: [
     ['/', '🏠', 'Accueil'],
-    ['/enseignants', '✅', 'Enseignants'],
+    ['/eleves', '🎒', 'Élèves'],
+    ['/enseignants', '👩‍🏫', 'Enseignants'],
     ['/classes', '📚', 'Classes'],
-    ['/annees', '📅', 'Années'],
     ['/compte', '⚙️', 'Compte'],
   ],
   teacher: [

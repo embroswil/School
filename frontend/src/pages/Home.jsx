@@ -36,27 +36,56 @@ function Bientot() {
 
 function EspaceAdmin() {
   const ecoles = useApi('/api/schools')
+  const demandes = useApi('/api/demandes-etablissements?status=pending')
   return (
     <>
       <h2 className="section-title">Gestion de la plateforme</h2>
       <div className="grid2">
-        <Tuile href="#/etablissements" ico="🏫" titre="Établissements" texte={`${ecoles.data?.length ?? '…'} établissement(s)`} />
+        <Tuile
+          href="#/etablissements"
+          ico="🏫"
+          titre="Établissements"
+          texte={`${ecoles.data?.length ?? '…'} établissement(s)`}
+          compteur={demandes.data?.length || 0}
+        />
         <Tuile href="#/utilisateurs" ico="👥" titre="Utilisateurs" texte="Tous les comptes" />
       </div>
     </>
   )
 }
 
+function Chiffre({ valeur, libelle }) {
+  return (
+    <div className="tile" style={{ gap: 2 }}>
+      <span className="figure">{valeur ?? '…'}</span>
+      <small>{libelle}</small>
+    </div>
+  )
+}
+
 function EspaceEtablissement() {
-  const attente = useApi('/api/inscriptions/enseignants?status=pending')
+  const t = useApi('/api/etablissement/tableau')
+  const d = t.data || {}
   return (
     <>
-      <h2 className="section-title">Gestion de l’établissement</h2>
+      {d.annee === null && (
+        <div className="note note-ok" style={{ marginTop: 16 }}>
+          Première étape : créez votre <a href="#/annees">année scolaire</a>, puis vos <a href="#/classes">classes</a>.
+        </div>
+      )}
+      <h2 className="section-title">En un coup d’œil{d.annee ? ` · ${d.annee.name}` : ''}</h2>
       <div className="grid2">
-        <Tuile href="#/enseignants" ico="✅" titre="Enseignants" texte="Comptes à valider" compteur={attente.data?.length || 0} />
-        <Tuile href="#/classes" ico="📚" titre="Classes" texte="Classes et élèves" />
-        <Tuile href="#/annees" ico="📅" titre="Années" texte="Années scolaires" />
-        <Tuile href="#/utilisateurs" ico="👥" titre="Utilisateurs" texte="Comptes de l’établissement" />
+        <Chiffre valeur={d.eleves} libelle="élèves inscrits" />
+        <Chiffre valeur={d.enseignants} libelle="enseignants" />
+        <Chiffre valeur={d.parents} libelle="parents" />
+        <Chiffre valeur={d.classes} libelle="classes" />
+      </div>
+      <h2 className="section-title">À faire</h2>
+      <div className="grid2">
+        <Tuile href="#/enseignants" ico="✅" titre="Enseignants" texte="Comptes à valider" compteur={d.enseignants_attente || 0} />
+        <Tuile href="#/eleves" ico="🎒" titre="Élèves" texte="À placer dans une classe" compteur={d.eleves_sans_classe || 0} />
+        <Tuile href="#/classes" ico="📚" titre="Classes" texte="Créer et gérer les classes" />
+        <Tuile href="#/annees" ico="📅" titre="Années scolaires" texte="Année en cours, trimestres" />
       </div>
     </>
   )

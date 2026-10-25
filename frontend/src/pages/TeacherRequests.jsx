@@ -4,6 +4,7 @@ import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 
 const FILTRES = [
+  ['actifs', 'Enseignants'],
   ['pending', 'À valider'],
   ['approved', 'Validés'],
   ['rejected', 'Refusés'],
@@ -11,7 +12,8 @@ const FILTRES = [
 
 export default function TeacherRequests() {
   const [statut, setStatut] = useState('pending')
-  const liste = useApi(`/api/inscriptions/enseignants?status=${statut}`)
+  const liste = useApi(statut === 'actifs' ? null : `/api/inscriptions/enseignants?status=${statut}`)
+  const actifs = useApi(statut === 'actifs' ? '/api/etablissement/enseignants' : null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(null)
 
@@ -43,6 +45,32 @@ export default function TeacherRequests() {
         ))}
       </div>
       <Note>{error}</Note>
+      {statut === 'actifs' && (
+        <>
+          {actifs.loading && <p className="muted">Chargement…</p>}
+          {actifs.data?.length === 0 && <p className="muted">Aucun enseignant validé pour le moment.</p>}
+          {actifs.data?.length > 0 && (
+            <ul className="rows">
+              {actifs.data.map((t) => (
+                <li className="row" key={t.id}>
+                  <span style={{ fontSize: 24 }}>👩‍🏫</span>
+                  <div className="row-main">
+                    <div className="row-title">
+                      {t.first_name} {t.last_name}
+                    </div>
+                    <div className="row-sub">{t.matieres || t.email}</div>
+                  </div>
+                  {t.phone && (
+                    <a className="row-end" href={`tel:${t.phone}`}>
+                      📞
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
       {liste.loading && <p className="muted">Chargement…</p>}
       {liste.data?.length === 0 && <p className="muted">Aucune demande.</p>}
       {liste.data?.map((d) => (

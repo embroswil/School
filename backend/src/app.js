@@ -33,6 +33,8 @@ app.get("/health/db", async (req, res, next) => {
 app.use("/api/auth", require("./modules/users/auth.routes"));
 app.use("/api/schools", require("./modules/schools/schools.routes"));
 app.use("/api/inscriptions", require("./modules/inscriptions/inscriptions.routes"));
+app.use("/api/demandes-etablissements", require("./modules/demandes-etablissements/routes"));
+app.use("/api/etablissement", require("./modules/etablissement/routes"));
 app.use("/api/users", require("./modules/users/user.routes"));
 app.use("/api/academic", require("./modules/academic-years/academic-year.routes"));
 app.use("/api/students", require("./modules/students/students.routes"));

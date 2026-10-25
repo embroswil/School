@@ -13,6 +13,8 @@ import ClassDetail from './pages/ClassDetail.jsx'
 import Years from './pages/Years.jsx'
 import Schools from './pages/Schools.jsx'
 import TeacherRequests from './pages/TeacherRequests.jsx'
+import SchoolSignup from './pages/SchoolSignup.jsx'
+import Students from './pages/Students.jsx'
 
 function Message({ title, children }) {
   return (
@@ -33,6 +35,7 @@ function Pages({ path }) {
   if (path === '/compte') return <Account />
   if (path === '/etablissements') return reserve(user.role === 'admin', <Schools />)
   if (path === '/enseignants') return reserve(gestion, <TeacherRequests />)
+  if (path === '/eleves') return reserve(gestion, <Students />)
   if (path === '/utilisateurs') return reserve(gestion, <Users />)
   if (path === '/classes') return reserve(gestion, <Classes />)
   if (path === '/annees') return reserve(gestion, <Years />)
@@ -58,6 +61,7 @@ function Root() {
   if (!user) {
     if (path === '/connexion') return <Login />
     if (path === '/inscription') return <Signup />
+    if (path === '/inscrire-etablissement') return <SchoolSignup />
     return <Landing />
   }
   return (

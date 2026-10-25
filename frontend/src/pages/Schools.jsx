@@ -57,6 +57,70 @@ function Administrateur({ ecole, onDone }) {
   )
 }
 
+function Demandes({ onChange }) {
+  const demandes = useApi('/api/demandes-etablissements?status=pending')
+  const [error, setError] = useState('')
+  const [ok, setOk] = useState('')
+  const [busy, setBusy] = useState(null)
+  async function decider(id, action) {
+    let motif
+    if (action === 'refuser') motif = window.prompt('Motif du refus (facultatif) :') ?? undefined
+    setError('')
+    setOk('')
+    setBusy(id)
+    try {
+      const r = await api.post(`/api/demandes-etablissements/${id}/${action}`, motif ? { motif } : {})
+      setOk(r.message)
+      demandes.reload()
+      onChange()
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(null)
+  }
+  if (!demandes.data?.length && !ok && !error) return null
+  return (
+    <>
+      <h2 className="section-title">
+        Demandes d’inscription <span className="count">{demandes.data?.length || 0}</span>
+      </h2>
+      <Note>{error}</Note>
+      <Note kind="ok">{ok}</Note>
+      {demandes.data?.map((d) => (
+        <div className="card" key={d.id}>
+          <div className="row-title" style={{ fontSize: 17 }}>
+            🏫 {d.name}
+          </div>
+          <div className="row-sub">
+            {TYPES[d.type]}
+            {d.city ? ` · ${d.city}` : ''}
+            {d.student_count ? ` · ${d.student_count} élèves` : ''}
+          </div>
+          <ul style={{ marginTop: 10, fontSize: 15, display: 'grid', gap: 4 }}>
+            {d.address && <li>📍 {d.address}</li>}
+            <li>
+              👤 {d.contact_first_name} {d.contact_last_name}
+              {d.contact_function ? ` · ${d.contact_function}` : ''}
+            </li>
+            <li>
+              ✉️ {d.contact_email} · 📞 {d.contact_phone}
+            </li>
+            {d.message && <li className="muted">« {d.message} »</li>}
+          </ul>
+          <div className="actions">
+            <button type="button" className="btn btn-ok" disabled={busy === d.id} onClick={() => decider(d.id, 'valider')}>
+              ✓ Activer l’établissement
+            </button>
+            <button type="button" className="btn btn-quiet btn-danger" disabled={busy === d.id} onClick={() => decider(d.id, 'refuser')}>
+              Refuser
+            </button>
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
 export default function Schools() {
   const liste = useApi('/api/schools')
   const [f, setF] = useState(vide)
@@ -85,7 +149,11 @@ export default function Schools() {
   return (
     <>
       <h1 className="page-title">Établissements</h1>
-      <p className="lede">Ajoutez les établissements et désignez leur administrateur.</p>
+      <p className="lede">Validez les demandes, ajoutez des établissements et désignez leur administrateur.</p>
+
+      <Demandes onChange={() => liste.reload()} />
+
+      <h2 className="section-title">Ajouter un établissement</h2>
 
       <form className="card" onSubmit={creer}>
         <Field label="Nom de l’établissement">

@@ -53,6 +53,15 @@ export default function Landing() {
           </div>
         </div>
 
+        <a className="card" href="#/inscrire-etablissement" style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 14, color: 'inherit' }}>
+          <span style={{ fontSize: 30 }}>🏫</span>
+          <span style={{ flex: 1 }}>
+            <b style={{ font: '700 17px/1.3 var(--font-display)', display: 'block' }}>Vous dirigez un établissement ?</b>
+            <span className="muted">Inscrivez votre école sur School, gratuitement.</span>
+          </span>
+          <span style={{ fontSize: 22, color: 'var(--primary)' }}>›</span>
+        </a>
+
         <p className="muted" style={{ textAlign: 'center', marginTop: 22, fontSize: 14 }}>
           Déjà inscrit ? <a href="#/connexion">Se connecter</a>
         </p>
