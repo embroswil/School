@@ -191,7 +191,9 @@ export default function Schools() {
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <span style={{ fontSize: 28 }}>🏫</span>
             <div className="row-main">
-              <div className="row-title">{e.name}</div>
+              <div className="row-title">
+                {e.name} {!e.isActive && <span className="tag tag-off">Suspendu</span>}
+              </div>
               <div className="row-sub">
                 {TYPES[e.type]}
                 {e.city ? ` · ${e.city}` : ''} · {e.nbUtilisateurs} compte(s)
@@ -207,6 +209,17 @@ export default function Schools() {
           <div className="actions">
             <button type="button" className="btn btn-quiet" onClick={() => setOuvert(ouvert === e.id ? null : e.id)}>
               {ouvert === e.id ? 'Fermer' : 'Désigner un administrateur'}
+            </button>
+            <button
+              type="button"
+              className={`btn btn-quiet ${e.isActive ? 'btn-danger' : ''}`}
+              onClick={async () => {
+                if (e.isActive && !window.confirm(`Suspendre ${e.name} ? Il n’apparaîtra plus à l’inscription.`)) return
+                await api.put(`/api/schools/${e.id}`, { isActive: !e.isActive })
+                liste.reload()
+              }}
+            >
+              {e.isActive ? 'Suspendre' : 'Réactiver'}
             </button>
           </div>
           {ouvert === e.id && (

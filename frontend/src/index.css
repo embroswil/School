@@ -261,3 +261,12 @@ a.choice { color: var(--text); }
 .reglage.danger { color: var(--danger); }
 .reglage.danger .ico { color: var(--danger); background: var(--danger-soft); }
 .groupe-titre { font: 700 13px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 22px 4px 8px; }
+
+/* ---------- import : barre collee en haut ---------- */
+.barre-import {
+  position: sticky; top: calc(66px + env(safe-area-inset-top)); z-index: 15;
+  display: flex; align-items: center; gap: 12px; margin: 14px 0 12px; padding: 12px 14px;
+  background: var(--card); border: 2px solid var(--primary); border-radius: 18px; box-shadow: var(--shadow);
+}
+.progres { height: 6px; border-radius: 999px; background: var(--line); margin-top: 6px; overflow: hidden; }
+.progres span { display: block; height: 100%; background: var(--primary); transition: width 0.3s; }

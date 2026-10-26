@@ -69,10 +69,11 @@ router.get("/eleves", async (req, res, next) => {
        LEFT JOIN class_students cs ON cs.student_id = u.id AND cs.status = 'active' AND cs.academic_year_id = $2
        LEFT JOIN classes c ON c.id = cs.class_id
        WHERE u.school_id = $1 AND u.role = 'student'
-         AND ($3 = '' OR (u.first_name || ' ' || u.last_name) ILIKE '%' || $3 || '%')
+         AND ($3 = '' OR (u.first_name || ' ' || u.last_name) ILIKE '%' || $3 || '%' OR (u.last_name || ' ' || u.first_name) ILIKE '%' || $3 || '%')
+         AND ($4::int IS NULL OR c.id = $4 OR ($4 = 0 AND c.id IS NULL))
        ORDER BY c.name NULLS FIRST, u.last_name, u.first_name
-       LIMIT 300`,
-      [ecole, annee?.id || null, q]
+       LIMIT 2000`,
+      [ecole, annee?.id || null, q, req.query.classe !== undefined && req.query.classe !== "" ? parseInt(req.query.classe, 10) : null]
     );
     res.json({ success: true, data: rows, annee });
   } catch (e) {
@@ -169,136 +170,111 @@ const DATE = (v) => {
 
 // POST /api/etablissement/import-eleves
 // { eleves: [{ nom, prenom, classe, dateNaissance, sexe, matricule }], classeParDefaut }
+// Import en lots : quelques requetes seulement, meme pour 1 000 eleves.
 router.post("/import-eleves", async (req, res, next) => {
+  const client = await db.connect();
   try {
     const ecole = ecoleDe(req);
     const annee = await assurerAnneeScolaire(ecole);
-    const liste = Array.isArray(req.body?.eleves) ? req.body.eleves.slice(0, 2000) : [];
-    if (!liste.length) throw new ApiError(400, "Aucun élève à importer");
     const defaut = String(req.body?.classeParDefaut || "").trim();
-    let crees = 0;
-    let existants = 0;
+    const cle = (n, p) => `${n}|${p}`.toLowerCase().replace(/\s+/g, " ").trim();
+
+    // 1. Nettoyage et dedoublonnage de la liste recue
+    const vus = new Set();
+    const liste = [];
+    for (const e of Array.isArray(req.body?.eleves) ? req.body.eleves.slice(0, 3000) : []) {
+      const nom = String(e.nom || "").trim().slice(0, 100);
+      const prenom = String(e.prenom || "").trim().slice(0, 100) || "-";
+      if (!nom || vus.has(cle(nom, prenom))) continue;
+      vus.add(cle(nom, prenom));
+      liste.push({
+        nom,
+        prenom,
+        classe: String(e.classe || defaut).trim().replace(/\s+/g, " ").slice(0, 50),
+        date: DATE(e.dateNaissance),
+        genre: GENRE(e.sexe),
+        matricule: String(e.matricule || "").trim().slice(0, 40),
+      });
+    }
+    if (!liste.length) throw new ApiError(400, "Aucun élève à importer");
+
+    await client.query("BEGIN");
+    // 2. Eleves deja presents dans l'etablissement
+    const deja = await client.query(
+      "SELECT id, lower(trim(last_name)) AS n, lower(trim(first_name)) AS p FROM users WHERE school_id = $1 AND role = 'student'",
+      [ecole]
+    );
+    const ids = new Map(deja.rows.map((r) => [cle(r.n, r.p), r.id]));
+    const nouveaux = liste.filter((e) => !ids.has(cle(e.nom, e.prenom)));
+
+    // 3. Creation des nouveaux eleves en une seule requete
+    if (nouveaux.length) {
+      const motDePasse = await bcrypt.hash(crypto.randomBytes(18).toString("hex"), 8);
+      const { rows } = await client.query(
+        `INSERT INTO users (email, password_hash, role, first_name, last_name, school_id, status)
+         SELECT 'eleve.' || $1::text || '.' || md5(random()::text || x.nom || x.prenom) || '@${DOMAINE_IMPORT}', $2, 'student', x.prenom, x.nom, $1, 'active'
+         FROM unnest($3::text[], $4::text[]) AS x(nom, prenom)
+         RETURNING id, lower(trim(last_name)) AS n, lower(trim(first_name)) AS p`,
+        [ecole, motDePasse, nouveaux.map((e) => e.nom), nouveaux.map((e) => e.prenom)]
+      );
+      rows.forEach((r) => ids.set(cle(r.n, r.p), r.id));
+    }
+    const avecId = liste.map((e) => ({ ...e, id: ids.get(cle(e.nom, e.prenom)) })).filter((e) => e.id);
+
+    // 4. Fiches eleves (matricule, naissance, sexe, classe declaree)
+    await client.query(
+      `INSERT INTO student_records (student_id, admission_number, date_of_birth, gender, declared_class)
+       SELECT x.id, CASE WHEN x.mat <> '' THEN $1::text || '-' || x.mat ELSE 'ELV-' || $1::text || '-' || x.id END,
+              x.dn::date, NULLIF(x.g, ''), NULLIF(x.cl, '')
+       FROM unnest($2::int[], $3::text[], $4::text[], $5::text[], $6::text[]) AS x(id, mat, dn, g, cl)
+       ON CONFLICT (student_id) DO UPDATE SET
+         date_of_birth = COALESCE(EXCLUDED.date_of_birth, student_records.date_of_birth),
+         gender = COALESCE(EXCLUDED.gender, student_records.gender),
+         declared_class = COALESCE(EXCLUDED.declared_class, student_records.declared_class)`,
+      [
+        ecole,
+        avecId.map((e) => e.id),
+        avecId.map((e) => e.matricule),
+        avecId.map((e) => e.date),
+        avecId.map((e) => e.genre || ""),
+        avecId.map((e) => e.classe),
+      ]
+    );
+
+    // 5. Classes (creees au besoin) puis placement des eleves
     let places = 0;
-    const erreurs = [];
-    const motDePasse = await bcrypt.hash(crypto.randomBytes(18).toString("hex"), 8);
-
-    for (const [i, e] of liste.entries()) {
-      try {
-        const nom = String(e.nom || "").trim().slice(0, 100);
-        const prenom = String(e.prenom || "").trim().slice(0, 100) || "-";
-        if (!nom) continue;
-        const classe = String(e.classe || defaut).trim();
-        let eleve = (
-          await db.query(
-            `SELECT id FROM users WHERE school_id = $1 AND role = 'student'
-               AND lower(trim(last_name)) = lower($2) AND lower(trim(first_name)) = lower($3) LIMIT 1`,
-            [ecole, nom, prenom]
-          )
-        ).rows[0];
-        if (eleve) existants++;
-        else {
-          const email = `eleve.${ecole}.${crypto.randomBytes(6).toString("hex")}@${DOMAINE_IMPORT}`;
-          eleve = (
-            await db.query(
-              `INSERT INTO users (email, password_hash, role, first_name, last_name, school_id, status)
-               VALUES ($1, $2, 'student', $3, $4, $5, 'active') RETURNING id`,
-              [email, motDePasse, prenom, nom, ecole]
-            )
-          ).rows[0];
-          crees++;
-        }
-        const matricule = String(e.matricule || "").trim().slice(0, 50);
-        await db.query(
-          `INSERT INTO student_records (student_id, admission_number, date_of_birth, gender, declared_class)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (student_id) DO UPDATE SET
-             date_of_birth = COALESCE(EXCLUDED.date_of_birth, student_records.date_of_birth),
-             gender = COALESCE(EXCLUDED.gender, student_records.gender),
-             declared_class = COALESCE(EXCLUDED.declared_class, student_records.declared_class)`,
-          [eleve.id, matricule ? `${ecole}-${matricule}` : `ELV-${ecole}-${eleve.id}`, DATE(e.dateNaissance), GENRE(e.sexe), classe || null]
-        );
-        if (classe && annee) {
-          const classId = await classeParNom(annee.id, classe);
-          await db.query(
-            "UPDATE class_students SET status = 'transferred' WHERE student_id = $1 AND academic_year_id = $2 AND status = 'active' AND class_id <> $3",
-            [eleve.id, annee.id, classId]
-          );
-          await db.query(
-            `INSERT INTO class_students (class_id, student_id, academic_year_id, status) VALUES ($1, $2, $3, 'active')
-             ON CONFLICT (class_id, student_id, academic_year_id) DO UPDATE SET status = 'active'`,
-            [classId, eleve.id, annee.id]
-          );
-          places++;
-        }
-      } catch (err) {
-        erreurs.push(`Ligne ${i + 1} : ${err.message}`);
-      }
+    const avecClasse = avecId.filter((e) => e.classe);
+    if (avecClasse.length && annee) {
+      const classes = new Map();
+      for (const nom of [...new Set(avecClasse.map((e) => e.classe))]) classes.set(nom, await classeParNom(annee.id, nom));
+      const eleves = avecClasse.map((e) => e.id);
+      const cls = avecClasse.map((e) => classes.get(e.classe));
+      await client.query(
+        `UPDATE class_students cs SET status = 'transferred'
+         FROM unnest($1::int[], $2::int[]) AS x(eleve, classe)
+         WHERE cs.student_id = x.eleve AND cs.academic_year_id = $3 AND cs.status = 'active' AND cs.class_id <> x.classe`,
+        [eleves, cls, annee.id]
+      );
+      const r = await client.query(
+        `INSERT INTO class_students (class_id, student_id, academic_year_id, status)
+         SELECT x.classe, x.eleve, $3, 'active' FROM unnest($1::int[], $2::int[]) AS x(eleve, classe)
+         ON CONFLICT (class_id, student_id, academic_year_id) DO UPDATE SET status = 'active'`,
+        [eleves, cls, annee.id]
+      );
+      places = r.rowCount;
     }
-    res.json({ success: true, data: { crees, existants, places, erreurs: erreurs.slice(0, 20) } });
+    await client.query("COMMIT");
+    res.json({
+      success: true,
+      data: { crees: nouveaux.length, existants: liste.length - nouveaux.length, places, erreurs: [] },
+    });
   } catch (e) {
-    next(e);
-  }
-});
-
-// POST /api/etablissement/lire-images { images: [dataUrl, ...] }
-// Reconnaissance d'ecriture : photos ou scans de listes (imprimees ou ecrites a
-// la main) lus par l'IA (API Anthropic), qui renvoie la liste des eleves.
-router.post("/lire-images", async (req, res, next) => {
-  try {
-    ecoleDe(req);
-    const cle = process.env.ANTHROPIC_API_KEY;
-    if (!cle) throw new ApiError(503, "La lecture des photos n'est pas encore activée (clé ANTHROPIC_API_KEY manquante)");
-    const images = Array.isArray(req.body?.images) ? req.body.images.slice(0, 8) : [];
-    if (!images.length) throw new ApiError(400, "Aucune image");
-    const blocs = [];
-    for (const img of images) {
-      const m = String(img).match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
-      if (!m) throw new ApiError(400, "Image invalide");
-      blocs.push({ type: "image", source: { type: "base64", media_type: m[1], data: m[3] } });
-    }
-    blocs.push({
-      type: "text",
-      text: `Ces images sont une liste d'élèves d'un établissement scolaire camerounais (imprimée ou écrite à la main, éventuellement sur plusieurs pages).
-Extrais TOUS les élèves, dans l'ordre. Pour chacun : nom (nom de famille, souvent en MAJUSCULES), prenom, classe (si indiquée sur la ligne ou en titre de la liste, ex. "6e A", "Tle C"), dateNaissance (format JJ/MM/AAAA si présente), sexe ("M" ou "F" si présent), matricule (si présent).
-Ignore les en-têtes, signatures, totaux et cachets. Si un champ est absent ou illisible, mets une chaîne vide.
-Réponds UNIQUEMENT avec un JSON valide, sans texte autour : {"classe": "classe du titre ou vide", "eleves": [{"nom":"","prenom":"","classe":"","dateNaissance":"","sexe":"","matricule":""}]}`,
-    });
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": cle,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5",
-        max_tokens: 8000,
-        messages: [{ role: "user", content: blocs }],
-      }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new ApiError(502, j?.error?.message || "Le service de lecture ne répond pas");
-    const texteIA = (j.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
-    let donnees;
     try {
-      donnees = JSON.parse(texteIA.replace(/```json|```/g, "").trim());
-    } catch {
-      throw new ApiError(422, "La liste n'a pas pu être lue. Essayez une photo plus nette, bien éclairée et prise de face.");
-    }
-    const classeTitre = String(donnees.classe || "").trim();
-    const eleves = (Array.isArray(donnees.eleves) ? donnees.eleves : [])
-      .map((e) => ({
-        nom: String(e.nom || "").trim(),
-        prenom: String(e.prenom || "").trim(),
-        classe: String(e.classe || classeTitre || "").trim(),
-        dateNaissance: String(e.dateNaissance || "").trim(),
-        sexe: String(e.sexe || "").trim(),
-        matricule: String(e.matricule || "").trim(),
-      }))
-      .filter((e) => e.nom);
-    res.json({ success: true, data: eleves });
-  } catch (e) {
+      await client.query("ROLLBACK");
+    } catch (_) {}
     next(e);
+  } finally {
+    client.release();
   }
 });
 
@@ -444,6 +420,66 @@ router.post("/classes", async (req, res, next) => {
     res.status(201).json({ success: true, data: { creees: noms.length } });
   } catch (e) {
     next(e);
+  }
+});
+
+// Detail d'une classe : eleves et enseignants par matiere
+router.get("/classes/:id", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const id = parseInt(req.params.id, 10);
+    const c = await db.query(
+      `SELECT c.id, c.name, ay.name AS annee FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id
+       WHERE c.id = $1 AND ay.school_id = $2`,
+      [id, ecole]
+    );
+    if (!c.rows[0]) throw new ApiError(404, "Classe introuvable");
+    const eleves = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, sr.gender, sr.date_of_birth, sr.admission_number,
+              (u.email NOT LIKE '%@inscrit.school') AS a_un_compte,
+              (SELECT COUNT(*)::int FROM parent_student_links p WHERE p.student_id = u.id) AS parents
+       FROM class_students cs JOIN users u ON u.id = cs.student_id
+       LEFT JOIN student_records sr ON sr.student_id = u.id
+       WHERE cs.class_id = $1 AND cs.status = 'active'
+       ORDER BY u.last_name, u.first_name`,
+      [id]
+    );
+    const profs = await db.query(
+      `SELECT cs.id, s.name AS matiere, u.first_name, u.last_name, u.phone
+       FROM class_subjects cs JOIN subjects s ON s.id = cs.subject_id JOIN users u ON u.id = cs.teacher_id
+       WHERE cs.class_id = $1 AND cs.teacher_id IS NOT NULL ORDER BY s.name`,
+      [id]
+    );
+    res.json({ success: true, data: { classe: c.rows[0], eleves: eleves.rows, enseignants: profs.rows } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Fiche d'un eleve
+router.get("/eleves/:id", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const id = parseInt(req.params.id, 10);
+    const e = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.created_at,
+              (u.email NOT LIKE '%@inscrit.school') AS a_un_compte,
+              sr.admission_number, sr.date_of_birth, sr.gender, sr.declared_class,
+              (SELECT c.name FROM class_students cs JOIN classes c ON c.id = cs.class_id
+                WHERE cs.student_id = u.id AND cs.status = 'active' ORDER BY cs.enrolled_at DESC LIMIT 1) AS classe
+       FROM users u LEFT JOIN student_records sr ON sr.student_id = u.id
+       WHERE u.id = $1 AND u.school_id = $2 AND u.role = 'student'`,
+      [id, ecole]
+    );
+    if (!e.rows[0]) throw new ApiError(404, "Élève introuvable");
+    const parents = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.phone, u.email, l.relationship
+       FROM parent_student_links l JOIN users u ON u.id = l.parent_id WHERE l.student_id = $1`,
+      [id]
+    );
+    res.json({ success: true, data: { ...e.rows[0], email: e.rows[0].a_un_compte ? e.rows[0].email : null, parents: parents.rows } });
+  } catch (err) {
+    next(err);
   }
 });
 

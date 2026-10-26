@@ -39,21 +39,57 @@ function Bientot() {
 }
 
 function EspaceAdmin() {
-  const ecoles = useApi('/api/schools')
-  const demandes = useApi('/api/demandes-etablissements?status=pending')
+  const st = useApi('/api/schools/statistiques')
+  const d = st.data || {}
+  const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
+  const recente = (x) => (x ? new Date(x).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : 'jamais')
   return (
     <>
-      <h2 className="section-title">Gestion de la plateforme</h2>
-      <div className="grid2">
-        <Tuile
-          href="#/etablissements"
-          ico="🏫"
-          titre="Établissements"
-          texte={`${ecoles.data?.length ?? '…'} établissement(s)`}
-          compteur={demandes.data?.length || 0}
-        />
-        <Tuile href="#/utilisateurs" ico="👥" titre="Utilisateurs" texte="Tous les comptes" />
+      <div className="stats">
+        <a className="stat" href="#/etablissements" style={{ color: 'inherit' }}>
+          <b>{d.etablissements ?? '…'}</b>
+          <span>écoles</span>
+        </a>
+        <div className="stat">
+          <b>{d.eleves ?? '…'}</b>
+          <span>élèves</span>
+        </div>
+        <div className="stat">
+          <b>{d.enseignants ?? '…'}</b>
+          <span>enseignants</span>
+        </div>
+        <div className="stat">
+          <b>{d.parents ?? '…'}</b>
+          <span>parents</span>
+        </div>
       </div>
+
+      <h2 className="section-title">{d.demandes ? 'À traiter' : 'Activité'}</h2>
+      {d.demandes > 0 && (
+        <Action href="#/etablissements" Icone={IcEcole} titre="Demandes d’établissements" texte="Écoles qui veulent rejoindre School" compteur={d.demandes} urgent />
+      )}
+      <Action href="#/utilisateurs" Icone={IcEleves} titre="Nouveaux comptes" texte={`${d.inscrits_7j ?? '…'} inscription(s) ces 7 derniers jours`} />
+      <Action href="#/etablissements" Icone={IcCarte} titre="Paiements de scolarité" texte={`${fcfa(d.paiements_total)} encaissés par les écoles`} />
+
+      <h2 className="section-title">Établissements</h2>
+      {d.ecoles?.length === 0 && <p className="muted">Aucun établissement pour le moment.</p>}
+      {d.ecoles?.length > 0 && (
+        <ul className="rows">
+          {d.ecoles.map((e) => (
+            <a className="row" key={e.id} href="#/etablissements">
+              <span style={{ fontSize: 24 }}>🏫</span>
+              <div className="row-main">
+                <div className="row-title">
+                  {e.name} {!e.is_active && <span className="tag tag-off">Suspendu</span>}
+                </div>
+                <div className="row-sub">
+                  {e.eleves} élèves · {e.enseignants} enseignants · {e.parents} parents · actif {recente(e.derniere_activite)}
+                </div>
+              </div>
+            </a>
+          ))}
+        </ul>
+      )}
     </>
   )
 }
@@ -281,7 +317,7 @@ export default function Home() {
   const { user } = useAuth()
   return (
     <>
-      {user.role !== 'principal' && (
+      {!['principal', 'admin'].includes(user.role) && (
       <section className="hero-card" style={{ marginTop: 8 }}>
         <span className="badge">{ROLES[user.role] || user.role}</span>
         <h2 style={{ marginTop: 12 }}>Bonjour, {user.firstName} 👋</h2>

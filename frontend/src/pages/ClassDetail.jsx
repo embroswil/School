@@ -1,123 +1,73 @@
-import { useState } from 'react'
-import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Empty, Field, Loading, Note } from '../ui.jsx'
-import { ENROLLMENT_LABEL, fullName } from '../format.js'
+import { Note } from '../ui.jsx'
 
-function EnrollForm({ cls, enrolledIds, onDone }) {
-  const students = useApi('/api/users?role=student&isActive=true&limit=100')
-  const [studentId, setStudentId] = useState('')
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const available = (students.data ?? []).filter((s) => !enrolledIds.has(s.id))
-
-  async function submit(event) {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
-    try {
-      await api.post('/api/enrollments', {
-        classId: cls.id,
-        studentId: Number(studentId),
-        academicYearId: cls.academic_year_id,
-      })
-      setStudentId('')
-      setBusy(false)
-      onDone()
-    } catch (err) {
-      setError(err.message)
-      setBusy(false)
-    }
-  }
-
-  if (students.loading && !students.data) return <Loading />
-  if (available.length === 0) {
-    return <Empty>Tous les élèves actifs sont déjà dans cette classe, ou aucun élève n’a encore de compte.</Empty>
-  }
-
-  return (
-    <form onSubmit={submit}>
-      <Field label="Inscrire un élève">
-        <select className="input" required value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-          <option value="">Choisir un élève</option>
-          {available.map((s) => (
-            <option key={s.id} value={s.id}>
-              {fullName(s.firstName, s.lastName)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Note>{error}</Note>
-      <div className="actions">
-        <button className="btn" type="submit" disabled={busy || !studentId}>
-          {busy ? 'Inscription…' : 'Inscrire dans la classe'}
-        </button>
-      </div>
-    </form>
-  )
-}
-
+// Une classe : ses eleves et ses enseignants par matiere
 export default function ClassDetail({ id }) {
-  const cls = useApi(`/api/classes/${id}`)
-  const roster = useApi(`/api/classes/${id}/students`)
-  const [rowError, setRowError] = useState('')
-
-  const students = roster.data ?? []
-  const enrolledIds = new Set(students.map((s) => s.student_id))
-  const c = cls.data
-
-  async function remove(student) {
-    const name = fullName(student.student_first_name, student.student_last_name)
-    if (!window.confirm(`Retirer ${name} de cette classe ?`)) return
-    setRowError('')
-    try {
-      await api.delete(`/api/enrollments/${id}/${student.student_id}/${student.academic_year_id}`)
-      roster.reload()
-    } catch (err) {
-      setRowError(err.message)
-    }
-  }
+  const d = useApi(`/api/etablissement/classes/${id}`)
+  if (d.error) return <Note>{d.error}</Note>
+  if (!d.data) return <p className="muted">Chargement…</p>
+  const { classe, eleves, enseignants } = d.data
+  const filles = eleves.filter((e) => e.gender === 'female').length
+  const garcons = eleves.filter((e) => e.gender === 'male').length
 
   return (
     <>
-      <a className="back" href="#/classes">
-        Retour aux classes
-      </a>
-      <h1 className="page-title">{c?.name ?? 'Classe'}</h1>
-      <Note>{cls.error}</Note>
-      {c && (
-        <p className="lede">
-          Niveau {c.level}
-          {c.section ? `, section ${c.section}` : ''}. {students.length} {students.length > 1 ? 'élèves' : 'élève'} pour{' '}
-          {c.capacity ?? 40} places.
+      <section className="hero-card" style={{ marginTop: 4 }}>
+        <span className="badge">Année {classe.annee}</span>
+        <h2 style={{ marginTop: 8 }}>{classe.name}</h2>
+        <p>
+          {eleves.length} élève(s){filles || garcons ? ` · ${garcons} garçon(s), ${filles} fille(s)` : ''}
         </p>
+      </section>
+
+      <p className="groupe-titre">Enseignants</p>
+      {enseignants.length === 0 ? (
+        <p className="muted">
+          Aucun enseignant affecté. <a href="#/enseignants">Affecter des enseignants</a>
+        </p>
+      ) : (
+        <ul className="rows">
+          {enseignants.map((t) => (
+            <li className="row" key={t.id}>
+              <div className="row-main">
+                <div className="row-title">{t.matiere}</div>
+                <div className="row-sub">
+                  {t.first_name} {t.last_name}
+                </div>
+              </div>
+              {t.phone && <a href={`tel:${t.phone}`}>📞</a>}
+            </li>
+          ))}
+        </ul>
       )}
-      <div className="gap" />
 
-      <h2 className="section-title">Élèves</h2>
-      <Note>{roster.error || rowError}</Note>
-      {roster.loading && !roster.data ? <Loading /> : null}
-      {!roster.loading && !roster.error && students.length === 0 && <Empty>Aucun élève inscrit dans cette classe.</Empty>}
-      <ul className="rows">
-        {students.map((s) => (
-          <li className="row" key={s.id}>
-            <div className="row-main">
-              <span className="row-title">
-                {fullName(s.student_first_name, s.student_last_name)}
-                {s.status !== 'active' && <span className="tag">{ENROLLMENT_LABEL[s.status] ?? s.status}</span>}
+      <p className="groupe-titre">Élèves</p>
+      {eleves.length === 0 ? (
+        <p className="muted">
+          Aucun élève dans cette classe. <a href="#/import-eleves">Importer une liste</a>
+        </p>
+      ) : (
+        <ul className="rows">
+          {eleves.map((e, i) => (
+            <a className="row" key={e.id} href={`#/eleves/${e.id}`}>
+              <span className="muted" style={{ width: 26, fontSize: 13 }}>
+                {i + 1}
               </span>
-              <span className="row-sub">{s.student_email}</span>
-            </div>
-            <button className="btn btn-quiet btn-danger" type="button" onClick={() => remove(s)}>
-              Retirer
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <div className="gap" />
-      {c && <EnrollForm cls={c} enrolledIds={enrolledIds} onDone={() => roster.reload()} />}
+              <div className="row-main">
+                <div className="row-title">
+                  {e.last_name} {e.first_name}
+                </div>
+                <div className="row-sub">
+                  {e.gender === 'female' ? 'F' : e.gender === 'male' ? 'M' : ''}
+                  {e.parents > 0 ? ` · ${e.parents} parent(s)` : ''}
+                  {e.a_un_compte ? ' · compte créé' : ''}
+                </div>
+              </div>
+              <span className="row-end">›</span>
+            </a>
+          ))}
+        </ul>
+      )}
     </>
   )
 }

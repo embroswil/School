@@ -10,6 +10,7 @@ const { authenticate, isPlatformAdmin } = require("../../middlewares/auth.middle
 router.get("/public", ctrl.listePublique);
 
 // Administrateur de la plateforme
+router.get("/statistiques", authenticate, isPlatformAdmin, ctrl.statistiques);
 router.get("/", authenticate, isPlatformAdmin, ctrl.liste);
 router.post("/", authenticate, isPlatformAdmin, ctrl.creer);
 router.put("/:id", authenticate, isPlatformAdmin, ctrl.modifier);

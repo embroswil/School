@@ -13,6 +13,7 @@ export default function ImportEleves() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [resultat, setResultat] = useState(null)
+  const [progres, setProgres] = useState(null) // { fait, total }
 
   async function choisir(e) {
     const fichiers = [...(e.target.files || [])]
@@ -38,19 +39,33 @@ export default function ImportEleves() {
   const maj = (i, k) => (e) =>
     setEleves((l) => l.map((x, j) => (j === i ? { ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value } : x)))
 
+  // Import par paquets de 80 eleves : plus rapide a l'ecran (progression) et
+  // sans risque de depasser le temps de reponse du serveur
   async function importer() {
     setError('')
     setBusy(true)
+    const liste = eleves.filter((x) => x.garder)
+    const total = { crees: 0, existants: 0, places: 0, erreurs: [] }
+    setProgres({ fait: 0, total: liste.length })
     try {
-      const r = await api.post('/api/etablissement/import-eleves', {
-        eleves: eleves.filter((x) => x.garder),
-        classeParDefaut: classeDefaut,
-      })
-      setResultat(r.data)
+      for (let i = 0; i < liste.length; i += 80) {
+        const r = await api.post('/api/etablissement/import-eleves', {
+          eleves: liste.slice(i, i + 80),
+          classeParDefaut: classeDefaut,
+        })
+        total.crees += r.data.crees
+        total.existants += r.data.existants
+        total.places += r.data.places
+        total.erreurs.push(...(r.data.erreurs || []))
+        setProgres({ fait: Math.min(i + 80, liste.length), total: liste.length })
+      }
+      setResultat(total)
       setEleves(null)
+      window.scrollTo(0, 0)
     } catch (err) {
-      setError(err.message)
+      setError(`${err.message} — ${total.crees + total.existants} élève(s) déjà importé(s) : relancez l’import pour terminer (pas de doublons).`)
     }
+    setProgres(null)
     setBusy(false)
   }
 
@@ -100,9 +115,22 @@ export default function ImportEleves() {
 
       {eleves && (
         <>
-          <h2 className="section-title">
-            {fichier} · {retenus} élève(s)
-          </h2>
+          <div className="barre-import">
+            <div style={{ minWidth: 0 }}>
+              <b style={{ display: 'block' }}>{retenus} élève(s) à importer</b>
+              <small className="muted" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {progres ? `Import en cours : ${progres.fait} / ${progres.total}` : fichier}
+              </small>
+              {progres && (
+                <div className="progres">
+                  <span style={{ width: `${Math.round((progres.fait / progres.total) * 100)}%` }} />
+                </div>
+              )}
+            </div>
+            <button type="button" className="btn" disabled={busy || !retenus} onClick={importer} style={{ flex: 'none', padding: '12px 16px' }}>
+              {busy ? '…' : 'Importer'}
+            </button>
+          </div>
           {sansClasse > 0 && (
             <div className="card" style={{ marginBottom: 12 }}>
               <Field label={`Classe pour les ${sansClasse} élève(s) sans classe`}>
@@ -125,9 +153,6 @@ export default function ImportEleves() {
               </li>
             ))}
           </ul>
-          <button type="button" className="btn btn-block" disabled={busy || !retenus} onClick={importer} style={{ marginTop: 14 }}>
-            {busy ? 'Import en cours…' : `Importer ${retenus} élève(s)`}
-          </button>
         </>
       )}
 

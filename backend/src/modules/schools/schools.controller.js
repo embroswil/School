@@ -138,4 +138,31 @@ const definirAdministrateur = async (req, res, next) => {
   }
 };
 
-module.exports = { listePublique, liste, creer, modifier, definirAdministrateur };
+// Chiffres de toute la plateforme (administrateur de la plateforme)
+const statistiques = async (req, res, next) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM schools) AS etablissements,
+        (SELECT COUNT(*)::int FROM schools WHERE is_active) AS etablissements_actifs,
+        (SELECT COUNT(*)::int FROM school_requests WHERE status = 'pending') AS demandes,
+        (SELECT COUNT(*)::int FROM users WHERE role = 'student') AS eleves,
+        (SELECT COUNT(*)::int FROM users WHERE role = 'student' AND email NOT LIKE '%@inscrit.school') AS eleves_avec_compte,
+        (SELECT COUNT(*)::int FROM users WHERE role = 'teacher' AND status = 'active') AS enseignants,
+        (SELECT COUNT(*)::int FROM users WHERE role = 'parent') AS parents,
+        (SELECT COUNT(*)::int FROM users WHERE created_at > NOW() - INTERVAL '7 days' AND email NOT LIKE '%@inscrit.school') AS inscrits_7j,
+        (SELECT COALESCE(SUM(montant),0)::bigint FROM paiements_scolaires WHERE statut = 'reussi') AS paiements_total`);
+    const ecoles = await db.query(`
+      SELECT s.id, s.name, s.type, s.city, s.is_active, s.created_at,
+        (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role = 'student') AS eleves,
+        (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role = 'teacher' AND u.status = 'active') AS enseignants,
+        (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role = 'parent') AS parents,
+        (SELECT MAX(u.last_login) FROM users u WHERE u.school_id = s.id) AS derniere_activite
+      FROM schools s ORDER BY s.created_at DESC`);
+    res.json({ success: true, data: { ...rows[0], ecoles: ecoles.rows } });
+  } catch (e) {
+    next(e);
+  }
+};
+
+module.exports = { listePublique, liste, creer, modifier, definirAdministrateur, statistiques };

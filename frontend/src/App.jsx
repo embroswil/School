@@ -21,6 +21,7 @@ import Conversation from './pages/Conversation.jsx'
 import Actualites from './pages/Actualites.jsx'
 import Scolarite from './pages/Scolarite.jsx'
 import ImportEleves from './pages/ImportEleves.jsx'
+import EleveFiche from './pages/EleveFiche.jsx'
 
 function Message({ title, children }) {
   return (
@@ -53,6 +54,8 @@ function Pages({ path }) {
   if (path === '/classes') return reserve(gestion, <Classes />)
   if (path === '/annees') return reserve(gestion, <Years />)
 
+  const eleveMatch = path.match(/^\/eleves\/(\d+)$/)
+  if (eleveMatch) return reserve(gestion, <EleveFiche key={eleveMatch[1]} id={Number(eleveMatch[1])} />)
   const classMatch = path.match(/^\/classes\/(\d+)$/)
   if (classMatch) return reserve(gestion, <ClassDetail key={classMatch[1]} id={Number(classMatch[1])} />)
 

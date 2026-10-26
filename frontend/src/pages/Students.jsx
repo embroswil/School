@@ -3,12 +3,13 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 
-// Eleves de l'etablissement : classe declaree a l'inscription, placement en classe
+// Eleves de l'etablissement : recherche, filtre par classe, placement, fiche
 export default function Students() {
   const [q, setQ] = useState('')
   const [recherche, setRecherche] = useState('')
-  const eleves = useApi(`/api/etablissement/eleves?q=${encodeURIComponent(recherche)}`)
-  const classes = useApi('/api/classes')
+  const [classe, setClasse] = useState('')
+  const eleves = useApi(`/api/etablissement/eleves?q=${encodeURIComponent(recherche)}${classe ? `&classe=${classe}` : ''}`)
+  const classes = useApi('/api/etablissement/classes')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(null)
 
@@ -25,70 +26,77 @@ export default function Students() {
     setBusy(null)
   }
 
-  const sansClasse = (eleves.data || []).filter((e) => !e.class_id).length
+  const liste = eleves.data || []
+  const sansClasse = liste.filter((e) => !e.class_id).length
 
   return (
     <>
-      <h1 className="page-title">Élèves</h1>
-      <p className="lede">
-        Les élèves s’inscrivent eux-mêmes en indiquant leur classe. Placez-les dans la bonne classe.
-        {sansClasse > 0 && (
-          <>
-            {' '}
-            <b>{sansClasse} sans classe.</b>
-          </>
-        )}
-      </p>
-      <a className="btn btn-block" href="#/import-eleves" style={{ marginBottom: 12 }}>
-        📄 Importer une liste (PDF, Excel)
-      </a>
+      <div className="actions" style={{ marginTop: 4, marginBottom: 12 }}>
+        <a className="btn" href="#/import-eleves" style={{ flex: 1 }}>
+          📄 Importer une liste
+        </a>
+        <a className="btn btn-quiet" href="#/classes" style={{ flex: 1 }}>
+          📚 Classes
+        </a>
+      </div>
       <form
         className="searchbar"
         onSubmit={(e) => {
           e.preventDefault()
           setRecherche(q)
         }}
+        style={{ display: 'flex', gap: 8 }}
       >
         <input className="input" placeholder="Rechercher un élève" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select className="input" style={{ width: 'auto', maxWidth: 140 }} value={classe} onChange={(e) => setClasse(e.target.value)}>
+          <option value="">Toutes</option>
+          {(classes.data || []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
       </form>
+      <p className="muted" style={{ marginBottom: 10, fontSize: 14 }}>
+        {eleves.loading ? 'Chargement…' : `${liste.length} élève(s)`}
+        {sansClasse > 0 && !classe ? ` · ${sansClasse} sans classe` : ''}
+      </p>
       <Note>{error}</Note>
-      {classes.data?.length === 0 && (
-        <Note kind="ok">
-          Créez d’abord une <a href="#/annees">année scolaire</a>, puis vos <a href="#/classes">classes</a>.
-        </Note>
-      )}
-      {eleves.loading && <p className="muted">Chargement…</p>}
-      {eleves.data?.length === 0 && <p className="muted">Aucun élève inscrit pour le moment.</p>}
-      {eleves.data?.length > 0 && (
+      {liste.length > 0 && (
         <ul className="rows">
-          {eleves.data.map((e) => (
-            <li className="row" key={e.id} style={{ flexWrap: 'wrap' }}>
-              <div className="row-main">
+          {liste.map((e) => (
+            <li className="row" key={e.id}>
+              <a className="row-main" href={`#/eleves/${e.id}`} style={{ color: 'inherit' }}>
                 <div className="row-title">
-                  {e.first_name} {e.last_name}
+                  {e.last_name} {e.first_name}
                 </div>
                 <div className="row-sub">
-                  Déclaré : {e.declared_class || '—'}
+                  {e.class_name || `Déclaré : ${e.declared_class || '—'}`}
                   {e.parents > 0 ? ` · ${e.parents} parent(s)` : ''}
                 </div>
-              </div>
-              <select
-                className="input"
-                style={{ width: 'auto', minWidth: 130, padding: '9px 10px' }}
-                value={e.class_id || ''}
-                disabled={busy === e.id || !classes.data?.length}
-                onChange={(ev) => placer(e.id, ev.target.value)}
-              >
-                <option value="">{e.class_id ? '' : 'Choisir la classe'}</option>
-                {(classes.data || []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              </a>
+              {!e.class_id && (
+                <select
+                  className="input"
+                  style={{ width: 'auto', maxWidth: 120, padding: '8px 10px' }}
+                  value=""
+                  disabled={busy === e.id || !classes.data?.length}
+                  onChange={(ev) => placer(e.id, ev.target.value)}
+                >
+                  <option value="">Classe…</option>
+                  {(classes.data || []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </li>
           ))}
         </ul>
+      )}
+      {!eleves.loading && liste.length === 0 && (
+        <p className="lede">Aucun élève. Importez une liste de classe pour commencer.</p>
       )}
     </>
   )
