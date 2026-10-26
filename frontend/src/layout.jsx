@@ -19,16 +19,19 @@ const NAV = {
   ],
   teacher: [
     ['/', '🏠', 'Accueil'],
+    ['/actualites', '📣', 'Actualités'],
     ['/messages', '✉️', 'Messages'],
     ['/compte', '⚙️', 'Compte'],
   ],
   parent: [
     ['/', '🏠', 'Accueil'],
+    ['/actualites', '📣', 'Actualités'],
     ['/messages', '✉️', 'Messages'],
     ['/compte', '⚙️', 'Compte'],
   ],
   student: [
     ['/', '🏠', 'Accueil'],
+    ['/actualites', '📣', 'Actualités'],
     ['/messages', '✉️', 'Messages'],
     ['/compte', '⚙️', 'Compte'],
   ],

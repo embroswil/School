@@ -97,3 +97,21 @@ CREATE TABLE IF NOT EXISTS conversation_messages (
   body TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Fil d'actualites
+CREATE TABLE IF NOT EXISTS publications (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  type VARCHAR(30) NOT NULL DEFAULT 'annonce'
+    CHECK (type IN ('annonce','evenement','conseil_discipline','resultats','autre')),
+  title VARCHAR(200) NOT NULL,
+  body TEXT,
+  event_date TIMESTAMP,
+  event_place VARCHAR(200),
+  students JSONB,
+  image TEXT,
+  audience VARCHAR(20) NOT NULL DEFAULT 'tous' CHECK (audience IN ('tous','parents','eleves','enseignants')),
+  pinned BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

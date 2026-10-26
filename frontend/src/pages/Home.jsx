@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
+import { Publication } from './Actualites.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -150,6 +151,7 @@ function EspaceEtablissement() {
         <Tuile href="#/enseignants" ico="✅" titre="Enseignants" texte="Comptes à valider" compteur={d.enseignants_attente || 0} />
         <Tuile href="#/eleves" ico="🎒" titre="Élèves" texte="À placer dans une classe" compteur={d.eleves_sans_classe || 0} />
         <Tuile href="#/classes" ico="📚" titre="Classes" texte="Créer et gérer les classes" />
+        <Tuile href="#/actualites" ico="📣" titre="Actualités" texte="Annonces, événements, discipline" />
         <Tuile href="#/messages" ico="✉️" titre="Messages" texte="Parents, élèves, enseignants" />
       </div>
     </>
@@ -191,7 +193,6 @@ function EspaceParent() {
         <Tuile ico="📝" titre="Notes" texte={<Bientot />} />
         <Tuile ico="🗓️" titre="Présences" texte={<Bientot />} />
         <Tuile ico="💳" titre="Scolarité" texte={<Bientot />} />
-        <Tuile ico="📣" titre="Annonces" texte={<Bientot />} />
       </div>
     </>
   )
@@ -205,7 +206,6 @@ function EspaceEleve() {
         <Tuile ico="📝" titre="Mes notes" texte={<Bientot />} />
         <Tuile ico="⏰" titre="Emploi du temps" texte={<Bientot />} />
         <Tuile ico="🗓️" titre="Présences" texte={<Bientot />} />
-        <Tuile ico="📣" titre="Annonces" texte={<Bientot />} />
       </div>
     </>
   )
@@ -219,8 +219,25 @@ function EspaceEnseignant() {
         <Tuile ico="📝" titre="Publier des notes" texte={<Bientot />} />
         <Tuile ico="🙋" titre="Faire l’appel" texte={<Bientot />} />
         <Tuile ico="📚" titre="Mes classes" texte={<Bientot />} />
-        <Tuile ico="📣" titre="Annonces" texte={<Bientot />} />
       </div>
+    </>
+  )
+}
+
+function DernieresActualites() {
+  const fil = useApi('/api/actualites?limite=5')
+  if (!fil.data?.length) return null
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <h2 className="section-title">Actualités</h2>
+        <a href="#/actualites" style={{ fontWeight: 700, fontSize: 14 }}>
+          Tout voir
+        </a>
+      </div>
+      {fil.data.map((p) => (
+        <Publication key={p.id} p={p} />
+      ))}
     </>
   )
 }
@@ -241,6 +258,7 @@ export default function Home() {
       {user.role === 'parent' && <EspaceParent />}
       {user.role === 'student' && <EspaceEleve />}
       {user.role === 'teacher' && <EspaceEnseignant />}
+      {['parent', 'student', 'teacher'].includes(user.role) && <DernieresActualites />}
     </>
   )
 }
