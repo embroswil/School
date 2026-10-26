@@ -6,6 +6,7 @@ const router = express.Router();
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate, authorize } = require("../../middlewares/auth.middleware");
+const { assurerAnneeScolaire } = require("../../utils/annees");
 
 router.use(authenticate, authorize("admin"));
 
@@ -26,10 +27,12 @@ const anneeCourante = async (ecole) =>
 router.get("/tableau", async (req, res, next) => {
   try {
     const ecole = ecoleDe(req);
+    await assurerAnneeScolaire(ecole); // annee scolaire en cours, creee automatiquement
     const annee = await anneeCourante(ecole);
     const { rows } = await db.query(
       `SELECT
         (SELECT name FROM schools WHERE id = $1) AS nom,
+        (SELECT photo FROM schools WHERE id = $1) AS photo,
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'student') AS eleves,
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'active') AS enseignants,
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'pending') AS enseignants_attente,
@@ -119,6 +122,20 @@ router.get("/enseignants", async (req, res, next) => {
       [ecole]
     );
     res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Photo de l'etablissement (image redimensionnee par le telephone, en data URL)
+router.put("/photo", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const photo = String((req.body || {}).photo || "");
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(photo)) throw new ApiError(400, "Image invalide");
+    if (photo.length > 600000) throw new ApiError(400, "Image trop lourde");
+    await db.query("UPDATE schools SET photo = $2, updated_at = NOW() WHERE id = $1", [ecole, photo]);
+    res.json({ success: true });
   } catch (e) {
     next(e);
   }

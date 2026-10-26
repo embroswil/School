@@ -2,6 +2,7 @@
 const bcrypt = require("bcryptjs");
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
+const { assurerAnneeScolaire } = require("../../utils/annees");
 
 const TYPES = ["maternelle", "primaire", "college", "lycee"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,6 +20,7 @@ const versPublic = (e) => ({
   city: e.city,
   code: e.code,
   isActive: e.is_active,
+  photo: e.photo || null,
   administrateurs: e.administrateurs || undefined,
   nbUtilisateurs: e.nb_utilisateurs ?? undefined,
 });
@@ -26,7 +28,7 @@ const versPublic = (e) => ({
 const listePublique = async (req, res, next) => {
   try {
     const { rows } = await db.query(
-      "SELECT id, name, type, city, code, is_active FROM schools WHERE is_active = true ORDER BY name"
+      "SELECT id, name, type, city, code, is_active, photo FROM schools WHERE is_active = true ORDER BY name"
     );
     res.json({ success: true, data: rows.map(versPublic) });
   } catch (e) {
@@ -70,6 +72,7 @@ const creer = async (req, res, next) => {
       `INSERT INTO schools (name, type, city, code, is_active) VALUES ($1, $2, $3, $4, true) RETURNING *`,
       [d.name, d.type, d.city || null, d.code || null]
     );
+    await assurerAnneeScolaire(rows[0].id).catch(() => {});
     res.status(201).json({ success: true, data: versPublic(rows[0]) });
   } catch (e) {
     if (e.code === "23505") return next(new ApiError(409, "Ce code d'établissement existe déjà"));

@@ -72,3 +72,28 @@ CREATE TABLE IF NOT EXISTS school_requests (
   decided_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Photo, notifications et messagerie
+ALTER TABLE schools ALTER COLUMN code DROP NOT NULL;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS photo TEXT;
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
+  CHECK (type IN ('payment','grade','attendance','announcement','reminder','system','account','message'));
+CREATE TABLE IF NOT EXISTS conversations (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subject VARCHAR(200) NOT NULL,
+  unread_school BOOLEAN NOT NULL DEFAULT true,
+  unread_user BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id SERIAL PRIMARY KEY,
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  from_school BOOLEAN NOT NULL DEFAULT false,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

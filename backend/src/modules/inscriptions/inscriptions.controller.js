@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { ecoleFiltre } = require("../../utils/contexte");
+const { notifierEtablissement } = require("../../utils/notifier");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLES = ["parent", "student", "teacher"];
@@ -129,6 +130,16 @@ const inscription = async (req, res, next) => {
       );
     }
     await q("COMMIT");
+
+    if (role === "teacher") {
+      await notifierEtablissement(schoolId, {
+        title: "Nouvel enseignant à valider",
+        message: `${prenom} ${nom} (${texte(b.matieres, 255)}) a créé un compte enseignant.`,
+        type: "account",
+        priority: "high",
+        data: { lien: "/enseignants" },
+      }).catch(() => {});
+    }
 
     res.status(201).json({
       success: true,

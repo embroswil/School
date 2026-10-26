@@ -7,6 +7,7 @@ const bcrypt = require("bcryptjs");
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate, isPlatformAdmin } = require("../../middlewares/auth.middleware");
+const { assurerAnneeScolaire } = require("../../utils/annees");
 
 const TYPES = ["maternelle", "primaire", "college", "lycee"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -110,6 +111,7 @@ router.post("/:id/valider", authenticate, isPlatformAdmin, async (req, res, next
       [d.id, ecole.rows[0].id]
     );
     await client.query("COMMIT");
+    await assurerAnneeScolaire(ecole.rows[0].id).catch(() => {});
     res.json({ success: true, message: "Établissement activé : le responsable peut se connecter avec son email et son mot de passe." });
   } catch (e) {
     try {

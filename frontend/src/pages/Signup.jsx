@@ -145,7 +145,9 @@ export default function Signup() {
                     setEtape(3)
                   }}
                 >
-                  <span className="ico">🏫</span>
+                  <span className="ico" style={e.photo ? { backgroundImage: `url(${e.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                    {e.photo ? '' : '🏫'}
+                  </span>
                   <span>
                     <b>{e.name}</b>
                     <span className="muted">
