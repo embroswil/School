@@ -41,15 +41,25 @@ export default function Appel({ id }) {
   }
 
   const compte = (s) => Object.values(statuts).filter((x) => x === s).length
+  const modif = d.data?.modifiable
 
   return (
     <>
-      <h1 className="page-title">Appel{d.data ? ` · ${d.data.classe}` : ''}</h1>
+      <h1 className="page-title">
+        {modif ? 'Appel' : 'Présences'}
+        {d.data ? ` · ${d.data.classe}` : ''}
+      </h1>
       <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ marginBottom: 12 }} />
       {d.data && (
         <p className="lede" style={{ marginBottom: 10 }}>
-          {d.data.faite ? '✓ Appel déjà fait ce jour (modifiable). ' : ''}
-          {compte('present')} présent(s) · {compte('absent')} absent(s) · {compte('late')} retard(s)
+          {!modif && !d.data.faite
+            ? 'L’appel n’a pas encore été fait pour ce jour (il est fait en classe par l’enseignant).'
+            : (
+              <>
+                {d.data.faite && modif ? '✓ Appel déjà fait ce jour (modifiable). ' : ''}
+                {compte('present')} présent(s) · {compte('absent')} absent(s) · {compte('late')} retard(s) · {compte('excused')} justifié(s)
+              </>
+            )}
         </p>
       )}
       <Note>{error}</Note>
@@ -68,6 +78,11 @@ export default function Appel({ id }) {
                     {e.last_name} {e.first_name}
                   </div>
                 </div>
+                {!modif ? (
+                  <span style={{ fontWeight: 800, color: (STATUTS.find((s) => s[0] === e.status) || [])[3] || 'var(--muted)' }}>
+                    {e.status ? (STATUTS.find((s) => s[0] === e.status) || [])[2] : '—'}
+                  </span>
+                ) : (
                 <div style={{ display: 'flex', gap: 4 }}>
                   {STATUTS.map(([k, lettre, titre, couleur]) => (
                     <button
@@ -91,15 +106,20 @@ export default function Appel({ id }) {
                     </button>
                   ))}
                 </div>
+                )}
               </li>
             ))}
           </ul>
-          <p className="muted" style={{ fontSize: 13, margin: '8px 4px' }}>
-            P : présent · A : absent · R : retard · J : absence justifiée. Les parents des absents reçoivent une notification.
-          </p>
-          <button type="button" className="btn btn-block" style={{ marginTop: 8 }} disabled={busy} onClick={enregistrer}>
-            {busy ? 'Enregistrement…' : 'Enregistrer l’appel'}
-          </button>
+          {modif && (
+            <p className="muted" style={{ fontSize: 13, margin: '8px 4px' }}>
+              P : présent · A : absent · R : retard · J : absence justifiée. Les parents des absents reçoivent une notification.
+            </p>
+          )}
+          {modif && (
+            <button type="button" className="btn btn-block" style={{ marginTop: 8 }} disabled={busy} onClick={enregistrer}>
+              {busy ? 'Enregistrement…' : 'Enregistrer l’appel'}
+            </button>
+          )}
         </>
       )}
     </>

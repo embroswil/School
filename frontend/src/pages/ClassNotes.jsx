@@ -8,7 +8,7 @@ const SEQUENCES = [1, 2, 3, 4, 5, 6]
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '')
 const note20 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
 
-function NouvelleEvaluation({ classId, matieres, onDone }) {
+function NouvelleEvaluation({ classId, matieres }) {
   const [f, setF] = useState({ subjectId: '', sequence: '1', titre: 'Devoir', date: new Date().toISOString().slice(0, 10), bareme: '20' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -145,7 +145,7 @@ function Resultats({ classId, matieres }) {
   )
 }
 
-function Coefficients({ classId, matieres, onDone }) {
+function Coefficients({ classId, matieres, onDone, modifiable }) {
   const [v, setV] = useState(() => Object.fromEntries(matieres.map((m) => [m.id, String(m.coefficient)])))
   const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
@@ -168,20 +168,30 @@ function Coefficients({ classId, matieres, onDone }) {
             <div className="row-main">
               <div className="row-title">{m.name}</div>
             </div>
-            <input
-              className="input"
-              style={{ width: 70, padding: '8px 10px', textAlign: 'center' }}
-              inputMode="decimal"
-              value={v[m.id] ?? '2'}
-              onChange={(e) => setV((x) => ({ ...x, [m.id]: e.target.value }))}
-            />
+            {modifiable ? (
+              <input
+                className="input"
+                style={{ width: 70, padding: '8px 10px', textAlign: 'center' }}
+                inputMode="decimal"
+                value={v[m.id] ?? '2'}
+                onChange={(e) => setV((x) => ({ ...x, [m.id]: e.target.value }))}
+              />
+            ) : (
+              <b>coef. {String(m.coefficient).replace('.0', '')}</b>
+            )}
           </li>
         ))}
       </ul>
       <Note kind="ok">{ok}</Note>
-      <button type="button" className="btn btn-block" style={{ marginTop: 12 }} disabled={busy} onClick={enregistrer}>
-        {busy ? 'Enregistrement…' : 'Enregistrer les coefficients'}
-      </button>
+      {modifiable ? (
+        <button type="button" className="btn btn-block" style={{ marginTop: 12 }} disabled={busy} onClick={enregistrer}>
+          {busy ? 'Enregistrement…' : 'Enregistrer les coefficients'}
+        </button>
+      ) : (
+        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+          Les coefficients sont fixés par le professeur principal de la classe.
+        </p>
+      )}
     </>
   )
 }
@@ -201,17 +211,26 @@ export default function ClassNotes({ id }) {
 
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
-  const { classe, matieres, evaluations } = d.data
+  const { classe, matieres, evaluations, droits } = d.data
+  const mesMatieres = matieres.filter((m) => droits.mesMatieres.includes(m.id))
 
   return (
     <>
       <h1 className="page-title">Notes · {classe.name}</h1>
-      <p className="lede">{classe.eleves} élèves · notes sur 20, 6 séquences (2 par trimestre).</p>
+      <p className="lede">
+        {classe.eleves} élèves · 6 séquences (2 par trimestre)
+        {classe.professeurPrincipal ? ` · prof. principal : ${classe.professeurPrincipal.first_name} ${classe.professeurPrincipal.last_name}` : ''}
+      </p>
+      {!droits.saisie && !droits.bulletin && (
+        <div className="note note-ok" style={{ fontWeight: 400 }}>
+          Consultation : les notes sont publiées par les enseignants de la classe.
+        </div>
+      )}
       <div className="chips">
         <button type="button" className="chip" aria-pressed={onglet === 'evaluations'} onClick={() => setOnglet('evaluations')}>
           📝 Évaluations
         </button>
-        {etablissement && (
+        {droits.resultats && (
           <>
             <button type="button" className="chip" aria-pressed={onglet === 'resultats'} onClick={() => setOnglet('resultats')}>
               🏆 Résultats
@@ -225,13 +244,14 @@ export default function ClassNotes({ id }) {
 
       {onglet === 'evaluations' && (
         <>
-          {nouvelle ? (
-            <NouvelleEvaluation classId={id} matieres={matieres} onDone={() => d.reload()} />
-          ) : (
-            <button type="button" className="btn btn-block" style={{ marginBottom: 14 }} onClick={() => setNouvelle(true)}>
-              + Nouvelle évaluation
-            </button>
-          )}
+          {droits.saisie &&
+            (nouvelle ? (
+              <NouvelleEvaluation classId={id} matieres={mesMatieres} />
+            ) : (
+              <button type="button" className="btn btn-block" style={{ marginBottom: 14 }} onClick={() => setNouvelle(true)}>
+                + Nouvelle évaluation
+              </button>
+            ))}
           {evaluations.length === 0 && <p className="muted">Aucune évaluation pour le moment.</p>}
           {evaluations.length > 0 && (
             <ul className="rows">
@@ -255,7 +275,7 @@ export default function ClassNotes({ id }) {
         </>
       )}
       {onglet === 'resultats' && <Resultats classId={id} matieres={matieres} />}
-      {onglet === 'coefficients' && <Coefficients classId={id} matieres={matieres} onDone={() => d.reload()} />}
+      {onglet === 'coefficients' && <Coefficients classId={id} matieres={matieres} modifiable={droits.bulletin} onDone={() => d.reload()} />}
     </>
   )
 }

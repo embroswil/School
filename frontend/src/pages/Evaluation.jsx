@@ -23,6 +23,7 @@ export default function Evaluation({ id }) {
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
   const { evaluation: ev, eleves } = d.data
+  const modif = ev.modifiable
   const bareme = Number(ev.bareme)
   const saisies = Object.values(notes).filter((n) => n.note !== '' || n.absent).length
 
@@ -63,6 +64,12 @@ export default function Evaluation({ id }) {
         {ev.titre} · Séquence {ev.sequence} · noté sur {bareme} · {ev.publiee ? 'publiée' : 'brouillon'}
       </p>
 
+      {!modif && (
+        <div className="note note-ok" style={{ fontWeight: 400 }}>
+          Consultation : seules les enseignantes et enseignants de cette matière peuvent modifier ces notes.
+        </div>
+      )}
+      {modif && (
       <div className="barre-import" style={{ position: 'sticky', top: 'calc(64px + env(safe-area-inset-top))', zIndex: 10 }}>
         <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, border: '2px solid var(--primary)' }}>
           <div style={{ flex: 1 }}>
@@ -78,6 +85,7 @@ export default function Evaluation({ id }) {
           </button>
         </div>
       </div>
+      )}
       <Note>{error}</Note>
       <Note kind="ok">{ok}</Note>
 
@@ -96,6 +104,10 @@ export default function Evaluation({ id }) {
                   {e.last_name} {e.first_name}
                 </div>
               </div>
+              {!modif ? (
+                <b style={{ minWidth: 60, textAlign: 'right' }}>{n.absent ? 'Abs' : n.note === '' ? '—' : `${n.note}/${bareme}`}</b>
+              ) : (
+              <>
               <button
                 type="button"
                 className="chip"
@@ -114,13 +126,17 @@ export default function Evaluation({ id }) {
                 onChange={(ev2) => maj(e.id, 'note', ev2.target.value)}
                 style={{ width: 72, padding: '8px 10px', textAlign: 'center', borderColor: faux ? 'var(--danger)' : undefined }}
               />
+              </>
+              )}
             </li>
           )
         })}
       </ul>
-      <button type="button" className="btn btn-quiet btn-danger btn-block" style={{ marginTop: 18 }} onClick={supprimer}>
-        Supprimer l’évaluation
-      </button>
+      {modif && (
+        <button type="button" className="btn btn-quiet btn-danger btn-block" style={{ marginTop: 18 }} onClick={supprimer}>
+          Supprimer l’évaluation
+        </button>
+      )}
     </>
   )
 }

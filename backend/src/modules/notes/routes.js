@@ -1,8 +1,11 @@
 // modules/notes/routes.js
 // Notes (systeme camerounais : 6 sequences, 2 par trimestre, notes sur 20,
 // coefficients par matiere) et appel (presences) d'une classe.
-// Acces : administrateur de l'etablissement (toutes les classes) ; enseignant
-// (seulement les classes et matieres qui lui sont affectees).
+// Qui fait quoi (pratique des lycees camerounais) :
+// - l'enseignant fait l'appel en classe et publie les notes de SES matieres ;
+// - le professeur principal d'une classe gere les coefficients et les
+//   resultats (bulletins) de cette classe ;
+// - l'administration de l'etablissement consulte tout, sans saisir.
 const express = require("express");
 const router = express.Router();
 const db = require("../../config/db");
@@ -15,23 +18,33 @@ router.use(authenticate);
 const entier = (v) => parseInt(v, 10);
 const TRIMESTRE = (seq) => Math.ceil(seq / 2);
 
-// La classe doit etre de l'etablissement de l'utilisateur ; un enseignant
-// doit y etre affecte (pour la matiere donnee, si elle est precisee).
-const verifierClasse = async (u, classId, subjectId = null) => {
+// Droits sur une classe. mode :
+// - "lecture"  : administration, professeur principal, enseignant affecte ;
+// - "saisie"   : enseignant affecte a la classe (pour la matiere, si precisee) ;
+// - "bulletin" : professeur principal de la classe.
+const verifierClasse = async (u, classId, subjectId = null, mode = "lecture") => {
   if (!["principal", "teacher", "admin"].includes(u.role)) throw new ApiError(403, "Accès réservé");
   const { rows } = await db.query(
-    `SELECT c.id, c.name, c.academic_year_id, ay.school_id FROM classes c
+    `SELECT c.id, c.name, c.academic_year_id, c.class_teacher_id, ay.school_id FROM classes c
      JOIN academic_years ay ON ay.id = c.academic_year_id WHERE c.id = $1`,
     [classId]
   );
   const c = rows[0];
   if (!c || (u.role !== "admin" && c.school_id !== u.schoolId)) throw new ApiError(404, "Classe introuvable");
+  const estPP = u.role === "teacher" && c.class_teacher_id === u.id;
+  c.estProfPrincipal = estPP;
+  if (mode === "bulletin") {
+    if (!estPP) throw new ApiError(403, "Réservé au professeur principal de la classe");
+    return c;
+  }
   if (u.role === "teacher") {
     const a = await db.query(
       "SELECT 1 FROM class_subjects WHERE class_id = $1 AND teacher_id = $2 AND ($3::int IS NULL OR subject_id = $3) LIMIT 1",
       [classId, u.id, subjectId]
     );
-    if (!a.rows[0]) throw new ApiError(403, "Vous n'êtes pas affecté à cette classe pour cette matière");
+    if (!a.rows[0] && !(mode === "lecture" && estPP)) throw new ApiError(403, "Vous n'êtes pas affecté à cette classe pour cette matière");
+  } else if (mode === "saisie") {
+    throw new ApiError(403, "La saisie est faite par les enseignants de la classe");
   }
   return c;
 };
@@ -60,7 +73,7 @@ router.get("/classes/:id", async (req, res, next) => {
        WHERE s.school_id = $2 AND s.is_active = true
          AND ($3::int IS NULL OR cs.teacher_id = $3)
        ORDER BY (cs.id IS NULL), s.name`,
-      [c.id, c.school_id, req.user.role === "teacher" ? req.user.id : null]
+      [c.id, c.school_id, req.user.role === "teacher" && !c.estProfPrincipal ? req.user.id : null]
     );
     const evals = await db.query(
       `SELECT e.id, e.subject_id, e.sequence, e.titre, e.date_eval, e.bareme, e.publiee, s.name AS matiere,
@@ -70,10 +83,31 @@ router.get("/classes/:id", async (req, res, next) => {
        WHERE e.class_id = $1 AND ($2::int IS NULL OR e.subject_id IN
          (SELECT subject_id FROM class_subjects WHERE class_id = $1 AND teacher_id = $2))
        ORDER BY e.sequence DESC, e.created_at DESC`,
-      [c.id, req.user.role === "teacher" ? req.user.id : null]
+      [c.id, req.user.role === "teacher" && !c.estProfPrincipal ? req.user.id : null]
     );
+    const mesMatieres =
+      req.user.role === "teacher"
+        ? (await db.query("SELECT subject_id FROM class_subjects WHERE class_id = $1 AND teacher_id = $2", [c.id, req.user.id])).rows.map((r) => r.subject_id)
+        : [];
+    const pp = c.class_teacher_id
+      ? (await db.query("SELECT id, first_name, last_name FROM users WHERE id = $1", [c.class_teacher_id])).rows[0] || null
+      : null;
     const nb = await db.query("SELECT COUNT(*)::int AS n FROM class_students WHERE class_id = $1 AND status = 'active'", [c.id]);
-    res.json({ success: true, data: { classe: { id: c.id, name: c.name, eleves: nb.rows[0].n }, matieres: matieres.rows, evaluations: evals.rows } });
+    res.json({
+      success: true,
+      data: {
+        classe: { id: c.id, name: c.name, eleves: nb.rows[0].n, professeurPrincipal: pp },
+        matieres: matieres.rows,
+        evaluations: evals.rows,
+        droits: {
+          saisie: req.user.role === "teacher" && mesMatieres.length > 0,
+          mesMatieres,
+          bulletin: c.estProfPrincipal,
+          resultats: c.estProfPrincipal || req.user.role !== "teacher",
+          appel: req.user.role === "teacher" && mesMatieres.length > 0,
+        },
+      },
+    });
   } catch (e) {
     next(e);
   }
@@ -82,8 +116,7 @@ router.get("/classes/:id", async (req, res, next) => {
 // PUT /api/notes/classes/:id/coefficients { coefficients: { subjectId: coef } } (etablissement)
 router.put("/classes/:id/coefficients", async (req, res, next) => {
   try {
-    if (req.user.role === "teacher") throw new ApiError(403, "Réservé à l'établissement");
-    const c = await verifierClasse(req.user, entier(req.params.id));
+    const c = await verifierClasse(req.user, entier(req.params.id), null, "bulletin");
     const coefs = req.body?.coefficients || {};
     for (const [sid, coef] of Object.entries(coefs)) {
       const v = Number(coef);
@@ -107,7 +140,7 @@ router.post("/evaluations", async (req, res, next) => {
     const b = req.body || {};
     const classId = entier(b.classId);
     const subjectId = entier(b.subjectId);
-    const c = await verifierClasse(req.user, classId, subjectId);
+    const c = await verifierClasse(req.user, classId, subjectId, "saisie");
     const sequence = entier(b.sequence);
     if (!(sequence >= 1 && sequence <= 6)) throw new ApiError(400, "Séquence de 1 à 6");
     const s = await db.query("SELECT 1 FROM subjects WHERE id = $1 AND school_id = $2", [subjectId, c.school_id]);
@@ -124,7 +157,7 @@ router.post("/evaluations", async (req, res, next) => {
   }
 });
 
-const chargerEvaluation = async (u, id) => {
+const chargerEvaluation = async (u, id, mode = "lecture") => {
   const { rows } = await db.query(
     `SELECT e.*, s.name AS matiere, c.name AS classe FROM evaluations e
      JOIN subjects s ON s.id = e.subject_id JOIN classes c ON c.id = e.class_id WHERE e.id = $1`,
@@ -132,7 +165,12 @@ const chargerEvaluation = async (u, id) => {
   );
   const e = rows[0];
   if (!e) throw new ApiError(404, "Évaluation introuvable");
-  await verifierClasse(u, e.class_id, e.subject_id);
+  const c = await verifierClasse(u, e.class_id, mode === "saisie" ? e.subject_id : null, mode);
+  // En lecture, un enseignant ne voit que ses matieres (sauf le professeur principal)
+  if (mode === "lecture" && u.role === "teacher" && !c.estProfPrincipal) await verifierClasse(u, e.class_id, e.subject_id, "saisie");
+  e.modifiable = u.role === "teacher" && (await db.query(
+    "SELECT 1 FROM class_subjects WHERE class_id = $1 AND subject_id = $2 AND teacher_id = $3", [e.class_id, e.subject_id, u.id]
+  )).rows.length > 0;
   return e;
 };
 
@@ -157,7 +195,7 @@ router.get("/evaluations/:id", async (req, res, next) => {
 // PUT /api/notes/evaluations/:id { notes: [{ studentId, note, absent, appreciation }], publiee }
 router.put("/evaluations/:id", async (req, res, next) => {
   try {
-    const e = await chargerEvaluation(req.user, entier(req.params.id));
+    const e = await chargerEvaluation(req.user, entier(req.params.id), "saisie");
     const notes = Array.isArray(req.body?.notes) ? req.body.notes : [];
     const ids = [];
     const valeurs = [];
@@ -212,7 +250,7 @@ router.put("/evaluations/:id", async (req, res, next) => {
 
 router.delete("/evaluations/:id", async (req, res, next) => {
   try {
-    const e = await chargerEvaluation(req.user, entier(req.params.id));
+    const e = await chargerEvaluation(req.user, entier(req.params.id), "saisie");
     await db.query("DELETE FROM evaluations WHERE id = $1", [e.id]);
     res.json({ success: true });
   } catch (err) {
@@ -224,8 +262,8 @@ router.delete("/evaluations/:id", async (req, res, next) => {
 // Moyenne par matiere (sur 20), moyenne generale ponderee par les coefficients, rang.
 router.get("/classes/:id/resultats", async (req, res, next) => {
   try {
-    if (req.user.role === "teacher") throw new ApiError(403, "Réservé à l'établissement");
     const c = await verifierClasse(req.user, entier(req.params.id));
+    if (req.user.role === "teacher" && !c.estProfPrincipal) throw new ApiError(403, "Réservé au professeur principal de la classe");
     const seq = entier(req.query.sequence);
     const tri = entier(req.query.trimestre);
     const sequences = seq ? [seq] : tri ? [tri * 2 - 1, tri * 2] : [1, 2, 3, 4, 5, 6];
@@ -296,7 +334,10 @@ router.get("/appel/:classId", async (req, res, next) => {
        ORDER BY u.last_name, u.first_name`,
       [c.id, date]
     );
-    res.json({ success: true, data: { classe: c.name, date, eleves: rows, faite: rows.some((r) => r.status) } });
+    res.json({
+      success: true,
+      data: { classe: c.name, date, eleves: rows, faite: rows.some((r) => r.status), modifiable: req.user.role === "teacher" },
+    });
   } catch (e) {
     next(e);
   }
@@ -306,7 +347,8 @@ router.get("/appel/:classId", async (req, res, next) => {
 // Les parents des eleves absents sont notifies.
 router.put("/appel/:classId", async (req, res, next) => {
   try {
-    const c = await verifierClasse(req.user, entier(req.params.classId));
+    // L'appel est fait en classe, par l'enseignant
+    const c = await verifierClasse(req.user, entier(req.params.classId), null, "saisie");
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : new Date().toISOString().slice(0, 10);
     const liste = (Array.isArray(req.body?.presences) ? req.body.presences : []).filter((p) =>
       ["present", "absent", "late", "excused"].includes(p.statut)

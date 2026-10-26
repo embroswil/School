@@ -7,6 +7,7 @@ const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate, authorize } = require("../../middlewares/auth.middleware");
 const { assurerAnneeScolaire } = require("../../utils/annees");
+const { notifierUtilisateur } = require("../../utils/notifier");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 
@@ -429,7 +430,10 @@ router.get("/classes/:id", async (req, res, next) => {
     const ecole = ecoleDe(req);
     const id = parseInt(req.params.id, 10);
     const c = await db.query(
-      `SELECT c.id, c.name, ay.name AS annee FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id
+      `SELECT c.id, c.name, ay.name AS annee, c.class_teacher_id,
+              pp.first_name AS pp_prenom, pp.last_name AS pp_nom, pp.phone AS pp_tel
+       FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id
+       LEFT JOIN users pp ON pp.id = c.class_teacher_id
        WHERE c.id = $1 AND ay.school_id = $2`,
       [id, ecole]
     );
@@ -451,6 +455,37 @@ router.get("/classes/:id", async (req, res, next) => {
       [id]
     );
     res.json({ success: true, data: { classe: c.rows[0], eleves: eleves.rows, enseignants: profs.rows } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Professeur principal d'une classe (gere coefficients et bulletins)
+router.put("/classes/:id/professeur-principal", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const id = parseInt(req.params.id, 10);
+    const teacherId = req.body?.teacherId ? parseInt(req.body.teacherId, 10) : null;
+    if (teacherId) {
+      const t = await db.query("SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'teacher' AND status = 'active'", [teacherId, ecole]);
+      if (!t.rows[0]) throw new ApiError(400, "Enseignant introuvable");
+    }
+    const r = await db.query(
+      `UPDATE classes c SET class_teacher_id = $3 FROM academic_years ay
+       WHERE c.id = $1 AND ay.id = c.academic_year_id AND ay.school_id = $2`,
+      [id, ecole, teacherId]
+    );
+    if (!r.rowCount) throw new ApiError(404, "Classe introuvable");
+    if (teacherId) {
+      const c = await db.query("SELECT name FROM classes WHERE id = $1", [id]);
+      await notifierUtilisateur(teacherId, {
+        title: "Professeur principal",
+        message: `Vous êtes professeur principal de la ${c.rows[0].name}.`,
+        type: "account",
+        data: { lien: `/classes/${id}/notes` },
+      }).catch(() => {});
+    }
+    res.json({ success: true });
   } catch (e) {
     next(e);
   }
