@@ -212,7 +212,7 @@ router.post("/import-eleves", async (req, res, next) => {
       const motDePasse = await bcrypt.hash(crypto.randomBytes(18).toString("hex"), 8);
       const { rows } = await client.query(
         `INSERT INTO users (email, password_hash, role, first_name, last_name, school_id, status)
-         SELECT 'eleve.' || $1::text || '.' || md5(random()::text || x.nom || x.prenom) || '@${DOMAINE_IMPORT}', $2, 'student', x.prenom, x.nom, $1, 'active'
+         SELECT 'eleve.' || $1::int || '.' || md5(random()::text || x.nom || x.prenom) || '@${DOMAINE_IMPORT}', $2, 'student', x.prenom, x.nom, $1::int, 'active'
          FROM unnest($3::text[], $4::text[]) AS x(nom, prenom)
          RETURNING id, lower(trim(last_name)) AS n, lower(trim(first_name)) AS p`,
         [ecole, motDePasse, nouveaux.map((e) => e.nom), nouveaux.map((e) => e.prenom)]
