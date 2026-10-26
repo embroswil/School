@@ -18,7 +18,8 @@ const COLONNES = [
   ['classe', /^(classes?|niveau|division|salle)$/],
   ['dateNaissance', /^(date (de )?naissance|ne\(?e?\)? le|date naiss\.?|dn)$/],
   ['sexe', /^(sexe|genre|s)$/],
-  ['matricule', /^(matricule|n° ?matricule|numero|n°|no|id)$/],
+  // « N° » seul est souvent le rang dans la liste, pas le matricule
+  ['matricule', /^(matricule|n° ?matricule|no ?matricule|numero matricule|identifiant)$/],
 ]
 
 const detecterEnTete = (lignes) => {
