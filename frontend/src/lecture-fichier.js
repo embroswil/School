@@ -1,4 +1,6 @@
-// Lecture d'une liste d'eleves depuis un fichier Excel, CSV ou PDF.
+// Lecture d'une liste d'eleves depuis un fichier Excel, CSV, PDF, ou depuis
+// des photos / scans (imprimes ou ecrits a la main : lus par l'IA du serveur).
+import { api } from './api.js'
 // Retourne des lignes { nom, prenom, classe, dateNaissance, sexe, matricule }.
 
 const sansAccent = (s) =>
@@ -88,6 +90,48 @@ const lireTableur = async (fichier) => {
   return tout
 }
 
+// Image -> JPEG reduit (1600 px max) en data URL
+const imageVersJpeg = (source) =>
+  new Promise((ok, ko) => {
+    const img = new Image()
+    img.onload = () => {
+      const echelle = Math.min(1, 1600 / Math.max(img.width, img.height))
+      const c = document.createElement('canvas')
+      c.width = Math.round(img.width * echelle)
+      c.height = Math.round(img.height * echelle)
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
+      ok(c.toDataURL('image/jpeg', 0.82))
+    }
+    img.onerror = () => ko(new Error('Image illisible (essayez une photo JPEG ou PNG)'))
+    img.src = typeof source === 'string' ? source : URL.createObjectURL(source)
+  })
+
+// Envoie des images au serveur pour la reconnaissance d'ecriture
+const lireParIA = async (images) => {
+  const r = await api.post('/api/etablissement/lire-images', { images })
+  return r.data || []
+}
+
+export async function lirePhotos(fichiers) {
+  const images = []
+  for (const f of [...fichiers].slice(0, 8)) images.push(await imageVersJpeg(f))
+  return lireParIA(images)
+}
+
+const pagesPdfEnImages = async (doc) => {
+  const images = []
+  for (let p = 1; p <= Math.min(doc.numPages, 8); p++) {
+    const page = await doc.getPage(p)
+    const vue = page.getViewport({ scale: 2 })
+    const c = document.createElement('canvas')
+    c.width = vue.width
+    c.height = vue.height
+    await page.render({ canvasContext: c.getContext('2d'), viewport: vue }).promise
+    images.push(await imageVersJpeg(c.toDataURL('image/jpeg', 0.9)))
+  }
+  return images
+}
+
 const lirePdf = async (fichier) => {
   const pdfjs = await import('pdfjs-dist')
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
@@ -108,12 +152,16 @@ const lirePdf = async (fichier) => {
       .sort((a, b) => b[0] - a[0])
       .forEach(([, morceaux]) => lignes.push(morceaux.sort((a, b) => a.x - b.x).map((m) => m.s)))
   }
-  return versEleves(lignes)
+  const eleves = versEleves(lignes)
+  // PDF scanne (aucun texte) : lecture des pages par l'IA
+  if (eleves.length === 0) return lireParIA(await pagesPdfEnImages(doc))
+  return eleves
 }
 
 export async function lireListeEleves(fichier) {
   const nom = fichier.name.toLowerCase()
   if (nom.endsWith('.pdf')) return lirePdf(fichier)
   if (/\.(xlsx|xls|csv|ods)$/.test(nom)) return lireTableur(fichier)
-  throw new Error('Format non pris en charge : utilisez un fichier PDF, Excel (.xlsx, .xls) ou CSV.')
+  if (/^image\//.test(fichier.type) || /\.(jpe?g|png|webp|heic)$/.test(nom)) return lirePhotos([fichier])
+  throw new Error('Format non pris en charge : PDF, Excel, CSV ou photo.')
 }

@@ -143,3 +143,13 @@ CREATE TABLE IF NOT EXISTS paiements_scolaires (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   confirme_le TIMESTAMP
 );
+
+-- Paiements verses directement aux etablissements
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS notchpay_public_key TEXT;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS orange_money VARCHAR(30);
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS mtn_momo VARCHAR(30);
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS paiement_instructions TEXT;
+ALTER TABLE paiements_scolaires DROP CONSTRAINT IF EXISTS paiements_scolaires_statut_check;
+ALTER TABLE paiements_scolaires ADD CONSTRAINT paiements_scolaires_statut_check
+  CHECK (statut IN ('en_attente','reussi','echoue','declare','rejete'));
+ALTER TABLE paiements_scolaires ADD COLUMN IF NOT EXISTS motif_rejet TEXT;

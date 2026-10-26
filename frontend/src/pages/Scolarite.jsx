@@ -11,7 +11,8 @@ const MODES = { mobile_money: 'Mobile Money', especes: 'Espèces', banque: 'Banq
 // ------------------------------------------------------------ parents et eleves
 function Situation() {
   const situation = useApi('/api/scolarite/situation')
-  const [paiement, setPaiement] = useState(null) // { eleve, frais }
+  const [paiement, setPaiement] = useState(null) // { eleve, frais, moyens, mode: 'enligne' | 'transfert' }
+  const [transaction, setTransaction] = useState('')
   const [montant, setMontant] = useState('')
   const [tel, setTel] = useState('')
   const [error, setError] = useState('')
@@ -41,6 +42,24 @@ function Situation() {
     e.preventDefault()
     setError('')
     setBusy(true)
+    if (paiement.mode === 'transfert') {
+      try {
+        const r = await api.post('/api/scolarite/declarer', {
+          studentId: paiement.eleve.id,
+          fraisId: paiement.frais.id,
+          montant: Number(String(montant).replace(/\s/g, '')),
+          transaction,
+          telephone: tel,
+        })
+        setInfo(r.message)
+        setPaiement(null)
+        setTransaction('')
+      } catch (err) {
+        setError(err.message)
+      }
+      setBusy(false)
+      return
+    }
     try {
       const r = await api.post('/api/scolarite/payer', {
         studentId: paiement.eleve.id,
@@ -101,18 +120,22 @@ function Situation() {
                   ) : (
                     <>
                       <span className="tag tag-wait">Reste {fcfa(f.reste)}</span>
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{ padding: '9px 14px', fontSize: 14 }}
-                        onClick={() => {
-                          setPaiement({ eleve: s.eleve, frais: f })
-                          setMontant(String(f.reste))
-                          setError('')
-                        }}
-                      >
-                        Payer
-                      </button>
+                      {(s.moyens?.enLigne || s.moyens?.orange || s.moyens?.mtn) ? (
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{ padding: '9px 14px', fontSize: 14 }}
+                          onClick={() => {
+                            setPaiement({ eleve: s.eleve, frais: f, moyens: s.moyens, mode: s.moyens.enLigne ? 'enligne' : 'transfert' })
+                            setMontant(String(f.reste))
+                            setError('')
+                          }}
+                        >
+                          Payer
+                        </button>
+                      ) : (
+                        <span className="muted" style={{ fontSize: 13 }}>Paiement au guichet</span>
+                      )}
                     </>
                   )}
                 </li>
@@ -145,17 +168,48 @@ function Situation() {
           <b>
             {paiement.frais.nom} · {paiement.eleve.prenom}
           </b>
+          {paiement.moyens.enLigne && (paiement.moyens.orange || paiement.moyens.mtn) && (
+            <div className="chips" style={{ marginTop: 10 }}>
+              <button type="button" className="chip" aria-pressed={paiement.mode === 'enligne'} onClick={() => setPaiement({ ...paiement, mode: 'enligne' })}>
+                Payer en ligne
+              </button>
+              <button type="button" className="chip" aria-pressed={paiement.mode === 'transfert'} onClick={() => setPaiement({ ...paiement, mode: 'transfert' })}>
+                J’ai fait un transfert
+              </button>
+            </div>
+          )}
+          {paiement.mode === 'transfert' && (
+            <div className="note note-ok" style={{ fontWeight: 400 }}>
+              Envoyez le montant à l’établissement, puis indiquez le n° de transaction reçu par SMS :
+              {paiement.moyens.orange && (
+                <div>
+                  🟠 Orange Money : <b>{paiement.moyens.orange}</b>
+                </div>
+              )}
+              {paiement.moyens.mtn && (
+                <div>
+                  🟡 MTN MoMo : <b>{paiement.moyens.mtn}</b>
+                </div>
+              )}
+              {paiement.moyens.instructions && <div style={{ marginTop: 4 }}>{paiement.moyens.instructions}</div>}
+            </div>
+          )}
           <div className="grid2" style={{ marginTop: 10 }}>
             <Field label="Montant (FCFA)">
               <input className="input" inputMode="numeric" value={montant} onChange={(e) => setMontant(e.target.value)} required />
             </Field>
-            <Field label="Numéro Mobile Money">
+            <Field label="Votre numéro">
               <input className="input" type="tel" placeholder="6 XX XX XX XX" value={tel} onChange={(e) => setTel(e.target.value)} />
             </Field>
           </div>
+          {paiement.mode === 'transfert' && (
+            <Field label="N° de la transaction (SMS)">
+              <input className="input" placeholder="ex. MP261026.1234.A56789" value={transaction} onChange={(e) => setTransaction(e.target.value)} required />
+            </Field>
+          )}
           <div className="actions">
             <button className="btn" type="submit" disabled={busy}>
-              {busy ? 'Redirection…' : 'Payer par Mobile Money'}
+              {busy ? 'Envoi…' : paiement.mode === 'transfert' ? 'Déclarer le paiement' : 'Payer par Mobile Money'}
             </button>
             <button className="btn btn-quiet" type="button" onClick={() => setPaiement(null)}>
               Annuler
@@ -378,6 +432,129 @@ function Paiements() {
   )
 }
 
+function AConfirmer() {
+  const liste = useApi('/api/scolarite/a-confirmer')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(null)
+  async function decider(id, decision) {
+    let motif
+    if (decision === 'rejeter') motif = window.prompt('Motif (facultatif) :') ?? undefined
+    setBusy(id)
+    setError('')
+    try {
+      await api.post(`/api/scolarite/a-confirmer/${id}/${decision}`, motif ? { motif } : {})
+      liste.reload()
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(null)
+  }
+  return (
+    <>
+      <p className="muted" style={{ marginBottom: 12 }}>
+        Paiements Mobile Money déclarés par les parents : vérifiez la transaction sur votre compte, puis confirmez.
+      </p>
+      <Note>{error}</Note>
+      {liste.data?.length === 0 && <p className="muted">Aucun paiement à confirmer.</p>}
+      {liste.data?.map((p) => (
+        <div className="card" key={p.id}>
+          <div className="row-title" style={{ fontSize: 17 }}>
+            {fcfa(p.montant)} · {p.first_name} {p.last_name}
+          </div>
+          <div className="row-sub">
+            {p.frais} · {p.classe || '—'} · {jour(p.created_at)}
+          </div>
+          <p style={{ marginTop: 8, fontSize: 15 }}>
+            Transaction : <b>{String(p.reference || '').replace(/^TX-/, '')}</b>
+            {p.telephone ? ` · depuis le ${p.telephone}` : ''}
+            {p.payeur_prenom ? ` · par ${p.payeur_prenom} ${p.payeur_nom}` : ''}
+          </p>
+          <div className="actions">
+            <button type="button" className="btn btn-ok" disabled={busy === p.id} onClick={() => decider(p.id, 'confirmer')}>
+              ✓ Confirmer
+            </button>
+            <button type="button" className="btn btn-quiet btn-danger" disabled={busy === p.id} onClick={() => decider(p.id, 'rejeter')}>
+              Non reçu
+            </button>
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
+function Reglages() {
+  const r = useApi('/api/scolarite/reglages')
+  const [f, setF] = useState(null)
+  const [error, setError] = useState('')
+  const [ok, setOk] = useState('')
+  const [busy, setBusy] = useState(false)
+  const v = f || { cle: '', orange: r.data?.orange || '', mtn: r.data?.mtn || '', instructions: r.data?.instructions || '' }
+  const maj = (k) => (e) => setF({ ...v, [k]: e.target.value })
+  async function enregistrer(e) {
+    e.preventDefault()
+    setError('')
+    setOk('')
+    setBusy(true)
+    try {
+      const corps = { orange: v.orange, mtn: v.mtn, instructions: v.instructions }
+      if (v.cle) corps.cle = v.cle
+      await api.put('/api/scolarite/reglages', corps)
+      setOk('Réglages enregistrés.')
+      setF(null)
+      r.reload()
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(false)
+  }
+  async function retirerCle() {
+    await api.put('/api/scolarite/reglages', { cle: '' })
+    r.reload()
+  }
+  return (
+    <form className="card" onSubmit={enregistrer}>
+      <b>Où les parents paient</b>
+      <p className="muted" style={{ fontSize: 14, margin: '4px 0 12px' }}>
+        L’argent arrive directement sur les comptes de l’établissement.
+      </p>
+      <div className="grid2">
+        <Field label="Orange Money (numéro)">
+          <input className="input" type="tel" placeholder="6 9X XX XX XX" value={v.orange} onChange={maj('orange')} />
+        </Field>
+        <Field label="MTN MoMo (numéro)">
+          <input className="input" type="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
+        </Field>
+      </div>
+      <Field label="Consignes (nom du compte, motif à indiquer…)">
+        <textarea className="input" placeholder="ex. Compte au nom de LYCÉE DE YINGUI. Indiquez le nom de l’élève en motif." value={v.instructions} onChange={maj('instructions')} />
+      </Field>
+      <hr style={{ border: 0, borderTop: '1px solid var(--line)', margin: '6px 0 14px' }} />
+      <b>Paiement en ligne (facultatif)</b>
+      <p className="muted" style={{ fontSize: 14, margin: '4px 0 12px' }}>
+        Avec un compte <a href="https://business.notchpay.co" target="_blank" rel="noreferrer">NotchPay</a> au nom de l’établissement, les parents paient
+        directement dans l’app, et chaque paiement est confirmé automatiquement.
+      </p>
+      {r.data?.cleMasquee ? (
+        <p style={{ marginBottom: 10 }}>
+          ✓ Activé ({r.data.cleMasquee}){' '}
+          <button type="button" className="btn btn-quiet btn-danger" style={{ padding: '6px 10px', fontSize: 13 }} onClick={retirerCle}>
+            Désactiver
+          </button>
+        </p>
+      ) : null}
+      <Field label={r.data?.cleMasquee ? 'Remplacer la clé publique NotchPay' : 'Clé publique NotchPay'}>
+        <input className="input" placeholder="pk.…" value={v.cle} onChange={maj('cle')} autoComplete="off" />
+      </Field>
+      <Note>{error}</Note>
+      <Note kind="ok">{ok}</Note>
+      <button className="btn" type="submit" disabled={busy}>
+        {busy ? 'Enregistrement…' : 'Enregistrer'}
+      </button>
+    </form>
+  )
+}
+
 export default function Scolarite() {
   const { user } = useAuth()
   const etablissement = user.role === 'principal'
@@ -392,11 +569,20 @@ export default function Scolarite() {
             <button type="button" className="chip" aria-pressed={onglet === 'paiements'} onClick={() => setOnglet('paiements')}>
               💳 Paiements
             </button>
+            <button type="button" className="chip" aria-pressed={onglet === 'confirmer'} onClick={() => setOnglet('confirmer')}>
+              ⏳ À confirmer
+            </button>
             <button type="button" className="chip" aria-pressed={onglet === 'frais'} onClick={() => setOnglet('frais')}>
               📋 Frais
             </button>
+            <button type="button" className="chip" aria-pressed={onglet === 'reglages'} onClick={() => setOnglet('reglages')}>
+              ⚙️ Réglages
+            </button>
           </div>
-          {onglet === 'frais' ? <Frais /> : <Paiements />}
+          {onglet === 'frais' && <Frais />}
+          {onglet === 'paiements' && <Paiements />}
+          {onglet === 'confirmer' && <AConfirmer />}
+          {onglet === 'reglages' && <Reglages />}
         </>
       ) : (
         <>

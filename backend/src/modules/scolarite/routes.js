@@ -54,12 +54,32 @@ const situationEleve = async (studentId) => {
     [eleve.id]
   );
   return {
+    moyens: (await moyensEcole(eleve.school_id)).public,
     eleve: { id: eleve.id, prenom: eleve.first_name, nom: eleve.last_name, classe: eleve.classe },
     frais,
     total: frais.reduce((s, f) => s + f.montant, 0),
     paye: frais.reduce((s, f) => s + Math.min(f.paye, f.montant), 0),
     reste: frais.reduce((s, f) => s + f.reste, 0),
     paiements: paiements.rows,
+  };
+};
+
+// Moyens de paiement de l'etablissement : son propre compte NotchPay (paiement
+// en ligne) et/ou ses numeros Orange Money / MTN MoMo (transfert puis declaration)
+const moyensEcole = async (schoolId) => {
+  const { rows } = await db.query(
+    "SELECT notchpay_public_key, orange_money, mtn_momo, paiement_instructions FROM schools WHERE id = $1",
+    [schoolId]
+  );
+  const e = rows[0] || {};
+  return {
+    cle: e.notchpay_public_key || null,
+    public: {
+      enLigne: Boolean(e.notchpay_public_key),
+      orange: e.orange_money || null,
+      mtn: e.mtn_momo || null,
+      instructions: e.paiement_instructions || null,
+    },
   };
 };
 
@@ -102,10 +122,10 @@ router.post("/payer", async (req, res, next) => {
     const frais = s?.frais.find((f) => f.id === fraisId);
     if (!frais) throw new ApiError(404, "Frais introuvable");
     if (!(montant >= 100) || montant > frais.reste) throw new ApiError(400, `Montant entre 100 et ${fcfa(frais.reste)}`);
-    const cle = process.env.NOTCHPAY_PUBLIC_KEY;
-    if (!cle) throw new ApiError(503, "Le paiement en ligne n'est pas encore activé");
-
     const eleve = await db.query("SELECT school_id FROM users WHERE id = $1", [studentId]);
+    // L'argent va directement sur le compte NotchPay de l'etablissement
+    const { cle } = await moyensEcole(eleve.rows[0].school_id);
+    if (!cle) throw new ApiError(400, "L'établissement n'a pas activé le paiement en ligne : utilisez ses numéros Mobile Money");
     const reference = `SCH-${studentId}-${fraisId}-${Date.now()}`;
     await db.query(
       `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, telephone, paye_par)
@@ -135,6 +155,43 @@ router.post("/payer", async (req, res, next) => {
   }
 });
 
+// Le parent a transfere l'argent sur le numero Mobile Money de l'etablissement
+// et declare son paiement (n° de transaction) ; l'etablissement confirme.
+router.post("/declarer", async (req, res, next) => {
+  try {
+    const u = req.user;
+    const studentId = entier(req.body?.studentId);
+    const fraisId = entier(req.body?.fraisId);
+    const montant = entier(req.body?.montant);
+    const transaction = texte(req.body?.transaction, 120);
+    const telephone = texte(req.body?.telephone, 30);
+    if (!(await elevesAccessibles(u)).includes(studentId)) throw new ApiError(403, "Élève non relié à votre compte");
+    if (!transaction) throw new ApiError(400, "Indiquez le numéro de la transaction reçu par SMS");
+    const s = await situationEleve(studentId);
+    const frais = s?.frais.find((f) => f.id === fraisId);
+    if (!frais) throw new ApiError(404, "Frais introuvable");
+    if (!(montant > 0) || montant > frais.reste) throw new ApiError(400, `Montant entre 1 et ${fcfa(frais.reste)}`);
+    const eleve = await db.query("SELECT school_id FROM users WHERE id = $1", [studentId]);
+    const deja = await db.query("SELECT 1 FROM paiements_scolaires WHERE reference = $1", [`TX-${transaction}`]);
+    if (deja.rows[0]) throw new ApiError(409, "Cette transaction a déjà été déclarée");
+    await db.query(
+      `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, telephone, paye_par)
+       VALUES ($1, $2, $3, $4, 'mobile_money', 'declare', $5, $6, $7)`,
+      [eleve.rows[0].school_id, fraisId, studentId, montant, `TX-${transaction}`, telephone || null, u.id]
+    );
+    await notifierEtablissement(eleve.rows[0].school_id, {
+      title: "Paiement à confirmer",
+      message: `${fcfa(montant)} · ${frais.nom} · ${s.eleve.prenom} ${s.eleve.nom} · transaction ${transaction}`,
+      type: "payment",
+      priority: "high",
+      data: { lien: "/scolarite" },
+    }).catch(() => {});
+    res.status(201).json({ success: true, message: "Paiement déclaré : l'établissement va le vérifier et le confirmer." });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Verification apres le retour du paiement
 router.get("/verifier/:reference", async (req, res, next) => {
   try {
@@ -143,8 +200,9 @@ router.get("/verifier/:reference", async (req, res, next) => {
     const p = rows[0];
     if (!p) throw new ApiError(404, "Paiement introuvable");
     if (p.statut !== "en_attente") return res.json({ success: true, data: { statut: p.statut } });
+    const { cle } = await moyensEcole(p.school_id);
     const r = await fetch(`https://api.notchpay.co/payments/${encodeURIComponent(reference)}`, {
-      headers: { Authorization: process.env.NOTCHPAY_PUBLIC_KEY || "", Accept: "application/json" },
+      headers: { Authorization: cle || "", Accept: "application/json" },
     });
     const j = await r.json().catch(() => ({}));
     const etat = j?.transaction?.status || j?.status;
@@ -266,6 +324,108 @@ router.get("/paiements", async (req, res, next) => {
     );
     const total = await db.query("SELECT COALESCE(SUM(montant),0)::int AS t FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi'", [ecole]);
     res.json({ success: true, data: rows, total: total.rows[0].t });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Paiements declares par les parents, a confirmer
+router.get("/a-confirmer", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const { rows } = await db.query(
+      `SELECT p.id, p.montant, p.reference, p.telephone, p.created_at, f.nom AS frais,
+              u.first_name, u.last_name, ${SQL_CLASSE} AS classe,
+              pp.first_name AS payeur_prenom, pp.last_name AS payeur_nom
+       FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id JOIN users u ON u.id = p.student_id
+       LEFT JOIN users pp ON pp.id = p.paye_par
+       WHERE p.school_id = $1 AND p.statut = 'declare' ORDER BY p.created_at`,
+      [ecole]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/a-confirmer/:id/:decision", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const { rows } = await db.query("SELECT * FROM paiements_scolaires WHERE id = $1 AND school_id = $2 AND statut = 'declare'", [
+      entier(req.params.id),
+      ecole,
+    ]);
+    const p = rows[0];
+    if (!p) throw new ApiError(404, "Paiement introuvable ou déjà traité");
+    if (req.params.decision === "confirmer") {
+      await db.query("UPDATE paiements_scolaires SET statut = 'reussi', confirme_le = NOW(), enregistre_par = $2 WHERE id = $1", [p.id, req.user.id]);
+      await apresPaiement({ ...p, school_id: -1 }); // parents informes
+    } else {
+      const motif = texte(req.body?.motif, 300) || null;
+      await db.query("UPDATE paiements_scolaires SET statut = 'rejete', motif_rejet = $2 WHERE id = $1", [p.id, motif]);
+      if (p.paye_par) {
+        await notifierUtilisateur(p.paye_par, {
+          title: "Paiement non reconnu",
+          message: `${fcfa(p.montant)} : l'établissement n'a pas retrouvé cette transaction${motif ? ` (${motif})` : ""}.`,
+          type: "payment",
+          data: { lien: "/scolarite" },
+        }).catch(() => {});
+      }
+    }
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Reglages de paiement de l'etablissement
+router.get("/reglages", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const { rows } = await db.query(
+      "SELECT notchpay_public_key, orange_money, mtn_momo, paiement_instructions FROM schools WHERE id = $1",
+      [ecole]
+    );
+    const e = rows[0] || {};
+    const cle = e.notchpay_public_key || "";
+    res.json({
+      success: true,
+      data: {
+        cleMasquee: cle ? `${cle.slice(0, 10)}…${cle.slice(-4)}` : "",
+        orange: e.orange_money || "",
+        mtn: e.mtn_momo || "",
+        instructions: e.paiement_instructions || "",
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.put("/reglages", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const b = req.body || {};
+    const sets = [];
+    const vals = [ecole];
+    const ajouter = (col, v) => {
+      vals.push(v);
+      sets.push(`${col} = $${vals.length}`);
+    };
+    if (b.cle !== undefined) {
+      const cle = texte(b.cle, 200);
+      if (cle && (cle.length < 20 || /\s/.test(cle))) throw new ApiError(400, "Clé NotchPay invalide : copiez la « clé publique » depuis votre tableau de bord NotchPay");
+      ajouter("notchpay_public_key", cle || null);
+    }
+    if (b.orange !== undefined) ajouter("orange_money", texte(b.orange, 30) || null);
+    if (b.mtn !== undefined) ajouter("mtn_momo", texte(b.mtn, 30) || null);
+    if (b.instructions !== undefined) ajouter("paiement_instructions", texte(b.instructions, 1000) || null);
+    if (sets.length) await db.query(`UPDATE schools SET ${sets.join(", ")}, updated_at = NOW() WHERE id = $1`, vals);
+    res.json({ success: true });
   } catch (e) {
     next(e);
   }

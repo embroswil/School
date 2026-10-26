@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { Field, Note } from '../ui.jsx'
-import { lireListeEleves } from '../lecture-fichier.js'
+import { lireListeEleves, lirePhotos } from '../lecture-fichier.js'
 
 // Import des eleves depuis une liste (PDF, Excel, CSV), avec verification avant l'envoi
 export default function ImportEleves() {
   const champ = useRef(null)
+  const appareil = useRef(null)
   const [eleves, setEleves] = useState(null)
   const [fichier, setFichier] = useState('')
   const [classeDefaut, setClasseDefaut] = useState('')
@@ -14,16 +15,18 @@ export default function ImportEleves() {
   const [resultat, setResultat] = useState(null)
 
   async function choisir(e) {
-    const f = e.target.files?.[0]
+    const fichiers = [...(e.target.files || [])]
+    const f = fichiers[0]
     if (!f) return
     setError('')
     setResultat(null)
     setBusy(true)
     try {
-      const liste = await lireListeEleves(f)
+      // Plusieurs photos (pages d'une meme liste) : lues ensemble
+      const liste = fichiers.length > 1 || f.type.startsWith('image/') ? await lirePhotos(fichiers) : await lireListeEleves(f)
       if (!liste.length) throw new Error('Aucun élève trouvé dans ce fichier. Vérifiez qu’il contient une colonne « Nom » ou « Noms et prénoms ».')
       setEleves(liste.map((x) => ({ ...x, garder: true })))
-      setFichier(f.name)
+      setFichier(fichiers.length > 1 ? `${fichiers.length} photos` : f.name)
     } catch (err) {
       setError(err.message)
       setEleves(null)
@@ -61,14 +64,21 @@ export default function ImportEleves() {
       </a>
       <h1 className="page-title">Importer une liste</h1>
       <p className="lede">
-        Envoyez une liste de classe en <b>PDF</b> ou <b>Excel</b> : l’application lit les noms, prénoms, classes, dates de naissance et
-        matricules, puis vous les vérifiez avant l’import.
+        Photographiez une liste de classe (imprimée <b>ou écrite à la main</b>), ou envoyez un fichier <b>PDF</b> ou <b>Excel</b> :
+        l’application lit les noms, prénoms, classes, dates de naissance et matricules, puis vous vérifiez avant l’import.
       </p>
 
-      <button type="button" className="btn btn-block" disabled={busy} onClick={() => champ.current?.click()}>
-        📄 {busy && !eleves ? 'Lecture du fichier…' : 'Choisir un fichier'}
-      </button>
-      <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,.ods" onChange={choisir} />
+      <div className="grid2">
+        <button type="button" className="btn" disabled={busy} onClick={() => appareil.current?.click()}>
+          📷 Photographier
+        </button>
+        <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => champ.current?.click()}>
+          📄 Fichier
+        </button>
+      </div>
+      {busy && !eleves && <p className="muted" style={{ marginTop: 10 }}>Lecture en cours… (jusqu’à une minute pour une liste manuscrite)</p>}
+      <input ref={appareil} type="file" hidden accept="image/*" capture="environment" multiple onChange={choisir} />
+      <input ref={champ} type="file" hidden multiple accept=".pdf,.xlsx,.xls,.csv,.ods,image/*" onChange={choisir} />
       <Note>{error}</Note>
 
       {resultat && (
@@ -127,7 +137,8 @@ export default function ImportEleves() {
           <li>• Une colonne « Noms et prénoms » (ou « Nom » et « Prénom ») suffit.</li>
           <li>• Colonnes reconnues : Classe, Date de naissance, Sexe, Matricule.</li>
           <li>• Un fichier Excel avec une feuille par classe fonctionne aussi.</li>
-          <li>• Les scans ou photos de listes papier ne sont pas encore lus : utilisez un PDF issu d’un tableur ou d’un logiciel.</li>
+          <li>• Photos : prenez la liste bien à plat, de face, à la lumière. Plusieurs pages ? Sélectionnez toutes les photos d’un coup.</li>
+          <li>• Pour une liste manuscrite, relisez bien les noms avant d’importer.</li>
           <li>• Quand un élève importé crée son compte avec les mêmes prénom et nom, il retrouve automatiquement sa fiche.</li>
         </ul>
       </div>

@@ -240,6 +240,68 @@ router.post("/import-eleves", async (req, res, next) => {
   }
 });
 
+// POST /api/etablissement/lire-images { images: [dataUrl, ...] }
+// Reconnaissance d'ecriture : photos ou scans de listes (imprimees ou ecrites a
+// la main) lus par l'IA (API Anthropic), qui renvoie la liste des eleves.
+router.post("/lire-images", async (req, res, next) => {
+  try {
+    ecoleDe(req);
+    const cle = process.env.ANTHROPIC_API_KEY;
+    if (!cle) throw new ApiError(503, "La lecture des photos n'est pas encore activée (clé ANTHROPIC_API_KEY manquante)");
+    const images = Array.isArray(req.body?.images) ? req.body.images.slice(0, 8) : [];
+    if (!images.length) throw new ApiError(400, "Aucune image");
+    const blocs = [];
+    for (const img of images) {
+      const m = String(img).match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
+      if (!m) throw new ApiError(400, "Image invalide");
+      blocs.push({ type: "image", source: { type: "base64", media_type: m[1], data: m[3] } });
+    }
+    blocs.push({
+      type: "text",
+      text: `Ces images sont une liste d'élèves d'un établissement scolaire camerounais (imprimée ou écrite à la main, éventuellement sur plusieurs pages).
+Extrais TOUS les élèves, dans l'ordre. Pour chacun : nom (nom de famille, souvent en MAJUSCULES), prenom, classe (si indiquée sur la ligne ou en titre de la liste, ex. "6e A", "Tle C"), dateNaissance (format JJ/MM/AAAA si présente), sexe ("M" ou "F" si présent), matricule (si présent).
+Ignore les en-têtes, signatures, totaux et cachets. Si un champ est absent ou illisible, mets une chaîne vide.
+Réponds UNIQUEMENT avec un JSON valide, sans texte autour : {"classe": "classe du titre ou vide", "eleves": [{"nom":"","prenom":"","classe":"","dateNaissance":"","sexe":"","matricule":""}]}`,
+    });
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": cle,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5",
+        max_tokens: 8000,
+        messages: [{ role: "user", content: blocs }],
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new ApiError(502, j?.error?.message || "Le service de lecture ne répond pas");
+    const texteIA = (j.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
+    let donnees;
+    try {
+      donnees = JSON.parse(texteIA.replace(/```json|```/g, "").trim());
+    } catch {
+      throw new ApiError(422, "La liste n'a pas pu être lue. Essayez une photo plus nette, bien éclairée et prise de face.");
+    }
+    const classeTitre = String(donnees.classe || "").trim();
+    const eleves = (Array.isArray(donnees.eleves) ? donnees.eleves : [])
+      .map((e) => ({
+        nom: String(e.nom || "").trim(),
+        prenom: String(e.prenom || "").trim(),
+        classe: String(e.classe || classeTitre || "").trim(),
+        dateNaissance: String(e.dateNaissance || "").trim(),
+        sexe: String(e.sexe || "").trim(),
+        matricule: String(e.matricule || "").trim(),
+      }))
+      .filter((e) => e.nom);
+    res.json({ success: true, data: eleves });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Photo de l'etablissement (image redimensionnee par le telephone, en data URL)
 router.put("/photo", async (req, res, next) => {
   try {
