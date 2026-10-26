@@ -21,6 +21,9 @@ import Conversation from './pages/Conversation.jsx'
 import Actualites from './pages/Actualites.jsx'
 import Scolarite from './pages/Scolarite.jsx'
 import ImportEleves from './pages/ImportEleves.jsx'
+import ClassNotes from './pages/ClassNotes.jsx'
+import Evaluation from './pages/Evaluation.jsx'
+import Appel from './pages/Appel.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
 function Message({ title, children }) {
@@ -56,6 +59,12 @@ function Pages({ path }) {
 
   const eleveMatch = path.match(/^\/eleves\/(\d+)$/)
   if (eleveMatch) return reserve(gestion, <EleveFiche key={eleveMatch[1]} id={Number(eleveMatch[1])} />)
+  const notesMatch = path.match(/^\/classes\/(\d+)\/notes$/)
+  if (notesMatch) return reserve(gestion || user.role === 'teacher', <ClassNotes key={notesMatch[1]} id={Number(notesMatch[1])} />)
+  const appelMatch = path.match(/^\/classes\/(\d+)\/appel$/)
+  if (appelMatch) return reserve(gestion || user.role === 'teacher', <Appel key={appelMatch[1]} id={Number(appelMatch[1])} />)
+  const evalMatch = path.match(/^\/evaluations\/(\d+)$/)
+  if (evalMatch) return reserve(gestion || user.role === 'teacher', <Evaluation key={evalMatch[1]} id={Number(evalMatch[1])} />)
   const classMatch = path.match(/^\/classes\/(\d+)$/)
   if (classMatch) return reserve(gestion, <ClassDetail key={classMatch[1]} id={Number(classMatch[1])} />)
 

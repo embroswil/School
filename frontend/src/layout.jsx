@@ -54,6 +54,7 @@ const TITRES = {
   '/import-eleves': 'Importer des élèves',
   '/etablissements': 'Établissements',
   '/utilisateurs': 'Comptes',
+  '/evaluations': 'Saisie des notes',
 }
 
 const ACTIONS = [

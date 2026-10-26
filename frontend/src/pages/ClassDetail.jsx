@@ -20,6 +20,15 @@ export default function ClassDetail({ id }) {
         </p>
       </section>
 
+      <div className="grid2" style={{ marginTop: 14 }}>
+        <a className="btn" href={`#/classes/${classe.id}/notes`}>
+          📝 Notes
+        </a>
+        <a className="btn btn-quiet" href={`#/classes/${classe.id}/appel`}>
+          🙋 Faire l’appel
+        </a>
+      </div>
+
       <p className="groupe-titre">Enseignants</p>
       {enseignants.length === 0 ? (
         <p className="muted">
