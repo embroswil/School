@@ -1,154 +1,74 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Empty, Field, Loading, Note } from '../ui.jsx'
-import { fullName } from '../format.js'
+import { Field, Note } from '../ui.jsx'
 
-function ClassForm({ onCreated, onCancel }) {
-  const years = useApi('/api/academic/academic-years?activeOnly=false')
-  const teachers = useApi('/api/users?role=teacher&isActive=true&limit=100')
-  const [form, setForm] = useState({ name: '', level: '', section: '', capacity: '40', yearId: '', teacherId: '' })
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const set = (name) => (e) => setForm({ ...form, [name]: e.target.value })
-
-  const yearList = years.data ?? []
-  const yearId = form.yearId || String((yearList.find((y) => y.is_current) ?? yearList[0])?.id ?? '')
-
-  async function submit(event) {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
-    try {
-      await api.post('/api/classes', {
-        name: form.name.trim(),
-        level: form.level.trim(),
-        section: form.section.trim() || undefined,
-        capacity: form.capacity ? Number(form.capacity) : undefined,
-        academicYearId: Number(yearId),
-        classTeacherId: form.teacherId ? Number(form.teacherId) : undefined,
-      })
-      onCreated(form.name.trim())
-    } catch (err) {
-      setError(err.message)
-      setBusy(false)
-    }
-  }
-
-  if (years.loading) return <Loading />
-  if (yearList.length === 0) {
-    return (
-      <>
-        <p>Créez d’abord une année scolaire pour pouvoir ajouter des classes.</p>
-        <div className="actions">
-          <a className="btn" href="#/annees">
-            Aller aux années scolaires
-          </a>
-          <button className="btn btn-quiet" type="button" onClick={onCancel}>
-            Annuler
-          </button>
-        </div>
-      </>
-    )
-  }
-
-  return (
-    <form onSubmit={submit}>
-      <h2 className="section-title">Nouvelle classe</h2>
-      <Field label="Nom (par exemple 6e A)">
-        <input className="input" required value={form.name} onChange={set('name')} />
-      </Field>
-      <Field label="Niveau (par exemple 6e)">
-        <input className="input" required value={form.level} onChange={set('level')} />
-      </Field>
-      <Field label="Section (facultatif)">
-        <input className="input" maxLength={10} value={form.section} onChange={set('section')} />
-      </Field>
-      <Field label="Nombre de places">
-        <input className="input" type="number" inputMode="numeric" min="1" value={form.capacity} onChange={set('capacity')} />
-      </Field>
-      <Field label="Année scolaire">
-        <select className="input" required value={yearId} onChange={set('yearId')}>
-          {yearList.map((y) => (
-            <option key={y.id} value={y.id}>
-              {y.name}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Enseignant principal (facultatif)">
-        <select className="input" value={form.teacherId} onChange={set('teacherId')}>
-          <option value="">Aucun pour l’instant</option>
-          {(teachers.data ?? []).map((t) => (
-            <option key={t.id} value={t.id}>
-              {fullName(t.firstName, t.lastName)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Note>{error}</Note>
-      <div className="actions">
-        <button className="btn" type="submit" disabled={busy}>
-          {busy ? 'Création…' : 'Créer la classe'}
-        </button>
-        <button className="btn btn-quiet" type="button" onClick={onCancel}>
-          Annuler
-        </button>
-      </div>
-    </form>
-  )
-}
+// Niveaux proposes (systemes francophone et anglophone)
+const NIVEAUX = ['6e', '5e', '4e', '3e', '2nde', '1ère', 'Tle', 'SIL', 'CP', 'CE1', 'CE2', 'CM1', 'CM2']
 
 export default function Classes() {
-  const classes = useApi('/api/classes')
-  const [adding, setAdding] = useState(false)
-  const [flash, setFlash] = useState('')
+  const classes = useApi('/api/etablissement/classes')
+  const [noms, setNoms] = useState('')
+  const [error, setError] = useState('')
+  const [ok, setOk] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  function created(name) {
-    setAdding(false)
-    setFlash(`La classe ${name} est créée.`)
-    classes.reload()
+  async function creer(e) {
+    e.preventDefault()
+    setError('')
+    setOk('')
+    setBusy(true)
+    try {
+      const r = await api.post('/api/etablissement/classes', { noms: noms.split(/[,\n]/) })
+      setOk(`${r.data.creees} classe(s) prête(s).`)
+      setNoms('')
+      classes.reload()
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(false)
   }
-
-  const list = classes.data ?? []
+  const ajouter = (n) => setNoms((x) => (x.trim() ? `${x.trim().replace(/,$/, '')}, ${n} ` : `${n} `))
 
   return (
     <>
       <h1 className="page-title">Classes</h1>
-
-      {adding ? (
-        <ClassForm onCreated={created} onCancel={() => setAdding(false)} />
-      ) : (
-        <div className="actions">
-          <button className="btn" type="button" onClick={() => setAdding(true)}>
-            Ajouter une classe
-          </button>
+      <p className="lede">Classes de l’année scolaire en cours. Créez-les toutes en une fois : tapez les noms ou touchez les niveaux.</p>
+      <form className="card" onSubmit={creer}>
+        <Field label="Classes à créer (séparées par des virgules)">
+          <textarea className="input" placeholder="ex. 6e A, 6e B, 5e A, 2nde C, Tle D" value={noms} onChange={(e) => setNoms(e.target.value)} />
+        </Field>
+        <div className="chips">
+          {NIVEAUX.map((n) => (
+            <button key={n} type="button" className="chip" onClick={() => ajouter(n)}>
+              + {n}
+            </button>
+          ))}
         </div>
-      )}
-      <Note kind="ok">{flash}</Note>
-      <Note>{classes.error}</Note>
-      {classes.loading && !classes.data ? <Loading /> : null}
-      {!classes.loading && !classes.error && list.length === 0 && <Empty>Aucune classe pour l’instant.</Empty>}
+        <Note>{error}</Note>
+        <Note kind="ok">{ok}</Note>
+        <button className="btn btn-block" type="submit" disabled={busy || !noms.trim()}>
+          {busy ? 'Création…' : 'Créer les classes'}
+        </button>
+      </form>
 
-      <ul className="rows">
-        {list.map((c) => (
-          <li key={c.id}>
-            <a className="row" href={`#/classes/${c.id}`}>
+      <h2 className="section-title">{classes.data?.length ? `${classes.data.length} classe(s)` : 'Vos classes'}</h2>
+      {classes.loading && <p className="muted">Chargement…</p>}
+      {classes.data?.length === 0 && <p className="muted">Aucune classe pour le moment.</p>}
+      {classes.data?.length > 0 && (
+        <ul className="rows">
+          {classes.data.map((c) => (
+            <a className="row" key={c.id} href={`#/classes/${c.id}`}>
+              <span style={{ fontSize: 22 }}>📚</span>
               <div className="row-main">
-                <span className="row-title">
-                  {c.name}
-                  {c.academic_year_name && <span className="tag">{c.academic_year_name}</span>}
-                </span>
-                <span className="row-sub">
-                  {c.teacher_first_name
-                    ? `Enseignant principal : ${fullName(c.teacher_first_name, c.teacher_last_name)}`
-                    : 'Pas d’enseignant principal'}
-                </span>
+                <div className="row-title">{c.name}</div>
+                <div className="row-sub">{c.eleves} élève(s)</div>
               </div>
+              <span className="row-end">›</span>
             </a>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </ul>
+      )}
     </>
   )
 }

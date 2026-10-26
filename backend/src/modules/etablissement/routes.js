@@ -302,6 +302,151 @@ Réponds UNIQUEMENT avec un JSON valide, sans texte autour : {"classe": "classe 
   }
 });
 
+// ---------------------------------------------------------------- matieres et affectations
+
+// Matieres courantes au Cameroun, proposees a chaque etablissement
+const MATIERES_PAR_DEFAUT = [
+  "Mathématiques", "Français", "Anglais", "Histoire", "Géographie", "Éducation civique (ECM)",
+  "Sciences de la vie et de la Terre (SVT)", "Physique", "Chimie", "Technologie (PCT)", "Informatique",
+  "Philosophie", "Espagnol", "Allemand", "Langues et cultures nationales", "Littérature",
+  "Économie", "Éducation physique et sportive (EPS)", "Travail manuel", "Arts plastiques",
+];
+const slug = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "").toUpperCase().slice(0, 10);
+
+const matieresEcole = async (ecole) => {
+  let { rows } = await db.query("SELECT id, name FROM subjects WHERE school_id = $1 AND is_active = true ORDER BY name", [ecole]);
+  if (!rows.length) {
+    for (const nom of MATIERES_PAR_DEFAUT) {
+      await db.query(
+        "INSERT INTO subjects (name, code, school_id, is_active) VALUES ($1, $2, $3, true) ON CONFLICT (code) DO NOTHING",
+        [nom, `${ecole}-${slug(nom)}`, ecole]
+      );
+    }
+    ({ rows } = await db.query("SELECT id, name FROM subjects WHERE school_id = $1 AND is_active = true ORDER BY name", [ecole]));
+  }
+  return rows;
+};
+
+router.get("/matieres", async (req, res, next) => {
+  try {
+    res.json({ success: true, data: await matieresEcole(ecoleDe(req)) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/matieres", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const nom = String(req.body?.nom || "").trim().slice(0, 100);
+    if (!nom) throw new ApiError(400, "Nom de la matière obligatoire");
+    const ex = await db.query("SELECT id, name FROM subjects WHERE school_id = $1 AND lower(name) = lower($2)", [ecole, nom]);
+    if (ex.rows[0]) return res.json({ success: true, data: ex.rows[0] });
+    const { rows } = await db.query(
+      "INSERT INTO subjects (name, code, school_id, is_active) VALUES ($1, $2, $3, true) RETURNING id, name",
+      [nom, `${ecole}-${slug(nom)}-${Date.now().toString(36).slice(-4)}`, ecole]
+    );
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Affectations de l'annee : quel enseignant, quelle matiere, quelle classe
+router.get("/affectations", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const { rows } = await db.query(
+      `SELECT cs.id, cs.teacher_id, cs.class_id, cs.subject_id, c.name AS classe, s.name AS matiere
+       FROM class_subjects cs JOIN classes c ON c.id = cs.class_id JOIN subjects s ON s.id = cs.subject_id
+       WHERE cs.academic_year_id = $1 AND cs.teacher_id IS NOT NULL
+       ORDER BY s.name, c.name`,
+      [annee.id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST { teacherId, subjectId, classIds: [] }
+router.post("/affectations", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const teacherId = parseInt(req.body?.teacherId, 10);
+    const subjectId = parseInt(req.body?.subjectId, 10);
+    const classIds = (Array.isArray(req.body?.classIds) ? req.body.classIds : []).map((x) => parseInt(x, 10)).filter(Boolean);
+    const prof = await db.query("SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'teacher' AND status = 'active'", [teacherId, ecole]);
+    if (!prof.rows[0]) throw new ApiError(404, "Enseignant introuvable");
+    const mat = await db.query("SELECT 1 FROM subjects WHERE id = $1 AND school_id = $2", [subjectId, ecole]);
+    if (!mat.rows[0]) throw new ApiError(400, "Choisissez une matière");
+    if (!classIds.length) throw new ApiError(400, "Choisissez au moins une classe");
+    const classes = await db.query("SELECT id FROM classes WHERE id = ANY($1) AND academic_year_id = $2", [classIds, annee.id]);
+    for (const { id } of classes.rows) {
+      await db.query(
+        `INSERT INTO class_subjects (class_id, subject_id, teacher_id, academic_year_id, is_active)
+         VALUES ($1, $2, $3, $4, true)
+         ON CONFLICT (class_id, subject_id, academic_year_id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id, is_active = true`,
+        [id, subjectId, teacherId, annee.id]
+      );
+    }
+    res.status(201).json({ success: true, data: { affectees: classes.rows.length } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/affectations/:id", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const r = await db.query("UPDATE class_subjects SET teacher_id = NULL WHERE id = $1 AND academic_year_id = $2", [
+      parseInt(req.params.id, 10),
+      annee.id,
+    ]);
+    if (!r.rowCount) throw new ApiError(404, "Affectation introuvable");
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Classes de l'annee en cours (pour les listes de choix)
+router.get("/classes", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const { rows } = await db.query(
+      `SELECT c.id, c.name,
+         (SELECT COUNT(*)::int FROM class_students cs WHERE cs.class_id = c.id AND cs.status = 'active') AS eleves
+       FROM classes c WHERE c.academic_year_id = $1 ORDER BY c.name`,
+      [annee.id]
+    );
+    res.json({ success: true, data: rows, annee });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /classes { noms: ["6e A", "6e B", ...] } : creation rapide de plusieurs classes
+router.post("/classes", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const noms = (Array.isArray(req.body?.noms) ? req.body.noms : String(req.body?.noms || "").split(","))
+      .map((n) => String(n).trim())
+      .filter(Boolean)
+      .slice(0, 60);
+    if (!noms.length) throw new ApiError(400, "Indiquez au moins une classe");
+    for (const n of noms) await classeParNom(annee.id, n);
+    res.status(201).json({ success: true, data: { creees: noms.length } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Photo de l'etablissement (image redimensionnee par le telephone, en data URL)
 router.put("/photo", async (req, res, next) => {
   try {

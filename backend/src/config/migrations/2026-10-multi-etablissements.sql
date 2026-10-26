@@ -153,3 +153,6 @@ ALTER TABLE paiements_scolaires DROP CONSTRAINT IF EXISTS paiements_scolaires_st
 ALTER TABLE paiements_scolaires ADD CONSTRAINT paiements_scolaires_statut_check
   CHECK (statut IN ('en_attente','reussi','echoue','declare','rejete'));
 ALTER TABLE paiements_scolaires ADD COLUMN IF NOT EXISTS motif_rejet TEXT;
+
+-- Matieres propres a chaque etablissement
+ALTER TABLE subjects ADD COLUMN IF NOT EXISTS school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE;
