@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Publication } from './Actualites.jsx'
+import { IcActus, IcCarte, IcChevron, IcCoche, IcEcole, IcEleves, IcImport, IcPhoto } from '../icones.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -57,12 +58,21 @@ function EspaceAdmin() {
   )
 }
 
-function Chiffre({ valeur, libelle }) {
+function Action({ href, Icone, titre, texte, compteur, urgent }) {
   return (
-    <div className="tile" style={{ gap: 2 }}>
-      <span className="figure">{valeur ?? '…'}</span>
-      <small>{libelle}</small>
-    </div>
+    <a className={`action-row ${urgent && compteur ? 'urgent' : ''}`} href={href}>
+      <span className="ico">
+        <Icone />
+      </span>
+      <span>
+        <b>{titre}</b>
+        <small>{texte}</small>
+      </span>
+      <span className="fin">
+        {compteur > 0 && <span className="count">{compteur}</span>}
+        <IcChevron size={18} />
+      </span>
+    </a>
   )
 }
 
@@ -82,20 +92,18 @@ const reduirePhoto = (fichier) =>
     img.src = URL.createObjectURL(fichier)
   })
 
-function PhotoEtablissement({ photo, nom, onChange }) {
+function EnteteEtablissement({ d, onChange }) {
   const champ = useRef(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
   async function choisir(e) {
     const f = e.target.files?.[0]
     if (!f) return
     setBusy(true)
-    setError('')
     try {
       await api.put('/api/etablissement/photo', { photo: await reduirePhoto(f) })
       onChange()
-    } catch (err) {
-      setError(err.message)
+    } catch {
+      // l'erreur s'affiche au prochain essai
     }
     setBusy(false)
   }
@@ -103,58 +111,84 @@ function PhotoEtablissement({ photo, nom, onChange }) {
     <section
       className="hero-card"
       style={{
-        marginTop: 8,
-        minHeight: 170,
+        marginTop: 4,
+        minHeight: 150,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-end',
-        backgroundImage: photo
-          ? `linear-gradient(180deg, rgba(15,26,60,0.05) 30%, rgba(15,26,60,0.85)), url(${photo})`
-          : undefined,
+        backgroundImage: d.photo ? `linear-gradient(180deg, rgba(15,26,60,0.05) 25%, rgba(15,26,60,0.88)), url(${d.photo})` : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        position: 'relative',
       }}
     >
-      <span className="badge" style={{ alignSelf: 'flex-start' }}>Administrateur de l’établissement</span>
-      <h2 style={{ marginTop: 10 }}>{nom || 'Mon établissement'}</h2>
-      <div className="actions" style={{ marginTop: 10 }}>
-        <button type="button" className="badge" style={{ border: 0, cursor: 'pointer', padding: '8px 12px' }} onClick={() => champ.current?.click()} disabled={busy}>
-          📷 {busy ? 'Envoi…' : photo ? 'Changer la photo' : 'Ajouter une photo'}
-        </button>
-      </div>
-      {error && <p style={{ marginTop: 6, fontWeight: 700 }}>{error}</p>}
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label={d.photo ? 'Changer la photo' : 'Ajouter une photo'}
+        style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.9)', border: 0 }}
+        onClick={() => champ.current?.click()}
+        disabled={busy}
+      >
+        <IcPhoto />
+      </button>
       <input ref={champ} type="file" accept="image/*" hidden onChange={choisir} />
+      <span className="badge" style={{ alignSelf: 'flex-start' }}>
+        {d.annee?.name ? `Année ${d.annee.name}` : 'Établissement'}
+      </span>
+      <h2 style={{ marginTop: 8 }}>{d.nom || 'Mon établissement'}</h2>
     </section>
   )
 }
 
 function EspaceEtablissement() {
   const t = useApi('/api/etablissement/tableau')
+  const confirmer = useApi('/api/scolarite/a-confirmer')
   const d = t.data || {}
+  const nbConfirmer = confirmer.data?.length || 0
+  const urgences = (d.enseignants_attente || 0) + nbConfirmer
   return (
     <>
-      <PhotoEtablissement photo={d.photo} nom={d.nom} onChange={() => t.reload()} />
-      {d.classes === 0 && (
-        <div className="note note-ok" style={{ marginTop: 16 }}>
-          Votre année scolaire {d.annee?.name} est prête. Première étape : créez vos <a href="#/classes">classes</a>.
+      <EnteteEtablissement d={d} onChange={() => t.reload()} />
+      <div className="stats">
+        <a className="stat" href="#/eleves" style={{ color: 'inherit' }}>
+          <b>{d.eleves ?? '…'}</b>
+          <span>élèves</span>
+        </a>
+        <a className="stat" href="#/enseignants" style={{ color: 'inherit' }}>
+          <b>{d.enseignants ?? '…'}</b>
+          <span>enseignants</span>
+        </a>
+        <div className="stat">
+          <b>{d.parents ?? '…'}</b>
+          <span>parents</span>
         </div>
+        <a className="stat" href="#/classes" style={{ color: 'inherit' }}>
+          <b>{d.classes ?? '…'}</b>
+          <span>classes</span>
+        </a>
+      </div>
+
+      <h2 className="section-title">{urgences ? 'À traiter' : 'Tout est à jour ✓'}</h2>
+      {d.enseignants_attente > 0 && (
+        <Action href="#/enseignants" Icone={IcCoche} titre="Enseignants à valider" texte="Vérifiez leurs informations" compteur={d.enseignants_attente} urgent />
       )}
-      <h2 className="section-title">En un coup d’œil{d.annee ? ` · ${d.annee.name}` : ''}</h2>
-      <div className="grid2">
-        <Chiffre valeur={d.eleves} libelle="élèves inscrits" />
-        <Chiffre valeur={d.enseignants} libelle="enseignants" />
-        <Chiffre valeur={d.parents} libelle="parents" />
-        <Chiffre valeur={d.classes} libelle="classes" />
-      </div>
-      <h2 className="section-title">À faire</h2>
-      <div className="grid2">
-        <Tuile href="#/enseignants" ico="✅" titre="Enseignants" texte="Comptes à valider" compteur={d.enseignants_attente || 0} />
-        <Tuile href="#/eleves" ico="🎒" titre="Élèves" texte="À placer dans une classe" compteur={d.eleves_sans_classe || 0} />
-        <Tuile href="#/classes" ico="📚" titre="Classes" texte="Créer et gérer les classes" />
-        <Tuile href="#/scolarite" ico="💳" titre="Scolarité" texte="Frais et paiements" />
-        <Tuile href="#/actualites" ico="📣" titre="Actualités" texte="Annonces, événements, discipline" />
-        <Tuile href="#/messages" ico="✉️" titre="Messages" texte="Parents, élèves, enseignants" />
-      </div>
+      {nbConfirmer > 0 && (
+        <Action href="#/scolarite" Icone={IcCarte} titre="Paiements à confirmer" texte="Transferts déclarés par les parents" compteur={nbConfirmer} urgent />
+      )}
+      {d.eleves_sans_classe > 0 && (
+        <Action href="#/eleves" Icone={IcEleves} titre="Élèves sans classe" texte="À placer dans leur classe" compteur={d.eleves_sans_classe} urgent />
+      )}
+
+      <h2 className="section-title">Gérer l’établissement</h2>
+      {d.eleves === 0 ? (
+        <Action href="#/import-eleves" Icone={IcImport} titre="Ajouter vos élèves" texte="Photographiez ou envoyez vos listes de classe" />
+      ) : (
+        <Action href="#/eleves" Icone={IcEleves} titre="Élèves et classes" texte={`${d.eleves} élèves · ${d.classes} classes`} />
+      )}
+      <Action href="#/actualites" Icone={IcActus} titre="Actualités" texte="Annonces, événements, conseils de discipline" />
+      <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements et moyens de paiement" />
+      <Action href="#/enseignants" Icone={IcEcole} titre="Enseignants" texte="Équipe pédagogique" />
     </>
   )
 }
