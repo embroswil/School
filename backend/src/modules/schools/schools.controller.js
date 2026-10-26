@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { assurerAnneeScolaire } = require("../../utils/annees");
+const { matieresEcole } = require("../../utils/matieres");
 
 const TYPES = ["maternelle", "primaire", "college", "lycee"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -165,4 +166,18 @@ const statistiques = async (req, res, next) => {
   }
 };
 
-module.exports = { listePublique, liste, creer, modifier, definirAdministrateur, statistiques };
+// Publique : matieres et classes de l'annee (inscription des enseignants)
+const structure = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    const e = await db.query("SELECT id FROM schools WHERE id = $1 AND is_active = true", [id]);
+    if (!e.rows[0]) throw new ApiError(404, "Établissement introuvable");
+    const annee = await assurerAnneeScolaire(id);
+    const classes = await db.query("SELECT id, name FROM classes WHERE academic_year_id = $1 ORDER BY name", [annee.id]);
+    res.json({ success: true, data: { matieres: await matieresEcole(id), classes: classes.rows } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { listePublique, liste, creer, modifier, definirAdministrateur, statistiques, structure };

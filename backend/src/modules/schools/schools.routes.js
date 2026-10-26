@@ -8,6 +8,7 @@ const { authenticate, isPlatformAdmin } = require("../../middlewares/auth.middle
 
 // Publique : etablissements actifs (choix a l'inscription)
 router.get("/public", ctrl.listePublique);
+router.get("/:id/structure", ctrl.structure);
 
 // Administrateur de la plateforme
 router.get("/statistiques", authenticate, isPlatformAdmin, ctrl.statistiques);

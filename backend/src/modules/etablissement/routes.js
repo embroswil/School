@@ -124,7 +124,9 @@ router.get("/enseignants", async (req, res, next) => {
     const ecole = ecoleDe(req);
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.phone,
-              (SELECT tr.subjects FROM teacher_requests tr WHERE tr.user_id = u.id ORDER BY tr.id DESC LIMIT 1) AS matieres
+              (SELECT tr.subjects FROM teacher_requests tr WHERE tr.user_id = u.id ORDER BY tr.id DESC LIMIT 1) AS matieres,
+              (SELECT string_agg(DISTINCT c.name, ', ' ORDER BY c.name) FROM class_subjects cs JOIN classes c ON c.id = cs.class_id
+               WHERE cs.teacher_id = u.id) AS classes
        FROM users u WHERE u.school_id = $1 AND u.role = 'teacher' AND u.status = 'active'
        ORDER BY u.last_name, u.first_name`,
       [ecole]
@@ -281,28 +283,7 @@ router.post("/import-eleves", async (req, res, next) => {
 
 // ---------------------------------------------------------------- matieres et affectations
 
-// Matieres courantes au Cameroun, proposees a chaque etablissement
-const MATIERES_PAR_DEFAUT = [
-  "Mathématiques", "Français", "Anglais", "Histoire", "Géographie", "Éducation civique (ECM)",
-  "Sciences de la vie et de la Terre (SVT)", "Physique", "Chimie", "Technologie (PCT)", "Informatique",
-  "Philosophie", "Espagnol", "Allemand", "Langues et cultures nationales", "Littérature",
-  "Économie", "Éducation physique et sportive (EPS)", "Travail manuel", "Arts plastiques",
-];
-const slug = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "").toUpperCase().slice(0, 10);
-
-const matieresEcole = async (ecole) => {
-  let { rows } = await db.query("SELECT id, name FROM subjects WHERE school_id = $1 AND is_active = true ORDER BY name", [ecole]);
-  if (!rows.length) {
-    for (const nom of MATIERES_PAR_DEFAUT) {
-      await db.query(
-        "INSERT INTO subjects (name, code, school_id, is_active) VALUES ($1, $2, $3, true) ON CONFLICT (code) DO NOTHING",
-        [nom, `${ecole}-${slug(nom)}`, ecole]
-      );
-    }
-    ({ rows } = await db.query("SELECT id, name FROM subjects WHERE school_id = $1 AND is_active = true ORDER BY name", [ecole]));
-  }
-  return rows;
-};
+const { matieresEcole, slug } = require("../../utils/matieres");
 
 router.get("/matieres", async (req, res, next) => {
   try {
@@ -401,7 +382,8 @@ router.get("/classes", async (req, res, next) => {
        FROM classes c WHERE c.academic_year_id = $1 ORDER BY c.name`,
       [annee.id]
     );
-    res.json({ success: true, data: rows, annee });
+    const t = await db.query("SELECT type FROM schools WHERE id = $1", [ecole]);
+    res.json({ success: true, data: rows, annee, meta: { annee, type: t.rows[0]?.type || null } });
   } catch (e) {
     next(e);
   }

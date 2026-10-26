@@ -4,6 +4,7 @@ const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { ecoleFiltre } = require("../../utils/contexte");
 const { notifierEtablissement } = require("../../utils/notifier");
+const { assurerAnneeScolaire } = require("../../utils/annees");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLES = ["parent", "student", "teacher"];
@@ -65,7 +66,22 @@ const inscription = async (req, res, next) => {
     if ((await q("SELECT 1 FROM users WHERE email = $1", [email])).rows[0]) {
       throw new ApiError(409, "Un compte existe déjà avec cet email");
     }
-    if (role === "teacher" && !texte(b.matieres, 255)) throw new ApiError(400, "Indiquez la ou les matières enseignées");
+    // Enseignant : ses matieres et ses classes, choisies dans celles de l'etablissement
+    let matieresChoisies = [];
+    let classesChoisies = [];
+    if (role === "teacher") {
+      const ids = (v) => (Array.isArray(v) ? v.map((x) => parseInt(x, 10)).filter((x) => x > 0) : []);
+      matieresChoisies = (
+        await q("SELECT id, name FROM subjects WHERE id = ANY($1) AND school_id = $2 ORDER BY name", [ids(b.matiereIds), schoolId])
+      ).rows;
+      if (!matieresChoisies.length) throw new ApiError(400, "Choisissez la ou les matières que vous enseignez");
+      const annee = await assurerAnneeScolaire(schoolId);
+      classesChoisies = (
+        await q("SELECT id, name FROM classes WHERE id = ANY($1) AND academic_year_id = $2 ORDER BY name", [ids(b.classeIds), annee.id])
+      ).rows;
+      const nbClasses = (await q("SELECT COUNT(*)::int AS n FROM classes WHERE academic_year_id = $1", [annee.id])).rows[0].n;
+      if (nbClasses > 0 && !classesChoisies.length) throw new ApiError(400, "Choisissez les classes dans lesquelles vous enseignez");
+    }
     if (role === "student" && !texte(b.classe)) throw new ApiError(400, "Indiquez votre classe");
 
     await q("BEGIN");
@@ -148,9 +164,15 @@ const inscription = async (req, res, next) => {
 
     if (role === "teacher") {
       await q(
-        `INSERT INTO teacher_requests (school_id, user_id, subjects, qualification, experience, message)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [schoolId, userId, texte(b.matieres, 255), texte(b.diplome, 255) || null, texte(b.experience, 255) || null, texte(b.message, 1000) || null]
+        `INSERT INTO teacher_requests (school_id, user_id, subjects, subject_ids, class_ids)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          schoolId,
+          userId,
+          matieresChoisies.map((m) => m.name).join(", ").slice(0, 1000),
+          matieresChoisies.map((m) => m.id),
+          classesChoisies.map((c) => c.id),
+        ]
       );
     }
     await q("COMMIT");
@@ -158,7 +180,7 @@ const inscription = async (req, res, next) => {
     if (role === "teacher") {
       await notifierEtablissement(schoolId, {
         title: "Nouvel enseignant à valider",
-        message: `${prenom} ${nom} (${texte(b.matieres, 255)}) a créé un compte enseignant.`,
+        message: `${prenom} ${nom} (${matieresChoisies.map((m) => m.name).join(", ")}) a créé un compte enseignant.`,
         type: "account",
         priority: "high",
         data: { lien: "/enseignants" },
@@ -198,6 +220,7 @@ const listeEnseignants = async (req, res, next) => {
     where.push(`tr.status = $${params.length}`);
     const { rows } = await db.query(
       `SELECT tr.id, tr.subjects, tr.qualification, tr.experience, tr.message, tr.status, tr.created_at,
+              (SELECT string_agg(c.name, ', ' ORDER BY c.name) FROM classes c WHERE c.id = ANY(tr.class_ids)) AS classes,
               tr.decision_reason, u.id AS user_id, u.email, u.first_name, u.last_name, u.phone, s.name AS school_name
        FROM teacher_requests tr
        JOIN users u ON u.id = tr.user_id
@@ -225,6 +248,19 @@ const validerEnseignant = async (req, res, next) => {
   try {
     const d = await chargerDemande(parseId(req.params.id));
     await db.query("UPDATE users SET status = 'active', updated_at = NOW() WHERE id = $1", [d.user_id]);
+    // Affectations choisies par l'enseignant : chaque matiere dans chaque classe
+    // (sans retirer un collegue deja affecte a la meme matiere dans la meme classe)
+    if (d.subject_ids?.length && d.class_ids?.length) {
+      await db.query(
+        `INSERT INTO class_subjects (class_id, subject_id, teacher_id, academic_year_id, is_active)
+         SELECT c.id, s.id, $3, c.academic_year_id, true
+         FROM classes c CROSS JOIN subjects s
+         WHERE c.id = ANY($1) AND s.id = ANY($2)
+         ON CONFLICT (class_id, subject_id, academic_year_id)
+         DO UPDATE SET teacher_id = COALESCE(class_subjects.teacher_id, EXCLUDED.teacher_id), is_active = true`,
+        [d.class_ids, d.subject_ids, d.user_id]
+      );
+    }
     await db.query(`UPDATE teacher_requests SET status = 'approved', decided_by = $2, decided_at = NOW() WHERE id = $1`, [
       d.id,
       req.user.id,

@@ -3,8 +3,16 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 
-// Niveaux proposes (systemes francophone et anglophone)
-const NIVEAUX = ['6e', '5e', '4e', '3e', '2nde', '1ère', 'Tle', 'SIL', 'CP', 'CE1', 'CE2', 'CM1', 'CM2']
+// Niveaux proposes selon le type d'etablissement
+const NIVEAUX = {
+  maternelle: ['Petite section', 'Moyenne section', 'Grande section'],
+  primaire: ['SIL', 'CP', 'CE1', 'CE2', 'CM1', 'CM2'],
+  college: ['6e', '5e', '4e', '3e'],
+  lycee: ['6e', '5e', '4e', '3e', '2nde', '1ère', 'Tle'],
+}
+
+// Le serveur renvoie le type de l'etablissement avec la liste des classes
+const classesType = (r) => r.meta?.type || null
 
 export default function Classes() {
   const classes = useApi('/api/etablissement/classes')
@@ -39,7 +47,7 @@ export default function Classes() {
           <textarea className="input" placeholder="ex. 6e A, 6e B, 5e A, 2nde C, Tle D" value={noms} onChange={(e) => setNoms(e.target.value)} />
         </Field>
         <div className="chips">
-          {NIVEAUX.map((n) => (
+          {(NIVEAUX[classes.data && classesType(classes)] || NIVEAUX.lycee).map((n) => (
             <button key={n} type="button" className="chip" onClick={() => ajouter(n)}>
               + {n}
             </button>

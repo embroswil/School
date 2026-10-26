@@ -20,6 +20,19 @@ export default function Signup() {
   const [ecole, setEcole] = useState(null)
   const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', classe: '', dateNaissance: '', matieres: '', diplome: '', experience: '', message: '' })
   const [enfants, setEnfants] = useState([{ ...enfantVide }])
+  // Enseignant : matieres et classes de l'etablissement choisi
+  const [structure, setStructure] = useState(null)
+  const [matiereIds, setMatiereIds] = useState([])
+  const [classeIds, setClasseIds] = useState([])
+  useEffect(() => {
+    if (role !== 'teacher' || !ecole) return
+    setStructure(null)
+    api
+      .get(`/api/schools/${ecole.id}/structure`)
+      .then((r) => setStructure(r.data))
+      .catch(() => setStructure({ matieres: [], classes: [] }))
+  }, [role, ecole])
+  const basculer = (setter) => (id) => setter((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [fini, setFini] = useState(null)
@@ -44,7 +57,14 @@ export default function Signup() {
     setError('')
     setBusy(true)
     try {
-      const donnees = { role, schoolId: ecole.id, ...f, enfants: role === 'parent' ? enfants : undefined }
+      const donnees = {
+        role,
+        schoolId: ecole.id,
+        ...f,
+        enfants: role === 'parent' ? enfants : undefined,
+        matiereIds: role === 'teacher' ? matiereIds : undefined,
+        classeIds: role === 'teacher' ? classeIds : undefined,
+      }
       const res = await signup(donnees)
       if (role !== 'teacher') {
         await login(f.email, f.password)
@@ -206,20 +226,39 @@ export default function Signup() {
             )}
 
             {role === 'teacher' && (
-              <div className="card">
-                <Field label="Matière(s) enseignée(s)">
-                  <input className="input" placeholder="ex. Mathématiques, Physique" value={f.matieres} onChange={maj('matieres')} required />
-                </Field>
-                <Field label="Diplôme">
-                  <input className="input" placeholder="ex. DIPES II" value={f.diplome} onChange={maj('diplome')} />
-                </Field>
-                <Field label="Expérience">
-                  <input className="input" placeholder="ex. 5 ans" value={f.experience} onChange={maj('experience')} />
-                </Field>
-                <Field label="Message pour l’établissement">
-                  <textarea className="input" placeholder="Classes tenues, statut (titulaire, vacataire)…" value={f.message} onChange={maj('message')} />
-                </Field>
-              </div>
+              <>
+                <h2 className="section-title">Ce que vous enseignez</h2>
+                {!structure && <p className="muted">Chargement…</p>}
+                {structure && (
+                  <div className="card">
+                    <span className="field-label">Matière(s)</span>
+                    <div className="chips">
+                      {structure.matieres.map((m) => (
+                        <button key={m.id} type="button" className="chip" aria-pressed={matiereIds.includes(m.id)} onClick={() => basculer(setMatiereIds)(m.id)}>
+                          {m.name}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="field-label">Vos classes</span>
+                    {structure.classes.length === 0 ? (
+                      <p className="muted" style={{ fontSize: 14 }}>
+                        L’établissement n’a pas encore créé ses classes : vous pourrez les choisir plus tard.
+                      </p>
+                    ) : (
+                      <div className="chips">
+                        {structure.classes.map((c) => (
+                          <button key={c.id} type="button" className="chip" aria-pressed={classeIds.includes(c.id)} onClick={() => basculer(setClasseIds)(c.id)}>
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <p className="muted" style={{ fontSize: 13 }}>
+                      {matiereIds.length} matière(s) · {classeIds.length} classe(s) choisie(s)
+                    </p>
+                  </div>
+                )}
+              </>
             )}
 
             {role === 'parent' && (

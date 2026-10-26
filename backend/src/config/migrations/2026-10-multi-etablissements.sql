@@ -185,3 +185,7 @@ CREATE TABLE IF NOT EXISTS notes_eleves (
   UNIQUE (evaluation_id, student_id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_jour ON attendance(student_id, class_id, date) WHERE period_number IS NULL;
+
+-- L'enseignant choisit ses matieres et ses classes a l'inscription
+ALTER TABLE teacher_requests ADD COLUMN IF NOT EXISTS subject_ids INTEGER[];
+ALTER TABLE teacher_requests ADD COLUMN IF NOT EXISTS class_ids INTEGER[];
