@@ -206,7 +206,9 @@ export default function ClassNotes({ id }) {
     if (etablissement) api.get('/api/etablissement/matieres').finally(() => setPret(true))
   }, [etablissement])
   const d = useApi(pret ? `/api/notes/classes/${id}` : null)
-  const [onglet, setOnglet] = useState('evaluations')
+  // Onglet demande dans l'adresse (ex. #/classes/3/notes?onglet=resultats)
+  const ongletDemande = new URLSearchParams(window.location.hash.split('?')[1] || '').get('onglet')
+  const [onglet, setOnglet] = useState(['resultats', 'coefficients'].includes(ongletDemande) ? ongletDemande : 'evaluations')
   const [nouvelle, setNouvelle] = useState(false)
 
   if (d.error) return <Note>{d.error}</Note>
