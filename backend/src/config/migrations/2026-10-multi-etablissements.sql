@@ -115,3 +115,31 @@ CREATE TABLE IF NOT EXISTS publications (
   pinned BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Scolarite
+CREATE TABLE IF NOT EXISTS frais_scolaires (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  academic_year_id INTEGER REFERENCES academic_years(id) ON DELETE CASCADE,
+  nom VARCHAR(120) NOT NULL,
+  montant INTEGER NOT NULL CHECK (montant > 0),
+  echeance DATE,
+  classes TEXT[],
+  obligatoire BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS paiements_scolaires (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  frais_id INTEGER NOT NULL REFERENCES frais_scolaires(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  montant INTEGER NOT NULL CHECK (montant > 0),
+  mode VARCHAR(20) NOT NULL CHECK (mode IN ('mobile_money','especes','banque','autre')),
+  statut VARCHAR(20) NOT NULL DEFAULT 'en_attente' CHECK (statut IN ('en_attente','reussi','echoue')),
+  reference VARCHAR(120) UNIQUE,
+  telephone VARCHAR(30),
+  paye_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  enregistre_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  confirme_le TIMESTAMP
+);

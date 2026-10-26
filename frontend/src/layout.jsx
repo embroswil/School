@@ -26,12 +26,14 @@ const NAV = {
   parent: [
     ['/', '🏠', 'Accueil'],
     ['/actualites', '📣', 'Actualités'],
+    ['/scolarite', '💳', 'Scolarité'],
     ['/messages', '✉️', 'Messages'],
     ['/compte', '⚙️', 'Compte'],
   ],
   student: [
     ['/', '🏠', 'Accueil'],
     ['/actualites', '📣', 'Actualités'],
+    ['/scolarite', '💳', 'Scolarité'],
     ['/messages', '✉️', 'Messages'],
     ['/compte', '⚙️', 'Compte'],
   ],

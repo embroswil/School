@@ -70,18 +70,42 @@ const inscription = async (req, res, next) => {
 
     await q("BEGIN");
     const statut = role === "teacher" ? "pending" : "active";
-    const u = await q(
-      `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, school_id, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [email, await bcrypt.hash(b.password, 10), role, prenom, nom, texte(b.phone, 30) || null, schoolId, statut]
-    );
-    const userId = u.rows[0].id;
+    const hash = await bcrypt.hash(b.password, 10);
+    // Eleve deja importe par l'etablissement (meme prenom et nom) : il reprend sa fiche
+    const importe =
+      role === "student"
+        ? (
+            await q(
+              `SELECT id FROM users WHERE school_id = $1 AND role = 'student' AND email LIKE '%@inscrit.school'
+                 AND lower(trim(first_name)) = lower($2) AND lower(trim(last_name)) = lower($3) LIMIT 1`,
+              [schoolId, prenom, nom]
+            )
+          ).rows[0]
+        : null;
+    let userId;
+    if (importe) {
+      await q(`UPDATE users SET email = $2, password_hash = $3, phone = $4, updated_at = NOW() WHERE id = $1`, [
+        importe.id,
+        email,
+        hash,
+        texte(b.phone, 30) || null,
+      ]);
+      userId = importe.id;
+    } else {
+      const u = await q(
+        `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, school_id, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [email, hash, role, prenom, nom, texte(b.phone, 30) || null, schoolId, statut]
+      );
+      userId = u.rows[0].id;
+    }
     const enfantsRelies = [];
 
     if (role === "student") {
       await q(
         `INSERT INTO student_records (student_id, admission_number, date_of_birth, declared_class)
-         VALUES ($1, $2, $3, $4)`,
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (student_id) DO UPDATE SET date_of_birth = COALESCE(EXCLUDED.date_of_birth, student_records.date_of_birth)`,
         [userId, `ELV-${schoolId}-${userId}`, date(b.dateNaissance), texte(b.classe)]
       );
       // Parents deja inscrits qui ont declare cet enfant : on les relie

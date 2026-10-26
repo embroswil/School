@@ -7,6 +7,12 @@ const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate, authorize } = require("../../middlewares/auth.middleware");
 const { assurerAnneeScolaire } = require("../../utils/annees");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+
+// Email technique des eleves importes (sans compte de connexion). Quand l'eleve
+// cree son compte avec les memes prenom et nom, il « reprend » cette fiche.
+const DOMAINE_IMPORT = "inscrit.school";
 
 router.use(authenticate, authorize("admin"));
 
@@ -122,6 +128,113 @@ router.get("/enseignants", async (req, res, next) => {
       [ecole]
     );
     res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Classe de l'annee : retrouvee par son nom, ou creee (ex. « 3e A » : niveau 3e, section A)
+const classeParNom = async (anneeId, nom) => {
+  const n = String(nom || "").trim().replace(/\s+/g, " ").slice(0, 50);
+  if (!n) return null;
+  const ex = await db.query("SELECT id FROM classes WHERE academic_year_id = $1 AND lower(name) = lower($2)", [anneeId, n]);
+  if (ex.rows[0]) return ex.rows[0].id;
+  const m = n.match(/^(.*\S)\s+([A-Za-z0-9]{1,3})$/);
+  const niveau = (m ? m[1] : n).slice(0, 50);
+  const section = m ? m[2].toUpperCase() : null;
+  const { rows } = await db.query(
+    `INSERT INTO classes (name, academic_year_id, level, section, capacity, is_active)
+     VALUES ($1, $2, $3, $4, 80, true)
+     ON CONFLICT (academic_year_id, level, section) DO UPDATE SET name = classes.name
+     RETURNING id`,
+    [n, anneeId, niveau, section]
+  );
+  return rows[0].id;
+};
+
+const GENRE = (v) => {
+  const s = String(v || "").trim().toLowerCase();
+  if (/^(m|g|garçon|garcon|masculin|male)$/.test(s)) return "male";
+  if (/^(f|fille|féminin|feminin|female)$/.test(s)) return "female";
+  return null;
+};
+const DATE = (v) => {
+  const s = String(v || "").trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  return null;
+};
+
+// POST /api/etablissement/import-eleves
+// { eleves: [{ nom, prenom, classe, dateNaissance, sexe, matricule }], classeParDefaut }
+router.post("/import-eleves", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const liste = Array.isArray(req.body?.eleves) ? req.body.eleves.slice(0, 2000) : [];
+    if (!liste.length) throw new ApiError(400, "Aucun élève à importer");
+    const defaut = String(req.body?.classeParDefaut || "").trim();
+    let crees = 0;
+    let existants = 0;
+    let places = 0;
+    const erreurs = [];
+    const motDePasse = await bcrypt.hash(crypto.randomBytes(18).toString("hex"), 8);
+
+    for (const [i, e] of liste.entries()) {
+      try {
+        const nom = String(e.nom || "").trim().slice(0, 100);
+        const prenom = String(e.prenom || "").trim().slice(0, 100) || "-";
+        if (!nom) continue;
+        const classe = String(e.classe || defaut).trim();
+        let eleve = (
+          await db.query(
+            `SELECT id FROM users WHERE school_id = $1 AND role = 'student'
+               AND lower(trim(last_name)) = lower($2) AND lower(trim(first_name)) = lower($3) LIMIT 1`,
+            [ecole, nom, prenom]
+          )
+        ).rows[0];
+        if (eleve) existants++;
+        else {
+          const email = `eleve.${ecole}.${crypto.randomBytes(6).toString("hex")}@${DOMAINE_IMPORT}`;
+          eleve = (
+            await db.query(
+              `INSERT INTO users (email, password_hash, role, first_name, last_name, school_id, status)
+               VALUES ($1, $2, 'student', $3, $4, $5, 'active') RETURNING id`,
+              [email, motDePasse, prenom, nom, ecole]
+            )
+          ).rows[0];
+          crees++;
+        }
+        const matricule = String(e.matricule || "").trim().slice(0, 50);
+        await db.query(
+          `INSERT INTO student_records (student_id, admission_number, date_of_birth, gender, declared_class)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (student_id) DO UPDATE SET
+             date_of_birth = COALESCE(EXCLUDED.date_of_birth, student_records.date_of_birth),
+             gender = COALESCE(EXCLUDED.gender, student_records.gender),
+             declared_class = COALESCE(EXCLUDED.declared_class, student_records.declared_class)`,
+          [eleve.id, matricule ? `${ecole}-${matricule}` : `ELV-${ecole}-${eleve.id}`, DATE(e.dateNaissance), GENRE(e.sexe), classe || null]
+        );
+        if (classe && annee) {
+          const classId = await classeParNom(annee.id, classe);
+          await db.query(
+            "UPDATE class_students SET status = 'transferred' WHERE student_id = $1 AND academic_year_id = $2 AND status = 'active' AND class_id <> $3",
+            [eleve.id, annee.id, classId]
+          );
+          await db.query(
+            `INSERT INTO class_students (class_id, student_id, academic_year_id, status) VALUES ($1, $2, $3, 'active')
+             ON CONFLICT (class_id, student_id, academic_year_id) DO UPDATE SET status = 'active'`,
+            [classId, eleve.id, annee.id]
+          );
+          places++;
+        }
+      } catch (err) {
+        erreurs.push(`Ligne ${i + 1} : ${err.message}`);
+      }
+    }
+    res.json({ success: true, data: { crees, existants, places, erreurs: erreurs.slice(0, 20) } });
   } catch (e) {
     next(e);
   }

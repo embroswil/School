@@ -19,6 +19,8 @@ import Notifications from './pages/Notifications.jsx'
 import Messages from './pages/Messages.jsx'
 import Conversation from './pages/Conversation.jsx'
 import Actualites from './pages/Actualites.jsx'
+import Scolarite from './pages/Scolarite.jsx'
+import ImportEleves from './pages/ImportEleves.jsx'
 
 function Message({ title, children }) {
   return (
@@ -39,6 +41,8 @@ function Pages({ path }) {
   if (path === '/compte') return <Account />
   if (path === '/notifications') return <Notifications />
   if (path === '/actualites') return <Actualites />
+  if (path.split('?')[0] === '/scolarite') return reserve(user.role !== 'teacher', <Scolarite />)
+  if (path === '/import-eleves') return reserve(gestion, <ImportEleves />)
   if (path === '/messages') return <Messages />
   const convMatch = path.match(/^\/messages\/(\d+)$/)
   if (convMatch) return <Conversation key={convMatch[1]} id={Number(convMatch[1])} />

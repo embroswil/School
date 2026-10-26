@@ -151,6 +151,7 @@ function EspaceEtablissement() {
         <Tuile href="#/enseignants" ico="✅" titre="Enseignants" texte="Comptes à valider" compteur={d.enseignants_attente || 0} />
         <Tuile href="#/eleves" ico="🎒" titre="Élèves" texte="À placer dans une classe" compteur={d.eleves_sans_classe || 0} />
         <Tuile href="#/classes" ico="📚" titre="Classes" texte="Créer et gérer les classes" />
+        <Tuile href="#/scolarite" ico="💳" titre="Scolarité" texte="Frais et paiements" />
         <Tuile href="#/actualites" ico="📣" titre="Actualités" texte="Annonces, événements, discipline" />
         <Tuile href="#/messages" ico="✉️" titre="Messages" texte="Parents, élèves, enseignants" />
       </div>
@@ -192,7 +193,7 @@ function EspaceParent() {
       <div className="grid2">
         <Tuile ico="📝" titre="Notes" texte={<Bientot />} />
         <Tuile ico="🗓️" titre="Présences" texte={<Bientot />} />
-        <Tuile ico="💳" titre="Scolarité" texte={<Bientot />} />
+        <Tuile href="#/scolarite" ico="💳" titre="Scolarité" texte="Payé, reste à payer" />
       </div>
     </>
   )

@@ -39,6 +39,9 @@ export default function Students() {
           </>
         )}
       </p>
+      <a className="btn btn-block" href="#/import-eleves" style={{ marginBottom: 12 }}>
+        📄 Importer une liste (PDF, Excel)
+      </a>
       <form
         className="searchbar"
         onSubmit={(e) => {
