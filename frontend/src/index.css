@@ -344,3 +344,16 @@ a.choice { color: var(--text); }
 .bandeau-ecole .cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 11px 16px; border-radius: 12px; background: var(--accent); color: var(--text); font: 700 15px/1 var(--font-body); }
 .bandeau-ecole ul { list-style: none; display: grid; gap: 4px; font-size: 14px; opacity: 0.92; }
 .bandeau-ecole li { display: flex; gap: 8px; align-items: center; }
+
+/* Bloc « Vous dirigez un etablissement ? » : tons chauds, bien distinct du haut de page bleu */
+.bandeau-ecole.grand {
+  color: var(--text);
+  background: linear-gradient(160deg, #fff8e8 0%, #ffefc9 100%);
+  border: 1px solid #f6dc9c;
+  box-shadow: 0 12px 28px rgba(194, 120, 0, 0.12);
+}
+.bandeau-ecole.grand .pastille-ico.clair { background: var(--accent); color: var(--text); }
+.bandeau-ecole.grand span span { opacity: 1; color: #6b5a33; }
+.bandeau-ecole.grand ul { opacity: 1; color: #4a3d1f; }
+.bandeau-ecole.grand li svg { color: #c27800; }
+.bandeau-ecole.grand .cta { background: var(--text); color: #fff; }
