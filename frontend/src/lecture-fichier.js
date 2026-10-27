@@ -166,3 +166,35 @@ export async function lireListeEleves(fichier) {
   if (/^image\//.test(fichier.type) || /\.(jpe?g|png|webp|heic)$/.test(nom)) return lirePhotos([fichier])
   throw new Error('Format non pris en charge : PDF, Excel, CSV ou photo.')
 }
+
+// Prepare un document quelconque pour la lecture par l'IA :
+// photos -> images ; PDF -> texte (ou images des pages si c'est un scan) ; Excel/CSV -> texte.
+export async function preparerDocument(fichiers) {
+  const liste = [...fichiers]
+  const images = []
+  let texte = ''
+  for (const f of liste.slice(0, 8)) {
+    const nom = f.name.toLowerCase()
+    if (nom.endsWith('.pdf')) {
+      const pdfjs = await import('pdfjs-dist')
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
+      const doc = await pdfjs.getDocument({ data: await f.arrayBuffer() }).promise
+      let t = ''
+      for (let p = 1; p <= Math.min(doc.numPages, 15); p++) {
+        const c = await (await doc.getPage(p)).getTextContent()
+        t += c.items.map((i) => i.str).join(' ') + '\n'
+      }
+      if (t.replace(/\s/g, '').length > 80) texte += `\n${t}`
+      else images.push(...(await pagesPdfEnImages(doc)))
+    } else if (/\.(xlsx|xls|csv|ods)$/.test(nom)) {
+      const XLSX = await import('xlsx')
+      const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' })
+      for (const n of wb.SheetNames) texte += `\n[${n}]\n${XLSX.utils.sheet_to_csv(wb.Sheets[n])}`
+    } else if (/^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/.test(nom)) {
+      images.push(await imageVersJpeg(f))
+    } else {
+      throw new Error('Format non pris en charge : photo, PDF, Excel ou CSV.')
+    }
+  }
+  return { images: images.slice(0, 8), texte }
+}

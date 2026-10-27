@@ -352,6 +352,7 @@ function EspaceEnseignant() {
         </a>
       </div>
       <Action href="#/emploi" Icone={IcClasses} titre="Mon emploi du temps" texte="Mes cours de la semaine" />
+      <Action href="#/discipline" Icone={IcPhoto} titre="Discipline par document" texte="Photographier un rapport, une liste de sanctions…" />
       <div style={{ height: 10 }} />
       {classes.loading && !classes.data && <p className="muted">Chargement…</p>}
       {classes.data?.length === 0 && (

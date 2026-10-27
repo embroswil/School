@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { useAuth } from './auth.jsx'
-import { IcAccueil, IcActus, IcCarte, IcCloche, IcEcole, IcEleves, IcImport, IcMessages, IcPlus, IcProfil, IcRetour } from './icones.jsx'
+import { IcAccueil, IcActus, IcCarte, IcCloche, IcEcole, IcEleves, IcImport, IcMessages, IcPhoto, IcPlus, IcProfil, IcRetour } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
 const NAV = {
@@ -58,6 +58,7 @@ const TITRES = {
   '/bulletins': 'Bulletins',
   '/devoirs': 'Devoirs',
   '/emploi': 'Emploi du temps',
+  '/discipline': 'Discipline',
   '/annuel': 'Fin d’année',
   '/notes': 'Notes',
   '/mes-classes': 'Mes classes',
@@ -68,6 +69,7 @@ const ACTIONS = [
   ['/actualites', IcActus, 'Publier une actualité', 'Annonce, événement, discipline…'],
   ['/scolarite', IcCarte, 'Enregistrer un paiement', 'Paiement reçu au guichet'],
   ['/enseignants', IcEleves, 'Valider un enseignant', 'Comptes en attente'],
+  ['/discipline', IcPhoto, 'Discipline par document', 'Photo ou fichier d’un PV, d’une liste…'],
 ]
 
 export default function Shell({ path, children }) {

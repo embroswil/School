@@ -17,6 +17,7 @@ const allowedOrigins = env.frontendUrl
 app.use(cors(allowedOrigins ? { origin: allowedOrigins } : {}));
 // Lecture de photos de listes : images plus lourdes acceptees sur cette seule route
 app.use("/api/etablissement/lire-images", express.json({ limit: "15mb" }));
+app.use("/api/vie-scolaire/sanctions/lire", express.json({ limit: "15mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 // --- santé ------------------------------------------------------------------

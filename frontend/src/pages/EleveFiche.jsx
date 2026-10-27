@@ -127,7 +127,9 @@ export default function EleveFiche({ id }) {
       ) : (
         <p className="muted">{scol.loading ? 'Chargement…' : 'Aucun frais défini.'}</p>
       )}
-      <p className="groupe-titre">Discipline</p>
+      <p className="groupe-titre">
+        Discipline · <a href="#/discipline" style={{ textTransform: 'none', letterSpacing: 0 }}>importer un document</a>
+      </p>
       <Discipline eleveId={id} gestion />
     </>
   )

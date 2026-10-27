@@ -31,6 +31,7 @@ import Bulletins from './pages/Bulletins.jsx'
 import Devoirs from './pages/Devoirs.jsx'
 import EmploiDuTemps, { MonEmploi } from './pages/EmploiDuTemps.jsx'
 import ConseilAnnuel from './pages/ConseilAnnuel.jsx'
+import DisciplineImport from './pages/DisciplineImport.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -95,6 +96,7 @@ function Pages({ path }) {
   const eleveMatch = path.match(/^\/eleves\/(\d+)$/)
   if (eleveMatch) return reserve(gestion, <EleveFiche key={eleveMatch[1]} id={Number(eleveMatch[1])} />)
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
+  if (path === '/discipline') return reserve(gestion || user.role === 'teacher', <DisciplineImport />)
   const emploiMatch = path.match(/^\/classes\/(\d+)\/emploi$/)
   if (emploiMatch) return reserve(gestion || user.role === 'teacher', <EmploiDuTemps key={emploiMatch[1]} id={Number(emploiMatch[1])} />)
   const annuelMatch = path.match(/^\/classes\/(\d+)\/annuel$/)

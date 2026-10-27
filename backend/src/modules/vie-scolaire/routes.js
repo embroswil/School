@@ -6,6 +6,7 @@ const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate } = require("../../middlewares/auth.middleware");
 const { notifierUtilisateur } = require("../../utils/notifier");
+const { lireDocument, normaliser } = require("../../utils/ia");
 
 router.use(authenticate);
 const entier = (v) => parseInt(v, 10);
@@ -193,6 +194,72 @@ router.delete("/sanctions/:id", async (req, res, next) => {
     ]);
     if (!r.rowCount) throw new ApiError(404, "Sanction introuvable");
     res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------------------------------------------------------------- discipline par document
+
+// Retrouve l'eleve d'apres son nom (et sa classe si elle est indiquee)
+const retrouverEleve = (eleves, nomComplet, classe) => {
+  const mots = normaliser(nomComplet).split(" ").filter((m) => m.length > 1);
+  if (!mots.length) return { eleve: null, autres: [] };
+  const cl = normaliser(classe);
+  const scores = eleves
+    .map((e) => {
+      const nom = normaliser(`${e.last_name} ${e.first_name}`);
+      const communs = mots.filter((m) => nom.split(" ").includes(m)).length;
+      let score = communs / Math.max(mots.length, nom.split(" ").length);
+      if (cl && normaliser(e.classe) === cl) score += 0.3;
+      return { e, score, communs };
+    })
+    .filter((x) => x.communs >= Math.min(2, mots.length))
+    .sort((a, b) => b.score - a.score);
+  if (!scores.length) return { eleve: null, autres: [] };
+  const sur = scores.length === 1 || scores[0].score - scores[1].score >= 0.15;
+  const fiche = (x) => ({ id: x.e.id, nom: `${x.e.last_name} ${x.e.first_name}`, classe: x.e.classe });
+  return { eleve: sur ? fiche(scores[0]) : null, autres: scores.slice(0, 5).map(fiche) };
+};
+
+// POST /api/vie-scolaire/sanctions/lire { images: [dataUrl], texte }
+// Lit un document disciplinaire (photo, scan, PDF, Excel) et propose les sanctions, eleve par eleve.
+router.post("/sanctions/lire", async (req, res, next) => {
+  try {
+    const u = req.user;
+    if (!["principal", "admin", "teacher"].includes(u.role)) throw new ApiError(403, "Accès réservé");
+    const donnees = await lireDocument({
+      images: Array.isArray(req.body?.images) ? req.body.images : [],
+      texte: req.body?.texte || "",
+      consigne: `Ce document provient d'un établissement scolaire camerounais : procès-verbal de conseil de discipline, liste de sanctions, rapport du surveillant, billet d'avertissement, etc. (imprimé ou écrit à la main).
+Extrais chaque sanction ou observation concernant un élève. Pour chacune : nom (nom complet de l'élève tel qu'écrit), classe (si indiquée, ex. "3e All"), type (un parmi : observation, avertissement, blame, retenue, convocation_parents, exclusion_temporaire, exclusion_definitive — choisis le plus proche), motif (court, en français), date (AAAA-MM-JJ si présente, sinon vide), dureeJours (nombre de jours pour une exclusion ou une retenue, sinon null).
+Format : {"entrees": [{"nom":"","classe":"","type":"","motif":"","date":"","dureeJours":null}]}`,
+    });
+    const ecole = u.role === "admin" ? null : u.schoolId;
+    const eleves = (
+      await db.query(
+        `SELECT u.id, u.first_name, u.last_name,
+                (SELECT c.name FROM class_students cs JOIN classes c ON c.id = cs.class_id
+                 WHERE cs.student_id = u.id AND cs.status = 'active' ORDER BY cs.enrolled_at DESC LIMIT 1) AS classe
+         FROM users u WHERE u.role = 'student' AND ($1::int IS NULL OR u.school_id = $1)`,
+        [ecole]
+      )
+    ).rows;
+    const TYPESOK = Object.keys(TYPES);
+    const entrees = (Array.isArray(donnees.entrees) ? donnees.entrees : []).slice(0, 200).map((x) => {
+      const trouve = retrouverEleve(eleves, x.nom, x.classe);
+      return {
+        nomLu: String(x.nom || "").trim(),
+        classeLue: String(x.classe || "").trim(),
+        type: TYPESOK.includes(x.type) ? x.type : "observation",
+        motif: String(x.motif || "").trim().slice(0, 1000),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : new Date().toISOString().slice(0, 10),
+        dureeJours: parseInt(x.dureeJours, 10) || null,
+        eleve: trouve.eleve,
+        suggestions: trouve.autres,
+      };
+    });
+    res.json({ success: true, data: entrees });
   } catch (e) {
     next(e);
   }
