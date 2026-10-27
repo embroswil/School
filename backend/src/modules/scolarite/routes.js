@@ -7,7 +7,7 @@ const router = express.Router();
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate } = require("../../middlewares/auth.middleware");
-const { notifierEtablissement, notifierUtilisateur } = require("../../utils/notifier");
+const { notifierEtablissement, notifierUtilisateur, emailNotification } = require("../../utils/notifier");
 const { assurerAnneeScolaire } = require("../../utils/annees");
 
 router.use(authenticate);
@@ -244,8 +244,18 @@ const apresPaiement = async (p) => {
     .query(
       `INSERT INTO notifications (user_id, title, message, type, data)
        SELECT l.parent_id, 'Paiement de scolarité', $2, 'payment', '{"lien":"/scolarite"}'
-       FROM parent_student_links l WHERE l.student_id = $1 AND l.parent_id IS DISTINCT FROM $3`,
+       FROM parent_student_links l WHERE l.student_id = $1 AND l.parent_id IS DISTINCT FROM $3
+       RETURNING user_id`,
       [p.student_id, `${fcfa(p.montant)} · ${i.nom} · ${i.first_name} ${i.last_name}`, p.paye_par]
+    )
+    .then((r) =>
+      r.rows.forEach((x) =>
+        emailNotification(x.user_id, {
+          title: "Paiement de scolarité",
+          message: `${fcfa(p.montant)} · ${i.nom} · ${i.first_name} ${i.last_name}`,
+          data: { lien: "/scolarite" },
+        })
+      )
     )
     .catch(() => {});
 };

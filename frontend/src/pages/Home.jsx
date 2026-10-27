@@ -379,6 +379,11 @@ function EspaceEnseignant() {
             <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/notes`}>
               Notes
             </a>
+            {c.matieres.length > 0 && (
+              <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/devoirs`}>
+                Devoirs
+              </a>
+            )}
             {c.prof_principal && (
               <>
                 <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/notes?onglet=resultats`}>

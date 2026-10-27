@@ -145,6 +145,27 @@ export default function Account() {
         <Reglage Icone={IcCrayon} titre="Informations personnelles" valeur={moi.phone || ''} onClick={() => bascule('infos')} />
         <Reglage Icone={IcCle} titre="Mot de passe" valeur="••••••••" onClick={() => bascule('mdp')} />
         <Reglage Icone={IcCloche} titre="Notifications" href="#/notifications" />
+        {moi.role !== 'admin' && (
+          <button
+            type="button"
+            className="reglage"
+            onClick={async () => {
+              const v = !(moi.notifEmail !== false)
+              await api.put('/api/auth/me', { notifEmail: v })
+              setMoi((m) => ({ ...m, notifEmail: v }))
+              const s2 = session.get()
+              if (s2?.user) session.set({ ...s2, user: { ...s2.user, notifEmail: v } })
+            }}
+          >
+            <span className="ico">
+              <IcCloche size={20} />
+            </span>
+            <span>Notifications par email</span>
+            <span className="val">
+              <span className={`tag ${moi.notifEmail !== false ? 'tag-now' : 'tag-off'}`}>{moi.notifEmail !== false ? 'Activées' : 'Désactivées'}</span>
+            </span>
+          </button>
+        )}
       </div>
       {ouvert === 'infos' && (
         <div style={{ marginTop: 12 }}>

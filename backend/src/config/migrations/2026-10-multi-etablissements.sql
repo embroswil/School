@@ -202,3 +202,27 @@ CREATE TABLE IF NOT EXISTS codes_email (
   utilise BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Devoirs, appreciations du professeur principal, emails de notification
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notif_email BOOLEAN NOT NULL DEFAULT true;
+CREATE TABLE IF NOT EXISTS devoirs (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+  teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  titre VARCHAR(200) NOT NULL,
+  consigne TEXT,
+  pour_le DATE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS appreciations_bulletin (
+  id SERIAL PRIMARY KEY,
+  class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  trimestre SMALLINT NOT NULL CHECK (trimestre BETWEEN 1 AND 3),
+  appreciation VARCHAR(400),
+  auteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (class_id, student_id, trimestre)
+);

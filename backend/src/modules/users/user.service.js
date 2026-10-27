@@ -41,6 +41,7 @@ const toPublicUser = (u) => ({
   schoolId: u.school_id || null,
   schoolName: u.school_name || null,
   emailVerifie: u.email_verifie !== false,
+  notifEmail: u.notif_email !== false,
   status: u.status || "active",
 });
 

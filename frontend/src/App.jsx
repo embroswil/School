@@ -28,6 +28,7 @@ import Appel from './pages/Appel.jsx'
 import Suivi, { MesNotes } from './pages/Suivi.jsx'
 import MesAffectations from './pages/MesAffectations.jsx'
 import Bulletins from './pages/Bulletins.jsx'
+import Devoirs from './pages/Devoirs.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -91,6 +92,8 @@ function Pages({ path }) {
 
   const eleveMatch = path.match(/^\/eleves\/(\d+)$/)
   if (eleveMatch) return reserve(gestion, <EleveFiche key={eleveMatch[1]} id={Number(eleveMatch[1])} />)
+  const devoirsMatch = path.match(/^\/classes\/(\d+)\/devoirs$/)
+  if (devoirsMatch) return reserve(gestion || user.role === 'teacher', <Devoirs key={devoirsMatch[1]} id={Number(devoirsMatch[1])} />)
   const bulletinsMatch = path.match(/^\/classes\/(\d+)\/bulletins$/)
   if (bulletinsMatch) return reserve(gestion || user.role === 'teacher', <Bulletins key={bulletinsMatch[1]} id={Number(bulletinsMatch[1])} />)
   const notesMatch = path.match(/^\/classes\/(\d+)\/notes$/)

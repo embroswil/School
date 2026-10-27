@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { ListeDevoirs } from './Devoirs.jsx'
 
 const n20 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : '')
@@ -50,6 +51,12 @@ function Notes({ id }) {
       </section>
     )
   })
+}
+
+function DevoirsEleve({ id }) {
+  const d = useApi(`/api/suivi/eleves/${id}/devoirs`)
+  if (!d.data) return <p className="muted">Chargement…</p>
+  return <ListeDevoirs devoirs={d.data} />
 }
 
 function Presences({ id }) {
@@ -118,11 +125,16 @@ export default function Suivi({ id }) {
         <button type="button" className="chip" aria-pressed={onglet === 'presences'} onClick={() => setOnglet('presences')}>
           Absences
         </button>
+        <button type="button" className="chip" aria-pressed={onglet === 'devoirs'} onClick={() => setOnglet('devoirs')}>
+          Devoirs
+        </button>
         <a className="chip" href="#/scolarite">
           Scolarité ›
         </a>
       </div>
-      {onglet === 'notes' ? <Notes id={id} /> : <Presences id={id} />}
+      {onglet === 'notes' && <Notes id={id} />}
+      {onglet === 'presences' && <Presences id={id} />}
+      {onglet === 'devoirs' && <DevoirsEleve id={id} />}
     </>
   )
 }

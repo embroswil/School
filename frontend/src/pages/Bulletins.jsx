@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 
@@ -6,7 +7,9 @@ const n2 = (n) => (n === null || n === undefined ? '' : Number(n).toFixed(2).rep
 const rangTxt = (r) => (r ? (r === 1 ? '1er' : `${r}e`) : '')
 const naissance = (d) => (d ? new Date(d).toLocaleDateString('fr-FR') : '')
 
-function Bulletin({ d, b }) {
+function Bulletin({ d, b, classId }) {
+  const [appr, setAppr] = useState(b.appreciationPP || '')
+  const [etat, setEtat] = useState('')
   return (
     <article className="bulletin">
       <header className="bulletin-tete">
@@ -109,7 +112,7 @@ function Bulletin({ d, b }) {
       <div className="bulletin-signatures">
         <div>
           <span>Appréciation du conseil de classe</span>
-          <b>{b.appreciation || '—'}</b>
+          <b>{appr || b.appreciation || '—'}</b>
         </div>
         <div>
           <span>Le professeur principal</span>
@@ -120,6 +123,31 @@ function Bulletin({ d, b }) {
           <b>&nbsp;</b>
         </div>
       </div>
+      {d.peutApprecier && (
+        <div className="sans-impression" style={{ marginTop: 10 }}>
+          <textarea
+            className="input"
+            placeholder={`Appréciation du professeur principal (sinon : « ${b.appreciation || '—'} »)`}
+            value={appr}
+            onChange={(e) => {
+              setAppr(e.target.value)
+              setEtat('')
+            }}
+            onBlur={async () => {
+              if (appr === (b.appreciationPP || '')) return
+              try {
+                await api.put(`/api/notes/classes/${classId}/appreciations`, { studentId: b.id, trimestre: d.trimestre, appreciation: appr })
+                b.appreciationPP = appr
+                setEtat('✓ Enregistrée')
+              } catch (err) {
+                setEtat(err.message)
+              }
+            }}
+            style={{ minHeight: 60, fontSize: 14 }}
+          />
+          {etat && <span className="muted" style={{ fontSize: 12 }}>{etat}</span>}
+        </div>
+      )}
       <div className="bulletin-petit" style={{ marginTop: 6 }}>
         Plus haute moyenne : {n2(d.stats.plusHaute)} · plus basse : {n2(d.stats.plusBasse)} · taux de réussite : {d.stats.reussite ?? '—'} %
       </div>
@@ -169,7 +197,7 @@ export default function Bulletins({ id }) {
         )}
         {!data && <p className="muted">Calcul des bulletins…</p>}
       </div>
-      {data && data.matieres.length > 0 && liste.map((b) => <Bulletin key={b.id} d={data} b={b} />)}
+      {data && data.matieres.length > 0 && liste.map((b) => <Bulletin key={`${b.id}-${tri}`} d={data} b={b} classId={id} />)}
     </>
   )
 }

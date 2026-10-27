@@ -176,4 +176,24 @@ router.get("/eleves/:id/presences", async (req, res, next) => {
   }
 });
 
+// GET /api/suivi/eleves/:id/devoirs : devoirs a faire de la classe
+router.get("/eleves/:id/devoirs", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    await verifierAcces(req.user, id);
+    const classe = await classeActuelle(id);
+    if (!classe) return res.json({ success: true, data: [] });
+    const { rows } = await db.query(
+      `SELECT d.id, d.titre, d.consigne, d.pour_le, s.name AS matiere, u.first_name, u.last_name
+       FROM devoirs d JOIN subjects s ON s.id = d.subject_id LEFT JOIN users u ON u.id = d.teacher_id
+       WHERE d.class_id = $1 AND (d.pour_le IS NULL OR d.pour_le >= CURRENT_DATE - 3)
+       ORDER BY d.pour_le NULLS LAST, d.created_at DESC LIMIT 60`,
+      [classe.id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
 module.exports = router;

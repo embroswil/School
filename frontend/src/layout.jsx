@@ -56,6 +56,7 @@ const TITRES = {
   '/evaluations': 'Saisie des notes',
   '/suivi': 'Suivi scolaire',
   '/bulletins': 'Bulletins',
+  '/devoirs': 'Devoirs',
   '/notes': 'Notes',
   '/mes-classes': 'Mes classes',
 }

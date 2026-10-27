@@ -499,9 +499,15 @@ router.get("/classes/:id/bulletins", async (req, res, next) => {
       plusBasse: moyennes.length ? Math.min(...moyennes) : null,
       reussite: moyennes.length ? Math.round((moyennes.filter((x) => x >= 10).length / moyennes.length) * 100) : null,
     };
+    const appr = new Map(
+      (
+        await db.query("SELECT student_id, appreciation FROM appreciations_bulletin WHERE class_id = $1 AND trimestre = $2", [c.id, tri])
+      ).rows.map((r) => [r.student_id, r.appreciation])
+    );
     for (const b of bulletins) {
       b.rang = rg.get(b.id) || null;
       b.appreciation = APPRECIATION(b.moyenne);
+      b.appreciationPP = appr.get(b.id) || "";
       for (const l of b.lignes) {
         l.rang = rangsMatiere.get(l.matiereId).get(b.id) || null;
         l.appreciation = APPRECIATION(l.moyenne);
@@ -516,11 +522,97 @@ router.get("/classes/:id/bulletins", async (req, res, next) => {
         sequences: seqs,
         classe: c.name,
         professeurPrincipal: pp ? `${pp.first_name} ${pp.last_name}` : null,
+        peutApprecier: c.estProfPrincipal,
         matieres: matieres.map((m) => ({ id: m.id, nom: m.name, coef: Number(m.coef), enseignant: m.last_name ? `${m.first_name} ${m.last_name}` : null })),
         stats,
         bulletins,
       },
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// PUT /api/notes/classes/:id/appreciations { studentId, trimestre, appreciation } (professeur principal)
+router.put("/classes/:id/appreciations", async (req, res, next) => {
+  try {
+    const c = await verifierClasse(req.user, entier(req.params.id), null, "bulletin");
+    const studentId = entier(req.body?.studentId);
+    const tri = entier(req.body?.trimestre);
+    if (!(tri >= 1 && tri <= 3)) throw new ApiError(400, "Trimestre invalide");
+    const ok = await db.query("SELECT 1 FROM class_students WHERE class_id = $1 AND student_id = $2", [c.id, studentId]);
+    if (!ok.rows[0]) throw new ApiError(404, "Élève introuvable dans cette classe");
+    const texte = String(req.body?.appreciation || "").trim().slice(0, 400) || null;
+    await db.query(
+      `INSERT INTO appreciations_bulletin (class_id, student_id, trimestre, appreciation, auteur_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (class_id, student_id, trimestre) DO UPDATE SET appreciation = EXCLUDED.appreciation, auteur_id = EXCLUDED.auteur_id, updated_at = NOW()`,
+      [c.id, studentId, tri, texte, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------------------------------------------------------------- devoirs (cahier de textes)
+
+// GET /api/notes/classes/:id/devoirs : devoirs a venir (et des 7 derniers jours)
+router.get("/classes/:id/devoirs", async (req, res, next) => {
+  try {
+    const c = await verifierClasse(req.user, entier(req.params.id));
+    const { rows } = await db.query(
+      `SELECT d.id, d.titre, d.consigne, d.pour_le, d.created_at, d.subject_id, s.name AS matiere, d.teacher_id,
+              u.first_name, u.last_name
+       FROM devoirs d JOIN subjects s ON s.id = d.subject_id LEFT JOIN users u ON u.id = d.teacher_id
+       WHERE d.class_id = $1 AND (d.pour_le IS NULL OR d.pour_le >= CURRENT_DATE - 7)
+       ORDER BY d.pour_le NULLS LAST, d.created_at DESC`,
+      [c.id]
+    );
+    res.json({ success: true, data: rows.map((d) => ({ ...d, mien: d.teacher_id === req.user.id })) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /api/notes/classes/:id/devoirs { subjectId, titre, consigne, pourLe } (enseignant de la matiere)
+router.post("/classes/:id/devoirs", async (req, res, next) => {
+  try {
+    const subjectId = entier(req.body?.subjectId);
+    const c = await verifierClasse(req.user, entier(req.params.id), subjectId, "saisie");
+    const titre = String(req.body?.titre || "").trim().slice(0, 200);
+    if (!titre) throw new ApiError(400, "Indiquez le devoir (ex. Exercices 3 et 4 page 52)");
+    const pourLe = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.pourLe || "") ? req.body.pourLe : null;
+    const { rows } = await db.query(
+      `INSERT INTO devoirs (school_id, class_id, subject_id, teacher_id, titre, consigne, pour_le)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [c.school_id, c.id, subjectId, req.user.id, titre, String(req.body?.consigne || "").trim().slice(0, 2000) || null, pourLe]
+    );
+    // Notification aux eleves (avec compte) et aux parents de la classe
+    const mat = (await db.query("SELECT name FROM subjects WHERE id = $1", [subjectId])).rows[0]?.name || "";
+    await db
+      .query(
+        `INSERT INTO notifications (user_id, title, message, type, data)
+         SELECT DISTINCT dest, $2, $3, 'reminder', '{"lien":"/notes"}'::jsonb FROM (
+           SELECT cs.student_id AS dest FROM class_students cs JOIN users u ON u.id = cs.student_id
+           WHERE cs.class_id = $1 AND cs.status = 'active' AND u.email NOT LIKE '%@inscrit.school'
+           UNION
+           SELECT l.parent_id FROM parent_student_links l JOIN class_students cs ON cs.student_id = l.student_id
+           WHERE cs.class_id = $1 AND cs.status = 'active') x`,
+        [c.id, `Devoir de ${mat}`, `${titre}${pourLe ? ` · pour le ${new Date(pourLe + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}` : ""}`]
+      )
+      .catch(() => {});
+    res.status(201).json({ success: true, data: { id: rows[0].id } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/devoirs/:id", async (req, res, next) => {
+  try {
+    const r = await db.query("DELETE FROM devoirs WHERE id = $1 AND teacher_id = $2", [entier(req.params.id), req.user.id]);
+    if (!r.rowCount) throw new ApiError(404, "Devoir introuvable");
+    res.json({ success: true });
   } catch (e) {
     next(e);
   }

@@ -83,6 +83,7 @@ export default function ClassDetail({ id }) {
       <Ligne Icone={IcActus} titre="Bulletins" texte="Bulletins trimestriels à imprimer ou en PDF" href={`#/classes/${id}/bulletins`} />
       <Ligne Icone={IcActus} titre="Évaluations" texte="Devoirs et notes publiés par les enseignants" href={`#/classes/${id}/notes`} />
       <Ligne Icone={IcClasses} titre="Présences" texte="Appel fait en classe par les enseignants" href={`#/classes/${id}/appel`} />
+      <Ligne Icone={IcActus} titre="Cahier de textes" texte="Devoirs donnés par les enseignants" href={`#/classes/${id}/devoirs`} />
 
       <h2 className="section-title">Équipe et élèves</h2>
       <Ligne
