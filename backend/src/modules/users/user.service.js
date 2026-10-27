@@ -209,6 +209,13 @@ const createUser = async (data) => {
 };
 
 // Verifie qu'un administrateur d'etablissement ne touche qu'a SON etablissement
+// Un eleve importe n'a pas de compte : pas d'action de compte possible
+const verifierCompte = (user) => {
+  if (user.email && user.email.endsWith("@inscrit.school")) {
+    throw new ApiError(400, "Cet élève n'a pas de compte : il a été ajouté par l'établissement");
+  }
+};
+
 const verifierMemeEcole = (user) => {
   const ecole = ecoleCourante();
   if (ecole && user.school_id !== ecole) throw new ApiError(404, "User not found");
@@ -247,6 +254,7 @@ const updateUser = async (id, data, actorId) => {
   const cible = await userSql.findById(id);
   if (!cible) throw new ApiError(404, "User not found");
   verifierMemeEcole(cible);
+  verifierCompte(cible);
 
   if (data.firstName !== undefined) fields.first_name = String(data.firstName).trim();
   if (data.lastName !== undefined) fields.last_name = String(data.lastName).trim();
@@ -287,6 +295,7 @@ const setUserActive = async (id, isActive, actorId) => {
   const cible = await userSql.findById(id);
   if (!cible) throw new ApiError(404, "User not found");
   verifierMemeEcole(cible);
+  verifierCompte(cible);
 
   const updated = await userSql.update(id, { is_active: isActive });
   if (!updated) throw new ApiError(404, "User not found");

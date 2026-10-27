@@ -62,7 +62,7 @@ router.get("/eleves", async (req, res, next) => {
     const annee = await anneeCourante(ecole);
     const q = String(req.query.q || "").trim();
     const { rows } = await db.query(
-      `SELECT u.id, u.first_name, u.last_name, u.email, sr.declared_class, sr.date_of_birth,
+      `SELECT u.id, u.first_name, u.last_name, (u.email NOT LIKE '%@inscrit.school') AS a_un_compte, sr.declared_class, sr.date_of_birth,
               c.id AS class_id, c.name AS class_name,
               (SELECT COUNT(*)::int FROM parent_student_links p WHERE p.student_id = u.id) AS parents
        FROM users u

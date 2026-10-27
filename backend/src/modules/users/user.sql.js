@@ -43,7 +43,9 @@ const create = async ({ email, passwordHash, role, firstName, lastName, phone, a
 };
 
 const list = async ({ role, isActive, search, status, limit, offset }) => {
-  const where = [];
+  // Seuls les vrais comptes : les eleves importes par l'etablissement (sans
+  // compte de connexion) sont geres dans « Eleves », pas dans les comptes.
+  const where = ["email NOT LIKE '%@inscrit.school'"];
   const params = [];
 
   // Administrateur d'etablissement, enseignant… : uniquement son etablissement

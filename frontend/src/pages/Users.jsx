@@ -139,7 +139,11 @@ export default function Users() {
 
   return (
     <>
-      <h1 className="page-title">Utilisateurs</h1>
+      <h1 className="page-title">Comptes</h1>
+      <p className="lede">
+        Les personnes qui ont créé leur compte (parents, élèves, enseignants, administrateurs). Les élèves ajoutés par un établissement sans
+        compte n’apparaissent pas ici : ils sont dans la liste des élèves de leur établissement.
+      </p>
 
       {adding ? (
         <UserForm onCreated={created} onCancel={() => setAdding(false)} />

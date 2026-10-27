@@ -74,6 +74,9 @@ export default function Students() {
                   {e.class_name || `Déclaré : ${e.declared_class || '—'}`}
                   {e.parents > 0 ? ` · ${e.parents} parent(s)` : ''}
                 </div>
+                <span className={`tag ${e.a_un_compte ? 'tag-now' : 'tag-off'}`} style={{ marginTop: 4, fontSize: 11 }}>
+                  {e.a_un_compte ? 'Compte créé' : 'Sans compte'}
+                </span>
               </a>
               {!e.class_id && (
                 <select
