@@ -270,3 +270,48 @@ a.choice { color: var(--text); }
 }
 .progres { height: 6px; border-radius: 999px; background: var(--line); margin-top: 6px; overflow: hidden; }
 .progres span { display: block; height: 100%; background: var(--primary); transition: width 0.3s; }
+
+/* ---------- page d'accueil publique ---------- */
+.accueil .public-main { max-width: 560px; }
+.hero-secondaire { background: rgba(255, 255, 255, 0.14); color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.35); }
+.hero-secondaire:hover { background: rgba(255, 255, 255, 0.22); }
+.hero-points { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 18px; font-size: 14px; opacity: 0.92; }
+.hero-points span { display: inline-flex; align-items: center; gap: 6px; }
+.surtitre { margin: 34px 2px 4px; font: 700 12px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); }
+.titre-section { font: 800 24px/1.2 var(--font-display); letter-spacing: -0.02em; margin: 6px 2px 14px; }
+.publics { display: grid; gap: 10px; }
+.public-carte {
+  display: flex; gap: 14px; align-items: flex-start; padding: 16px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.public-carte h3 { font: 700 17px/1.3 var(--font-display); }
+.public-carte p { color: var(--muted); font-size: 15px; margin-top: 2px; }
+.pastille-ico {
+  flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--primary-soft); color: var(--primary);
+}
+.pastille-ico.clair { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.atouts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.atout {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px; color: var(--primary);
+}
+.atout b { color: var(--text); font: 700 15px/1.25 var(--font-display); }
+.atout span { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.etapes { list-style: none; display: grid; gap: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 16px; }
+.etapes li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-top: 1px solid var(--line); }
+.etapes li:first-child { border-top: 0; }
+.etapes .numero {
+  flex: none; width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center;
+  font: 800 15px/1 var(--font-display); color: #fff; background: var(--primary);
+}
+.etapes b { display: block; font: 700 16px/1.3 var(--font-display); }
+.etapes span { color: var(--muted); font-size: 14px; }
+.bandeau-ecole {
+  display: flex; align-items: center; gap: 14px; margin-top: 30px; padding: 18px; border-radius: 22px; color: #fff;
+  background: linear-gradient(135deg, #142c99, var(--primary)); box-shadow: 0 14px 30px rgba(36, 70, 216, 0.25);
+}
+.bandeau-ecole b { display: block; font: 700 17px/1.3 var(--font-display); }
+.bandeau-ecole span span { opacity: 0.85; font-size: 14px; }
+.pied { text-align: center; padding: 28px 20px calc(28px + env(safe-area-inset-bottom)); color: var(--muted); font-size: 13px; }
+.pied p { margin-top: 6px; }
