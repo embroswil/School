@@ -276,7 +276,14 @@ export default function ClassNotes({ id }) {
           )}
         </>
       )}
-      {onglet === 'resultats' && <Resultats classId={id} matieres={matieres} />}
+      {onglet === 'resultats' && (
+        <>
+          <a className="btn btn-block" href={`#/classes/${id}/bulletins`} style={{ marginBottom: 14 }}>
+            📄 Bulletins du trimestre
+          </a>
+          <Resultats classId={id} matieres={matieres} />
+        </>
+      )}
       {onglet === 'coefficients' && <Coefficients classId={id} matieres={matieres} modifiable={droits.bulletin} onDone={() => d.reload()} />}
     </>
   )

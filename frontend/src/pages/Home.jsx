@@ -380,9 +380,14 @@ function EspaceEnseignant() {
               Notes
             </a>
             {c.prof_principal && (
-              <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/notes?onglet=resultats`}>
-                Résultats
-              </a>
+              <>
+                <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/notes?onglet=resultats`}>
+                  Résultats
+                </a>
+                <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/bulletins`}>
+                  Bulletins
+                </a>
+              </>
             )}
           </div>
         </div>

@@ -391,6 +391,141 @@ router.put("/appel/:classId", async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------- bulletins
+
+const APPRECIATION = (m) =>
+  m === null ? "" : m >= 18 ? "Excellent" : m >= 16 ? "Très bien" : m >= 14 ? "Bien" : m >= 12 ? "Assez bien" : m >= 10 ? "Passable" : m >= 8 ? "Insuffisant" : "Faible";
+const arrondi = (x) => (x === null || x === undefined ? null : Math.round(x * 100) / 100);
+const rangs = (liste, cle) => {
+  const tri = liste.filter((e) => e[cle] !== null).sort((a, b) => b[cle] - a[cle]);
+  const r = new Map();
+  tri.forEach((e, i) => r.set(e.id, i > 0 && tri[i - 1][cle] === e[cle] ? r.get(tri[i - 1].id) : i + 1));
+  return r;
+};
+
+// GET /api/notes/classes/:id/bulletins?trimestre=1
+// Bulletins de tous les eleves de la classe (professeur principal ou administration)
+router.get("/classes/:id/bulletins", async (req, res, next) => {
+  try {
+    const c = await verifierClasse(req.user, entier(req.params.id));
+    if (req.user.role === "teacher" && !c.estProfPrincipal) throw new ApiError(403, "Réservé au professeur principal de la classe");
+    const tri = Math.min(3, Math.max(1, entier(req.query.trimestre) || 1));
+    const seqs = [tri * 2 - 1, tri * 2];
+    const ecole = (await db.query("SELECT name, city, type, photo FROM schools WHERE id = $1", [c.school_id])).rows[0];
+    const annee = (await db.query("SELECT name FROM academic_years WHERE id = $1", [c.academic_year_id])).rows[0];
+    const terme = (await db.query("SELECT start_date, end_date FROM terms WHERE academic_year_id = $1 AND term_number = $2", [c.academic_year_id, tri])).rows[0];
+    const pp = c.class_teacher_id
+      ? (await db.query("SELECT first_name, last_name FROM users WHERE id = $1", [c.class_teacher_id])).rows[0]
+      : null;
+    // Matieres de la classe (avec enseignant et coefficient) ayant au moins une note
+    const matieres = (
+      await db.query(
+        `SELECT s.id, s.name, COALESCE(cs.coefficient, 2) AS coef, u.first_name, u.last_name
+         FROM subjects s
+         LEFT JOIN class_subjects cs ON cs.class_id = $1 AND cs.subject_id = s.id
+         LEFT JOIN users u ON u.id = cs.teacher_id
+         WHERE s.id IN (SELECT subject_id FROM evaluations WHERE class_id = $1 AND sequence = ANY($2))
+         ORDER BY s.name`,
+        [c.id, seqs]
+      )
+    ).rows;
+    // Moyenne de chaque eleve, par matiere et par sequence (sur 20)
+    const notes = (
+      await db.query(
+        `SELECT x.student_id, e.subject_id, e.sequence, AVG(x.note * 20 / e.bareme) AS moy
+         FROM notes_eleves x JOIN evaluations e ON e.id = x.evaluation_id
+         WHERE e.class_id = $1 AND e.sequence = ANY($2) AND x.note IS NOT NULL
+         GROUP BY x.student_id, e.subject_id, e.sequence`,
+        [c.id, seqs]
+      )
+    ).rows;
+    const eleves = (
+      await db.query(
+        `SELECT u.id, u.first_name, u.last_name, sr.admission_number, sr.date_of_birth, sr.gender,
+                (SELECT COUNT(*)::int FROM attendance a WHERE a.student_id = u.id AND a.status = 'absent'
+                   AND ($2::date IS NULL OR a.date BETWEEN $2 AND $3)) AS absences,
+                (SELECT COUNT(*)::int FROM attendance a WHERE a.student_id = u.id AND a.status = 'late'
+                   AND ($2::date IS NULL OR a.date BETWEEN $2 AND $3)) AS retards
+         FROM class_students cs JOIN users u ON u.id = cs.student_id
+         LEFT JOIN student_records sr ON sr.student_id = u.id
+         WHERE cs.class_id = $1 AND cs.status = 'active'
+         ORDER BY u.last_name, u.first_name`,
+        [c.id, terme?.start_date || null, terme?.end_date || null]
+      )
+    ).rows;
+    const cle = (e, s) => `${e}|${s}`;
+    const parEleveMatiere = new Map();
+    for (const n of notes) {
+      const k = cle(n.student_id, n.subject_id);
+      const v = parEleveMatiere.get(k) || {};
+      v[n.sequence] = Number(n.moy);
+      parEleveMatiere.set(k, v);
+    }
+    // Lignes par eleve
+    const bulletins = eleves.map((e) => {
+      let total = 0;
+      let coefs = 0;
+      const lignes = matieres.map((m) => {
+        const v = parEleveMatiere.get(cle(e.id, m.id)) || {};
+        const s1 = v[seqs[0]] ?? null;
+        const s2 = v[seqs[1]] ?? null;
+        const presentes = [s1, s2].filter((x) => x !== null);
+        const moyenne = presentes.length ? presentes.reduce((a, b) => a + b, 0) / presentes.length : null;
+        if (moyenne !== null) {
+          total += moyenne * Number(m.coef);
+          coefs += Number(m.coef);
+        }
+        return { matiereId: m.id, s1: arrondi(s1), s2: arrondi(s2), moyenne: arrondi(moyenne), coef: Number(m.coef), total: moyenne === null ? null : arrondi(moyenne * Number(m.coef)) };
+      });
+      return { ...e, lignes, totalPoints: arrondi(total), totalCoefs: coefs, moyenne: coefs ? arrondi(total / coefs) : null };
+    });
+    // Rangs : general et par matiere
+    const rg = rangs(bulletins, "moyenne");
+    const rangsMatiere = new Map(
+      matieres.map((m) => [
+        m.id,
+        rangs(
+          bulletins.map((b) => ({ id: b.id, v: b.lignes.find((l) => l.matiereId === m.id).moyenne })),
+          "v"
+        ),
+      ])
+    );
+    const moyennes = bulletins.map((b) => b.moyenne).filter((x) => x !== null);
+    const stats = {
+      effectif: eleves.length,
+      classes: moyennes.length,
+      moyenneClasse: moyennes.length ? arrondi(moyennes.reduce((a, b) => a + b, 0) / moyennes.length) : null,
+      plusHaute: moyennes.length ? Math.max(...moyennes) : null,
+      plusBasse: moyennes.length ? Math.min(...moyennes) : null,
+      reussite: moyennes.length ? Math.round((moyennes.filter((x) => x >= 10).length / moyennes.length) * 100) : null,
+    };
+    for (const b of bulletins) {
+      b.rang = rg.get(b.id) || null;
+      b.appreciation = APPRECIATION(b.moyenne);
+      for (const l of b.lignes) {
+        l.rang = rangsMatiere.get(l.matiereId).get(b.id) || null;
+        l.appreciation = APPRECIATION(l.moyenne);
+      }
+    }
+    res.json({
+      success: true,
+      data: {
+        ecole,
+        annee: annee?.name,
+        trimestre: tri,
+        sequences: seqs,
+        classe: c.name,
+        professeurPrincipal: pp ? `${pp.first_name} ${pp.last_name}` : null,
+        matieres: matieres.map((m) => ({ id: m.id, nom: m.name, coef: Number(m.coef), enseignant: m.last_name ? `${m.first_name} ${m.last_name}` : null })),
+        stats,
+        bulletins,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ---------------------------------------------------------------- espace enseignant
 
 // GET /api/notes/mes-classes : classes de l'enseignant (matieres, prof principal)

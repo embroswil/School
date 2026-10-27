@@ -45,7 +45,6 @@ const TITRES = {
   '/eleves': 'Élèves',
   '/enseignants': 'Enseignants',
   '/classes': 'Classes',
-  '/annees': 'Années scolaires',
   '/messages': 'Messages',
   '/compte': 'Mon profil',
   '/notifications': 'Notifications',
@@ -56,6 +55,7 @@ const TITRES = {
   '/utilisateurs': 'Comptes',
   '/evaluations': 'Saisie des notes',
   '/suivi': 'Suivi scolaire',
+  '/bulletins': 'Bulletins',
   '/notes': 'Notes',
   '/mes-classes': 'Mes classes',
 }

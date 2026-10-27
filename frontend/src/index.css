@@ -357,3 +357,34 @@ a.choice { color: var(--text); }
 .bandeau-ecole.grand ul { opacity: 1; color: #4a3d1f; }
 .bandeau-ecole.grand li svg { color: #c27800; }
 .bandeau-ecole.grand .cta { background: var(--text); color: #fff; }
+
+/* ---------- bulletins (ecran et impression A4) ---------- */
+.bulletin {
+  background: #fff; color: #111; border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px;
+  font: 400 12px/1.4 var(--font-body); overflow-x: auto;
+}
+.bulletin-tete { display: flex; justify-content: space-between; gap: 12px; border-bottom: 2px solid var(--primary); padding-bottom: 8px; }
+.bulletin-ecole { font: 800 16px/1.2 var(--font-display); }
+.bulletin-titre { font: 800 15px/1.2 var(--font-display); color: var(--primary); text-transform: uppercase; }
+.bulletin-petit { font-size: 11px; color: #555; }
+.bulletin-identite { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 10px 0; font-size: 12px; }
+.bulletin-table { width: 100%; border-collapse: collapse; min-width: 520px; }
+.bulletin-table th, .bulletin-table td { border: 1px solid #cfd5e3; padding: 4px 5px; text-align: center; }
+.bulletin-table th { background: #eef2ff; font-size: 11px; }
+.bulletin-table tfoot td { background: #f6f7fb; }
+.bulletin-resume { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.bulletin-resume div, .bulletin-signatures div { border: 1px solid #cfd5e3; border-radius: 8px; padding: 6px 8px; }
+.bulletin-resume span, .bulletin-signatures span { display: block; font-size: 10px; color: #555; }
+.bulletin-resume b { font-size: 14px; }
+.bulletin-signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.bulletin-signatures div { min-height: 52px; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff; }
+  .topbar, .nav, .sans-impression, .voile { display: none !important; }
+  .app { display: block; padding: 0; }
+  .sheet-wrap { padding: 0; }
+  .sheet { max-width: none; }
+  .bulletin { border: 0; border-radius: 0; padding: 0; margin: 0; page-break-after: always; break-after: page; overflow: visible; }
+  .bulletin:last-child { page-break-after: auto; break-after: auto; }
+}
