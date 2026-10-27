@@ -13,7 +13,8 @@ const STATUTS = [
 // Appel d'une classe pour un jour : tout le monde present par defaut, on touche les absents
 export default function Appel({ id }) {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const d = useApi(`/api/notes/appel/${id}?date=${date}`)
+  const [periode, setPeriode] = useState(null) // heure du cours (ex. 730) ; null : la journee
+  const d = useApi(`/api/notes/appel/${id}?date=${date}${periode !== null ? `&periode=${periode}` : ''}`)
   const [statuts, setStatuts] = useState({})
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
@@ -30,6 +31,7 @@ export default function Appel({ id }) {
     try {
       const r = await api.put(`/api/notes/appel/${id}`, {
         date,
+        periode,
         presences: Object.entries(statuts).map(([sid, statut]) => ({ studentId: Number(sid), statut })),
       })
       setOk(`Appel enregistré.${r.data.absentsSignales ? ` ${r.data.absentsSignales} absence(s) signalée(s) aux parents.` : ''}`)
@@ -49,7 +51,42 @@ export default function Appel({ id }) {
         {modif ? 'Appel' : 'Présences'}
         {d.data ? ` · ${d.data.classe}` : ''}
       </h1>
-      <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ marginBottom: 12 }} />
+      <input
+        className="input"
+        type="date"
+        value={date}
+        onChange={(e) => {
+          setDate(e.target.value)
+          setPeriode(null)
+        }}
+        style={{ marginBottom: 12 }}
+      />
+      {d.data?.cours?.length > 0 && (
+        <div className="chips">
+          {d.data.cours.map((c) => (
+            <button key={c.periode} type="button" className="chip" aria-pressed={periode === c.periode} onClick={() => setPeriode(c.periode)}>
+              {c.fait ? '✓ ' : ''}
+              {c.debut} {c.matiere || ''}
+            </button>
+          ))}
+          <button type="button" className="chip" aria-pressed={periode === null} onClick={() => setPeriode(null)}>
+            Journée
+          </button>
+        </div>
+      )}
+      {!modif && d.data?.resume?.length > 0 && (
+        <div className="card" style={{ marginBottom: 12, fontSize: 14 }}>
+          <b>Résumé du jour</b>
+          {d.data.resume.map((r) => (
+            <div key={r.heure} style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="muted">{r.heure}</span>
+              <span>
+                {r.absents} absent(s) · {r.retards} retard(s)
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       {d.data && (
         <p className="lede" style={{ marginBottom: 10 }}>
           {!modif && !d.data.faite

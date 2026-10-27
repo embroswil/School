@@ -57,6 +57,8 @@ const TITRES = {
   '/suivi': 'Suivi scolaire',
   '/bulletins': 'Bulletins',
   '/devoirs': 'Devoirs',
+  '/emploi': 'Emploi du temps',
+  '/annuel': 'Fin d’année',
   '/notes': 'Notes',
   '/mes-classes': 'Mes classes',
 }

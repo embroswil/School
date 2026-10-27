@@ -43,6 +43,7 @@ app.use("/api/actualites", require("./modules/actualites/routes"));
 app.use("/api/scolarite", require("./modules/scolarite/routes"));
 app.use("/api/notes", require("./modules/notes/routes"));
 app.use("/api/suivi", require("./modules/suivi/routes"));
+app.use("/api/vie-scolaire", require("./modules/vie-scolaire/routes"));
 app.use("/api/users", require("./modules/users/user.routes"));
 // Les anciens modules du projet d'origine (eleves, notes, presences, paiements
 // Paystack, emplois du temps, rapports…) ne sont plus exposes : ils ne

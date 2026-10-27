@@ -5,7 +5,7 @@
 const db = require("../config/db");
 const logger = require("./logger");
 
-const TYPES_EMAIL = ["attendance", "payment", "message"];
+const TYPES_EMAIL = ["attendance", "payment", "message", "discipline"];
 const APP = () => (process.env.FRONTEND_URL || "").split(",")[0].trim();
 
 const emailNotification = async (userId, { title, message, data }) => {

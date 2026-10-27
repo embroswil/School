@@ -322,66 +322,97 @@ router.get("/classes/:id/resultats", async (req, res, next) => {
 // ---------------------------------------------------------------- appel (presences)
 
 // GET /api/notes/appel/:classId?date=AAAA-MM-JJ
+// Periode d'appel : heure de debut du cours (ex. 730 pour 07:30), ou null pour l'appel de la journee
+const periodeDe = (v) => {
+  const n = parseInt(v, 10);
+  return Number.isInteger(n) && n >= 0 && n <= 2359 ? n : null;
+};
+const heureTxt = (p) => (p === null ? "" : `${String(Math.floor(p / 100)).padStart(2, "0")}h${String(p % 100).padStart(2, "0")}`);
+
+// GET /api/notes/appel/:classId?date=AAAA-MM-JJ&periode=730
 router.get("/appel/:classId", async (req, res, next) => {
   try {
     const c = await verifierClasse(req.user, entier(req.params.classId));
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || "") ? req.query.date : new Date().toISOString().slice(0, 10);
+    const periode = periodeDe(req.query.periode);
+    // Cours du jour d'apres l'emploi du temps (ceux de l'enseignant s'il s'agit d'un enseignant)
+    const jour = new Date(`${date}T12:00:00`).getDay(); // 0 = dimanche
+    const cours = (
+      await db.query(
+        `SELECT to_char(cr.debut, 'HH24MI')::int AS periode, to_char(cr.debut, 'HH24:MI') AS debut, to_char(cr.fin, 'HH24:MI') AS fin, s.name AS matiere,
+                EXISTS (SELECT 1 FROM attendance a WHERE a.class_id = $1 AND a.date = $3 AND a.period_number = to_char(cr.debut, 'HH24MI')::int) AS fait
+         FROM creneaux cr LEFT JOIN subjects s ON s.id = cr.subject_id
+         LEFT JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id
+         WHERE cr.class_id = $1 AND cr.jour = $2 AND ($4::int IS NULL OR cs.teacher_id = $4)
+         ORDER BY cr.debut`,
+        [c.id, jour, date, req.user.role === "teacher" ? req.user.id : null]
+      )
+    ).rows;
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, a.status, a.remarks
        FROM class_students cs JOIN users u ON u.id = cs.student_id
-       LEFT JOIN attendance a ON a.student_id = u.id AND a.class_id = $1 AND a.date = $2 AND a.period_number IS NULL
+       LEFT JOIN attendance a ON a.student_id = u.id AND a.class_id = $1 AND a.date = $2 AND a.period_number IS NOT DISTINCT FROM $3::int
        WHERE cs.class_id = $1 AND cs.status = 'active'
        ORDER BY u.last_name, u.first_name`,
-      [c.id, date]
+      [c.id, date, periode]
     );
+    // Pour l'administration : resume de la journee (toutes les heures)
+    const resume = (
+      await db.query(
+        `SELECT a.period_number AS periode, COUNT(*) FILTER (WHERE a.status = 'absent')::int AS absents,
+                COUNT(*) FILTER (WHERE a.status = 'late')::int AS retards
+         FROM attendance a WHERE a.class_id = $1 AND a.date = $2 GROUP BY a.period_number ORDER BY a.period_number NULLS FIRST`,
+        [c.id, date]
+      )
+    ).rows.map((r) => ({ ...r, heure: r.periode === null ? "Journée" : heureTxt(r.periode) }));
     res.json({
       success: true,
-      data: { classe: c.name, date, eleves: rows, faite: rows.some((r) => r.status), modifiable: req.user.role === "teacher" },
+      data: { classe: c.name, date, periode, cours, resume, eleves: rows, faite: rows.some((r) => r.status), modifiable: req.user.role === "teacher" },
     });
   } catch (e) {
     next(e);
   }
 });
 
-// PUT /api/notes/appel/:classId { date, presences: [{ studentId, statut }] }
-// Les parents des eleves absents sont notifies.
+// PUT /api/notes/appel/:classId { date, periode, presences: [{ studentId, statut }] }
+// L'appel est fait en classe par l'enseignant, heure par heure. Les parents des absents sont prevenus.
 router.put("/appel/:classId", async (req, res, next) => {
   try {
-    // L'appel est fait en classe, par l'enseignant
     const c = await verifierClasse(req.user, entier(req.params.classId), null, "saisie");
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : new Date().toISOString().slice(0, 10);
+    const periode = periodeDe(req.body?.periode);
     const liste = (Array.isArray(req.body?.presences) ? req.body.presences : []).filter((p) =>
       ["present", "absent", "late", "excused"].includes(p.statut)
     );
     const avant = await db.query(
-      "SELECT student_id, status FROM attendance WHERE class_id = $1 AND date = $2 AND period_number IS NULL",
-      [c.id, date]
+      "SELECT student_id, status FROM attendance WHERE class_id = $1 AND date = $2 AND period_number IS NOT DISTINCT FROM $3::int",
+      [c.id, date, periode]
     );
     const ancien = new Map(avant.rows.map((r) => [r.student_id, r.status]));
+    const conflit = periode === null ? "(student_id, class_id, date) WHERE period_number IS NULL" : "(student_id, class_id, date, period_number) WHERE period_number IS NOT NULL";
     await db.query(
-      `INSERT INTO attendance (student_id, class_id, academic_year_id, date, status, marked_by)
-       SELECT x.id, $1, $2, $3, x.statut, $4 FROM unnest($5::int[], $6::text[]) AS x(id, statut)
+      `INSERT INTO attendance (student_id, class_id, academic_year_id, date, period_number, status, marked_by)
+       SELECT x.id, $1, $2, $3, $7::int, x.statut, $4 FROM unnest($5::int[], $6::text[]) AS x(id, statut)
        WHERE x.id IN (SELECT student_id FROM class_students WHERE class_id = $1 AND status = 'active')
-       ON CONFLICT (student_id, class_id, date) WHERE period_number IS NULL
+       ON CONFLICT ${conflit}
        DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, updated_at = NOW()`,
-      [c.id, c.academic_year_id, date, req.user.id, liste.map((p) => entier(p.studentId)), liste.map((p) => p.statut)]
+      [c.id, c.academic_year_id, date, req.user.id, liste.map((p) => entier(p.studentId)), liste.map((p) => p.statut), periode]
     );
-    // Nouveaux absents : leurs parents sont prevenus
     const absents = liste.filter((p) => p.statut === "absent" && ancien.get(entier(p.studentId)) !== "absent").map((p) => entier(p.studentId));
     if (absents.length) {
       const jour = new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
       const { rows } = await db.query(
-        `SELECT l.parent_id, u.first_name, u.last_name FROM parent_student_links l JOIN users u ON u.id = l.student_id
+        `SELECT l.parent_id, u.id AS eleve, u.first_name, u.last_name FROM parent_student_links l JOIN users u ON u.id = l.student_id
          WHERE l.student_id = ANY($1)`,
         [absents]
       );
       for (const r of rows) {
         await notifierUtilisateur(r.parent_id, {
           title: "Absence signalée",
-          message: `${r.first_name} ${r.last_name} était absent(e) le ${jour} (${c.name}).`,
+          message: `${r.first_name} ${r.last_name} était absent(e) le ${jour}${periode !== null ? ` au cours de ${heureTxt(periode)}` : ""} (${c.name}).`,
           type: "attendance",
           priority: "high",
-          data: { lien: "/" },
+          data: { lien: `/suivi/${r.eleve}` },
         }).catch(() => {});
       }
     }
@@ -513,6 +544,17 @@ router.get("/classes/:id/bulletins", async (req, res, next) => {
         l.appreciation = APPRECIATION(l.moyenne);
       }
     }
+    if (tri === 3) {
+      const [t1, t2] = await Promise.all([moyennesTrimestre(c.id, 1), moyennesTrimestre(c.id, 2)]);
+      const dec = new Map(
+        (await db.query("SELECT student_id, decision FROM decisions_annuelles WHERE class_id = $1", [c.id])).rows.map((r) => [r.student_id, r.decision])
+      );
+      for (const b of bulletins) {
+        const ts = [t1.get(b.id), t2.get(b.id), b.moyenne].filter((x) => x !== undefined && x !== null);
+        b.annuelle = ts.length ? arrondi(ts.reduce((x, y) => x + y, 0) / ts.length) : null;
+        b.decision = dec.get(b.id) ? DECISIONS[dec.get(b.id)] : null;
+      }
+    }
     res.json({
       success: true,
       data: {
@@ -618,6 +660,94 @@ router.delete("/devoirs/:id", async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------- conseil de classe de fin d'annee
+
+// Moyenne (sur 20, ponderee par les coefficients) de chaque eleve pour un trimestre
+const moyennesTrimestre = async (classId, tri) => {
+  const { rows } = await db.query(
+    `WITH n AS (
+       SELECT x.student_id, e.subject_id, AVG(x.note * 20 / e.bareme) AS moy
+       FROM notes_eleves x JOIN evaluations e ON e.id = x.evaluation_id
+       WHERE e.class_id = $1 AND e.sequence = ANY($2) AND x.note IS NOT NULL
+       GROUP BY x.student_id, e.subject_id)
+     SELECT n.student_id, SUM(n.moy * COALESCE(cs.coefficient, 2)) / SUM(COALESCE(cs.coefficient, 2)) AS moyenne
+     FROM n LEFT JOIN class_subjects cs ON cs.class_id = $1 AND cs.subject_id = n.subject_id
+     GROUP BY n.student_id`,
+    [classId, [tri * 2 - 1, tri * 2]]
+  );
+  return new Map(rows.map((r) => [r.student_id, Number(r.moyenne)]));
+};
+const DECISIONS = { admis: "Admis(e) en classe supérieure", admis_sous_reserve: "Admis(e) sous réserve", redouble: "Redouble", exclu: "Exclu(e)" };
+
+// GET /api/notes/classes/:id/annuel : moyennes des 3 trimestres, moyenne annuelle, rang, decision
+router.get("/classes/:id/annuel", async (req, res, next) => {
+  try {
+    const c = await verifierClasse(req.user, entier(req.params.id));
+    if (req.user.role === "teacher" && !c.estProfPrincipal) throw new ApiError(403, "Réservé au professeur principal de la classe");
+    const [t1, t2, t3] = await Promise.all([1, 2, 3].map((t) => moyennesTrimestre(c.id, t)));
+    const eleves = await elevesDe(c.id);
+    const decisions = new Map(
+      (await db.query("SELECT student_id, decision, observation FROM decisions_annuelles WHERE class_id = $1", [c.id])).rows.map((r) => [r.student_id, r])
+    );
+    const liste = eleves.map((e) => {
+      const ts = [t1.get(e.id), t2.get(e.id), t3.get(e.id)].map((x) => (x === undefined ? null : arrondi(x)));
+      const presentes = ts.filter((x) => x !== null);
+      const annuelle = presentes.length ? arrondi(presentes.reduce((a, b) => a + b, 0) / presentes.length) : null;
+      const d = decisions.get(e.id);
+      return {
+        id: e.id,
+        prenom: e.first_name,
+        nom: e.last_name,
+        trimestres: ts,
+        annuelle,
+        decision: d?.decision || null,
+        observation: d?.observation || "",
+        proposition: annuelle === null ? null : annuelle >= 10 ? "admis" : annuelle >= 9 ? "admis_sous_reserve" : "redouble",
+      };
+    });
+    const rg = rangs(liste, "annuelle");
+    liste.forEach((e) => (e.rang = rg.get(e.id) || null));
+    liste.sort((a, b) => (a.rang || 9999) - (b.rang || 9999));
+    const moy = liste.map((e) => e.annuelle).filter((x) => x !== null);
+    res.json({
+      success: true,
+      data: {
+        classe: c.name,
+        modifiable: c.estProfPrincipal || ["principal", "admin"].includes(req.user.role),
+        decisions: DECISIONS,
+        stats: {
+          moyenneClasse: moy.length ? arrondi(moy.reduce((a, b) => a + b, 0) / moy.length) : null,
+          admis: liste.filter((e) => (e.decision || e.proposition) === "admis").length,
+          redoublants: liste.filter((e) => (e.decision || e.proposition) === "redouble").length,
+        },
+        eleves: liste,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// PUT /api/notes/classes/:id/decisions { decisions: [{ studentId, decision, observation }] }
+router.put("/classes/:id/decisions", async (req, res, next) => {
+  try {
+    const c = await verifierClasse(req.user, entier(req.params.id));
+    if (!(c.estProfPrincipal || ["principal", "admin"].includes(req.user.role))) throw new ApiError(403, "Réservé au professeur principal ou à l'administration");
+    const liste = (Array.isArray(req.body?.decisions) ? req.body.decisions : []).filter((d) => Object.keys(DECISIONS).includes(d.decision));
+    for (const d of liste) {
+      await db.query(
+        `INSERT INTO decisions_annuelles (class_id, student_id, decision, observation, auteur_id, updated_at)
+         SELECT $1, $2, $3, $4, $5, NOW() WHERE EXISTS (SELECT 1 FROM class_students WHERE class_id = $1 AND student_id = $2)
+         ON CONFLICT (class_id, student_id) DO UPDATE SET decision = EXCLUDED.decision, observation = EXCLUDED.observation, auteur_id = EXCLUDED.auteur_id, updated_at = NOW()`,
+        [c.id, entier(d.studentId), d.decision, String(d.observation || "").trim().slice(0, 300) || null, req.user.id]
+      );
+    }
+    res.json({ success: true, data: { enregistrees: liste.length } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ---------------------------------------------------------------- espace enseignant
 
 // GET /api/notes/mes-classes : classes de l'enseignant (matieres, prof principal)
@@ -630,7 +760,7 @@ router.get("/mes-classes", async (req, res, next) => {
                         WHERE cs.class_id = c.id AND cs.teacher_id = $1), '[]') AS matieres,
               (c.class_teacher_id = $1) AS prof_principal,
               (SELECT COUNT(*)::int FROM class_students x WHERE x.class_id = c.id AND x.status = 'active') AS eleves,
-              EXISTS (SELECT 1 FROM attendance a WHERE a.class_id = c.id AND a.date = CURRENT_DATE AND a.period_number IS NULL) AS appel_fait
+              EXISTS (SELECT 1 FROM attendance a WHERE a.class_id = c.id AND a.date = CURRENT_DATE AND a.marked_by = $1) AS appel_fait
        FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id
        WHERE ay.school_id = $2 AND ay.is_current
          AND (c.class_teacher_id = $1 OR EXISTS (SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id AND cs.teacher_id = $1))

@@ -351,6 +351,8 @@ function EspaceEnseignant() {
           Modifier
         </a>
       </div>
+      <Action href="#/emploi" Icone={IcClasses} titre="Mon emploi du temps" texte="Mes cours de la semaine" />
+      <div style={{ height: 10 }} />
       {classes.loading && !classes.data && <p className="muted">Chargement…</p>}
       {classes.data?.length === 0 && (
         <Action href="#/mes-classes" Icone={IcClasses} titre="Choisir mes classes" texte="Indiquez vos matières et vos classes" />
@@ -391,6 +393,9 @@ function EspaceEnseignant() {
                 </a>
                 <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/bulletins`}>
                   Bulletins
+                </a>
+                <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/annuel`}>
+                  Fin d’année
                 </a>
               </>
             )}

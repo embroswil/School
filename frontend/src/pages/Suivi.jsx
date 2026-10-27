@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { ListeDevoirs } from './Devoirs.jsx'
+import { GrilleEmploi } from './EmploiDuTemps.jsx'
+import Discipline from './Discipline.jsx'
 
 const n20 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : '')
@@ -12,7 +14,13 @@ function Notes({ id }) {
   const [ouverte, setOuverte] = useState(null)
   if (!d.data) return <p className="muted">Chargement…</p>
   if (!d.data.sequences.length) return <p className="muted">Aucune note publiée pour le moment.</p>
-  return d.data.sequences.map((s, i) => {
+  const decision = d.data.decision && (
+    <div className="note note-ok" key="decision">
+      Décision de fin d’année : <b>{d.data.decision.libelle}</b>
+      {d.data.decision.observation ? ` · ${d.data.decision.observation}` : ''}
+    </div>
+  )
+  return [decision].concat(d.data.sequences.map((s, i) => {
     const visible = ouverte === null ? i === 0 : ouverte === s.sequence
     return (
       <section key={s.sequence} className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -50,7 +58,13 @@ function Notes({ id }) {
         )}
       </section>
     )
-  })
+  }))
+}
+
+function EmploiEleve({ id }) {
+  const d = useApi(`/api/vie-scolaire/emplois/moi?eleve=${id}`)
+  if (!d.data) return <p className="muted">Chargement…</p>
+  return <GrilleEmploi creneaux={d.data.creneaux} />
 }
 
 function DevoirsEleve({ id }) {
@@ -128,6 +142,12 @@ export default function Suivi({ id }) {
         <button type="button" className="chip" aria-pressed={onglet === 'devoirs'} onClick={() => setOnglet('devoirs')}>
           Devoirs
         </button>
+        <button type="button" className="chip" aria-pressed={onglet === 'emploi'} onClick={() => setOnglet('emploi')}>
+          Emploi du temps
+        </button>
+        <button type="button" className="chip" aria-pressed={onglet === 'discipline'} onClick={() => setOnglet('discipline')}>
+          Discipline
+        </button>
         <a className="chip" href="#/scolarite">
           Scolarité ›
         </a>
@@ -135,6 +155,8 @@ export default function Suivi({ id }) {
       {onglet === 'notes' && <Notes id={id} />}
       {onglet === 'presences' && <Presences id={id} />}
       {onglet === 'devoirs' && <DevoirsEleve id={id} />}
+      {onglet === 'emploi' && <EmploiEleve id={id} />}
+      {onglet === 'discipline' && <Discipline eleveId={id} />}
     </>
   )
 }

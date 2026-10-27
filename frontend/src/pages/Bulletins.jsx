@@ -102,6 +102,12 @@ function Bulletin({ d, b, classId }) {
           <span>Moyenne de la classe</span>
           <b>{n2(d.stats.moyenneClasse)}</b>
         </div>
+        {d.trimestre === 3 && (
+          <div>
+            <span>Moyenne annuelle</span>
+            <b>{n2(b.annuelle) || '—'} / 20</b>
+          </div>
+        )}
         <div>
           <span>Absences · retards</span>
           <b>
@@ -113,6 +119,7 @@ function Bulletin({ d, b, classId }) {
         <div>
           <span>Appréciation du conseil de classe</span>
           <b>{appr || b.appreciation || '—'}</b>
+          {b.decision && <b style={{ display: 'block', marginTop: 4 }}>Décision : {b.decision}</b>}
         </div>
         <div>
           <span>Le professeur principal</span>

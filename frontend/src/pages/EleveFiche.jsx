@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
+import Discipline from './Discipline.jsx'
 import { Note } from '../ui.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
@@ -126,6 +127,8 @@ export default function EleveFiche({ id }) {
       ) : (
         <p className="muted">{scol.loading ? 'Chargement…' : 'Aucun frais défini.'}</p>
       )}
+      <p className="groupe-titre">Discipline</p>
+      <Discipline eleveId={id} gestion />
     </>
   )
 }

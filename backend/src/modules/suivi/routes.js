@@ -146,7 +146,14 @@ router.get("/eleves/:id/notes", async (req, res, next) => {
       const classement = classe ? rangDe(await moyennesClasse(classe.id, [q.sequence]), id) : null;
       sequences.push({ sequence: q.sequence, trimestre: Math.ceil(q.sequence / 2), matieres, ...(classement || {}) });
     }
-    res.json({ success: true, data: { classe: classe?.name || null, sequences } });
+    const DEC = { admis: "Admis(e) en classe supérieure", admis_sous_reserve: "Admis(e) sous réserve", redouble: "Redouble", exclu: "Exclu(e)" };
+    const decision = classe
+      ? (await db.query("SELECT decision, observation FROM decisions_annuelles WHERE class_id = $1 AND student_id = $2", [classe.id, id])).rows[0]
+      : null;
+    res.json({
+      success: true,
+      data: { classe: classe?.name || null, sequences, decision: decision ? { libelle: DEC[decision.decision], observation: decision.observation } : null },
+    });
   } catch (e) {
     next(e);
   }

@@ -226,3 +226,41 @@ CREATE TABLE IF NOT EXISTS appreciations_bulletin (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (class_id, student_id, trimestre)
 );
+
+-- Emploi du temps, appel par heure, discipline, decisions de fin d'annee
+CREATE TABLE IF NOT EXISTS creneaux (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  jour SMALLINT NOT NULL CHECK (jour BETWEEN 1 AND 6),
+  debut TIME NOT NULL,
+  fin TIME NOT NULL,
+  subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
+  salle VARCHAR(50),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_periode ON attendance(student_id, class_id, date, period_number) WHERE period_number IS NOT NULL;
+CREATE TABLE IF NOT EXISTS sanctions (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type VARCHAR(30) NOT NULL CHECK (type IN ('observation','avertissement','blame','retenue','convocation_parents','exclusion_temporaire','exclusion_definitive')),
+  motif TEXT NOT NULL,
+  date_faits DATE NOT NULL DEFAULT CURRENT_DATE,
+  duree_jours SMALLINT,
+  auteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS decisions_annuelles (
+  id SERIAL PRIMARY KEY,
+  class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  decision VARCHAR(30) NOT NULL CHECK (decision IN ('admis','admis_sous_reserve','redouble','exclu')),
+  observation VARCHAR(300),
+  auteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (class_id, student_id)
+);
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
+  CHECK (type IN ('payment','grade','attendance','announcement','reminder','system','account','message','discipline'));
