@@ -2,39 +2,13 @@ import {
   IcActus,
   IcCadenas,
   IcCarte,
-  IcCasquette,
   IcChevron,
   IcCoche,
   IcEcole,
-  IcFamille,
   IcGraphique,
   IcMessages,
-  IcTableau,
   IcTelephone,
 } from '../icones.jsx'
-
-const PUBLICS = [
-  {
-    Icone: IcFamille,
-    titre: 'Parents',
-    texte: 'Suivez les notes, les absences et les annonces de l’école. Payez la scolarité par Mobile Money.',
-  },
-  {
-    Icone: IcCasquette,
-    titre: 'Élèves',
-    texte: 'Consultez vos résultats, votre classement et les informations de votre classe.',
-  },
-  {
-    Icone: IcTableau,
-    titre: 'Enseignants',
-    texte: 'Faites l’appel en classe et publiez les notes de vos contrôles, depuis votre téléphone.',
-  },
-  {
-    Icone: IcEcole,
-    titre: 'Établissements',
-    texte: 'Élèves, classes, enseignants, scolarité et communication : tout votre établissement au même endroit.',
-  },
-]
 
 const ATOUTS = [
   [IcGraphique, 'Notes et classements', 'Séquences, moyennes et rangs calculés automatiquement.'],
@@ -87,21 +61,29 @@ export default function Landing() {
           </div>
         </section>
 
-        <p className="surtitre">Pour qui ?</p>
-        <h2 className="titre-section">Chacun son espace</h2>
-        <div className="publics">
-          {PUBLICS.map(({ Icone, titre, texte }) => (
-            <article className="public-carte" key={titre}>
-              <span className="pastille-ico">
-                <Icone size={22} />
-              </span>
-              <div>
-                <h3>{titre}</h3>
-                <p>{texte}</p>
-              </div>
-            </article>
-          ))}
-        </div>
+        <a className="bandeau-ecole grand" href="#/inscrire-etablissement">
+          <span className="pastille-ico clair">
+            <IcEcole size={24} />
+          </span>
+          <span>
+            <b>Vous dirigez un établissement ?</b>
+            <span>Maternelle, primaire, collège ou lycée : gérez votre établissement avec School.</span>
+          </span>
+          <ul>
+            <li>
+              <IcCoche size={16} /> Import des élèves depuis vos listes de classe
+            </li>
+            <li>
+              <IcCoche size={16} /> Notes, appel et bulletins par les enseignants
+            </li>
+            <li>
+              <IcCoche size={16} /> Frais de scolarité versés sur vos comptes
+            </li>
+          </ul>
+          <span className="cta">
+            Inscrire mon établissement <IcChevron size={18} />
+          </span>
+        </a>
 
         <p className="surtitre">Fonctionnalités</p>
         <h2 className="titre-section">Tout le suivi scolaire</h2>
@@ -129,16 +111,6 @@ export default function Landing() {
           ))}
         </ol>
 
-        <a className="bandeau-ecole" href="#/inscrire-etablissement">
-          <span className="pastille-ico clair">
-            <IcEcole size={24} />
-          </span>
-          <span style={{ flex: 1 }}>
-            <b>Vous dirigez un établissement ?</b>
-            <span>Inscrivez votre école sur School. La mise en place est gratuite et guidée.</span>
-          </span>
-          <IcChevron size={22} />
-        </a>
       </main>
 
       <footer className="pied">

@@ -315,3 +315,32 @@ a.choice { color: var(--text); }
 .bandeau-ecole span span { opacity: 0.85; font-size: 14px; }
 .pied { text-align: center; padding: 28px 20px calc(28px + env(safe-area-inset-bottom)); color: var(--muted); font-size: 13px; }
 .pied p { margin-top: 6px; }
+
+/* ---------- tableau de bord de la plateforme ---------- */
+.hero-ligne { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.22); font-size: 14px; }
+.hero-ligne b { font: 800 17px/1 var(--font-display); margin-right: 3px; }
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.kpi {
+  display: flex; flex-direction: column; gap: 2px; padding: 14px; background: var(--card);
+  border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+}
+.kpi-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); margin-bottom: 8px; }
+.kpi b { font: 800 24px/1.1 var(--font-display); letter-spacing: -0.02em; }
+.kpi > span:not(.kpi-ico) { font-weight: 700; font-size: 14px; }
+.kpi small { color: var(--muted); font-size: 12px; }
+.ecole-carte {
+  display: block; padding: 14px 16px; color: var(--text); background: var(--card);
+  border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+}
+.ecole-carte + .ecole-carte { margin-top: 10px; }
+.ecole-tete { display: flex; align-items: center; gap: 12px; }
+.ecole-chiffres { display: flex; gap: 8px; margin-top: 12px; }
+.ecole-chiffres span { flex: 1; text-align: center; padding: 8px 4px; border-radius: 12px; background: var(--bg); font-size: 12px; color: var(--muted); }
+.ecole-chiffres b { display: block; font: 800 17px/1.2 var(--font-display); color: var(--text); }
+
+/* ---------- accueil : mise en avant des etablissements ---------- */
+.bandeau-ecole.grand { flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 18px; padding: 22px; }
+.bandeau-ecole.grand b { font-size: 21px; }
+.bandeau-ecole .cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 11px 16px; border-radius: 12px; background: var(--accent); color: var(--text); font: 700 15px/1 var(--font-body); }
+.bandeau-ecole ul { list-style: none; display: grid; gap: 4px; font-size: 14px; opacity: 0.92; }
+.bandeau-ecole li { display: flex; gap: 8px; align-items: center; }
