@@ -25,6 +25,8 @@ import ImportEleves from './pages/ImportEleves.jsx'
 import ClassNotes from './pages/ClassNotes.jsx'
 import Evaluation from './pages/Evaluation.jsx'
 import Appel from './pages/Appel.jsx'
+import Suivi, { MesNotes } from './pages/Suivi.jsx'
+import MesAffectations from './pages/MesAffectations.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
 function Message({ title, children }) {
@@ -46,6 +48,10 @@ function Pages({ path }) {
   if (path === '/compte') return <Account />
   if (path === '/notifications') return <Notifications />
   if (path === '/actualites') return <Actualites />
+  if (path === '/notes') return reserve(['parent', 'student'].includes(user.role), <MesNotes />)
+  if (path === '/mes-classes') return reserve(user.role === 'teacher', <MesAffectations />)
+  const suiviMatch = path.match(/^\/suivi\/(\d+)$/)
+  if (suiviMatch) return reserve(['parent', 'student'].includes(user.role), <Suivi key={suiviMatch[1]} id={Number(suiviMatch[1])} />)
   if (path.split('?')[0] === '/scolarite') return reserve(user.role !== 'teacher', <Scolarite />)
   if (path === '/import-eleves') return reserve(gestion, <ImportEleves />)
   if (path === '/messages') return <Messages />

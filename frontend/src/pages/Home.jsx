@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Publication } from './Actualites.jsx'
+import { CarteEleve } from './Suivi.jsx'
 import { IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcEcole, IcEleves, IcImport, IcPhoto, IcPlus, IcProfil } from '../icones.jsx'
 
 const ROLES = {
@@ -295,67 +296,97 @@ function EspaceEtablissement() {
 }
 
 function EspaceParent() {
-  const enfants = useApi('/api/inscriptions/mes-enfants')
+  const enfants = useApi('/api/suivi/eleves')
+  const declares = useApi('/api/inscriptions/mes-enfants')
+  const enAttente = (declares.data || []).filter((e) => e.status !== 'approved')
   return (
     <>
       <h2 className="section-title">Mes enfants</h2>
-      {enfants.loading && <p className="muted">Chargement…</p>}
-      {enfants.data?.length === 0 && <p className="muted">Aucun enfant déclaré.</p>}
-      {enfants.data?.length > 0 && (
-        <ul className="rows">
-          {enfants.data.map((e) => (
-            <li className="row" key={e.id}>
-              <span style={{ fontSize: 26 }}>🧒</span>
-              <div className="row-main">
-                <div className="row-title">
-                  {e.child_first_name} {e.child_last_name}
-                </div>
-                <div className="row-sub">{e.child_class || 'Classe non précisée'}</div>
+      {enfants.loading && !enfants.data && <p className="muted">Chargement…</p>}
+      {enfants.data?.map((e) => <CarteEleve key={e.id} e={e} />)}
+      {enAttente.map((e) => (
+        <div className="ecole-carte" key={`a${e.id}`} style={{ opacity: 0.75 }}>
+          <div className="ecole-tete">
+            <span className="avatar" style={{ width: 44, height: 44, borderRadius: 14, fontSize: 16, background: 'var(--line)', color: 'var(--muted)' }}>
+              ?
+            </span>
+            <div className="row-main">
+              <div className="row-title">
+                {e.child_first_name} {e.child_last_name}
               </div>
-              {e.status === 'approved' ? (
-                <span className="tag tag-now">Relié</span>
-              ) : (
-                <span className="tag tag-wait">En attente</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="muted" style={{ fontSize: 14, marginTop: 10 }}>
-        Un enfant est relié automatiquement dès qu’il apparaît dans l’établissement avec les mêmes prénom et nom.
-      </p>
-      <h2 className="section-title">Suivi</h2>
-      <div className="grid2">
-        <Tuile ico="📝" titre="Notes" texte={<Bientot />} />
-        <Tuile ico="🗓️" titre="Présences" texte={<Bientot />} />
-        <Tuile href="#/scolarite" ico="💳" titre="Scolarité" texte="Payé, reste à payer" />
-      </div>
+              <div className="row-sub">{e.child_class || 'Classe non précisée'} · en attente</div>
+            </div>
+          </div>
+          <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+            Pas encore retrouvé dans l’établissement. Il sera relié automatiquement dès qu’il y sera inscrit sous les mêmes prénom et nom.
+          </p>
+        </div>
+      ))}
+      {enfants.data?.length === 0 && enAttente.length === 0 && <p className="muted">Aucun enfant déclaré.</p>}
+      <h2 className="section-title">Raccourcis</h2>
+      <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais payés, reste à payer, paiement" />
+      <Action href="#/messages" Icone={IcActus} titre="Écrire à l’établissement" texte="Une question, une absence à justifier…" />
     </>
   )
 }
 
 function EspaceEleve() {
+  const moi = useApi('/api/suivi/eleves')
   return (
     <>
-      <h2 className="section-title">Mon espace</h2>
-      <div className="grid2">
-        <Tuile ico="📝" titre="Mes notes" texte={<Bientot />} />
-        <Tuile ico="⏰" titre="Emploi du temps" texte={<Bientot />} />
-        <Tuile ico="🗓️" titre="Présences" texte={<Bientot />} />
-      </div>
+      <h2 className="section-title">Mon suivi</h2>
+      {moi.data?.map((e) => <CarteEleve key={e.id} e={e} />)}
+      <Action href="#/scolarite" Icone={IcCarte} titre="Ma scolarité" texte="Frais payés et reste à payer" />
     </>
   )
 }
 
 function EspaceEnseignant() {
+  const classes = useApi('/api/notes/mes-classes')
   return (
     <>
-      <h2 className="section-title">Mon espace enseignant</h2>
-      <div className="grid2">
-        <Tuile ico="📝" titre="Publier des notes" texte={<Bientot />} />
-        <Tuile ico="🙋" titre="Faire l’appel" texte={<Bientot />} />
-        <Tuile ico="📚" titre="Mes classes" texte={<Bientot />} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <h2 className="section-title">Mes classes</h2>
+        <a href="#/mes-classes" style={{ fontWeight: 700, fontSize: 14 }}>
+          Modifier
+        </a>
       </div>
+      {classes.loading && !classes.data && <p className="muted">Chargement…</p>}
+      {classes.data?.length === 0 && (
+        <Action href="#/mes-classes" Icone={IcClasses} titre="Choisir mes classes" texte="Indiquez vos matières et vos classes" />
+      )}
+      {classes.data?.map((c) => (
+        <div className="ecole-carte" key={c.id}>
+          <div className="ecole-tete">
+            <span className="pastille-ico" style={{ width: 44, height: 44 }}>
+              <IcClasses size={20} />
+            </span>
+            <div className="row-main">
+              <div className="row-title">
+                {c.name} {c.prof_principal && <span className="tag">Prof. principal</span>}
+              </div>
+              <div className="row-sub">
+                {c.matieres.length ? c.matieres.join(', ') : 'Aucune matière'} · {c.eleves} élèves
+              </div>
+            </div>
+          </div>
+          <div className="actions" style={{ marginTop: 12 }}>
+            {c.matieres.length > 0 && (
+              <a className={`btn ${c.appel_fait ? 'btn-quiet' : ''}`} style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/appel`}>
+                {c.appel_fait ? '✓ Appel fait' : 'Faire l’appel'}
+              </a>
+            )}
+            <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/notes`}>
+              Notes
+            </a>
+            {c.prof_principal && (
+              <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/notes?onglet=resultats`}>
+                Résultats
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
     </>
   )
 }

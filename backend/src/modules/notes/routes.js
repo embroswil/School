@@ -391,4 +391,86 @@ router.put("/appel/:classId", async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------- espace enseignant
+
+// GET /api/notes/mes-classes : classes de l'enseignant (matieres, prof principal)
+router.get("/mes-classes", async (req, res, next) => {
+  try {
+    if (req.user.role !== "teacher") throw new ApiError(403, "Réservé aux enseignants");
+    const { rows } = await db.query(
+      `SELECT c.id, c.name,
+              COALESCE((SELECT json_agg(s.name ORDER BY s.name) FROM class_subjects cs JOIN subjects s ON s.id = cs.subject_id
+                        WHERE cs.class_id = c.id AND cs.teacher_id = $1), '[]') AS matieres,
+              (c.class_teacher_id = $1) AS prof_principal,
+              (SELECT COUNT(*)::int FROM class_students x WHERE x.class_id = c.id AND x.status = 'active') AS eleves,
+              EXISTS (SELECT 1 FROM attendance a WHERE a.class_id = c.id AND a.date = CURRENT_DATE AND a.period_number IS NULL) AS appel_fait
+       FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id
+       WHERE ay.school_id = $2 AND ay.is_current
+         AND (c.class_teacher_id = $1 OR EXISTS (SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id AND cs.teacher_id = $1))
+       ORDER BY c.name`,
+      [req.user.id, req.user.schoolId]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /api/notes/mes-affectations : matieres et classes choisies + toutes celles de l'etablissement
+router.get("/mes-affectations", async (req, res, next) => {
+  try {
+    if (req.user.role !== "teacher") throw new ApiError(403, "Réservé aux enseignants");
+    const { matieresEcole } = require("../../utils/matieres");
+    const { assurerAnneeScolaire } = require("../../utils/annees");
+    const annee = await assurerAnneeScolaire(req.user.schoolId);
+    const classes = await db.query("SELECT id, name FROM classes WHERE academic_year_id = $1 ORDER BY name", [annee.id]);
+    const miennes = await db.query(
+      "SELECT DISTINCT class_id, subject_id FROM class_subjects WHERE teacher_id = $1 AND academic_year_id = $2",
+      [req.user.id, annee.id]
+    );
+    res.json({
+      success: true,
+      data: {
+        matieres: await matieresEcole(req.user.schoolId),
+        classes: classes.rows,
+        matiereIds: [...new Set(miennes.rows.map((r) => r.subject_id))],
+        classeIds: [...new Set(miennes.rows.map((r) => r.class_id))],
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// PUT /api/notes/mes-affectations { matiereIds, classeIds } : l'enseignant choisit lui-meme
+router.put("/mes-affectations", async (req, res, next) => {
+  try {
+    if (req.user.role !== "teacher") throw new ApiError(403, "Réservé aux enseignants");
+    const { assurerAnneeScolaire } = require("../../utils/annees");
+    const annee = await assurerAnneeScolaire(req.user.schoolId);
+    const ids = (v) => (Array.isArray(v) ? v.map((x) => parseInt(x, 10)).filter((x) => x > 0) : []);
+    const mat = (await db.query("SELECT id FROM subjects WHERE id = ANY($1) AND school_id = $2", [ids(req.body?.matiereIds), req.user.schoolId])).rows.map((r) => r.id);
+    const cls = (await db.query("SELECT id FROM classes WHERE id = ANY($1) AND academic_year_id = $2", [ids(req.body?.classeIds), annee.id])).rows.map((r) => r.id);
+    if (!mat.length || !cls.length) throw new ApiError(400, "Choisissez au moins une matière et une classe");
+    // Retire les affectations abandonnees, puis ajoute les nouvelles
+    await db.query(
+      `UPDATE class_subjects SET teacher_id = NULL
+       WHERE teacher_id = $1 AND academic_year_id = $2 AND NOT (class_id = ANY($3) AND subject_id = ANY($4))`,
+      [req.user.id, annee.id, cls, mat]
+    );
+    const r = await db.query(
+      `INSERT INTO class_subjects (class_id, subject_id, teacher_id, academic_year_id, is_active)
+       SELECT c, s, $3, $4, true FROM unnest($1::int[]) c CROSS JOIN unnest($2::int[]) s
+       ON CONFLICT (class_id, subject_id, academic_year_id)
+       DO UPDATE SET teacher_id = COALESCE(class_subjects.teacher_id, EXCLUDED.teacher_id), is_active = true
+       RETURNING (teacher_id = $3) AS moi`,
+      [cls, mat, req.user.id, annee.id]
+    );
+    const occupees = r.rows.filter((x) => !x.moi).length;
+    res.json({ success: true, data: { affectees: r.rows.length - occupees, dejaPrises: occupees } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 module.exports = router;

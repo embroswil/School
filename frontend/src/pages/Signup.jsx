@@ -4,12 +4,13 @@ import { useAuth } from '../auth.jsx'
 import { Field, Note } from '../ui.jsx'
 
 const PROFILS = [
-  { id: 'parent', ico: '👨‍👩‍👧', titre: 'Parent', texte: 'Je suis la scolarité de mon ou mes enfants.' },
+  { id: 'parent', ico: '👨‍👩‍👧', titre: 'Parent ou proche', texte: 'Père, mère, tuteur, oncle… je suis la scolarité d’un ou plusieurs enfants.' },
   { id: 'student', ico: '🎒', titre: 'Élève', texte: 'Je consulte mes notes et les infos de ma classe.' },
   { id: 'teacher', ico: '👩‍🏫', titre: 'Enseignant', texte: 'Je publie les notes et je fais l’appel. Compte validé par l’établissement.' },
 ]
 const TYPES = { maternelle: 'Maternelle', primaire: 'École primaire', college: 'Collège', lycee: 'Lycée' }
-const enfantVide = { prenom: '', nom: '', classe: '', dateNaissance: '' }
+const enfantVide = { prenom: '', nom: '', classe: '', dateNaissance: '', lien: 'pere' }
+const LIENS = [['pere', 'Père'], ['mere', 'Mère'], ['tuteur', 'Tuteur / tutrice'], ['oncle_tante', 'Oncle / tante'], ['grand_parent', 'Grand-parent'], ['frere_soeur', 'Frère / sœur'], ['autre', 'Autre proche']]
 
 export default function Signup() {
   const { login, signup } = useAuth()
@@ -263,7 +264,7 @@ export default function Signup() {
 
             {role === 'parent' && (
               <>
-                <h2 className="section-title">Votre ou vos enfants</h2>
+                <h2 className="section-title">Le ou les enfants que vous suivez</h2>
                 {enfants.map((en, i) => (
                   <div className="card" key={i}>
                     <div className="grid2">
@@ -280,6 +281,15 @@ export default function Signup() {
                         <input className="input" type="date" value={en.dateNaissance} onChange={majEnfant(i, 'dateNaissance')} />
                       </Field>
                     </div>
+                    <Field label="Vous êtes son ou sa">
+                      <select className="input" value={en.lien} onChange={majEnfant(i, 'lien')}>
+                        {LIENS.map(([k, v]) => (
+                          <option key={k} value={k}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
                   </div>
                 ))}
                 <div className="actions" style={{ marginBottom: 12 }}>

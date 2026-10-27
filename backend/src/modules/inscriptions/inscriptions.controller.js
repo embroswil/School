@@ -17,7 +17,8 @@ const parseId = (v) => {
 const date = (v) => (v && /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) : null);
 
 // Relie un parent a un eleve du meme etablissement, si le prenom et le nom concordent
-const relierSiPossible = async (q, { parentRequestId, parentId, schoolId, prenom, nom }) => {
+const LIENS = ["pere", "mere", "tuteur", "oncle_tante", "grand_parent", "frere_soeur", "parent", "autre"];
+const relierSiPossible = async (q, { parentRequestId, parentId, schoolId, prenom, nom, lien = "parent" }) => {
   const { rows } = await q(
     `SELECT id FROM users
      WHERE role = 'student' AND school_id = $1
@@ -29,9 +30,9 @@ const relierSiPossible = async (q, { parentRequestId, parentId, schoolId, prenom
   const studentId = rows[0].id;
   await q(
     `INSERT INTO parent_student_links (parent_id, student_id, relationship, is_primary)
-     SELECT $1, $2, 'parent', true
+     SELECT $1, $2, $3, $3 IN ('pere', 'mere', 'parent', 'tuteur')
      WHERE NOT EXISTS (SELECT 1 FROM parent_student_links WHERE parent_id = $1 AND student_id = $2)`,
-    [parentId, studentId]
+    [parentId, studentId, lien]
   );
   await q(`UPDATE parent_requests SET status = 'approved', student_id = $2, decided_at = NOW() WHERE id = $1`, [
     parentRequestId,
@@ -126,7 +127,7 @@ const inscription = async (req, res, next) => {
       );
       // Parents deja inscrits qui ont declare cet enfant : on les relie
       const attente = await q(
-        `SELECT id, parent_id FROM parent_requests
+        `SELECT id, parent_id, COALESCE(relationship, 'parent') AS lien FROM parent_requests
          WHERE status = 'pending' AND school_id = $1
            AND lower(trim(child_first_name)) = lower(trim($2)) AND lower(trim(child_last_name)) = lower(trim($3))`,
         [schoolId, prenom, nom]
@@ -134,9 +135,9 @@ const inscription = async (req, res, next) => {
       for (const d of attente.rows) {
         await q(
           `INSERT INTO parent_student_links (parent_id, student_id, relationship, is_primary)
-           SELECT $1, $2, 'parent', true
+           SELECT $1, $2, $3, $3 IN ('pere', 'mere', 'parent', 'tuteur')
            WHERE NOT EXISTS (SELECT 1 FROM parent_student_links WHERE parent_id = $1 AND student_id = $2)`,
-          [d.parent_id, userId]
+          [d.parent_id, userId, d.lien]
         );
         await q(`UPDATE parent_requests SET status = 'approved', student_id = $2, decided_at = NOW() WHERE id = $1`, [d.id, userId]);
       }
@@ -146,10 +147,11 @@ const inscription = async (req, res, next) => {
       const enfants = Array.isArray(b.enfants) ? b.enfants.slice(0, 10) : [];
       for (const e of enfants) {
         if (!texte(e.prenom) || !texte(e.nom)) continue;
+        const lien = LIENS.includes(e.lien) ? e.lien : "parent";
         const d = await q(
-          `INSERT INTO parent_requests (school_id, parent_id, child_first_name, child_last_name, child_class, child_birth_date)
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-          [schoolId, userId, texte(e.prenom), texte(e.nom), texte(e.classe) || null, date(e.dateNaissance)]
+          `INSERT INTO parent_requests (school_id, parent_id, child_first_name, child_last_name, child_class, child_birth_date, relationship)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [schoolId, userId, texte(e.prenom), texte(e.nom), texte(e.classe) || null, date(e.dateNaissance), lien]
         );
         const relie = await relierSiPossible(q, {
           parentRequestId: d.rows[0].id,
@@ -157,6 +159,7 @@ const inscription = async (req, res, next) => {
           schoolId,
           prenom: texte(e.prenom),
           nom: texte(e.nom),
+          lien,
         });
         if (relie) enfantsRelies.push(`${texte(e.prenom)} ${texte(e.nom)}`);
       }

@@ -55,6 +55,9 @@ const TITRES = {
   '/etablissements': 'Établissements',
   '/utilisateurs': 'Comptes',
   '/evaluations': 'Saisie des notes',
+  '/suivi': 'Suivi scolaire',
+  '/notes': 'Notes',
+  '/mes-classes': 'Mes classes',
 }
 
 const ACTIONS = [

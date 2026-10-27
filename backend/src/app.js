@@ -41,6 +41,7 @@ app.use("/api/boite", require("./modules/boite/routes"));
 app.use("/api/actualites", require("./modules/actualites/routes"));
 app.use("/api/scolarite", require("./modules/scolarite/routes"));
 app.use("/api/notes", require("./modules/notes/routes"));
+app.use("/api/suivi", require("./modules/suivi/routes"));
 app.use("/api/users", require("./modules/users/user.routes"));
 app.use("/api/academic", require("./modules/academic-years/academic-year.routes"));
 app.use("/api/students", require("./modules/students/students.routes"));
