@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from './api.js'
 import { AuthProvider, useAuth } from './auth.jsx'
 import { usePath } from './router.js'
 import Shell from './layout.jsx'
@@ -10,7 +11,6 @@ import Account from './pages/Account.jsx'
 import Users from './pages/Users.jsx'
 import Classes from './pages/Classes.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
-import Years from './pages/Years.jsx'
 import Schools from './pages/Schools.jsx'
 import SchoolFiche from './pages/SchoolFiche.jsx'
 import TeacherRequests from './pages/TeacherRequests.jsx'
@@ -27,6 +27,7 @@ import Evaluation from './pages/Evaluation.jsx'
 import Appel from './pages/Appel.jsx'
 import Suivi, { MesNotes } from './pages/Suivi.jsx'
 import MesAffectations from './pages/MesAffectations.jsx'
+import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
 function Message({ title, children }) {
@@ -38,6 +39,27 @@ function Message({ title, children }) {
   )
 }
 
+// Confirmation de l'email depuis l'espace connecte
+function VerifierEmailConnecte() {
+  const { user, majUser } = useAuth()
+  const [envoye, setEnvoye] = useState(false)
+  useEffect(() => {
+    if (user.emailVerifie || envoye) return
+    setEnvoye(true)
+    api.post('/api/codes/verification/envoyer', { email: user.email }, { auth: false }).catch(() => {})
+  }, [user, envoye])
+  if (user.emailVerifie) return <Message title="Email confirmé ✓">Votre adresse {user.email} est confirmée.</Message>
+  return (
+    <VerificationEmail
+      email={user.email}
+      onConfirme={async () => {
+        majUser({ emailVerifie: true })
+        window.location.hash = '/'
+      }}
+    />
+  )
+}
+
 function Pages({ path }) {
   const { user } = useAuth()
   const gestion = user.role === 'admin' || user.role === 'principal'
@@ -46,6 +68,7 @@ function Pages({ path }) {
 
   if (path === '/') return <Home />
   if (path === '/compte') return <Account />
+  if (path === '/verifier-email') return <VerifierEmailConnecte />
   if (path === '/notifications') return <Notifications />
   if (path === '/actualites') return <Actualites />
   if (path === '/notes') return reserve(['parent', 'student'].includes(user.role), <MesNotes />)
@@ -64,7 +87,6 @@ function Pages({ path }) {
   if (path === '/eleves') return reserve(gestion, <Students />)
   if (path === '/utilisateurs') return reserve(gestion, <Users />)
   if (path === '/classes') return reserve(gestion, <Classes />)
-  if (path === '/annees') return reserve(gestion, <Years />)
 
   const eleveMatch = path.match(/^\/eleves\/(\d+)$/)
   if (eleveMatch) return reserve(gestion, <EleveFiche key={eleveMatch[1]} id={Number(eleveMatch[1])} />)
@@ -96,6 +118,7 @@ function Root() {
     if (path === '/connexion') return <Login />
     if (path === '/inscription') return <Signup />
     if (path === '/inscrire-etablissement') return <SchoolSignup />
+    if (path === '/mot-de-passe-oublie') return <MotDePasseOublie />
     return <Landing />
   }
   return (

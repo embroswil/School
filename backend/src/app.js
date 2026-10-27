@@ -33,6 +33,7 @@ app.get("/health/db", async (req, res, next) => {
 
 // --- routes -----------------------------------------------------------------
 app.use("/api/auth", require("./modules/users/auth.routes"));
+app.use("/api/codes", require("./modules/codes/routes").router);
 app.use("/api/schools", require("./modules/schools/schools.routes"));
 app.use("/api/inscriptions", require("./modules/inscriptions/inscriptions.routes"));
 app.use("/api/demandes-etablissements", require("./modules/demandes-etablissements/routes"));
@@ -43,20 +44,11 @@ app.use("/api/scolarite", require("./modules/scolarite/routes"));
 app.use("/api/notes", require("./modules/notes/routes"));
 app.use("/api/suivi", require("./modules/suivi/routes"));
 app.use("/api/users", require("./modules/users/user.routes"));
-app.use("/api/academic", require("./modules/academic-years/academic-year.routes"));
-app.use("/api/students", require("./modules/students/students.routes"));
-app.use("/api/attendance", require("./modules/attendance/attendance.routes"));
-app.use("/api/grades", require("./modules/grades/grades.routes"));
-app.use("/api/payments", require("./modules/payments/payments.routes"));
-app.use("/api/notifications", require("./modules/notifications/notifications.routes"));
-app.use("/api/parent-portal", require("./modules/parent-portal/parent-portal.routes"));
-app.use("/api/audit", require("./modules/audit/audit.routes"));
-app.use("/api/reports", require("./modules/reports/reports.routes"));
-app.use("/api/system", require("./modules/system-admin/system-admin.routes"));
+// Les anciens modules du projet d'origine (eleves, notes, presences, paiements
+// Paystack, emplois du temps, rapports…) ne sont plus exposes : ils ne
+// separaient pas les etablissements. Les nouveaux modules ci-dessus les remplacent.
 
 // Ces routeurs définissent déjà leur préfixe (/classes, /timetable, ...).
-app.use("/api", require("./modules/classes/class.routes"));
-app.use("/api", require("./modules/timetable/timetable.routes"));
 
 app.use(notFound);
 app.use(errorHandler);

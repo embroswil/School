@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { Field, Note } from '../ui.jsx'
+import { VerificationEmail } from './CodeEmail.jsx'
 
 const PROFILS = [
   { id: 'parent', ico: '👨‍👩‍👧', titre: 'Parent ou proche', texte: 'Père, mère, tuteur, oncle… je suis la scolarité d’un ou plusieurs enfants.' },
@@ -37,6 +38,7 @@ export default function Signup() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [fini, setFini] = useState(null)
+  const [aVerifier, setAVerifier] = useState(null) // compte cree, email a confirmer
 
   useEffect(() => {
     api
@@ -67,16 +69,40 @@ export default function Signup() {
         classeIds: role === 'teacher' ? classeIds : undefined,
       }
       const res = await signup(donnees)
-      if (role !== 'teacher') {
-        await login(f.email, f.password)
-        window.location.hash = '/'
-        return
-      }
-      setFini(res.message)
+      setAVerifier({ message: res.message })
     } catch (err) {
       setError(err.message)
     }
     setBusy(false)
+  }
+
+  // Compte cree : confirmation de l'email par le code recu
+  if (aVerifier && !fini) {
+    return (
+      <div className="public">
+        <main className="public-main" style={{ paddingTop: 30 }}>
+          <VerificationEmail
+            email={f.email.trim().toLowerCase()}
+            onConfirme={async () => {
+              if (role === 'teacher') {
+                setFini(aVerifier.message)
+                return
+              }
+              await login(f.email, f.password)
+              window.location.hash = '/'
+            }}
+            onPlusTard={async () => {
+              if (role === 'teacher') {
+                setFini(aVerifier.message)
+                return
+              }
+              await login(f.email, f.password)
+              window.location.hash = '/'
+            }}
+          />
+        </main>
+      </div>
+    )
   }
 
   if (fini) {

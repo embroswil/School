@@ -413,6 +413,11 @@ export default function Home() {
   const { user } = useAuth()
   return (
     <>
+      {user.emailVerifie === false && (
+        <a className="note" href="#/verifier-email" style={{ display: 'block', background: '#fff4dc', color: '#7a5200', marginTop: 4 }}>
+          ✉️ Confirmez votre adresse email pour sécuriser votre compte (mot de passe oublié…). <u>Confirmer</u>
+        </a>
+      )}
       {!['principal', 'admin'].includes(user.role) && (
       <section className="hero-card" style={{ marginTop: 8 }}>
         <span className="badge">{ROLES[user.role] || user.role}</span>

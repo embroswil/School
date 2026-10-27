@@ -23,6 +23,13 @@ export function AuthProvider({ children }) {
     return res
   }
 
+  // Met a jour l'utilisateur garde en memoire (ex. email confirme)
+  function majUser(champs) {
+    const s = session.get()
+    if (s?.user) session.set({ ...s, user: { ...s.user, ...champs } })
+    setUser((u) => (u ? { ...u, ...champs } : u))
+  }
+
   async function logout() {
     const refreshToken = session.get()?.refreshToken
     try {
@@ -35,7 +42,7 @@ export function AuthProvider({ children }) {
     window.location.hash = '/'
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, signup }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, logout, signup, majUser }}>{children}</AuthContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

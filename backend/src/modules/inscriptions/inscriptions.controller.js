@@ -180,6 +180,16 @@ const inscription = async (req, res, next) => {
     }
     await q("COMMIT");
 
+    // Code de verification de l'adresse email
+    let codeEnvoye = false;
+    try {
+      const { envoyerCode } = require("../codes/routes");
+      await envoyerCode({ id: userId, email, first_name: prenom }, "verification");
+      codeEnvoye = true;
+    } catch (_) {
+      // l'inscription reste valable ; un nouveau code pourra etre demande
+    }
+
     if (role === "teacher") {
       await notifierEtablissement(schoolId, {
         title: "Nouvel enseignant à valider",
@@ -196,7 +206,7 @@ const inscription = async (req, res, next) => {
         role === "teacher"
           ? `Compte créé. ${ecole.rows[0].name} doit valider votre compte enseignant avant votre première connexion.`
           : "Compte créé. Vous pouvez vous connecter.",
-      data: { role, enAttente: role === "teacher", enfantsRelies },
+      data: { role, enAttente: role === "teacher", enfantsRelies, codeEnvoye },
     });
   } catch (e) {
     try {

@@ -189,3 +189,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_jour ON attendance(student_id, 
 -- L'enseignant choisit ses matieres et ses classes a l'inscription
 ALTER TABLE teacher_requests ADD COLUMN IF NOT EXISTS subject_ids INTEGER[];
 ALTER TABLE teacher_requests ADD COLUMN IF NOT EXISTS class_ids INTEGER[];
+
+-- Codes par email (verification de l'adresse, mot de passe oublie)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verifie BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS codes_email (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('verification','reinitialisation')),
+  code_hash VARCHAR(100) NOT NULL,
+  expire_le TIMESTAMP NOT NULL,
+  tentatives SMALLINT NOT NULL DEFAULT 0,
+  utilise BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

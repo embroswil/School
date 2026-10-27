@@ -40,6 +40,7 @@ const toPublicUser = (u) => ({
   createdAt: u.created_at,
   schoolId: u.school_id || null,
   schoolName: u.school_name || null,
+  emailVerifie: u.email_verifie !== false,
   status: u.status || "active",
 });
 

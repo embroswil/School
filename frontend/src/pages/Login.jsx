@@ -54,6 +54,11 @@ export default function Login() {
               required
             />
           </Field>
+          <p style={{ textAlign: 'right', margin: '-4px 0 12px' }}>
+            <a href="#/mot-de-passe-oublie" style={{ fontWeight: 700, fontSize: 14 }}>
+              Mot de passe oublié ?
+            </a>
+          </p>
           <Note>{error}</Note>
           <button className="btn btn-block" type="submit" disabled={busy}>
             {busy ? 'Connexion…' : 'Se connecter'}
