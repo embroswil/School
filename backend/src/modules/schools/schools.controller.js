@@ -180,4 +180,36 @@ const structure = async (req, res, next) => {
   }
 };
 
-module.exports = { listePublique, liste, creer, modifier, definirAdministrateur, statistiques, structure };
+// Fiche complete d'un etablissement (administrateur de la plateforme)
+const fiche = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    const e = await db.query("SELECT id, name, type, city, code, is_active, photo, created_at FROM schools WHERE id = $1", [id]);
+    if (!e.rows[0]) throw new ApiError(404, "Établissement introuvable");
+    const annee = await assurerAnneeScolaire(id);
+    const { rows } = await db.query(
+      `SELECT
+        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'student') AS eleves,
+        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'student' AND email NOT LIKE '%@inscrit.school') AS eleves_avec_compte,
+        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'active') AS enseignants,
+        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'pending') AS enseignants_attente,
+        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'parent') AS parents,
+        (SELECT COUNT(*)::int FROM classes WHERE academic_year_id = $2) AS classes,
+        (SELECT COUNT(*)::int FROM publications WHERE school_id = $1) AS publications,
+        (SELECT COUNT(*)::int FROM evaluations WHERE school_id = $1) AS evaluations,
+        (SELECT COALESCE(SUM(montant), 0)::bigint FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi') AS paiements,
+        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND created_at > NOW() - INTERVAL '7 days' AND email NOT LIKE '%@inscrit.school') AS inscrits_7j,
+        (SELECT MAX(last_login) FROM users WHERE school_id = $1) AS derniere_activite`,
+      [id, annee?.id || null]
+    );
+    const admins = await db.query(
+      "SELECT id, first_name, last_name, email, phone, last_login FROM users WHERE school_id = $1 AND role = 'principal' ORDER BY id",
+      [id]
+    );
+    res.json({ success: true, data: { ...e.rows[0], annee: annee?.name || null, ...rows[0], administrateurs: admins.rows } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { listePublique, liste, creer, modifier, definirAdministrateur, statistiques, structure, fiche };

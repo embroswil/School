@@ -14,6 +14,7 @@ router.get("/:id/structure", ctrl.structure);
 router.get("/statistiques", authenticate, isPlatformAdmin, ctrl.statistiques);
 router.get("/", authenticate, isPlatformAdmin, ctrl.liste);
 router.post("/", authenticate, isPlatformAdmin, ctrl.creer);
+router.get("/:id/fiche", authenticate, isPlatformAdmin, ctrl.fiche);
 router.put("/:id", authenticate, isPlatformAdmin, ctrl.modifier);
 router.post("/:id/administrateur", authenticate, isPlatformAdmin, ctrl.definirAdministrateur);
 

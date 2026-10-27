@@ -12,6 +12,7 @@ import Classes from './pages/Classes.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
 import Years from './pages/Years.jsx'
 import Schools from './pages/Schools.jsx'
+import SchoolFiche from './pages/SchoolFiche.jsx'
 import TeacherRequests from './pages/TeacherRequests.jsx'
 import SchoolSignup from './pages/SchoolSignup.jsx'
 import Students from './pages/Students.jsx'
@@ -51,6 +52,8 @@ function Pages({ path }) {
   const convMatch = path.match(/^\/messages\/(\d+)$/)
   if (convMatch) return <Conversation key={convMatch[1]} id={Number(convMatch[1])} />
   if (path === '/etablissements') return reserve(user.role === 'admin', <Schools />)
+  const ficheEcole = path.match(/^\/etablissements\/(\d+)$/)
+  if (ficheEcole) return reserve(user.role === 'admin', <SchoolFiche key={ficheEcole[1]} id={Number(ficheEcole[1])} />)
   if (path === '/enseignants') return reserve(gestion, <TeacherRequests />)
   if (path === '/eleves') return reserve(gestion, <Students />)
   if (path === '/utilisateurs') return reserve(gestion, <Users />)

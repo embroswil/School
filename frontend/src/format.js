@@ -1,5 +1,6 @@
 export const ROLE_LABEL = {
   admin: 'Administrateur',
+  principal: 'Admin. établissement',
   teacher: 'Enseignant',
   parent: 'Parent',
   student: 'Élève',

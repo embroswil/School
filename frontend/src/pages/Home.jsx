@@ -124,7 +124,7 @@ function EspaceAdmin() {
       </div>
       {d.ecoles?.length === 0 && <p className="muted">Aucun établissement pour le moment.</p>}
       {d.ecoles?.map((e) => (
-        <a className="ecole-carte" key={e.id} href="#/etablissements">
+        <a className="ecole-carte" key={e.id} href={`#/etablissements/${e.id}`}>
           <div className="ecole-tete">
             <span className="pastille-ico" style={{ width: 42, height: 42 }}>
               <IcEcole size={20} />

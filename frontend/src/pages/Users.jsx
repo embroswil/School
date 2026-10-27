@@ -10,6 +10,7 @@ const FILTERS = [
   ['student', 'Élèves'],
   ['teacher', 'Enseignants'],
   ['parent', 'Parents'],
+  ['principal', 'Admin. établissements'],
   ['admin', 'Administrateurs'],
 ]
 
@@ -191,7 +192,11 @@ export default function Users() {
                 <span className="tag">{ROLE_LABEL[u.role] ?? u.role}</span>
                 {!u.isActive && <span className="tag tag-off">Désactivé</span>}
               </span>
-              <span className="row-sub">{u.email}</span>
+              <span className="row-sub">
+                {u.email}
+                {u.schoolName ? ` · ${u.schoolName}` : ''}
+                {u.status === 'pending' ? ' · en attente de validation' : ''}
+              </span>
             </div>
             {u.id === me.id ? (
               <span className="row-sub">Vous</span>

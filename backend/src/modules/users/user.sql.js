@@ -77,7 +77,7 @@ const list = async ({ role, isActive, search, status, limit, offset }) => {
 
   const count = await db.query(`SELECT COUNT(*)::int AS total FROM users ${clause}`, params);
   const rows = await db.query(
-    `SELECT ${USER_COLUMNS} FROM users ${clause}
+    `SELECT ${USER_COLUMNS}, (SELECT name FROM schools sc WHERE sc.id = users.school_id) AS school_name FROM users ${clause}
      ORDER BY created_at DESC, id DESC
      LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
     [...params, limit, offset]

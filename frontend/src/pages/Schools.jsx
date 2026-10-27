@@ -7,7 +7,7 @@ const TYPES = { maternelle: 'Maternelle', primaire: 'École primaire', college: 
 const vide = { name: '', type: 'lycee', city: '', code: '' }
 const adminVide = { email: '', firstName: '', lastName: '', phone: '', password: '' }
 
-function Administrateur({ ecole, onDone }) {
+export function Administrateur({ ecole, onDone }) {
   const [f, setF] = useState(adminVide)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -121,118 +121,128 @@ function Demandes({ onChange }) {
   )
 }
 
-export default function Schools() {
-  const liste = useApi('/api/schools')
+function Ajouter({ onDone }) {
   const [f, setF] = useState(vide)
-  const [ouvert, setOuvert] = useState(null)
   const [error, setError] = useState('')
-  const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
-
   async function creer(e) {
     e.preventDefault()
     setError('')
-    setOk('')
     setBusy(true)
     try {
-      await api.post('/api/schools', f)
-      setF(vide)
-      setOk('Établissement ajouté.')
-      liste.reload()
+      const r = await api.post('/api/schools', f)
+      window.location.hash = `/etablissements/${r.data.id}`
     } catch (err) {
       setError(err.message)
+      setBusy(false)
     }
-    setBusy(false)
+    onDone()
   }
+  return (
+    <form className="card" onSubmit={creer}>
+      <p className="muted" style={{ fontSize: 14, marginBottom: 12 }}>
+        Pour un établissement rencontré sur le terrain. Les écoles peuvent aussi faire leur demande elles-mêmes depuis la page d’accueil.
+      </p>
+      <Field label="Nom de l’établissement">
+        <input className="input" placeholder="ex. Lycée Bilingue de Bonabéri" value={f.name} onChange={maj('name')} required />
+      </Field>
+      <div className="grid2">
+        <Field label="Type">
+          <select className="input" value={f.type} onChange={maj('type')}>
+            {Object.entries(TYPES).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Ville">
+          <input className="input" placeholder="ex. Douala" value={f.city} onChange={maj('city')} />
+        </Field>
+      </div>
+      <Field label="Code (facultatif)">
+        <input className="input" placeholder="ex. LBB-DLA" value={f.code} onChange={maj('code')} />
+      </Field>
+      <Note>{error}</Note>
+      <button className="btn btn-block" type="submit" disabled={busy}>
+        {busy ? 'Ajout…' : 'Ajouter l’établissement'}
+      </button>
+    </form>
+  )
+}
+
+// Etablissements : liste, demandes en attente, ajout
+export default function Schools() {
+  const liste = useApi('/api/schools')
+  const demandes = useApi('/api/demandes-etablissements?status=pending')
+  const nbDemandes = demandes.data?.length || 0
+  const [onglet, setOnglet] = useState(null)
+  const actif = onglet || (nbDemandes ? 'demandes' : 'liste')
+  const [recherche, setRecherche] = useState('')
+  const q = recherche.trim().toLowerCase()
+  const ecoles = (liste.data || []).filter((e) => !q || `${e.name} ${e.city || ''}`.toLowerCase().includes(q))
 
   return (
     <>
-      <h1 className="page-title">Établissements</h1>
-      <p className="lede">Validez les demandes, ajoutez des établissements et désignez leur administrateur.</p>
-
-      <Demandes onChange={() => liste.reload()} />
-
-      <h2 className="section-title">Ajouter un établissement</h2>
-
-      <form className="card" onSubmit={creer}>
-        <Field label="Nom de l’établissement">
-          <input className="input" placeholder="ex. Lycée Bilingue de Bonabéri" value={f.name} onChange={maj('name')} required />
-        </Field>
-        <div className="grid2">
-          <Field label="Type">
-            <select className="input" value={f.type} onChange={maj('type')}>
-              {Object.entries(TYPES).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Ville">
-            <input className="input" placeholder="ex. Douala" value={f.city} onChange={maj('city')} />
-          </Field>
-        </div>
-        <Field label="Code (facultatif)">
-          <input className="input" placeholder="ex. LBB-DLA" value={f.code} onChange={maj('code')} />
-        </Field>
-        <Note>{error}</Note>
-        <Note kind="ok">{ok}</Note>
-        <button className="btn" type="submit" disabled={busy}>
-          {busy ? 'Ajout…' : '+ Ajouter l’établissement'}
+      <div className="chips" style={{ marginTop: 4 }}>
+        <button type="button" className="chip" aria-pressed={actif === 'liste'} onClick={() => setOnglet('liste')}>
+          Établissements {liste.data ? `(${liste.data.length})` : ''}
         </button>
-      </form>
+        <button type="button" className="chip" aria-pressed={actif === 'demandes'} onClick={() => setOnglet('demandes')}>
+          Demandes {nbDemandes > 0 && <span className="count" style={{ marginLeft: 4 }}>{nbDemandes}</span>}
+        </button>
+        <button type="button" className="chip" aria-pressed={actif === 'ajouter'} onClick={() => setOnglet('ajouter')}>
+          + Ajouter
+        </button>
+      </div>
 
-      <h2 className="section-title">Liste</h2>
-      {liste.loading && <p className="muted">Chargement…</p>}
-      {liste.data?.length === 0 && <p className="muted">Aucun établissement pour le moment.</p>}
-      {liste.data?.map((e) => (
-        <div className="card" key={e.id}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <span style={{ fontSize: 28 }}>🏫</span>
-            <div className="row-main">
-              <div className="row-title">
-                {e.name} {!e.isActive && <span className="tag tag-off">Suspendu</span>}
-              </div>
-              <div className="row-sub">
-                {TYPES[e.type]}
-                {e.city ? ` · ${e.city}` : ''} · {e.nbUtilisateurs} compte(s)
-              </div>
-            </div>
-          </div>
-          <p style={{ marginTop: 10, fontSize: 14 }}>
-            <b>Administrateur : </b>
-            {e.administrateurs?.length
-              ? e.administrateurs.map((a) => `${a.firstName} ${a.lastName} (${a.email})`).join(', ')
-              : <span className="muted">aucun</span>}
-          </p>
-          <div className="actions">
-            <button type="button" className="btn btn-quiet" onClick={() => setOuvert(ouvert === e.id ? null : e.id)}>
-              {ouvert === e.id ? 'Fermer' : 'Désigner un administrateur'}
-            </button>
-            <button
-              type="button"
-              className={`btn btn-quiet ${e.isActive ? 'btn-danger' : ''}`}
-              onClick={async () => {
-                if (e.isActive && !window.confirm(`Suspendre ${e.name} ? Il n’apparaîtra plus à l’inscription.`)) return
-                await api.put(`/api/schools/${e.id}`, { isActive: !e.isActive })
-                liste.reload()
-              }}
-            >
-              {e.isActive ? 'Suspendre' : 'Réactiver'}
-            </button>
-          </div>
-          {ouvert === e.id && (
-            <Administrateur
-              ecole={e}
-              onDone={() => {
-                setOuvert(null)
-                liste.reload()
-              }}
-            />
+      {actif === 'demandes' &&
+        (nbDemandes === 0 ? (
+          <p className="muted">Aucune demande en attente.</p>
+        ) : (
+          <Demandes
+            onChange={() => {
+              demandes.reload()
+              liste.reload()
+            }}
+          />
+        ))}
+
+      {actif === 'ajouter' && <Ajouter onDone={() => liste.reload()} />}
+
+      {actif === 'liste' && (
+        <>
+          {(liste.data?.length || 0) > 5 && (
+            <input className="input" placeholder="Rechercher un établissement" value={recherche} onChange={(e) => setRecherche(e.target.value)} style={{ marginBottom: 12 }} />
           )}
-        </div>
-      ))}
+          {liste.loading && <p className="muted">Chargement…</p>}
+          {liste.data?.length === 0 && <p className="muted">Aucun établissement pour le moment.</p>}
+          {ecoles.map((e) => (
+            <a className="ecole-carte" key={e.id} href={`#/etablissements/${e.id}`}>
+              <div className="ecole-tete">
+                <span
+                  className="pastille-ico"
+                  style={{ width: 44, height: 44, ...(e.photo ? { backgroundImage: `url(${e.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}) }}
+                >
+                  {e.photo ? '' : '🏫'}
+                </span>
+                <div className="row-main">
+                  <div className="row-title">{e.name}</div>
+                  <div className="row-sub">
+                    {TYPES[e.type]}
+                    {e.city ? ` · ${e.city}` : ''} · {e.nbUtilisateurs} compte(s)
+                  </div>
+                  <div className="row-sub" style={{ fontSize: 13 }}>
+                    {e.administrateurs?.length ? `Admin : ${e.administrateurs.map((a) => `${a.firstName} ${a.lastName}`).join(', ')}` : 'Aucun administrateur'}
+                  </div>
+                </div>
+                {e.isActive ? <span className="tag tag-now">Actif</span> : <span className="tag tag-off">Suspendu</span>}
+              </div>
+            </a>
+          ))}
+        </>
+      )}
     </>
   )
 }
