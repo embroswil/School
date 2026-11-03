@@ -62,6 +62,8 @@ const TITRES = {
   '/abonnement': 'Abonnement',
   '/abonnements': 'Abonnements',
   '/recus': 'Reçu',
+  '/ordres': 'Paiement',
+  '/litiges': 'Litiges',
   '/annuel': 'Fin d’année',
   '/notes': 'Notes',
   '/mes-classes': 'Mes classes',

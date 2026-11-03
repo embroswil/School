@@ -627,3 +627,7 @@ router.post("/relancer", async (req, res, next) => {
 
 module.exports = router;
 module.exports.verifierPaiement = verifierPaiement;
+module.exports.situationEleve = situationEleve;
+module.exports.elevesAccessibles = elevesAccessibles;
+module.exports.apresPaiement = apresPaiement;
+module.exports.moyensEcole = moyensEcole;

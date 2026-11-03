@@ -31,7 +31,8 @@ const authenticate = (req, res, next) => {
   // Les parents et eleves peuvent toujours payer leurs frais de scolarite
   const exempte =
     ["/api/abonnement", "/api/auth", "/api/codes", "/api/boite"].some((p) => (req.originalUrl || "").startsWith(p)) ||
-    (["parent", "student"].includes(req.user.role) && (req.originalUrl || "").startsWith("/api/scolarite"));
+    (["parent", "student"].includes(req.user.role) && (req.originalUrl || "").startsWith("/api/scolarite")) ||
+    (req.originalUrl || "").startsWith("/api/scolarite/ordres");
   if (ecriture && !exempte && req.user.schoolId && req.user.role !== "admin") {
     return require("../modules/abonnement/service")
       .estEnLectureSeule(req.user.schoolId)

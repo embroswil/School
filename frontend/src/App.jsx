@@ -36,6 +36,7 @@ import Abonnement from './pages/Abonnement.jsx'
 import AbonnementsAdmin from './pages/AbonnementsAdmin.jsx'
 import Recu from './pages/Recu.jsx'
 import RecuScolarite from './pages/RecuScolarite.jsx'
+import OrdrePaiement, { ListeOrdres } from './pages/OrdrePaiement.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -102,6 +103,17 @@ function Pages({ path }) {
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
   if (path === '/abonnement') return reserve(user.role === 'principal', <Abonnement />)
   if (path === '/abonnements') return reserve(user.role === 'admin', <AbonnementsAdmin />)
+  const ordreMatch = path.match(/^\/ordres\/(\d+)$/)
+  if (ordreMatch) return <OrdrePaiement key={ordreMatch[1]} id={Number(ordreMatch[1])} />
+  if (path === '/litiges')
+    return reserve(
+      user.role === 'admin',
+      <>
+        <h1 className="page-title">Litiges de paiement</h1>
+        <p className="lede">Paiements contestés entre un parent et un établissement : examinez la capture et la discussion, puis tranchez.</p>
+        <ListeOrdres statut="litige" vide="Aucun litige en cours. 👍" />
+      </>,
+    )
   const recuScolMatch = path.match(/^\/recus\/(\d+)$/)
   if (recuScolMatch) return <RecuScolarite key={recuScolMatch[1]} id={Number(recuScolMatch[1])} />
   const recuMatch = path.match(/^\/abonnement\/recus\/(\d+)$/)

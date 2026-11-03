@@ -316,3 +316,25 @@ ALTER TABLE schools ADD COLUMN IF NOT EXISTS frais_service_parent BOOLEAN NOT NU
 ALTER TABLE schools ADD COLUMN IF NOT EXISTS frais_service_pct NUMERIC(4,2) NOT NULL DEFAULT 0;
 ALTER TABLE schools ADD COLUMN IF NOT EXISTS derniere_relance TIMESTAMP;
 ALTER TABLE frais_scolaires ADD COLUMN IF NOT EXISTS categorie VARCHAR(20) NOT NULL DEFAULT 'scolarite';
+
+-- Paiement « P2P » des frais : ordres de paiement et leur discussion
+CREATE TABLE IF NOT EXISTS ordres_paiement (
+  id SERIAL PRIMARY KEY, code VARCHAR(10) NOT NULL UNIQUE,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  frais_id INTEGER NOT NULL REFERENCES frais_scolaires(id) ON DELETE CASCADE,
+  montant INTEGER NOT NULL CHECK (montant > 0),
+  moyen VARCHAR(20) NOT NULL CHECK (moyen IN ('orange_money','mtn_momo')),
+  numero_destinataire VARCHAR(30) NOT NULL,
+  statut VARCHAR(12) NOT NULL DEFAULT 'a_payer' CHECK (statut IN ('a_payer','paye','confirme','annule','expire','litige')),
+  transaction VARCHAR(120), telephone_payeur VARCHAR(30), preuve TEXT, motif VARCHAR(500),
+  cree_par INTEGER REFERENCES users(id) ON DELETE SET NULL, confirme_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  paiement_id INTEGER REFERENCES paiements_scolaires(id) ON DELETE SET NULL, rappel_envoye BOOLEAN NOT NULL DEFAULT false,
+  expire_le TIMESTAMP NOT NULL, paye_le TIMESTAMP, confirme_le TIMESTAMP, created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ordres_transaction ON ordres_paiement (school_id, lower(transaction)) WHERE transaction IS NOT NULL AND statut IN ('paye','confirme','litige');
+CREATE TABLE IF NOT EXISTS messages_ordre (
+  id SERIAL PRIMARY KEY, ordre_id INTEGER NOT NULL REFERENCES ordres_paiement(id) ON DELETE CASCADE,
+  auteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL, role VARCHAR(20), texte VARCHAR(1000) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

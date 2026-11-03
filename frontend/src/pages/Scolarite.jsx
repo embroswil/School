@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
+import { ListeOrdres } from './OrdrePaiement.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
@@ -23,9 +24,7 @@ export const CATEGORIES = {
 function Situation() {
   const situation = useApi('/api/scolarite/situation')
   const [paiement, setPaiement] = useState(null) // { eleve, frais, moyens, mode: 'enligne' | 'transfert' }
-  const [transaction, setTransaction] = useState('')
   const [montant, setMontant] = useState('')
-  const [tel, setTel] = useState('')
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,37 +50,19 @@ function Situation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Ordre de paiement « P2P » : le parent paie directement l'etablissement par Mobile Money
   async function payer(e) {
     e.preventDefault()
     setError('')
     setBusy(true)
-    if (paiement.mode === 'transfert') {
-      try {
-        const r = await api.post('/api/scolarite/declarer', {
-          studentId: paiement.eleve.id,
-          fraisId: paiement.frais.id,
-          montant: Number(String(montant).replace(/\s/g, '')),
-          transaction,
-          telephone: tel,
-        })
-        setInfo(r.message)
-        setPaiement(null)
-        setTransaction('')
-      } catch (err) {
-        setError(err.message)
-      }
-      setBusy(false)
-      return
-    }
     try {
-      const r = await api.post('/api/scolarite/payer', {
+      const r = await api.post('/api/scolarite/ordres', {
         studentId: paiement.eleve.id,
         fraisId: paiement.frais.id,
         montant: Number(String(montant).replace(/\s/g, '')),
-        telephone: tel,
+        moyen: paiement.moyen,
       })
-      localStorage.setItem('school-paiement', r.data.reference)
-      window.location.href = r.data.url
+      window.location.hash = `/ordres/${r.data.id}`
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -92,6 +73,7 @@ function Situation() {
     <>
       <Note kind="ok">{info}</Note>
       <Note>{error}</Note>
+      <ListeOrdres statut="a_payer,paye,litige" />
       {situation.loading && <p className="muted">Chargement…</p>}
       {situation.data?.length === 0 && (
         <p className="lede">
@@ -135,13 +117,13 @@ function Situation() {
                   ) : (
                     <>
                       <span className="tag tag-wait">Reste {fcfa(f.reste)}</span>
-                      {(s.moyens?.enLigne || s.moyens?.orange || s.moyens?.mtn) ? (
+                      {(s.moyens?.orange || s.moyens?.mtn) ? (
                         <button
                           type="button"
                           className="btn"
                           style={{ padding: '9px 14px', fontSize: 14 }}
                           onClick={() => {
-                            setPaiement({ eleve: s.eleve, frais: f, moyens: s.moyens, mode: s.moyens.enLigne ? 'enligne' : 'transfert' })
+                            setPaiement({ eleve: s.eleve, frais: f, moyens: s.moyens, moyen: s.moyens.orange ? 'orange_money' : 'mtn_momo' })
                             setMontant(String(f.reste))
                             setError('')
                           }}
@@ -185,54 +167,28 @@ function Situation() {
           <b>
             {paiement.frais.nom} · {paiement.eleve.prenom}
           </b>
-          {paiement.moyens.enLigne && (paiement.moyens.orange || paiement.moyens.mtn) && (
-            <div className="chips" style={{ marginTop: 10 }}>
-              <button type="button" className="chip" aria-pressed={paiement.mode === 'enligne'} onClick={() => setPaiement({ ...paiement, mode: 'enligne' })}>
-                Payer en ligne
+          <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>
+            Vous payez directement l’établissement depuis votre téléphone. School vous indique le numéro, le montant et un code à mettre en motif.
+          </p>
+          <div className="chips">
+            {paiement.moyens.orange && (
+              <button type="button" className="chip" aria-pressed={paiement.moyen === 'orange_money'} onClick={() => setPaiement({ ...paiement, moyen: 'orange_money' })}>
+                🟠 Orange Money
               </button>
-              <button type="button" className="chip" aria-pressed={paiement.mode === 'transfert'} onClick={() => setPaiement({ ...paiement, mode: 'transfert' })}>
-                J’ai fait un transfert
+            )}
+            {paiement.moyens.mtn && (
+              <button type="button" className="chip" aria-pressed={paiement.moyen === 'mtn_momo'} onClick={() => setPaiement({ ...paiement, moyen: 'mtn_momo' })}>
+                🟡 MTN MoMo
               </button>
-            </div>
-          )}
-          {paiement.mode === 'transfert' && (
-            <div className="note note-ok" style={{ fontWeight: 400 }}>
-              Envoyez le montant à l’établissement, puis indiquez le n° de transaction reçu par SMS :
-              {paiement.moyens.orange && (
-                <div>
-                  🟠 Orange Money : <b>{paiement.moyens.orange}</b>
-                </div>
-              )}
-              {paiement.moyens.mtn && (
-                <div>
-                  🟡 MTN MoMo : <b>{paiement.moyens.mtn}</b>
-                </div>
-              )}
-              {paiement.moyens.instructions && <div style={{ marginTop: 4 }}>{paiement.moyens.instructions}</div>}
-            </div>
-          )}
-          <div className="grid2" style={{ marginTop: 10 }}>
-            <Field label="Montant (FCFA)">
-              <input className="input" inputMode="numeric" value={montant} onChange={(e) => setMontant(e.target.value)} required />
-            </Field>
-            <Field label="Votre numéro">
-              <input className="input" type="tel" placeholder="6 XX XX XX XX" value={tel} onChange={(e) => setTel(e.target.value)} />
-            </Field>
+            )}
           </div>
-          {paiement.mode === 'transfert' && (
-            <Field label="N° de la transaction (SMS)">
-              <input className="input" placeholder="ex. MP261026.1234.A56789" value={transaction} onChange={(e) => setTransaction(e.target.value)} required />
-            </Field>
-          )}
-          {paiement.mode === 'enligne' && paiement.moyens.fraisServicePct > 0 && (
-            <p className="muted" style={{ fontSize: 14, marginBottom: 10 }}>
-              Frais de transaction : {fcfa(Math.ceil((Number(String(montant).replace(/\s/g, '')) || 0) * paiement.moyens.fraisServicePct / 100))} · total débité :{' '}
-              <b>{fcfa((Number(String(montant).replace(/\s/g, '')) || 0) + Math.ceil((Number(String(montant).replace(/\s/g, '')) || 0) * paiement.moyens.fraisServicePct / 100))}</b>
-            </p>
-          )}
+          <Field label="Montant à payer (FCFA)">
+            <input className="input" inputMode="numeric" value={montant} onChange={(e) => setMontant(e.target.value)} required />
+          </Field>
+          <Note>{error}</Note>
           <div className="actions">
             <button className="btn" type="submit" disabled={busy}>
-              {busy ? 'Envoi…' : paiement.mode === 'transfert' ? 'Déclarer le paiement' : 'Payer par Mobile Money'}
+              {busy ? 'Création…' : 'Continuer'}
             </button>
             <button className="btn btn-quiet" type="button" onClick={() => setPaiement(null)}>
               Annuler
@@ -478,6 +434,22 @@ function Paiements() {
 }
 
 function AConfirmer() {
+  return (
+    <>
+      <p className="muted" style={{ fontSize: 14, margin: '0 2px 10px' }}>
+        Les parents paient directement sur vos numéros, puis signalent leur paiement. Vérifiez votre compte Mobile Money avant de confirmer.
+      </p>
+      <ListeOrdres statut="paye,litige" vide="Aucun paiement à confirmer. 👍" />
+      <h2 className="section-title">En attente du paiement des parents</h2>
+      <ListeOrdres statut="a_payer" vide="Aucun ordre en cours." />
+      <h2 className="section-title">Derniers paiements confirmés</h2>
+      <ListeOrdres statut="confirme" vide="Aucun pour le moment." />
+      <AConfirmerAncien />
+    </>
+  )
+}
+
+function AConfirmerAncien() {
   const liste = useApi('/api/scolarite/a-confirmer')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(null)
@@ -494,13 +466,15 @@ function AConfirmer() {
     }
     setBusy(null)
   }
+  if (!liste.data?.length) return null // anciennes declarations (avant les ordres)
   return (
     <>
       <p className="muted" style={{ marginBottom: 12 }}>
         Paiements Mobile Money déclarés par les parents : vérifiez la transaction sur votre compte, puis confirmez.
       </p>
       <Note>{error}</Note>
-      {liste.data?.length === 0 && <p className="muted">Aucun paiement à confirmer.</p>}
+      <h2 className="section-title">Anciennes déclarations à confirmer</h2>
+
       {liste.data?.map((p) => (
         <div className="card" key={p.id}>
           <div className="row-title" style={{ fontSize: 17 }}>
@@ -655,15 +629,11 @@ function Reglages() {
     }
     setBusy(false)
   }
-  async function retirerCle() {
-    await api.put('/api/scolarite/reglages', { cle: '' })
-    r.reload()
-  }
   return (
     <form className="card" onSubmit={enregistrer}>
       <b>Où les parents paient</b>
       <p className="muted" style={{ fontSize: 14, margin: '4px 0 12px' }}>
-        L’argent arrive directement sur les comptes de l’établissement.
+        Les parents paient directement sur ces numéros, puis signalent leur paiement : vous confirmez la réception dans « À confirmer ».
       </p>
       <div className="grid2">
         <Field label="Orange Money (numéro)">
@@ -673,40 +643,9 @@ function Reglages() {
           <input className="input" type="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
         </Field>
       </div>
-      <Field label="Consignes (nom du compte, motif à indiquer…)">
+      <Field label="Nom du titulaire et consignes (affichés aux parents)">
         <textarea className="input" placeholder="ex. Compte au nom de LYCÉE DE YINGUI. Indiquez le nom de l’élève en motif." value={v.instructions} onChange={maj('instructions')} />
       </Field>
-      <hr style={{ border: 0, borderTop: '1px solid var(--line)', margin: '6px 0 14px' }} />
-      <b>Paiement en ligne (facultatif)</b>
-      <p className="muted" style={{ fontSize: 14, margin: '4px 0 12px' }}>
-        Avec un compte <a href="https://business.notchpay.co" target="_blank" rel="noreferrer">NotchPay</a> au nom de l’établissement, les parents paient
-        directement dans l’app, et chaque paiement est confirmé automatiquement.
-      </p>
-      {r.data?.cleMasquee ? (
-        <p style={{ marginBottom: 10 }}>
-          ✓ Activé ({r.data.cleMasquee}){' '}
-          <button type="button" className="btn btn-quiet btn-danger" style={{ padding: '6px 10px', fontSize: 13 }} onClick={retirerCle}>
-            Désactiver
-          </button>
-        </p>
-      ) : null}
-      <Field label={r.data?.cleMasquee ? 'Remplacer la clé publique NotchPay' : 'Clé publique NotchPay'}>
-        <input className="input" placeholder="pk.…" value={v.cle} onChange={maj('cle')} autoComplete="off" />
-      </Field>
-      <b>Frais de transaction du paiement en ligne</b>
-      <div className="chips" style={{ marginTop: 8 }}>
-        <button type="button" className="chip" aria-pressed={!v.fraisServiceParent} onClick={() => setF({ ...v, fraisServiceParent: false })}>
-          Pris en charge par l’établissement
-        </button>
-        <button type="button" className="chip" aria-pressed={v.fraisServiceParent} onClick={() => setF({ ...v, fraisServiceParent: true })}>
-          Ajoutés au montant payé par le parent
-        </button>
-      </div>
-      {v.fraisServiceParent && (
-        <Field label="Pourcentage ajouté (selon votre contrat NotchPay)">
-          <input className="input" inputMode="decimal" placeholder="ex. 2,5" value={v.fraisServicePct} onChange={maj('fraisServicePct')} />
-        </Field>
-      )}
       <Note>{error}</Note>
       <Note kind="ok">{ok}</Note>
       <button className="btn" type="submit" disabled={busy}>
