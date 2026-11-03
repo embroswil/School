@@ -7,6 +7,17 @@ import { Field, Note } from '../ui.jsx'
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
 const MODES = { mobile_money: 'Mobile Money', especes: 'Espèces', banque: 'Banque', autre: 'Autre' }
+export const CATEGORIES = {
+  scolarite: 'Scolarité / pension',
+  inscription: 'Inscription',
+  apee: 'APEE / APE',
+  examen: 'Examens',
+  tenue: 'Tenue scolaire',
+  cantine: 'Cantine',
+  transport: 'Transport',
+  activite: 'Activités / sorties',
+  autre: 'Autre',
+}
 
 // ------------------------------------------------------------ parents et eleves
 function Situation() {
@@ -29,7 +40,9 @@ function Situation() {
     api
       .get(`/api/scolarite/verifier/${encodeURIComponent(ref)}`)
       .then((r) => {
-        if (r.data.statut === 'reussi') setInfo('✓ Paiement confirmé. Merci !')
+        if (r.data.statut === 'reussi') {
+          setInfo('✓ Paiement confirmé. Merci ! Votre reçu est disponible dans « Paiements effectués ».')
+        }
         else if (r.data.statut === 'echoue') setError('Le paiement n’a pas abouti.')
         if (r.data.statut !== 'en_attente') localStorage.removeItem('school-paiement')
         situation.reload()
@@ -111,8 +124,10 @@ function Situation() {
                   <div className="row-main">
                     <div className="row-title">{f.nom}</div>
                     <div className="row-sub">
+                      {CATEGORIES[f.categorie] && f.categorie !== 'scolarite' ? `${CATEGORIES[f.categorie]} · ` : ''}
                       {fcfa(f.montant)}
                       {f.echeance ? ` · avant le ${jour(f.echeance)}` : ''}
+                      {!f.obligatoire ? ' · facultatif' : ''}
                     </div>
                   </div>
                   {f.reste === 0 ? (
@@ -154,7 +169,9 @@ function Situation() {
                         {p.frais} · {MODES[p.mode]} · {jour(p.created_at)}
                       </div>
                     </div>
-                    <span className="tag tag-now">Confirmé</span>
+                    <a className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14 }} href={`#/recus/${p.id}`}>
+                      Reçu
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -207,6 +224,12 @@ function Situation() {
               <input className="input" placeholder="ex. MP261026.1234.A56789" value={transaction} onChange={(e) => setTransaction(e.target.value)} required />
             </Field>
           )}
+          {paiement.mode === 'enligne' && paiement.moyens.fraisServicePct > 0 && (
+            <p className="muted" style={{ fontSize: 14, marginBottom: 10 }}>
+              Frais de transaction : {fcfa(Math.ceil((Number(String(montant).replace(/\s/g, '')) || 0) * paiement.moyens.fraisServicePct / 100))} · total débité :{' '}
+              <b>{fcfa((Number(String(montant).replace(/\s/g, '')) || 0) + Math.ceil((Number(String(montant).replace(/\s/g, '')) || 0) * paiement.moyens.fraisServicePct / 100))}</b>
+            </p>
+          )}
           <div className="actions">
             <button className="btn" type="submit" disabled={busy}>
               {busy ? 'Envoi…' : paiement.mode === 'transfert' ? 'Déclarer le paiement' : 'Payer par Mobile Money'}
@@ -224,7 +247,7 @@ function Situation() {
 // ------------------------------------------------------------ etablissement
 function Frais() {
   const frais = useApi('/api/scolarite/frais')
-  const [f, setF] = useState({ nom: '', montant: '', echeance: '', classes: '' })
+  const [f, setF] = useState({ nom: '', montant: '', echeance: '', classes: '', categorie: 'scolarite', obligatoire: true })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
@@ -238,12 +261,14 @@ function Frais() {
         nom: f.nom,
         montant: Number(String(f.montant).replace(/\s/g, '')),
         echeance: f.echeance || null,
+        categorie: f.categorie,
+        obligatoire: f.obligatoire,
         classes: f.classes
           .split(',')
           .map((x) => x.trim())
           .filter(Boolean),
       })
-      setF({ nom: '', montant: '', echeance: '', classes: '' })
+      setF({ nom: '', montant: '', echeance: '', classes: '', categorie: f.categorie, obligatoire: true })
       frais.reload()
     } catch (err) {
       setError(err.message)
@@ -274,6 +299,19 @@ function Frais() {
             <input className="input" type="date" value={f.echeance} onChange={maj('echeance')} />
           </Field>
         </div>
+        <Field label="Type de frais">
+          <select className="input" value={f.categorie} onChange={maj('categorie')}>
+            {Object.entries(CATEGORIES).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <label className="check">
+          <input type="checkbox" checked={!f.obligatoire} onChange={(e) => setF((x) => ({ ...x, obligatoire: !e.target.checked }))} />
+          <span>Facultatif (cantine, transport, sortie…) : non compté dans les retards</span>
+        </label>
         <Field label="Classes concernées (laisser vide = toutes)">
           <input className="input" placeholder="ex. 6e A, 6e B" value={f.classes} onChange={maj('classes')} />
         </Field>
@@ -291,6 +329,10 @@ function Frais() {
               <div className="row-main">
                 <div className="row-title">
                   {x.nom} · {fcfa(x.montant)}
+                </div>
+                <div className="row-sub">
+                  {CATEGORIES[x.categorie] || 'Scolarité'}
+                  {x.obligatoire ? '' : ' · facultatif'}
                 </div>
                 <div className="row-sub">
                   {x.classes?.length ? x.classes.join(', ') : 'Toutes les classes'}
@@ -424,6 +466,9 @@ function Paiements() {
                   {p.frais} · {p.classe || '—'} · {MODES[p.mode]} · {jour(p.created_at)}
                 </div>
               </div>
+              <a className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14 }} href={`#/recus/${p.id}`}>
+                Reçu
+              </a>
             </li>
           ))}
         </ul>
@@ -483,13 +528,115 @@ function AConfirmer() {
   )
 }
 
+function Recouvrement() {
+  const d = useApi('/api/scolarite/recouvrement')
+  const [classe, setClasse] = useState(null)
+  const eleves = useApi(classe ? `/api/scolarite/recouvrement?classe=${encodeURIComponent(classe)}` : null)
+  const [info, setInfo] = useState('')
+  const [error, setError] = useState('')
+  async function relancer(c) {
+    setInfo('')
+    setError('')
+    if (!window.confirm(c ? `Envoyer un rappel aux parents des élèves en retard de ${c} ?` : 'Envoyer un rappel aux parents de tous les élèves en retard ?')) return
+    try {
+      const r = await api.post('/api/scolarite/relancer', c ? { classe: c } : {})
+      setInfo(`Rappel envoyé à ${r.data.parents} parent(s).`)
+      d.reload()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+  if (!d.data) return <p className="muted">Calcul…</p>
+  const t = d.data.totaux
+  const taux = t.attendu ? Math.round((t.encaisse / t.attendu) * 100) : 0
+  return (
+    <>
+      <div className="kpis">
+        <div className="kpi">
+          <b>{taux} %</b>
+          <span>recouvré</span>
+          <small>
+            {fcfa(t.encaisse)} sur {fcfa(t.attendu)}
+          </small>
+        </div>
+        <div className="kpi">
+          <b style={{ color: t.reste ? 'var(--danger)' : undefined }}>{fcfa(t.reste)}</b>
+          <span>reste à encaisser</span>
+          <small>{t.enRetard} élève(s) en retard</small>
+        </div>
+      </div>
+      <p className="muted" style={{ fontSize: 13, margin: '8px 2px' }}>
+        Frais obligatoires uniquement. {d.data.derniereRelance ? `Dernier rappel : ${jour(d.data.derniereRelance)}.` : ''}
+      </p>
+      <Note kind="ok">{info}</Note>
+      <Note>{error}</Note>
+      {t.enRetard > 0 && (
+        <button type="button" className="btn btn-block" style={{ marginBottom: 12 }} onClick={() => relancer(null)}>
+          🔔 Rappeler tous les parents en retard
+        </button>
+      )}
+      {d.data.classes.length === 0 && <p className="muted">Aucun élève ou aucun frais obligatoire pour le moment.</p>}
+      <ul className="rows">
+        {d.data.classes.map((c) => {
+          const tx = Number(c.attendu) ? Math.round((Number(c.encaisse) / Number(c.attendu)) * 100) : 0
+          return (
+            <li key={c.classe} style={{ padding: '12px 14px', borderTop: '1px solid var(--line)' }}>
+              <button type="button" onClick={() => setClasse(classe === c.classe ? null : c.classe)} style={{ display: 'flex', width: '100%', gap: 10, alignItems: 'center', border: 0, background: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+                <div className="row-main">
+                  <div className="row-title">{c.classe}</div>
+                  <div className="row-sub">
+                    {c.effectif} élèves · reste {fcfa(c.reste)}
+                    {c.en_retard ? ` · ${c.en_retard} en retard` : ''}
+                  </div>
+                </div>
+                <b style={{ color: tx >= 80 ? 'var(--ok)' : tx >= 50 ? '#a35d00' : 'var(--danger)' }}>{tx} %</b>
+              </button>
+              {classe === c.classe && (
+                <div style={{ marginTop: 10 }}>
+                  {c.en_retard > 0 && (
+                    <button type="button" className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14, marginBottom: 8 }} onClick={() => relancer(c.classe)}>
+                      🔔 Rappeler les parents de {c.classe}
+                    </button>
+                  )}
+                  {!eleves.data && <p className="muted">Chargement…</p>}
+                  {eleves.data
+                    ?.filter((e) => e.reste > 0)
+                    .map((e) => (
+                      <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '5px 0', borderTop: '1px dashed var(--line)' }}>
+                        <a href={`#/eleves/${e.id}`}>
+                          {e.last_name} {e.first_name}
+                        </a>
+                        <span style={{ color: e.en_retard ? 'var(--danger)' : 'var(--muted)' }}>
+                          {fcfa(e.reste)}
+                          {e.en_retard ? ' · en retard' : ''}
+                        </span>
+                      </div>
+                    ))}
+                  {eleves.data && eleves.data.every((e) => e.reste === 0) && <p className="muted">Tous les élèves sont à jour. 👏</p>}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </>
+  )
+}
+
 function Reglages() {
   const r = useApi('/api/scolarite/reglages')
   const [f, setF] = useState(null)
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
-  const v = f || { cle: '', orange: r.data?.orange || '', mtn: r.data?.mtn || '', instructions: r.data?.instructions || '' }
+  const v = f || {
+    cle: '',
+    orange: r.data?.orange || '',
+    mtn: r.data?.mtn || '',
+    instructions: r.data?.instructions || '',
+    fraisServiceParent: r.data?.fraisServiceParent || false,
+    fraisServicePct: String(r.data?.fraisServicePct ?? 0),
+  }
   const maj = (k) => (e) => setF({ ...v, [k]: e.target.value })
   async function enregistrer(e) {
     e.preventDefault()
@@ -497,7 +644,7 @@ function Reglages() {
     setOk('')
     setBusy(true)
     try {
-      const corps = { orange: v.orange, mtn: v.mtn, instructions: v.instructions }
+      const corps = { orange: v.orange, mtn: v.mtn, instructions: v.instructions, fraisServiceParent: v.fraisServiceParent, fraisServicePct: v.fraisServicePct }
       if (v.cle) corps.cle = v.cle
       await api.put('/api/scolarite/reglages', corps)
       setOk('Réglages enregistrés.')
@@ -546,6 +693,20 @@ function Reglages() {
       <Field label={r.data?.cleMasquee ? 'Remplacer la clé publique NotchPay' : 'Clé publique NotchPay'}>
         <input className="input" placeholder="pk.…" value={v.cle} onChange={maj('cle')} autoComplete="off" />
       </Field>
+      <b>Frais de transaction du paiement en ligne</b>
+      <div className="chips" style={{ marginTop: 8 }}>
+        <button type="button" className="chip" aria-pressed={!v.fraisServiceParent} onClick={() => setF({ ...v, fraisServiceParent: false })}>
+          Pris en charge par l’établissement
+        </button>
+        <button type="button" className="chip" aria-pressed={v.fraisServiceParent} onClick={() => setF({ ...v, fraisServiceParent: true })}>
+          Ajoutés au montant payé par le parent
+        </button>
+      </div>
+      {v.fraisServiceParent && (
+        <Field label="Pourcentage ajouté (selon votre contrat NotchPay)">
+          <input className="input" inputMode="decimal" placeholder="ex. 2,5" value={v.fraisServicePct} onChange={maj('fraisServicePct')} />
+        </Field>
+      )}
       <Note>{error}</Note>
       <Note kind="ok">{ok}</Note>
       <button className="btn" type="submit" disabled={busy}>
@@ -572,6 +733,9 @@ export default function Scolarite() {
             <button type="button" className="chip" aria-pressed={onglet === 'confirmer'} onClick={() => setOnglet('confirmer')}>
               ⏳ À confirmer
             </button>
+            <button type="button" className="chip" aria-pressed={onglet === 'recouvrement'} onClick={() => setOnglet('recouvrement')}>
+              📊 Recouvrement
+            </button>
             <button type="button" className="chip" aria-pressed={onglet === 'frais'} onClick={() => setOnglet('frais')}>
               📋 Frais
             </button>
@@ -580,6 +744,7 @@ export default function Scolarite() {
             </button>
           </div>
           {onglet === 'frais' && <Frais />}
+          {onglet === 'recouvrement' && <Recouvrement />}
           {onglet === 'paiements' && <Paiements />}
           {onglet === 'confirmer' && <AConfirmer />}
           {onglet === 'reglages' && <Reglages />}

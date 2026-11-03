@@ -35,6 +35,7 @@ import DisciplineImport from './pages/DisciplineImport.jsx'
 import Abonnement from './pages/Abonnement.jsx'
 import AbonnementsAdmin from './pages/AbonnementsAdmin.jsx'
 import Recu from './pages/Recu.jsx'
+import RecuScolarite from './pages/RecuScolarite.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -101,6 +102,8 @@ function Pages({ path }) {
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
   if (path === '/abonnement') return reserve(user.role === 'principal', <Abonnement />)
   if (path === '/abonnements') return reserve(user.role === 'admin', <AbonnementsAdmin />)
+  const recuScolMatch = path.match(/^\/recus\/(\d+)$/)
+  if (recuScolMatch) return <RecuScolarite key={recuScolMatch[1]} id={Number(recuScolMatch[1])} />
   const recuMatch = path.match(/^\/abonnement\/recus\/(\d+)$/)
   if (recuMatch) return reserve(['principal', 'admin'].includes(user.role), <Recu key={recuMatch[1]} id={Number(recuMatch[1])} />)
   if (path === '/discipline') return reserve(gestion || user.role === 'teacher', <DisciplineImport />)

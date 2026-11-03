@@ -24,6 +24,7 @@ const ecoleDe = (req) => {
   return id;
 };
 const fcfa = (n) => `${Number(n).toLocaleString("fr-FR")} FCFA`;
+const CATEGORIES = ["scolarite", "inscription", "apee", "examen", "tenue", "cantine", "transport", "activite", "autre"];
 
 // Classe actuelle d'un eleve (sinon la classe declaree a l'inscription)
 const SQL_CLASSE = `COALESCE(
@@ -38,7 +39,7 @@ const situationEleve = async (studentId) => {
   if (!eleve) return null;
   const annee = await assurerAnneeScolaire(eleve.school_id);
   const { rows } = await db.query(
-    `SELECT f.id, f.nom, f.montant, f.echeance, f.obligatoire,
+    `SELECT f.id, f.nom, f.montant, f.echeance, f.obligatoire, f.categorie,
             COALESCE((SELECT SUM(p.montant) FROM paiements_scolaires p WHERE p.frais_id = f.id AND p.student_id = $2 AND p.statut = 'reussi'), 0)::int AS paye
      FROM frais_scolaires f
      WHERE f.school_id = $1 AND (f.academic_year_id IS NULL OR f.academic_year_id = $3)
@@ -48,7 +49,7 @@ const situationEleve = async (studentId) => {
   );
   const frais = rows.map((f) => ({ ...f, reste: Math.max(0, f.montant - f.paye) }));
   const paiements = await db.query(
-    `SELECT p.id, p.montant, p.mode, p.statut, p.reference, p.created_at, f.nom AS frais
+    `SELECT p.id, p.montant, p.mode, p.statut, p.reference, p.created_at, p.numero_recu, f.nom AS frais
      FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id
      WHERE p.student_id = $1 AND p.statut = 'reussi' ORDER BY p.created_at DESC LIMIT 30`,
     [eleve.id]
@@ -68,14 +69,17 @@ const situationEleve = async (studentId) => {
 // en ligne) et/ou ses numeros Orange Money / MTN MoMo (transfert puis declaration)
 const moyensEcole = async (schoolId) => {
   const { rows } = await db.query(
-    "SELECT notchpay_public_key, orange_money, mtn_momo, paiement_instructions FROM schools WHERE id = $1",
+    "SELECT notchpay_public_key, orange_money, mtn_momo, paiement_instructions, frais_service_parent, frais_service_pct FROM schools WHERE id = $1",
     [schoolId]
   );
   const e = rows[0] || {};
   return {
     cle: e.notchpay_public_key || null,
+    // Frais de transaction du paiement en ligne : ajoutes au montant paye par le parent, si l'etablissement le choisit
+    fraisServicePct: e.frais_service_parent ? Number(e.frais_service_pct || 0) : 0,
     public: {
       enLigne: Boolean(e.notchpay_public_key),
+      fraisServicePct: e.frais_service_parent ? Number(e.frais_service_pct || 0) : 0,
       orange: e.orange_money || null,
       mtn: e.mtn_momo || null,
       instructions: e.paiement_instructions || null,
@@ -124,20 +128,21 @@ router.post("/payer", async (req, res, next) => {
     if (!(montant >= 100) || montant > frais.reste) throw new ApiError(400, `Montant entre 100 et ${fcfa(frais.reste)}`);
     const eleve = await db.query("SELECT school_id FROM users WHERE id = $1", [studentId]);
     // L'argent va directement sur le compte NotchPay de l'etablissement
-    const { cle } = await moyensEcole(eleve.rows[0].school_id);
+    const { cle, fraisServicePct } = await moyensEcole(eleve.rows[0].school_id);
     if (!cle) throw new ApiError(400, "L'établissement n'a pas activé le paiement en ligne : utilisez ses numéros Mobile Money");
+    const fraisService = Math.ceil((montant * fraisServicePct) / 100);
     const reference = `SCH-${studentId}-${fraisId}-${Date.now()}`;
     await db.query(
-      `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, telephone, paye_par)
-       VALUES ($1, $2, $3, $4, 'mobile_money', 'en_attente', $5, $6, $7)`,
-      [eleve.rows[0].school_id, fraisId, studentId, montant, reference, telephone || null, u.id]
+      `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, telephone, paye_par, frais_service)
+       VALUES ($1, $2, $3, $4, 'mobile_money', 'en_attente', $5, $6, $7, $8)`,
+      [eleve.rows[0].school_id, fraisId, studentId, montant, reference, telephone || null, u.id, fraisService]
     );
     const retour = `${(process.env.FRONTEND_URL || "").split(",")[0].trim()}/#/scolarite`;
     const r = await fetch("https://api.notchpay.co/payments/initialize", {
       method: "POST",
       headers: { Authorization: cle, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
-        amount: montant,
+        amount: montant + fraisService,
         currency: "XAF",
         email: u.email,
         phone: telephone || undefined,
@@ -199,27 +204,42 @@ router.get("/verifier/:reference", async (req, res, next) => {
     const { rows } = await db.query("SELECT * FROM paiements_scolaires WHERE reference = $1", [reference]);
     const p = rows[0];
     if (!p) throw new ApiError(404, "Paiement introuvable");
-    if (p.statut !== "en_attente") return res.json({ success: true, data: { statut: p.statut } });
-    const { cle } = await moyensEcole(p.school_id);
-    const r = await fetch(`https://api.notchpay.co/payments/${encodeURIComponent(reference)}`, {
-      headers: { Authorization: cle || "", Accept: "application/json" },
-    });
-    const j = await r.json().catch(() => ({}));
-    const etat = j?.transaction?.status || j?.status;
-    let statut = "en_attente";
-    if (etat === "complete") statut = "reussi";
-    else if (["failed", "canceled", "expired", "rejected"].includes(etat)) statut = "echoue";
-    if (statut !== "en_attente") {
-      await db.query("UPDATE paiements_scolaires SET statut = $2, confirme_le = NOW() WHERE id = $1", [p.id, statut]);
-      if (statut === "reussi") await apresPaiement(p);
-    }
-    res.json({ success: true, data: { statut } });
+    if (p.statut !== "en_attente") return res.json({ success: true, data: { statut: p.statut, id: p.id } });
+    const statut = await verifierPaiement(p);
+    res.json({ success: true, data: { statut, id: p.id } });
   } catch (e) {
     next(e);
   }
 });
 
+// Interroge NotchPay sur un paiement en attente et met a jour son statut
+const verifierPaiement = async (p) => {
+  const { cle } = await moyensEcole(p.school_id);
+  if (!cle) return "en_attente";
+  const r = await fetch(`https://api.notchpay.co/payments/${encodeURIComponent(p.reference)}`, {
+    headers: { Authorization: cle, Accept: "application/json" },
+  });
+  const j = await r.json().catch(() => ({}));
+  const etat = j?.transaction?.status || j?.status;
+  let statut = "en_attente";
+  if (etat === "complete") statut = "reussi";
+  else if (["failed", "canceled", "expired", "rejected"].includes(etat)) statut = "echoue";
+  if (statut !== "en_attente") {
+    const maj = await db.query("UPDATE paiements_scolaires SET statut = $2, confirme_le = NOW() WHERE id = $1 AND statut = 'en_attente'", [p.id, statut]);
+    if (statut === "reussi" && maj.rowCount) await apresPaiement(p);
+  }
+  return statut;
+};
+
+// Numero de recu unique (ex. REC-2026-000123)
+const attribuerRecu = (id) =>
+  db.query(
+    "UPDATE paiements_scolaires SET numero_recu = 'REC-' || to_char(NOW(), 'YYYY') || '-' || lpad(id::text, 6, '0') WHERE id = $1 AND numero_recu IS NULL",
+    [id]
+  );
+
 const apresPaiement = async (p) => {
+  await attribuerRecu(p.id).catch(() => {});
   const info = await db.query(
     `SELECT u.first_name, u.last_name, f.nom FROM users u, frais_scolaires f WHERE u.id = $1 AND f.id = $2`,
     [p.student_id, p.frais_id]
@@ -294,10 +314,11 @@ router.post("/frais", async (req, res, next) => {
     if (!nom) throw new ApiError(400, "Nom du frais obligatoire (ex. Pension 1re tranche)");
     if (!(montant > 0)) throw new ApiError(400, "Montant invalide");
     const classes = Array.isArray(b.classes) ? b.classes.map((c) => texte(c, 50)).filter(Boolean) : [];
+    const categorie = CATEGORIES.includes(b.categorie) ? b.categorie : "scolarite";
     const { rows } = await db.query(
-      `INSERT INTO frais_scolaires (school_id, academic_year_id, nom, montant, echeance, classes, obligatoire)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [ecole, annee?.id || null, nom, montant, b.echeance || null, classes.length ? classes : null, b.obligatoire !== false]
+      `INSERT INTO frais_scolaires (school_id, academic_year_id, nom, montant, echeance, classes, obligatoire, categorie)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [ecole, annee?.id || null, nom, montant, b.echeance || null, classes.length ? classes : null, b.obligatoire !== false, categorie]
     );
     res.status(201).json({ success: true, data: rows[0] });
   } catch (e) {
@@ -326,7 +347,7 @@ router.get("/paiements", async (req, res, next) => {
     reserve(req);
     const ecole = ecoleDe(req);
     const { rows } = await db.query(
-      `SELECT p.id, p.montant, p.mode, p.statut, p.reference, p.created_at, f.nom AS frais,
+      `SELECT p.id, p.montant, p.mode, p.statut, p.reference, p.created_at, p.numero_recu, f.nom AS frais,
               u.first_name, u.last_name, ${SQL_CLASSE} AS classe
        FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id JOIN users u ON u.id = p.student_id
        WHERE p.school_id = $1 AND p.statut = 'reussi' ORDER BY p.created_at DESC LIMIT 100`,
@@ -396,7 +417,7 @@ router.get("/reglages", async (req, res, next) => {
     reserve(req);
     const ecole = ecoleDe(req);
     const { rows } = await db.query(
-      "SELECT notchpay_public_key, orange_money, mtn_momo, paiement_instructions FROM schools WHERE id = $1",
+      "SELECT notchpay_public_key, orange_money, mtn_momo, paiement_instructions, frais_service_parent, frais_service_pct FROM schools WHERE id = $1",
       [ecole]
     );
     const e = rows[0] || {};
@@ -408,6 +429,8 @@ router.get("/reglages", async (req, res, next) => {
         orange: e.orange_money || "",
         mtn: e.mtn_momo || "",
         instructions: e.paiement_instructions || "",
+        fraisServiceParent: Boolean(e.frais_service_parent),
+        fraisServicePct: Number(e.frais_service_pct || 0),
       },
     });
   } catch (e) {
@@ -434,6 +457,12 @@ router.put("/reglages", async (req, res, next) => {
     if (b.orange !== undefined) ajouter("orange_money", texte(b.orange, 30) || null);
     if (b.mtn !== undefined) ajouter("mtn_momo", texte(b.mtn, 30) || null);
     if (b.instructions !== undefined) ajouter("paiement_instructions", texte(b.instructions, 1000) || null);
+    if (typeof b.fraisServiceParent === "boolean") ajouter("frais_service_parent", b.fraisServiceParent);
+    if (b.fraisServicePct !== undefined) {
+      const pct = Number(String(b.fraisServicePct).replace(",", "."));
+      if (!(pct >= 0 && pct <= 10)) throw new ApiError(400, "Pourcentage entre 0 et 10");
+      ajouter("frais_service_pct", pct);
+    }
     if (sets.length) await db.query(`UPDATE schools SET ${sets.join(", ")}, updated_at = NOW() WHERE id = $1`, vals);
     res.json({ success: true });
   } catch (e) {
@@ -484,4 +513,117 @@ router.post("/paiements", async (req, res, next) => {
   }
 });
 
+// GET /api/scolarite/recus/:id : recu d'un paiement (parent relie, eleve, etablissement)
+router.get("/recus/:id", async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT p.id, p.montant, p.mode, p.reference, p.created_at, p.confirme_le, p.numero_recu, p.frais_service, p.student_id, p.school_id,
+              f.nom AS frais, f.montant AS frais_montant, u.first_name, u.last_name, ${SQL_CLASSE} AS classe,
+              s.name AS ecole, s.city, s.photo IS NOT NULL AS a_photo, sr.admission_number AS matricule,
+              pp.first_name AS payeur_prenom, pp.last_name AS payeur_nom
+       FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id JOIN users u ON u.id = p.student_id
+       JOIN schools s ON s.id = p.school_id LEFT JOIN student_records sr ON sr.student_id = u.id LEFT JOIN users pp ON pp.id = p.paye_par
+       WHERE p.id = $1 AND p.statut = 'reussi'`,
+      [entier(req.params.id)]
+    );
+    const r = rows[0];
+    if (!r) throw new ApiError(404, "Reçu introuvable");
+    const u = req.user;
+    const autorise =
+      (u.role === "principal" && u.schoolId === r.school_id) || u.role === "admin" || (await elevesAccessibles(u)).includes(r.student_id);
+    if (!autorise) throw new ApiError(404, "Reçu introuvable");
+    if (!r.numero_recu) {
+      await attribuerRecu(r.id);
+      r.numero_recu = (await db.query("SELECT numero_recu FROM paiements_scolaires WHERE id = $1", [r.id])).rows[0].numero_recu;
+    }
+    const paye = (
+      await db.query("SELECT COALESCE(SUM(montant), 0)::int AS t FROM paiements_scolaires WHERE frais_id = (SELECT frais_id FROM paiements_scolaires WHERE id = $1) AND student_id = $2 AND statut = 'reussi' AND created_at <= $3", [r.id, r.student_id, r.created_at])
+    ).rows[0].t;
+    res.json({ success: true, data: { ...r, resteApres: Math.max(0, r.frais_montant - paye) } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Requete commune : ce que chaque eleve doit, frais obligatoires par frais
+const SQL_DU = `
+  WITH el AS (
+    SELECT u.id, u.first_name, u.last_name, c.name AS classe
+    FROM users u JOIN class_students cs ON cs.student_id = u.id AND cs.status = 'active'
+    JOIN classes c ON c.id = cs.class_id JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
+    WHERE u.school_id = $1 AND u.role = 'student'),
+  fr AS (SELECT id, nom, montant, classes, echeance FROM frais_scolaires
+         WHERE school_id = $1 AND obligatoire AND (academic_year_id IS NULL OR academic_year_id = $2)),
+  du AS (SELECT el.*, fr.id AS frais_id, fr.nom AS frais, fr.montant, fr.echeance FROM el JOIN fr
+         ON (fr.classes IS NULL OR cardinality(fr.classes) = 0 OR lower(el.classe) = ANY (SELECT lower(x) FROM unnest(fr.classes) x))),
+  pa AS (SELECT student_id, frais_id, SUM(montant) AS s FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi' GROUP BY 1, 2)
+  SELECT du.*, LEAST(COALESCE(pa.s, 0), du.montant)::int AS paye, GREATEST(du.montant - COALESCE(pa.s, 0), 0)::int AS reste,
+         (du.echeance < CURRENT_DATE AND COALESCE(pa.s, 0) < du.montant) AS en_retard
+  FROM du LEFT JOIN pa ON pa.student_id = du.id AND pa.frais_id = du.frais_id`;
+
+// GET /api/scolarite/recouvrement[?classe=6e A] : par classe, ou les eleves d'une classe
+router.get("/recouvrement", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    if (req.query.classe) {
+      const { rows } = await db.query(
+        `SELECT id, first_name, last_name, SUM(montant)::int AS du, SUM(paye)::int AS paye, SUM(reste)::int AS reste, bool_or(en_retard) AS en_retard
+         FROM (${SQL_DU}) x WHERE classe = $3 GROUP BY id, first_name, last_name ORDER BY SUM(reste) DESC, last_name`,
+        [ecole, annee?.id || null, texte(req.query.classe, 60)]
+      );
+      return res.json({ success: true, data: rows });
+    }
+    const { rows } = await db.query(
+      `SELECT classe, COUNT(DISTINCT id)::int AS effectif, SUM(montant)::bigint AS attendu, SUM(paye)::bigint AS encaisse,
+              SUM(reste)::bigint AS reste, COUNT(DISTINCT id) FILTER (WHERE en_retard)::int AS en_retard
+       FROM (${SQL_DU}) x GROUP BY classe ORDER BY classe`,
+      [ecole, annee?.id || null]
+    );
+    const t = rows.reduce((a, r) => ({ attendu: a.attendu + Number(r.attendu), encaisse: a.encaisse + Number(r.encaisse), enRetard: a.enRetard + r.en_retard }), {
+      attendu: 0,
+      encaisse: 0,
+      enRetard: 0,
+    });
+    const relance = (await db.query("SELECT derniere_relance FROM schools WHERE id = $1", [ecole])).rows[0]?.derniere_relance;
+    res.json({ success: true, data: { classes: rows, totaux: { ...t, reste: t.attendu - t.encaisse }, derniereRelance: relance } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /api/scolarite/relancer { classe? } : rappel aux parents des eleves en retard (au plus une fois tous les 3 jours)
+router.post("/relancer", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const der = (await db.query("SELECT derniere_relance FROM schools WHERE id = $1", [ecole])).rows[0]?.derniere_relance;
+    if (der && Date.now() - new Date(der).getTime() < 3 * 86400000) throw new ApiError(429, "Une relance a déjà été envoyée il y a moins de 3 jours");
+    const classe = texte(req.body?.classe, 60) || null;
+    const { rows } = await db.query(
+      `SELECT x.id, x.first_name, x.last_name, x.classe, SUM(x.reste)::int AS reste, l.parent_id
+       FROM (${SQL_DU}) x JOIN parent_student_links l ON l.student_id = x.id
+       WHERE x.en_retard AND ($3::text IS NULL OR x.classe = $3)
+       GROUP BY x.id, x.first_name, x.last_name, x.classe, l.parent_id`,
+      [ecole, annee?.id || null, classe]
+    );
+    for (const r of rows) {
+      await notifierUtilisateur(r.parent_id, {
+        title: "Rappel : frais de scolarité",
+        message: `${r.first_name} ${r.last_name} (${r.classe}) : ${fcfa(r.reste)} restent à payer, dont des frais dont l’échéance est passée.`,
+        type: "payment",
+        priority: "high",
+        data: { lien: "/scolarite" },
+      }).catch(() => {});
+    }
+    await db.query("UPDATE schools SET derniere_relance = NOW() WHERE id = $1", [ecole]);
+    res.json({ success: true, data: { parents: rows.length } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 module.exports = router;
+module.exports.verifierPaiement = verifierPaiement;

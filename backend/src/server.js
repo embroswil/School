@@ -13,6 +13,7 @@ const start = async () => {
   require("./taches/resume-absences").demarrer();
   require("./taches/menage").demarrer();
   require("./taches/rappels-abonnement").demarrer();
+  require("./taches/verifier-paiements").demarrer();
   const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`Backend running on port ${env.port} (${env.nodeEnv})`);
   });

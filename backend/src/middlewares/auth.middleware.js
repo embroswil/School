@@ -28,7 +28,10 @@ const authenticate = (req, res, next) => {
   // Abonnement impaye au-dela du delai : l'etablissement passe en lecture seule
   // (consultation possible ; plus de saisie, sauf le paiement, le compte et la messagerie).
   const ecriture = !["GET", "HEAD", "OPTIONS"].includes(req.method);
-  const exempte = ["/api/abonnement", "/api/auth", "/api/codes", "/api/boite"].some((p) => (req.originalUrl || "").startsWith(p));
+  // Les parents et eleves peuvent toujours payer leurs frais de scolarite
+  const exempte =
+    ["/api/abonnement", "/api/auth", "/api/codes", "/api/boite"].some((p) => (req.originalUrl || "").startsWith(p)) ||
+    (["parent", "student"].includes(req.user.role) && (req.originalUrl || "").startsWith("/api/scolarite"));
   if (ecriture && !exempte && req.user.schoolId && req.user.role !== "admin") {
     return require("../modules/abonnement/service")
       .estEnLectureSeule(req.user.schoolId)

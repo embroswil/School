@@ -308,3 +308,11 @@ CREATE TABLE IF NOT EXISTS paiements_abonnement (
   motif_rejet VARCHAR(300), declare_par INTEGER REFERENCES users(id) ON DELETE SET NULL, confirme_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
   numero_recu VARCHAR(30) UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT NOW(), confirme_le TIMESTAMP
 );
+
+-- Scolarite : recus numerotes, frais de transaction, categories de frais, relances
+ALTER TABLE paiements_scolaires ADD COLUMN IF NOT EXISTS numero_recu VARCHAR(30) UNIQUE;
+ALTER TABLE paiements_scolaires ADD COLUMN IF NOT EXISTS frais_service INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS frais_service_parent BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS frais_service_pct NUMERIC(4,2) NOT NULL DEFAULT 0;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS derniere_relance TIMESTAMP;
+ALTER TABLE frais_scolaires ADD COLUMN IF NOT EXISTS categorie VARCHAR(20) NOT NULL DEFAULT 'scolarite';
