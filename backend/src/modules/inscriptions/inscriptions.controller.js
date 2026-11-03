@@ -30,7 +30,7 @@ const relierSiPossible = async (q, { parentRequestId, parentId, schoolId, prenom
   const studentId = rows[0].id;
   await q(
     `INSERT INTO parent_student_links (parent_id, student_id, relationship, is_primary)
-     SELECT $1, $2, $3, $3 IN ('pere', 'mere', 'parent', 'tuteur')
+     SELECT $1, $2, $3::varchar, $3::varchar IN ('pere', 'mere', 'parent', 'tuteur')
      WHERE NOT EXISTS (SELECT 1 FROM parent_student_links WHERE parent_id = $1 AND student_id = $2)`,
     [parentId, studentId, lien]
   );
@@ -135,7 +135,7 @@ const inscription = async (req, res, next) => {
       for (const d of attente.rows) {
         await q(
           `INSERT INTO parent_student_links (parent_id, student_id, relationship, is_primary)
-           SELECT $1, $2, $3, $3 IN ('pere', 'mere', 'parent', 'tuteur')
+           SELECT $1, $2, $3::varchar, $3::varchar IN ('pere', 'mere', 'parent', 'tuteur')
            WHERE NOT EXISTS (SELECT 1 FROM parent_student_links WHERE parent_id = $1 AND student_id = $2)`,
           [d.parent_id, userId, d.lien]
         );
