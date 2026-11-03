@@ -24,8 +24,23 @@ const authenticate = (req, res, next) => {
     email: payload.email,
     schoolId: payload.schoolId ? Number(payload.schoolId) : null,
   };
+  const suite = () => executerAvec({ role: req.user.role, schoolId: req.user.schoolId }, () => next());
+  // Abonnement impaye au-dela du delai : l'etablissement passe en lecture seule
+  // (consultation possible ; plus de saisie, sauf le paiement, le compte et la messagerie).
+  const ecriture = !["GET", "HEAD", "OPTIONS"].includes(req.method);
+  const exempte = ["/api/abonnement", "/api/auth", "/api/codes", "/api/boite"].some((p) => (req.originalUrl || "").startsWith(p));
+  if (ecriture && !exempte && req.user.schoolId && req.user.role !== "admin") {
+    return require("../modules/abonnement/service")
+      .estEnLectureSeule(req.user.schoolId)
+      .then((bloque) =>
+        bloque
+          ? next(new ApiError(402, "L’abonnement de l’établissement n’est pas réglé : School est en lecture seule jusqu’au paiement."))
+          : suite()
+      )
+      .catch(() => suite());
+  }
   // Le reste de la requete connait l'etablissement de l'utilisateur
-  executerAvec({ role: req.user.role, schoolId: req.user.schoolId }, () => next());
+  suite();
 };
 
 // L'administrateur d'un etablissement (« principal ») a, dans SON

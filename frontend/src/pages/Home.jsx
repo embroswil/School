@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
+import { BandeauAbonnement } from './Abonnement.jsx'
 import { IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcEcole, IcEleves, IcImport, IcPhoto, IcPlus, IcProfil } from '../icones.jsx'
 
 const ROLES = {
@@ -154,6 +155,7 @@ function EspaceAdmin() {
       ))}
 
       <h2 className="section-title">Raccourcis</h2>
+      <Action href="#/abonnements" Icone={IcCarte} titre="Abonnements des établissements" texte="Tarifs, paiements à confirmer, revenus" />
       <Action href="#/etablissements" Icone={IcPlus} titre="Ajouter un établissement" texte="Créer une école et désigner son administrateur" />
       <Action href="#/utilisateurs" Icone={IcEleves} titre="Comptes utilisateurs" texte="Rechercher, activer ou désactiver un compte" />
     </>
@@ -291,6 +293,7 @@ function EspaceEtablissement() {
       <Action href="#/actualites" Icone={IcActus} titre="Actualités" texte="Annonces, événements, conseils de discipline" />
       <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements et moyens de paiement" />
       <Action href="#/enseignants" Icone={IcEcole} titre="Enseignants" texte="Équipe pédagogique" />
+      <Action href="#/abonnement" Icone={IcCarte} titre="Abonnement School" texte="Montant, échéance, paiement et reçus" />
     </>
   )
 }
@@ -434,6 +437,7 @@ export default function Home() {
           ✉️ Confirmez votre adresse email pour sécuriser votre compte (mot de passe oublié…). <u>Confirmer</u>
         </a>
       )}
+      {user.role !== 'admin' && user.schoolId && <BandeauAbonnement role={user.role} />}
       {!['principal', 'admin'].includes(user.role) && (
       <section className="hero-card" style={{ marginTop: 8 }}>
         <span className="badge">{ROLES[user.role] || user.role}</span>

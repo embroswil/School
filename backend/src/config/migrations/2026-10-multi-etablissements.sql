@@ -286,3 +286,25 @@ CREATE TABLE IF NOT EXISTS appels (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_appels_unique ON appels (class_id, date, COALESCE(period_number, -1));
 CREATE INDEX IF NOT EXISTS idx_notifications_menage ON notifications (created_at);
+
+-- Abonnements des etablissements a School
+CREATE TABLE IF NOT EXISTS plateforme_reglages (cle VARCHAR(60) PRIMARY KEY, valeur JSONB NOT NULL);
+INSERT INTO plateforme_reglages (cle, valeur) VALUES
+  ('prix_defaut', '150000'), ('echeance', '"10-31"'), ('delai_grace_jours', '30'), ('beneficiaire', '"EMBROSWIL"'),
+  ('orange_money', '""'), ('mtn_momo', '""'), ('instructions', '"Indiquez le nom de l''établissement en motif du transfert."')
+ON CONFLICT (cle) DO NOTHING;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS tarif_annuel INTEGER;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS abonnement_gratuit BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS abonnements (
+  id SERIAL PRIMARY KEY, school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE, annee VARCHAR(9) NOT NULL,
+  montant INTEGER NOT NULL CHECK (montant >= 0), echeance DATE NOT NULL, gratuit BOOLEAN NOT NULL DEFAULT false,
+  rappels JSONB NOT NULL DEFAULT '[]', created_at TIMESTAMP NOT NULL DEFAULT NOW(), UNIQUE (school_id, annee)
+);
+CREATE TABLE IF NOT EXISTS paiements_abonnement (
+  id SERIAL PRIMARY KEY, abonnement_id INTEGER NOT NULL REFERENCES abonnements(id) ON DELETE CASCADE,
+  montant INTEGER NOT NULL CHECK (montant > 0),
+  moyen VARCHAR(20) NOT NULL CHECK (moyen IN ('orange_money','mtn_momo','virement','especes','notchpay','autre')),
+  reference VARCHAR(120), statut VARCHAR(10) NOT NULL DEFAULT 'declare' CHECK (statut IN ('declare','confirme','rejete')),
+  motif_rejet VARCHAR(300), declare_par INTEGER REFERENCES users(id) ON DELETE SET NULL, confirme_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  numero_recu VARCHAR(30) UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT NOW(), confirme_le TIMESTAMP
+);

@@ -32,6 +32,9 @@ import Devoirs from './pages/Devoirs.jsx'
 import EmploiDuTemps, { MonEmploi } from './pages/EmploiDuTemps.jsx'
 import ConseilAnnuel from './pages/ConseilAnnuel.jsx'
 import DisciplineImport from './pages/DisciplineImport.jsx'
+import Abonnement from './pages/Abonnement.jsx'
+import AbonnementsAdmin from './pages/AbonnementsAdmin.jsx'
+import Recu from './pages/Recu.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -96,6 +99,10 @@ function Pages({ path }) {
   const eleveMatch = path.match(/^\/eleves\/(\d+)$/)
   if (eleveMatch) return reserve(gestion, <EleveFiche key={eleveMatch[1]} id={Number(eleveMatch[1])} />)
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
+  if (path === '/abonnement') return reserve(user.role === 'principal', <Abonnement />)
+  if (path === '/abonnements') return reserve(user.role === 'admin', <AbonnementsAdmin />)
+  const recuMatch = path.match(/^\/abonnement\/recus\/(\d+)$/)
+  if (recuMatch) return reserve(['principal', 'admin'].includes(user.role), <Recu key={recuMatch[1]} id={Number(recuMatch[1])} />)
   if (path === '/discipline') return reserve(gestion || user.role === 'teacher', <DisciplineImport />)
   const emploiMatch = path.match(/^\/classes\/(\d+)\/emploi$/)
   if (emploiMatch) return reserve(gestion || user.role === 'teacher', <EmploiDuTemps key={emploiMatch[1]} id={Number(emploiMatch[1])} />)
