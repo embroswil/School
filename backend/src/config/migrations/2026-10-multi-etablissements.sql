@@ -264,3 +264,12 @@ CREATE TABLE IF NOT EXISTS decisions_annuelles (
 ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
 ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
   CHECK (type IN ('payment','grade','attendance','announcement','reminder','system','account','message','discipline'));
+
+-- Recapitulatif mensuel des absences (un email par parent et par mois)
+CREATE TABLE IF NOT EXISTS resumes_mensuels (
+  id SERIAL PRIMARY KEY,
+  mois CHAR(7) NOT NULL,
+  parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  envoye_le TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (mois, parent_id)
+);

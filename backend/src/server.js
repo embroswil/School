@@ -10,6 +10,7 @@ const start = async () => {
   await db.query("SELECT 1"); // échoue tôt si la base est injoignable
   await ensureAdmin();
 
+  require("./taches/resume-absences").demarrer();
   const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`Backend running on port ${env.port} (${env.nodeEnv})`);
   });

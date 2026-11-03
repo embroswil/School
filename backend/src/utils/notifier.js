@@ -5,7 +5,8 @@
 const db = require("../config/db");
 const logger = require("./logger");
 
-const TYPES_EMAIL = ["attendance", "payment", "message", "discipline"];
+// Les absences ne declenchent plus d'email immediat : un recapitulatif mensuel est envoye (taches/resume-absences.js)
+const TYPES_EMAIL = ["payment", "message", "discipline"];
 const APP = () => (process.env.FRONTEND_URL || "").split(",")[0].trim();
 
 const emailNotification = async (userId, { title, message, data }) => {
