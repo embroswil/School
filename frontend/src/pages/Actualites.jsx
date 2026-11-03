@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 
 export const TYPES = {
   annonce: { ico: '📣', nom: 'Annonce' },
@@ -30,7 +31,7 @@ const reduirePhoto = (fichier) =>
       c.width = Math.round(img.width * echelle)
       c.height = Math.round(img.height * echelle)
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
-      ok(c.toDataURL('image/jpeg', 0.8))
+      ok(c.toDataURL('image/jpeg', 0.72))
     }
     img.onerror = () => ko(new Error('Image illisible'))
     img.src = URL.createObjectURL(fichier)
@@ -41,7 +42,7 @@ export function Publication({ p, onDelete }) {
   const t = TYPES[p.type] || TYPES.autre
   return (
     <article className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      {p.image && <img src={p.image} alt="" style={{ display: 'block', width: '100%', maxHeight: 260, objectFit: 'cover' }} />}
+      {p.image && <img src={p.image.startsWith('/api/') ? `${API_BASE}${p.image}` : p.image} alt="" loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 260, objectFit: 'cover' }} />}
       <div style={{ padding: 16 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={`tag ${p.type === 'conseil_discipline' ? 'tag-wait' : ''}`}>

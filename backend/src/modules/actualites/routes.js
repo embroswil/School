@@ -20,6 +20,21 @@ const LIBELLES = {
 };
 const texte = (v, max) => (v === undefined || v === null ? "" : String(v).trim().slice(0, max));
 
+// GET /api/actualites/:id/image : l'image d'une publication, servie a part et
+// gardee en cache par le telephone (elle n'est telechargee qu'une seule fois).
+router.get("/:id/image", async (req, res, next) => {
+  try {
+    const { rows } = await db.query("SELECT image FROM publications WHERE id = $1", [parseInt(req.params.id, 10) || 0]);
+    const m = String(rows[0]?.image || "").match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+    if (!m) throw new ApiError(404, "Image introuvable");
+    res.set("Content-Type", m[1]);
+    res.set("Cache-Control", "public, max-age=31536000, immutable");
+    res.send(Buffer.from(m[2], "base64"));
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.use(authenticate);
 
 const ecoleDe = (req) => {
@@ -36,14 +51,15 @@ router.get("/", async (req, res, next) => {
     const limite = Math.min(50, Math.max(1, parseInt(req.query.limite, 10) || 30));
     const publicRole = PUBLIC_DU_ROLE[req.user.role];
     const { rows } = await db.query(
-      `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, p.image, p.audience,
+      `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
               p.pinned, p.created_at, s.name AS school_name
        FROM publications p JOIN schools s ON s.id = p.school_id
        WHERE p.school_id = $1 AND ($2::text IS NULL OR p.audience IN ('tous', $2))
        ORDER BY p.pinned DESC, p.created_at DESC LIMIT $3`,
       [ecole, peutPublier(req.user) ? null : publicRole || "tous", limite]
     );
-    res.json({ success: true, data: rows });
+    // L'image n'est plus recopiee dans la liste : seulement son adresse
+    res.json({ success: true, data: rows.map(({ a_image, ...p }) => ({ ...p, image: a_image ? `/api/actualites/${p.id}/image` : null })) });
   } catch (e) {
     next(e);
   }

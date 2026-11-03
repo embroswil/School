@@ -340,7 +340,7 @@ router.get("/appel/:classId", async (req, res, next) => {
     const cours = (
       await db.query(
         `SELECT to_char(cr.debut, 'HH24MI')::int AS periode, to_char(cr.debut, 'HH24:MI') AS debut, to_char(cr.fin, 'HH24:MI') AS fin, s.name AS matiere,
-                EXISTS (SELECT 1 FROM attendance a WHERE a.class_id = $1 AND a.date = $3 AND a.period_number = to_char(cr.debut, 'HH24MI')::int) AS fait
+                EXISTS (SELECT 1 FROM appels ap WHERE ap.class_id = $1 AND ap.date = $3 AND ap.period_number = to_char(cr.debut, 'HH24MI')::int) AS fait
          FROM creneaux cr LEFT JOIN subjects s ON s.id = cr.subject_id
          LEFT JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id
          WHERE cr.class_id = $1 AND cr.jour = $2 AND ($4::int IS NULL OR cs.teacher_id = $4)
@@ -348,26 +348,30 @@ router.get("/appel/:classId", async (req, res, next) => {
         [c.id, jour, date, req.user.role === "teacher" ? req.user.id : null]
       )
     ).rows;
+    const faite = (
+      await db.query("SELECT 1 FROM appels WHERE class_id = $1 AND date = $2 AND period_number IS NOT DISTINCT FROM $3::int", [c.id, date, periode])
+    ).rows.length > 0;
     const { rows } = await db.query(
-      `SELECT u.id, u.first_name, u.last_name, a.status, a.remarks
+      `SELECT u.id, u.first_name, u.last_name, COALESCE(a.status, CASE WHEN $4 THEN 'present' END) AS status, a.remarks
        FROM class_students cs JOIN users u ON u.id = cs.student_id
        LEFT JOIN attendance a ON a.student_id = u.id AND a.class_id = $1 AND a.date = $2 AND a.period_number IS NOT DISTINCT FROM $3::int
        WHERE cs.class_id = $1 AND cs.status = 'active'
        ORDER BY u.last_name, u.first_name`,
-      [c.id, date, periode]
+      [c.id, date, periode, faite]
     );
     // Pour l'administration : resume de la journee (toutes les heures)
     const resume = (
       await db.query(
-        `SELECT a.period_number AS periode, COUNT(*) FILTER (WHERE a.status = 'absent')::int AS absents,
-                COUNT(*) FILTER (WHERE a.status = 'late')::int AS retards
-         FROM attendance a WHERE a.class_id = $1 AND a.date = $2 GROUP BY a.period_number ORDER BY a.period_number NULLS FIRST`,
+        `SELECT ap.period_number AS periode,
+                (SELECT COUNT(*)::int FROM attendance a WHERE a.class_id = ap.class_id AND a.date = ap.date AND a.period_number IS NOT DISTINCT FROM ap.period_number AND a.status = 'absent') AS absents,
+                (SELECT COUNT(*)::int FROM attendance a WHERE a.class_id = ap.class_id AND a.date = ap.date AND a.period_number IS NOT DISTINCT FROM ap.period_number AND a.status = 'late') AS retards
+         FROM appels ap WHERE ap.class_id = $1 AND ap.date = $2 ORDER BY ap.period_number NULLS FIRST`,
         [c.id, date]
       )
     ).rows.map((r) => ({ ...r, heure: r.periode === null ? "Journée" : heureTxt(r.periode) }));
     res.json({
       success: true,
-      data: { classe: c.name, date, periode, cours, resume, eleves: rows, faite: rows.some((r) => r.status), modifiable: req.user.role === "teacher" },
+      data: { classe: c.name, date, periode, cours, resume, eleves: rows, faite, modifiable: req.user.role === "teacher" },
     });
   } catch (e) {
     next(e);
@@ -390,13 +394,27 @@ router.put("/appel/:classId", async (req, res, next) => {
     );
     const ancien = new Map(avant.rows.map((r) => [r.student_id, r.status]));
     const conflit = periode === null ? "(student_id, class_id, date) WHERE period_number IS NULL" : "(student_id, class_id, date, period_number) WHERE period_number IS NOT NULL";
+    // L'appel est enregistre une fois ; les eleves presents ne sont pas stockes (economie de place)
+    await db.query(
+      `INSERT INTO appels (class_id, date, period_number, marked_by) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (class_id, date, COALESCE(period_number, -1)) DO UPDATE SET marked_by = EXCLUDED.marked_by, updated_at = NOW()`,
+      [c.id, date, periode, req.user.id]
+    );
+    const presents = liste.filter((p) => p.statut === "present").map((p) => entier(p.studentId));
+    if (presents.length) {
+      await db.query(
+        "DELETE FROM attendance WHERE class_id = $1 AND date = $2 AND period_number IS NOT DISTINCT FROM $3::int AND student_id = ANY($4)",
+        [c.id, date, periode, presents]
+      );
+    }
+    const nonPresents = liste.filter((p) => p.statut !== "present");
     await db.query(
       `INSERT INTO attendance (student_id, class_id, academic_year_id, date, period_number, status, marked_by)
        SELECT x.id, $1, $2, $3, $7::int, x.statut, $4 FROM unnest($5::int[], $6::text[]) AS x(id, statut)
        WHERE x.id IN (SELECT student_id FROM class_students WHERE class_id = $1 AND status = 'active')
        ON CONFLICT ${conflit}
        DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, updated_at = NOW()`,
-      [c.id, c.academic_year_id, date, req.user.id, liste.map((p) => entier(p.studentId)), liste.map((p) => p.statut), periode]
+      [c.id, c.academic_year_id, date, req.user.id, nonPresents.map((p) => entier(p.studentId)), nonPresents.map((p) => p.statut), periode]
     );
     const absents = liste.filter((p) => p.statut === "absent" && ancien.get(entier(p.studentId)) !== "absent").map((p) => entier(p.studentId));
     if (absents.length) {
@@ -760,7 +778,7 @@ router.get("/mes-classes", async (req, res, next) => {
                         WHERE cs.class_id = c.id AND cs.teacher_id = $1), '[]') AS matieres,
               (c.class_teacher_id = $1) AS prof_principal,
               (SELECT COUNT(*)::int FROM class_students x WHERE x.class_id = c.id AND x.status = 'active') AS eleves,
-              EXISTS (SELECT 1 FROM attendance a WHERE a.class_id = c.id AND a.date = CURRENT_DATE AND a.marked_by = $1) AS appel_fait
+              EXISTS (SELECT 1 FROM appels ap WHERE ap.class_id = c.id AND ap.date = CURRENT_DATE AND ap.marked_by = $1) AS appel_fait
        FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id
        WHERE ay.school_id = $2 AND ay.is_current
          AND (c.class_teacher_id = $1 OR EXISTS (SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id AND cs.teacher_id = $1))

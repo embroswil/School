@@ -11,6 +11,7 @@ const start = async () => {
   await ensureAdmin();
 
   require("./taches/resume-absences").demarrer();
+  require("./taches/menage").demarrer();
   const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`Backend running on port ${env.port} (${env.nodeEnv})`);
   });

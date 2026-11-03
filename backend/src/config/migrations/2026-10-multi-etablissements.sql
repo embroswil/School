@@ -273,3 +273,16 @@ CREATE TABLE IF NOT EXISTS resumes_mensuels (
   envoye_le TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (mois, parent_id)
 );
+
+-- Appel : une ligne par appel ; seuls les absences, retards et absences justifiees sont stockes
+CREATE TABLE IF NOT EXISTS appels (
+  id SERIAL PRIMARY KEY,
+  class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  period_number INTEGER,
+  marked_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_appels_unique ON appels (class_id, date, COALESCE(period_number, -1));
+CREATE INDEX IF NOT EXISTS idx_notifications_menage ON notifications (created_at);
