@@ -30,12 +30,13 @@ export function BandeauAbonnement({ role }) {
       : e.statut === 'en_retard'
         ? `Abonnement en retard : ${fcfa(e.reste)} à régler avant le ${jourLong(e.finGrace)}.`
         : `Abonnement ${e.annee} : ${fcfa(e.reste)} à régler avant le ${jourLong(e.echeance)}.`
+  // Calcule AVANT d'etre utilise (sinon erreur au rendu et page noire)
+  const urgent = ['en_retard', 'lecture_seule'].includes(e.statut)
   const contenu = (
     <>
       {texte} {role === 'principal' && <b style={{ color: urgent ? 'var(--danger)' : '#7aa5ff' }}>Voir ›</b>}
     </>
   )
-  const urgent = ['en_retard', 'lecture_seule'].includes(e.statut)
   const style = {
     display: 'block',
     marginTop: 4,
