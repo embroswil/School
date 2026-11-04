@@ -359,3 +359,7 @@ CREATE TABLE IF NOT EXISTS reversements (
   montant INTEGER NOT NULL CHECK (montant > 0), reference VARCHAR(120), note VARCHAR(300),
   cree_par INTEGER REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Abonnement paye en ligne (NotchPay de la plateforme)
+ALTER TABLE paiements_abonnement DROP CONSTRAINT IF EXISTS paiements_abonnement_statut_check;
+ALTER TABLE paiements_abonnement ADD CONSTRAINT paiements_abonnement_statut_check CHECK (statut IN ('declare','confirme','rejete','en_attente','echoue'));

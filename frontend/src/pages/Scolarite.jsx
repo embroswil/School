@@ -522,22 +522,6 @@ function AConfirmerAncien() {
   )
 }
 
-function Reversements() {
-  const d = useApi('/api/scolarite/reversements')
-  if (!d.data || d.data.encaisse === 0) return null
-  return (
-    <div className="card" style={{ borderLeft: '4px solid var(--primary)', marginBottom: 12 }}>
-      <b>Paiements en ligne (NotchPay)</b>
-      <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>
-        Encaissés par School pour votre établissement : {fcfa(d.data.encaisse)} · déjà reversés : {fcfa(d.data.reverse)}
-      </p>
-      <p style={{ marginTop: 4 }}>
-        À recevoir : <b style={{ color: d.data.du > 0 ? '#7aa5ff' : undefined }}>{fcfa(d.data.du)}</b>
-      </p>
-    </div>
-  )
-}
-
 function Recouvrement() {
   const d = useApi('/api/scolarite/recouvrement')
   const [classe, setClasse] = useState(null)
@@ -561,7 +545,6 @@ function Recouvrement() {
   const taux = t.attendu ? Math.round((t.encaisse / t.attendu) * 100) : 0
   return (
     <>
-      <Reversements />
       <div className="kpis">
         <div className="kpi">
           <b>{taux} %</b>

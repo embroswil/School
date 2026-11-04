@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
@@ -62,9 +62,43 @@ export default function Abonnement() {
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
+  const [montantEnLigne, setMontantEnLigne] = useState('')
+  // Retour de la page de paiement NotchPay : verification
+  useEffect(() => {
+    let ref = null
+    try {
+      ref = localStorage.getItem('school-abonnement')
+    } catch (_) {}
+    if (!ref) return
+    api
+      .get(`/api/abonnement/verifier/${encodeURIComponent(ref)}`)
+      .then((r) => {
+        if (r.data.statut === 'confirme') setOk('✓ Paiement en ligne confirmé. Votre reçu est disponible dans l’historique.')
+        else if (r.data.statut === 'echoue') setError('Le paiement en ligne n’a pas abouti.')
+        if (r.data.statut !== 'en_attente') localStorage.removeItem('school-abonnement')
+        d.reload()
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
   const e = d.data
+
+  async function payerEnLigne() {
+    setError('')
+    setBusy(true)
+    try {
+      const r = await api.post('/api/abonnement/payer', { montant: Number(montantEnLigne || e.reste) })
+      try {
+        localStorage.setItem('school-abonnement', r.data.reference)
+      } catch (_) {}
+      window.location.href = r.data.url
+    } catch (err) {
+      setError(err.message)
+      setBusy(false)
+    }
+  }
   const [libelle, couleur, fond] = STATUTS[e.statut]
 
   async function declarer(ev) {
@@ -124,7 +158,21 @@ export default function Abonnement() {
 
       {e.statut !== 'gratuit' && e.reste > 0 && (
         <>
-          <h2 className="section-title">Comment payer</h2>
+          {e.enLigne && (
+            <div className="card" style={{ borderLeft: '4px solid var(--primary)' }}>
+              <b>Payer en ligne</b>
+              <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>
+                Orange Money, MTN MoMo ou carte bancaire, via NotchPay. Le reçu est émis automatiquement.
+              </p>
+              <Field label="Montant (FCFA)">
+                <input className="input" inputMode="numeric" placeholder={String(e.reste)} value={montantEnLigne} onChange={(x) => setMontantEnLigne(x.target.value.replace(/\D/g, ''))} />
+              </Field>
+              <button type="button" className="btn btn-block" disabled={busy} onClick={payerEnLigne}>
+                {busy ? 'Un instant…' : `Payer ${fcfa(Number(montantEnLigne || e.reste))} en ligne`}
+              </button>
+            </div>
+          )}
+          <h2 className="section-title">{e.enLigne ? 'Ou par transfert direct' : 'Comment payer'}</h2>
           <div className="card">
             <p style={{ marginBottom: 8 }}>
               Envoyez le montant par Mobile Money{e.paiement.beneficiaire ? <> à <b>{e.paiement.beneficiaire}</b></> : null} :

@@ -74,15 +74,14 @@ const moyensEcole = async (schoolId) => {
   );
   const e = rows[0] || {};
   const cleEcole = e.notchpay_public_key || null;
-  const clePlateforme = process.env.NOTCHPAY_PUBLIC_KEY || null;
   return {
-    cle: cleEcole || clePlateforme,
-    // Sans compte NotchPay propre a l'etablissement, School encaisse puis reverse a l'ecole
-    viaPlateforme: !cleEcole && Boolean(clePlateforme),
+    // La cle NotchPay de la plateforme sert uniquement aux abonnements des etablissements
+    cle: cleEcole,
+    viaPlateforme: false,
     // Frais de transaction du paiement en ligne : ajoutes au montant paye par le parent, si l'etablissement le choisit
     fraisServicePct: e.frais_service_parent ? Number(e.frais_service_pct || 0) : 0,
     public: {
-      enLigne: Boolean(cleEcole || clePlateforme),
+      enLigne: Boolean(cleEcole),
       fraisServicePct: e.frais_service_parent ? Number(e.frais_service_pct || 0) : 0,
       orange: e.orange_money || null,
       mtn: e.mtn_momo || null,

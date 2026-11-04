@@ -7,6 +7,11 @@ const logger = require("../utils/logger");
 
 const verifier = async () => {
   const { verifierPaiement } = require("../modules/scolarite/routes");
+  // Abonnements payes en ligne (NotchPay de la plateforme)
+  const { verifierEnLigne } = require("../modules/abonnement/routes");
+  await db.query("UPDATE paiements_abonnement SET statut = 'echoue' WHERE statut = 'en_attente' AND created_at < NOW() - INTERVAL '48 hours'");
+  const abos = await db.query("SELECT * FROM paiements_abonnement WHERE statut = 'en_attente' AND created_at < NOW() - INTERVAL '3 minutes' LIMIT 20");
+  for (const p of abos.rows) await verifierEnLigne(p).catch(() => {});
   // Ordres P2P : expiration des ordres non payes, rappel a l'etablissement apres 2 h sans confirmation
   await db.query("UPDATE ordres_paiement SET statut = 'expire' WHERE statut = 'a_payer' AND expire_le < NOW()");
   const { notifierEtablissement } = require("../utils/notifier");

@@ -57,8 +57,83 @@ router.get("/", async (req, res, next) => {
     ).rows;
     res.json({
       success: true,
-      data: { ...e, historique, paiement: { beneficiaire: r.beneficiaire, orangeMoney: r.orangeMoney, mtnMomo: r.mtnMomo, instructions: r.instructions } },
+      data: {
+        ...e,
+        historique: historique.filter((h) => !["en_attente", "echoue"].includes(h.statut)),
+        enLigne: Boolean(cleNotchPay()),
+        paiement: { beneficiaire: r.beneficiaire, orangeMoney: r.orangeMoney, mtnMomo: r.mtnMomo, instructions: r.instructions },
+      },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// NotchPay de la plateforme : l'etablissement paie son abonnement en ligne
+const cleNotchPay = () => process.env.NOTCHPAY_PUBLIC_KEY || "";
+const verifierEnLigne = async (p) => {
+  const r = await fetch(`https://api.notchpay.co/payments/${encodeURIComponent(p.reference)}`, {
+    headers: { Authorization: cleNotchPay(), Accept: "application/json" },
+  });
+  const j = await r.json().catch(() => ({}));
+  const etat = j?.transaction?.status || j?.status;
+  if (etat === "complete") {
+    await confirmer(p.id, null);
+    return "confirme";
+  }
+  if (["failed", "canceled", "expired", "rejected"].includes(etat)) {
+    await db.query("UPDATE paiements_abonnement SET statut = 'echoue' WHERE id = $1 AND statut = 'en_attente'", [p.id]);
+    return "echoue";
+  }
+  return "en_attente";
+};
+
+// POST /api/abonnement/payer { montant } : redirige vers la page de paiement NotchPay
+router.post("/payer", async (req, res, next) => {
+  try {
+    if (req.user.role !== "principal") throw new ApiError(403, "Réservé à l’administration de l’établissement");
+    if (!cleNotchPay()) throw new ApiError(400, "Le paiement en ligne n’est pas encore activé : utilisez le transfert puis déclarez-le");
+    const e = await S.etat(req.user.schoolId);
+    if (e.statut === "gratuit" || e.reste <= 0) throw new ApiError(400, "Rien à payer");
+    const montant = Math.min(entier(req.body?.montant) || e.reste, e.reste);
+    if (!(montant >= 100)) throw new ApiError(400, "Montant invalide");
+    const reference = `ABO-${req.user.schoolId}-${Date.now()}`;
+    const { rows } = await db.query(
+      `INSERT INTO paiements_abonnement (abonnement_id, montant, moyen, reference, statut, declare_par) VALUES ($1, $2, 'notchpay', $3, 'en_attente', $4) RETURNING id`,
+      [e.id, montant, reference, req.user.id]
+    );
+    const ecole = (await db.query("SELECT name FROM schools WHERE id = $1", [req.user.schoolId])).rows[0]?.name || "Établissement";
+    const r = await fetch("https://api.notchpay.co/payments/initialize", {
+      method: "POST",
+      headers: { Authorization: cleNotchPay(), "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        amount: montant,
+        currency: "XAF",
+        email: req.user.email,
+        reference,
+        callback: `${(process.env.FRONTEND_URL || "").split(",")[0].trim()}/#/abonnement`,
+        description: `Abonnement School ${e.annee} – ${ecole}`,
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+    const url = j?.authorization_url || j?.transaction?.authorization_url;
+    if (!r.ok || !url) {
+      await db.query("UPDATE paiements_abonnement SET statut = 'echoue' WHERE id = $1", [rows[0].id]);
+      throw new ApiError(502, j?.message || "Le service de paiement ne répond pas");
+    }
+    res.json({ success: true, data: { url, reference } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/abonnement/verifier/:reference : au retour de NotchPay
+router.get("/verifier/:reference", async (req, res, next) => {
+  try {
+    const p = (await db.query("SELECT * FROM paiements_abonnement WHERE reference = $1", [String(req.params.reference).slice(0, 120)])).rows[0];
+    if (!p) throw new ApiError(404, "Paiement introuvable");
+    const statut = p.statut === "en_attente" ? await verifierEnLigne(p) : p.statut;
+    res.json({ success: true, data: { statut, id: p.id } });
   } catch (err) {
     next(err);
   }
@@ -301,3 +376,4 @@ router.post("/admin/reversements", isPlatformAdmin, async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.verifierEnLigne = verifierEnLigne;
