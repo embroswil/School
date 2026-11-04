@@ -608,6 +608,7 @@ function Reglages() {
     orange: r.data?.orange || '',
     mtn: r.data?.mtn || '',
     instructions: r.data?.instructions || '',
+    telephone: r.data?.telephone || '',
     fraisServiceParent: r.data?.fraisServiceParent || false,
     fraisServicePct: String(r.data?.fraisServicePct ?? 0),
   }
@@ -618,7 +619,7 @@ function Reglages() {
     setOk('')
     setBusy(true)
     try {
-      const corps = { orange: v.orange, mtn: v.mtn, instructions: v.instructions, fraisServiceParent: v.fraisServiceParent, fraisServicePct: v.fraisServicePct }
+      const corps = { orange: v.orange, mtn: v.mtn, instructions: v.instructions, telephone: v.telephone, fraisServiceParent: v.fraisServiceParent, fraisServicePct: v.fraisServicePct }
       if (v.cle) corps.cle = v.cle
       await api.put('/api/scolarite/reglages', corps)
       setOk('Réglages enregistrés.')
@@ -643,6 +644,9 @@ function Reglages() {
           <input className="input" type="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
         </Field>
       </div>
+      <Field label="Téléphone à appeler pour les paiements (affiché aux parents)">
+        <input className="input" type="tel" placeholder="6 XX XX XX XX" value={v.telephone} onChange={maj('telephone')} />
+      </Field>
       <Field label="Nom du titulaire et consignes (affichés aux parents)">
         <textarea className="input" placeholder="ex. Compte au nom de LYCÉE DE YINGUI. Indiquez le nom de l’élève en motif." value={v.instructions} onChange={maj('instructions')} />
       </Field>

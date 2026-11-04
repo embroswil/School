@@ -28,7 +28,8 @@ const nouveauCode = () => {
 };
 
 const SQL_ORDRE = `
-  SELECT o.*, f.nom AS frais, u.first_name, u.last_name, s.name AS ecole, s.paiement_instructions AS consignes,
+  SELECT o.*, f.nom AS frais, u.first_name, u.last_name, s.name AS ecole, s.city AS ville, s.paiement_instructions AS consignes,
+         COALESCE(s.telephone, (SELECT d.phone FROM users d WHERE d.school_id = s.id AND d.role = 'principal' AND d.phone IS NOT NULL ORDER BY d.id LIMIT 1)) AS telephone_ecole,
          pp.first_name AS parent_prenom, pp.last_name AS parent_nom, pp.phone AS parent_tel,
          (SELECT c.name FROM class_students cs JOIN classes c ON c.id = cs.class_id
           WHERE cs.student_id = o.student_id AND cs.status = 'active' ORDER BY cs.enrolled_at DESC LIMIT 1) AS classe

@@ -338,3 +338,7 @@ CREATE TABLE IF NOT EXISTS messages_ordre (
   auteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL, role VARCHAR(20), texte VARCHAR(1000) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Telephone de contact de l'etablissement (paiements) et index du fil d'actualite
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS telephone VARCHAR(30);
+CREATE INDEX IF NOT EXISTS idx_publications_fil ON publications (created_at DESC);

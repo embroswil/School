@@ -417,7 +417,7 @@ router.get("/reglages", async (req, res, next) => {
     reserve(req);
     const ecole = ecoleDe(req);
     const { rows } = await db.query(
-      "SELECT notchpay_public_key, orange_money, mtn_momo, paiement_instructions, frais_service_parent, frais_service_pct FROM schools WHERE id = $1",
+      "SELECT notchpay_public_key, orange_money, mtn_momo, paiement_instructions, frais_service_parent, frais_service_pct, telephone FROM schools WHERE id = $1",
       [ecole]
     );
     const e = rows[0] || {};
@@ -429,6 +429,7 @@ router.get("/reglages", async (req, res, next) => {
         orange: e.orange_money || "",
         mtn: e.mtn_momo || "",
         instructions: e.paiement_instructions || "",
+        telephone: e.telephone || "",
         fraisServiceParent: Boolean(e.frais_service_parent),
         fraisServicePct: Number(e.frais_service_pct || 0),
       },
@@ -457,6 +458,7 @@ router.put("/reglages", async (req, res, next) => {
     if (b.orange !== undefined) ajouter("orange_money", texte(b.orange, 30) || null);
     if (b.mtn !== undefined) ajouter("mtn_momo", texte(b.mtn, 30) || null);
     if (b.instructions !== undefined) ajouter("paiement_instructions", texte(b.instructions, 1000) || null);
+    if (b.telephone !== undefined) ajouter("telephone", texte(b.telephone, 30) || null);
     if (typeof b.fraisServiceParent === "boolean") ajouter("frais_service_parent", b.fraisServiceParent);
     if (b.fraisServicePct !== undefined) {
       const pct = Number(String(b.fraisServicePct).replace(",", "."));

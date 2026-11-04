@@ -5,6 +5,7 @@ import { useApi } from '../hooks.js'
 import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
+import Fil from './Fil.jsx'
 import { IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcEcole, IcEleves, IcImport, IcPhoto, IcPlus, IcProfil } from '../icones.jsx'
 
 const ROLES = {
@@ -300,52 +301,70 @@ function EspaceEtablissement() {
   )
 }
 
+// Petite pastille d'un enfant (accueil du parent)
+function PuceEnfant({ e, attente }) {
+  const contenu = (
+    <>
+      <span className="avatar" style={attente ? { background: 'var(--line)', color: 'var(--muted)' } : undefined}>
+        {(e.prenom || '?')[0]}
+        {(e.nom || '')[0]}
+      </span>
+      <span>
+        <b style={{ display: 'block', fontSize: 14 }}>{e.prenom}</b>
+        <span className="muted" style={{ fontSize: 12 }}>
+          {attente ? 'en attente' : e.classe || '—'}
+          {!attente && e.absencesMois ? ` · ${e.absencesMois} abs.` : ''}
+        </span>
+      </span>
+    </>
+  )
+  return attente ? <span className="enfant-puce" style={{ opacity: 0.7 }}>{contenu}</span> : <a className="enfant-puce" href={`#/suivi/${e.id}`}>{contenu}</a>
+}
+
+// Accueil du parent, du tuteur ou du donateur : ses enfants en bref, puis le fil d'actualite
 function EspaceParent() {
   const enfants = useApi('/api/suivi/eleves')
   const declares = useApi('/api/inscriptions/mes-enfants')
-  const enAttente = (declares.data || []).filter((e) => e.status !== 'approved')
+  const enAttente = (declares.data || []).filter((e) => e.status === 'pending')
+  const aucun = enfants.data?.length === 0 && enAttente.length === 0
   return (
     <>
-      <h2 className="section-title">Mes enfants</h2>
-      {enfants.loading && !enfants.data && <p className="muted">Chargement…</p>}
-      {enfants.data?.map((e) => <CarteEleve key={e.id} e={e} />)}
-      {enAttente.map((e) => (
-        <div className="ecole-carte" key={`a${e.id}`} style={{ opacity: 0.75 }}>
-          <div className="ecole-tete">
-            <span className="avatar" style={{ width: 44, height: 44, borderRadius: 14, fontSize: 16, background: 'var(--line)', color: 'var(--muted)' }}>
-              ?
-            </span>
-            <div className="row-main">
-              <div className="row-title">
-                {e.child_first_name} {e.child_last_name}
-              </div>
-              <div className="row-sub">{e.child_class || 'Classe non précisée'} · en attente</div>
-            </div>
-          </div>
-          <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-            En attente de validation par l’établissement.
-          </p>
+      {(enfants.data?.length > 0 || enAttente.length > 0) && (
+        <div className="enfants-bande">
+          {enfants.data?.map((e) => (
+            <PuceEnfant key={e.id} e={e} />
+          ))}
+          {enAttente.map((e) => (
+            <PuceEnfant key={`a${e.id}`} e={{ prenom: e.child_first_name, nom: e.child_last_name }} attente />
+          ))}
         </div>
-      ))}
-      {enfants.data?.length === 0 && enAttente.length === 0 && (
-        <p className="muted">Retrouvez votre enfant dans son établissement pour suivre ses notes, ses absences et sa scolarité.</p>
       )}
-      <Action href="#/trouver-eleve" Icone={IcPlus} titre="Ajouter mon enfant" texte="Le retrouver dans son établissement" />
-      <Action href="#/trouver-eleve" Icone={IcCarte} titre="Payer la scolarité d’un élève" texte="Pour votre enfant, un proche, ou en don" />
-      <h2 className="section-title">Raccourcis</h2>
-      <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais payés, reste à payer, paiement" />
-      <Action href="#/messages" Icone={IcActus} titre="Écrire à l’établissement" texte="Une question, une absence à justifier…" />
+      {aucun && (
+        <p className="muted" style={{ fontSize: 14, margin: '4px 2px 10px' }}>
+          Retrouvez votre enfant dans son établissement pour suivre ses notes, ses absences et sa scolarité.
+        </p>
+      )}
+      <div className="actions-parent">
+        <a href="#/trouver-eleve">
+          <IcPlus size={18} /> Mon enfant
+        </a>
+        <a href="#/trouver-eleve">
+          <IcCarte size={18} /> Payer une scolarité
+        </a>
+      </div>
+      <Fil />
     </>
   )
 }
 
+// Accueil de l'eleve : son suivi en bref, puis le fil d'actualite
 function EspaceEleve() {
   const moi = useApi('/api/suivi/eleves')
   return (
     <>
-      <h2 className="section-title">Mon suivi</h2>
       {moi.data?.map((e) => <CarteEleve key={e.id} e={e} />)}
-      <Action href="#/scolarite" Icone={IcCarte} titre="Ma scolarité" texte="Frais payés et reste à payer" />
+      <div style={{ height: 8 }} />
+      <Fil />
     </>
   )
 }
@@ -444,7 +463,10 @@ export default function Home() {
         </a>
       )}
       {user.role !== 'admin' && user.schoolId && <BandeauAbonnement role={user.role} />}
-      {!['principal', 'admin'].includes(user.role) && (
+      {['parent', 'student'].includes(user.role) && (
+        <h1 style={{ font: '800 22px/1.2 var(--font-display)', margin: '6px 2px 12px' }}>Bonjour, {user.firstName} 👋</h1>
+      )}
+      {user.role === 'teacher' && (
       <section className="hero-card" style={{ marginTop: 8 }}>
         <span className="badge">{ROLES[user.role] || user.role}</span>
         <h2 style={{ marginTop: 12 }}>Bonjour, {user.firstName} 👋</h2>
@@ -456,7 +478,7 @@ export default function Home() {
       {user.role === 'parent' && <EspaceParent />}
       {user.role === 'student' && <EspaceEleve />}
       {user.role === 'teacher' && <EspaceEnseignant />}
-      {['parent', 'student', 'teacher'].includes(user.role) && <DernieresActualites />}
+      {user.role === 'teacher' && <DernieresActualites />}
     </>
   )
 }

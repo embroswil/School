@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api.js'
-import { Field, Note } from '../ui.jsx'
+import { ChampMotDePasse, Field, Note, PageAuth } from '../ui.jsx'
 
 // Saisie d'un code a 6 chiffres recu par email, avec renvoi du code
 export function SaisieCode({ email, envoyer, onValide, libelle = 'Confirmer' }) {
@@ -96,6 +96,7 @@ export default function MotDePasseOublie() {
   const [email, setEmail] = useState('')
   const [etape, setEtape] = useState(1)
   const [mdp, setMdp] = useState('')
+  const [mdp2, setMdp2] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [fini, setFini] = useState(false)
@@ -114,16 +115,8 @@ export default function MotDePasseOublie() {
   }
 
   return (
-    <div className="public">
-      <header className="public-top">
-        <a className="brand" href="#/">
-          School<span>.</span>
-        </a>
-        <a href="#/connexion" className="muted" style={{ fontWeight: 700 }}>
-          Se connecter
-        </a>
-      </header>
-      <main className="public-main">
+    <PageAuth titre="Mot de passe oublié" sousTitre="Recevez un code par email pour en choisir un nouveau." retour={<a href="#/connexion">Se connecter</a>}>
+      <div className="card">
         {fini ? (
           <div style={{ textAlign: 'center', paddingTop: 30 }}>
             <div style={{ fontSize: 52 }}>✅</div>
@@ -135,7 +128,6 @@ export default function MotDePasseOublie() {
           </div>
         ) : etape === 1 ? (
           <>
-            <h1 className="page-title">Mot de passe oublié</h1>
             <p className="lede">Indiquez l’adresse email de votre compte : nous vous enverrons un code pour choisir un nouveau mot de passe.</p>
             <form className="card" onSubmit={demander}>
               <Field label="Adresse e-mail">
@@ -155,7 +147,10 @@ export default function MotDePasseOublie() {
             </p>
             <div className="card" style={{ marginBottom: 12 }}>
               <Field label="Nouveau mot de passe (8 caractères minimum)">
-                <input className="input" type="password" autoComplete="new-password" minLength={8} value={mdp} onChange={(e) => setMdp(e.target.value)} required />
+                <ChampMotDePasse autoComplete="new-password" minLength={8} value={mdp} onChange={(e) => setMdp(e.target.value)} />
+              </Field>
+              <Field label="Confirmer le mot de passe">
+                <ChampMotDePasse autoComplete="new-password" minLength={8} value={mdp2} onChange={(e) => setMdp2(e.target.value)} invalide={Boolean(mdp2) && mdp2 !== mdp} />
               </Field>
             </div>
             <SaisieCode
@@ -164,6 +159,7 @@ export default function MotDePasseOublie() {
               libelle="Changer le mot de passe"
               onValide={async (code) => {
                 if (mdp.length < 8) throw new Error('Choisissez d’abord un mot de passe de 8 caractères minimum.')
+                if (mdp !== mdp2) throw new Error('Les deux mots de passe ne correspondent pas.')
                 await api.post('/api/codes/mot-de-passe/changer', { email, code, motDePasse: mdp }, { auth: false })
                 setFini(true)
               }}
@@ -173,7 +169,7 @@ export default function MotDePasseOublie() {
             </button>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </PageAuth>
   )
 }

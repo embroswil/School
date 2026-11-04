@@ -35,6 +35,20 @@ router.get("/:id/image", async (req, res, next) => {
   }
 });
 
+// GET /api/actualites/ecoles/:id/photo : photo de l'etablissement (mise en cache)
+router.get("/ecoles/:id/photo", async (req, res, next) => {
+  try {
+    const { rows } = await db.query("SELECT photo FROM schools WHERE id = $1 AND is_active", [parseInt(req.params.id, 10) || 0]);
+    const m = String(rows[0]?.photo || "").match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+    if (!m) throw new ApiError(404, "Photo introuvable");
+    res.set("Content-Type", m[1]);
+    res.set("Cache-Control", "public, max-age=86400");
+    res.send(Buffer.from(m[2], "base64"));
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.use(authenticate);
 
 const ecoleDe = (req) => {
@@ -60,6 +74,60 @@ router.get("/", async (req, res, next) => {
     );
     // L'image n'est plus recopiee dans la liste : seulement son adresse
     res.json({ success: true, data: rows.map(({ a_image, ...p }) => ({ ...p, image: a_image ? `/api/actualites/${p.id}/image` : null })) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Etablissements « a moi » : ceux de mes enfants, ou le mien
+const mesEcoles = async (u) => {
+  if (u.role === "parent") {
+    const { rows } = await db.query(
+      "SELECT DISTINCT e.school_id AS id FROM parent_student_links l JOIN users e ON e.id = l.student_id WHERE l.parent_id = $1 AND e.school_id IS NOT NULL",
+      [u.id]
+    );
+    return rows.map((r) => r.id);
+  }
+  return u.schoolId ? [u.schoolId] : [];
+};
+
+// GET /api/actualites/fil?ecoles=1,2&avant=ISO : fil de tous les etablissements (comme un reseau social)
+// Public : annonces, evenements, resultats destines a tous. Les conseils de discipline (noms d'eleves)
+// ne sont visibles que dans les etablissements de l'utilisateur.
+router.get("/fil", async (req, res, next) => {
+  try {
+    const miennes = await mesEcoles(req.user);
+    const choisies = String(req.query.ecoles || "")
+      .split(",")
+      .map((x) => parseInt(x, 10))
+      .filter((x) => x > 0)
+      .slice(0, 30);
+    const avant = /^\d{4}-\d{2}-\d{2}T/.test(req.query.avant || "") ? req.query.avant : null;
+    const publicRole = PUBLIC_DU_ROLE[req.user.role] || "tous";
+    const { rows } = await db.query(
+      `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
+              p.pinned, p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, (s.photo IS NOT NULL) AS a_photo
+       FROM publications p JOIN schools s ON s.id = p.school_id AND s.is_active
+       WHERE (cardinality($1::int[]) = 0 OR p.school_id = ANY($1))
+         AND ($3::timestamp IS NULL OR p.created_at < $3)
+         AND (
+           (p.school_id = ANY($2) AND p.audience IN ('tous', $4))
+           OR (p.type <> 'conseil_discipline' AND p.audience IN ('tous', $4))
+         )
+       ORDER BY p.created_at DESC LIMIT 20`,
+      [choisies, miennes, avant, publicRole]
+    );
+    res.json({
+      success: true,
+      data: {
+        mesEcoles: miennes,
+        publications: rows.map(({ a_image, a_photo, ...p }) => ({
+          ...p,
+          image: a_image ? `/api/actualites/${p.id}/image` : null,
+          logo: a_photo ? `/api/actualites/ecoles/${p.school_id}/photo` : null,
+        })),
+      },
+    });
   } catch (e) {
     next(e);
   }

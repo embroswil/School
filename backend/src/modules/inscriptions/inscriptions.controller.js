@@ -53,7 +53,8 @@ const inscription = async (req, res, next) => {
     const b = req.body || {};
     const role = ROLES.includes(b.role) ? b.role : null;
     if (!role) throw new ApiError(400, "Choisissez votre profil : parent, élève ou enseignant");
-    const schoolId = parseId(b.schoolId);
+    // Le parent (ou donateur) s'inscrit sans etablissement
+    const schoolId = role === "parent" && !b.schoolId ? null : parseId(b.schoolId);
     const email = texte(b.email, 255).toLowerCase();
     const prenom = texte(b.firstName);
     const nom = texte(b.lastName);

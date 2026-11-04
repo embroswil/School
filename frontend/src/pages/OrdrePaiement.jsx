@@ -50,6 +50,66 @@ function Copier({ valeur, children }) {
   )
 }
 
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
+// Numero au format international pour WhatsApp (Cameroun par defaut)
+const international = (t) => {
+  const c = String(t || '').replace(/\D/g, '')
+  return c.length === 9 ? `237${c}` : c
+}
+
+// Contact direct avec l'autre partie : appel et WhatsApp
+function Contact({ titre, nom, telephone, message }) {
+  if (!telephone) return null
+  return (
+    <div className="card contact-ordre">
+      <div style={{ flex: 1 }}>
+        <b>{titre}</b>
+        <div className="muted" style={{ fontSize: 14 }}>
+          {nom} · {telephone}
+        </div>
+      </div>
+      <div className="actions" style={{ marginTop: 10 }}>
+        <a className="btn" href={`tel:${String(telephone).replace(/\s/g, '')}`} style={{ padding: '10px 14px', fontSize: 14 }}>
+          📞 Appeler
+        </a>
+        <a className="btn btn-quiet" href={`https://wa.me/${international(telephone)}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer" style={{ padding: '10px 14px', fontSize: 14 }}>
+          WhatsApp
+        </a>
+      </div>
+    </div>
+  )
+}
+
+// Logo (photo) de l'etablissement, ou son initiale
+export function LogoEcole({ id, nom, taille = 46 }) {
+  const [ok, setOk] = useState(true)
+  return (
+    <span className="ordre-logo" style={{ width: taille, height: taille }}>
+      {ok ? (
+        <img src={`${API}/api/actualites/ecoles/${id}/photo`} alt="" onError={() => setOk(false)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        (nom || '?')[0]
+      )}
+    </span>
+  )
+}
+
+// Etapes de l'ordre : cree -> paye -> confirme
+function Etapes({ statut }) {
+  const n = { a_payer: 1, paye: 2, litige: 2, confirme: 3 }[statut] || 0
+  const libelles = ['Ordre créé', 'Payé', 'Confirmé']
+  return (
+    <ol className="etapes-ordre">
+      {libelles.map((l, i) => (
+        <li key={l} className={i < n ? 'fait' : i === n ? 'courant' : ''} data-litige={statut === 'litige' && i === 1 ? 'oui' : undefined}>
+          <span>{i < n ? '✓' : i + 1}</span>
+          {statut === 'litige' && i === 1 ? 'Litige' : l}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 function CompteARebours({ fin, decalage, onFini }) {
   const [reste, setReste] = useState(0)
   useEffect(() => {
@@ -110,21 +170,43 @@ export default function OrdrePaiement({ id }) {
 
   return (
     <>
-      <section className="card" style={{ borderColor: couleur, background: fond }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <b style={{ color: couleur }}>{titre}</b>
-          {o.statut === 'a_payer' && <CompteARebours fin={o.expire_le} decalage={decalage} onFini={() => d.reload()} />}
+      <section className="ordre-tete">
+        <div className="ordre-marchand">
+          <LogoEcole id={o.school_id} nom={o.ecole} />
+          <div style={{ minWidth: 0 }}>
+            <b>{o.ecole}</b>
+            <div className="muted" style={{ fontSize: 13 }}>
+              {o.ville ? `${o.ville} · ` : ''}Ordre n° {o.code}
+            </div>
+          </div>
+          <span className="tag" style={{ marginLeft: 'auto', background: fond, color: couleur }}>
+            {ETATS[o.statut][1]}
+          </span>
         </div>
-        <div style={{ font: '800 30px/1.2 var(--font-display)', marginTop: 8 }}>{fcfa(o.montant)}</div>
-        <div className="muted" style={{ fontSize: 14 }}>
-          {o.frais} · {o.first_name} {o.last_name}
-          {o.classe ? ` (${o.classe})` : ''} · {o.ecole}
+        <Etapes statut={o.statut} />
+        <div className="ordre-montant">
+          <span className="muted">Montant</span>
+          <b>{fcfa(o.montant)}</b>
+          <span className="muted" style={{ fontSize: 14 }}>
+            {o.frais} · {o.first_name} {o.last_name}
+            {o.classe ? ` (${o.classe})` : ''}
+          </span>
         </div>
-        <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-          Ordre {o.code} · créé {heure(o.created_at)}
+        {o.statut === 'a_payer' ? (
+          <div className="ordre-chrono">
+            <span>Temps restant pour payer</span>
+            <CompteARebours fin={o.expire_le} decalage={decalage} onFini={() => d.reload()} />
+          </div>
+        ) : (
+          <p className="ordre-etat" style={{ color: couleur }}>
+            {titre}
+          </p>
+        )}
+        <p className="muted" style={{ fontSize: 12, textAlign: 'center' }}>
+          Créé {heure(o.created_at)}
           {o.paye_le ? ` · payé ${heure(o.paye_le)}` : ''}
           {o.confirme_le ? ` · confirmé ${heure(o.confirme_le)}` : ''}
-        </div>
+        </p>
       </section>
 
       {/* ------------------------------ le parent doit payer */}
@@ -269,6 +351,23 @@ export default function OrdrePaiement({ id }) {
             </button>
           </div>
         </div>
+      )}
+
+      {['payeur', 'arbitre'].includes(o.monRole) && (
+        <Contact
+          titre="Joindre l’établissement"
+          nom={o.ecole}
+          telephone={o.telephone_ecole}
+          message={`Bonjour, je vous contacte au sujet du paiement School ${o.code} de ${fcfa(o.montant)} (${o.frais}, ${o.first_name} ${o.last_name}).`}
+        />
+      )}
+      {['etablissement', 'arbitre'].includes(o.monRole) && o.parent_tel && (
+        <Contact
+          titre="Joindre le payeur"
+          nom={`${o.parent_prenom || ''} ${o.parent_nom || ''}`.trim()}
+          telephone={o.parent_tel}
+          message={`Bonjour, ${o.ecole} vous contacte au sujet du paiement School ${o.code} de ${fcfa(o.montant)}.`}
+        />
       )}
 
       {/* ------------------------------ discussion */}

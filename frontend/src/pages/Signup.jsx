@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
-import { Field, Note } from '../ui.jsx'
+import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import { VerificationEmail } from './CodeEmail.jsx'
 
 const PROFILS = [
@@ -14,6 +14,7 @@ export const LIENS = [['pere', 'Père'], ['mere', 'Mère'], ['tuteur', 'Tuteur /
 
 export default function Signup() {
   const { login, signup } = useAuth()
+  const [confirmation, setConfirmation] = useState('')
   const [etape, setEtape] = useState(1)
   const [role, setRole] = useState('')
   const [ecoles, setEcoles] = useState(null)
@@ -54,6 +55,10 @@ export default function Signup() {
 
   async function envoyer(e) {
     e.preventDefault()
+    if (f.password !== confirmation) {
+      setError('Les deux mots de passe ne correspondent pas.')
+      return
+    }
     setError('')
     setBusy(true)
     try {
@@ -75,8 +80,14 @@ export default function Signup() {
   // Compte cree : confirmation de l'email par le code recu
   if (aVerifier && !fini) {
     return (
-      <div className="public">
-        <main className="public-main" style={{ paddingTop: 30 }}>
+      <div className="auth">
+        <header className="auth-haut">
+          <span className="brand" style={{ color: '#fff' }}>
+            School<span>.</span>
+          </span>
+        </header>
+        <main className="auth-main">
+          <div className="card">
           <VerificationEmail
             email={f.email.trim().toLowerCase()}
             onConfirme={async () => {
@@ -96,6 +107,7 @@ export default function Signup() {
               window.location.hash = '/'
             }}
           />
+          </div>
         </main>
       </div>
     )
@@ -117,16 +129,15 @@ export default function Signup() {
   }
 
   return (
-    <div className="public">
-      <header className="public-top">
-        <a className="brand" href="#/">
+    <div className="auth">
+      <header className="auth-haut">
+        <a className="brand" href="#/" style={{ color: '#fff' }}>
           School<span>.</span>
         </a>
-        <a href="#/connexion" className="muted" style={{ fontWeight: 700 }}>
-          Se connecter
-        </a>
+        <a href="#/connexion">Se connecter</a>
       </header>
-      <main className="public-main">
+      <main className="auth-main">
+        <div className="card">
         <div className="steps" aria-hidden="true">
           {[1, 2, 3].map((n) => (
             <span key={n} className={n <= etape ? 'on' : ''} />
@@ -234,7 +245,26 @@ export default function Signup() {
                 <input className="input" type="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} />
               </Field>
               <Field label="Mot de passe (8 caractères minimum)">
-                <input className="input" type="password" autoComplete="new-password" minLength={8} value={f.password} onChange={maj('password')} required />
+                <ChampMotDePasse autoComplete="new-password" minLength={8} value={f.password} onChange={maj('password')} />
+                <span className="force-mdp" aria-hidden="true">
+                  {[0, 1, 2, 3].map((n) => {
+                    const p = f.password
+                    const score = (p.length >= 8) + (p.length >= 12) + (/[A-Z]/.test(p) && /[a-z]/.test(p)) + (/\d/.test(p) || /[^A-Za-z0-9]/.test(p))
+                    return <span key={n} style={n < score ? { background: ['#e5484d', '#f5a524', '#3b82f6', '#16a34a'][score - 1] } : undefined} />
+                  })}
+                </span>
+              </Field>
+              <Field label="Confirmer le mot de passe">
+                <ChampMotDePasse
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={confirmation}
+                  onChange={(e) => setConfirmation(e.target.value)}
+                  invalide={Boolean(confirmation) && confirmation !== f.password}
+                />
+                {confirmation && confirmation !== f.password && (
+                  <span style={{ color: 'var(--danger)', fontSize: 13 }}>Les mots de passe ne correspondent pas</span>
+                )}
               </Field>
             </div>
 
@@ -293,7 +323,10 @@ export default function Signup() {
             </button>
           </form>
         )}
+        </div>
+        <p className="auth-securite">🔒 Connexion chiffrée · vos données restent privées</p>
       </main>
+      <footer className="auth-pied">School by Embroswil · © {new Date().getFullYear()}</footer>
     </div>
   )
 }
