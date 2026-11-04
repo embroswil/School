@@ -89,6 +89,7 @@ export default function Fil({ enfants, actions }) {
   const [posts, setPosts] = useState([])
   const [fin, setFin] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [erreur, setErreur] = useState('')
   const req = useRef(0)
 
   useEffect(() => {
@@ -97,6 +98,7 @@ export default function Fil({ enfants, actions }) {
   const charger = async (avant) => {
     const n = ++req.current
     setBusy(true)
+    setErreur('')
     try {
       const qs = new URLSearchParams()
       if (choisie) qs.set('ecoles', String(choisie))
@@ -105,10 +107,11 @@ export default function Fil({ enfants, actions }) {
       if (n !== req.current) return
       setPosts((l) => (avant ? [...l, ...r.data.publications] : r.data.publications))
       setFin(r.data.publications.length < 20)
-    } catch (_) {
+    } catch (err) {
+      if (n === req.current) setErreur(err.message)
       setFin(true)
     }
-    setBusy(false)
+    if (n === req.current) setBusy(false)
   }
   useEffect(() => {
     charger(null)
@@ -148,7 +151,15 @@ export default function Fil({ enfants, actions }) {
           </button>
         ))}
       </div>
-      {posts.length === 0 && !busy && <p className="muted" style={{ textAlign: 'center', padding: 30 }}>Aucune information pour le moment.</p>}
+      {erreur && (
+        <div className="note note-error" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+          <span>{erreur}</span>
+          <button type="button" className="btn btn-quiet" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => charger(null)}>
+            Réessayer
+          </button>
+        </div>
+      )}
+      {posts.length === 0 && !busy && !erreur && <p className="muted" style={{ textAlign: 'center', padding: 30 }}>Aucune information pour le moment.</p>}
       {posts.map((p) => (
         <Info key={p.id} p={p} />
       ))}

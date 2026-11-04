@@ -255,6 +255,14 @@ function EspaceEtablissement() {
   const urgences = (d.enseignants_attente || 0) + nbConfirmer
   return (
     <>
+      {t.error && (
+        <div className="note note-error" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+          <span>{t.error}</span>
+          <button type="button" className="btn btn-quiet" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => (t.reload(), confirmer.reload())}>
+            Réessayer
+          </button>
+        </div>
+      )}
       <EnteteEtablissement d={d} onChange={() => t.reload()} />
       <div className="stats">
         <a className="stat" href="#/eleves" style={{ color: 'inherit' }}>
@@ -290,7 +298,7 @@ function EspaceEtablissement() {
       {d.eleves === 0 ? (
         <Action href="#/import-eleves" Icone={IcImport} titre="Ajouter vos élèves" texte="Photographiez ou envoyez vos listes de classe" />
       ) : (
-        <Action href="#/eleves" Icone={IcEleves} titre="Élèves et classes" texte={`${d.eleves} élèves · ${d.classes} classes`} />
+        <Action href="#/eleves" Icone={IcEleves} titre="Élèves et classes" texte={`${d.eleves ?? '…'} élèves · ${d.classes ?? '…'} classes`} />
       )}
       <Action href="#/actualites" Icone={IcActus} titre="Actualités" texte="Annonces, événements, conseils de discipline" />
       <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements et moyens de paiement" />
