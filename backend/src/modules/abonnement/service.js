@@ -13,6 +13,7 @@ const reglages = async () => {
     orangeMoney: r.orange_money || "",
     mtnMomo: r.mtn_momo || "",
     instructions: r.instructions || "",
+    telephone: r.telephone || "",
   };
 };
 

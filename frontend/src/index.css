@@ -644,3 +644,29 @@ h1, h2, h3, .page-title, .section-title { color: var(--text); font-family: var(-
 .classe-ligne { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 13px 14px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: 600 15px/1.2 var(--font-body); cursor: pointer; text-align: left; }
 .classe-ligne:first-child { border-top: 0; }
 .niveau-titre { margin: 16px 2px 6px; font: 700 12px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* ---------- page Eleves ---------- */
+.eleves-tete { display: flex; align-items: center; gap: 8px; margin: 4px 0 14px; }
+.eleves-tete > div { flex: 1; min-width: 0; }
+.bouton-icone { display: inline-flex; align-items: center; gap: 6px; padding: 10px 12px; font-size: 14px; white-space: nowrap; }
+.filtres-eleves { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 12px; }
+.filtres-eleves select { max-width: 150px; }
+.liste-eleves { list-style: none; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.liste-eleves li { display: flex; align-items: center; gap: 8px; padding-right: 10px; border-top: 1px solid var(--line); }
+.liste-eleves li:first-child { border-top: 0; }
+.liste-eleves a { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 11px 14px; color: var(--text); }
+.liste-eleves .initiales { flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--card-2, #1a1f2b); color: var(--muted); font: 700 13px/1 var(--font-display); }
+.liste-eleves .nom { flex: 1; min-width: 0; }
+.liste-eleves .nom b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.liste-eleves .nom small { color: var(--muted); font-size: 13px; }
+.liste-eleves .statut { flex: none; font-size: 11px; font-weight: 700; color: var(--muted); }
+.liste-eleves .statut.actif { color: #7aa5ff; }
+.liste-eleves .statut.actif::before { content: '●'; margin-right: 4px; }
+
+/* ---------- menu « Actions rapides » ---------- */
+.feuille-titre { margin: 2px 2px 12px; font: 700 12px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.tuiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tuile { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 14px 6px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; color: var(--text); }
+.tuile-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: rgba(47, 107, 255, 0.14); color: #7aa5ff; }
+.tuile b { font: 700 14px/1.2 var(--font-display); }
+.tuile span:last-child { font-size: 11px; color: var(--muted); line-height: 1.3; }

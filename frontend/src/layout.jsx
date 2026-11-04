@@ -73,12 +73,12 @@ const TITRES = {
 }
 
 const ACTIONS = [
-  ['/import-eleves', IcImport, 'Ajouter des élèves', 'Photo ou fichier de la liste'],
-  ['/publier', IcPhoto, 'Publier une photo ou une vidéo', 'Dans le fil de l’établissement'],
-  ['/actualites', IcActus, 'Publier une annonce', 'Annonce, événement, conseil de discipline…'],
-  ['/scolarite', IcCarte, 'Enregistrer un paiement', 'Paiement reçu au guichet'],
-  ['/enseignants', IcEleves, 'Valider un enseignant', 'Comptes en attente'],
-  ['/discipline', IcPhoto, 'Discipline par document', 'Photo ou fichier d’un PV, d’une liste…'],
+  ['/import-eleves', IcImport, 'Élèves', 'Importer une liste'],
+  ['/publier', IcPhoto, 'Publier', 'Photo ou vidéo'],
+  ['/actualites', IcActus, 'Annonce', 'Événement, conseil'],
+  ['/scolarite', IcCarte, 'Encaisser', 'Paiement en espèces'],
+  ['/enseignants', IcEleves, 'Enseignants', 'Comptes à valider'],
+  ['/discipline', IcPhoto, 'Discipline', 'Par document'],
 ]
 
 export default function Shell({ path, children }) {
@@ -141,19 +141,15 @@ export default function Shell({ path, children }) {
         <div className="voile" onClick={() => setActions(false)}>
           <div className="feuille" onClick={(e) => e.stopPropagation()}>
             <div className="feuille-poignee" />
-            <h2 className="section-title" style={{ marginTop: 4 }}>
-              Que voulez-vous faire ?
-            </h2>
-            <div className="choices">
+            <p className="feuille-titre">Actions rapides</p>
+            <div className="tuiles">
               {ACTIONS.map(([to, Icone, t, st]) => (
-                <a key={to} className="choice" href={`#${to}`}>
-                  <span className="ico" style={{ color: 'var(--primary)' }}>
-                    <Icone />
+                <a key={to} className="tuile" href={`#${to}`}>
+                  <span className="tuile-ico">
+                    <Icone size={22} />
                   </span>
-                  <span>
-                    <b>{t}</b>
-                    <span className="muted">{st}</span>
-                  </span>
+                  <b>{t}</b>
+                  <span>{st}</span>
                 </a>
               ))}
             </div>

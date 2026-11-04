@@ -61,7 +61,7 @@ router.get("/", async (req, res, next) => {
         ...e,
         historique: historique.filter((h) => !["en_attente", "echoue"].includes(h.statut)),
         enLigne: Boolean(cleNotchPay()),
-        paiement: { beneficiaire: r.beneficiaire, orangeMoney: r.orangeMoney, mtnMomo: r.mtnMomo, instructions: r.instructions },
+        paiement: { beneficiaire: r.beneficiaire, telephone: r.telephone },
       },
     });
   } catch (err) {
@@ -314,6 +314,7 @@ router.put("/admin/reglages", isPlatformAdmin, async (req, res, next) => {
       orange_money: b.orangeMoney !== undefined ? String(b.orangeMoney).slice(0, 30) : undefined,
       mtn_momo: b.mtnMomo !== undefined ? String(b.mtnMomo).slice(0, 30) : undefined,
       instructions: b.instructions !== undefined ? String(b.instructions).slice(0, 300) : undefined,
+      telephone: b.telephone !== undefined ? String(b.telephone).slice(0, 30) : undefined,
     };
     for (const [cle, v] of Object.entries(champs)) {
       if (v === undefined) continue;

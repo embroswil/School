@@ -117,17 +117,12 @@ function Reglages({ r, onChange }) {
       <Field label="Bénéficiaire (nom affiché aux écoles)">
         <input className="input" value={f.beneficiaire} onChange={maj('beneficiaire')} />
       </Field>
-      <div className="grid2">
-        <Field label="Orange Money">
-          <input className="input" inputMode="tel" value={f.orangeMoney} onChange={maj('orangeMoney')} />
-        </Field>
-        <Field label="MTN MoMo">
-          <input className="input" inputMode="tel" value={f.mtnMomo} onChange={maj('mtnMomo')} />
-        </Field>
-      </div>
-      <Field label="Consigne de paiement">
-        <input className="input" value={f.instructions} onChange={maj('instructions')} />
+      <Field label="Téléphone de contact (paiements en espèces)">
+        <input className="input" inputMode="tel" placeholder="6 XX XX XX XX" value={f.telephone || ''} onChange={maj('telephone')} />
       </Field>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
+        Paiement en ligne : la clé NotchPay se règle sur Render (NOTCHPAY_PUBLIC_KEY). Espèces : enregistrez le paiement sur la fiche de l’établissement.
+      </p>
       <Note kind="ok">{ok}</Note>
       <button className="btn btn-block" type="submit">
         Enregistrer les réglages

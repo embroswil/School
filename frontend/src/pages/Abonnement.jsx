@@ -59,7 +59,6 @@ export function BandeauAbonnement({ role }) {
 // Page « Abonnement School » de l'etablissement
 export default function Abonnement() {
   const d = useApi('/api/abonnement')
-  const [f, setF] = useState({ montant: '', moyen: 'orange_money', reference: '' })
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
@@ -102,21 +101,7 @@ export default function Abonnement() {
   }
   const [libelle, couleur, fond] = STATUTS[e.statut]
 
-  async function declarer(ev) {
-    ev.preventDefault()
-    setError('')
-    setOk('')
-    setBusy(true)
-    try {
-      await api.post('/api/abonnement/declarer', { ...f, montant: Number(f.montant || e.reste) })
-      setOk('Paiement déclaré : il sera confirmé après vérification, et votre reçu sera disponible ici.')
-      setF({ montant: '', moyen: 'orange_money', reference: '' })
-      d.reload()
-    } catch (err) {
-      setError(err.message)
-    }
-    setBusy(false)
-  }
+
 
   return (
     <>
@@ -173,56 +158,18 @@ export default function Abonnement() {
               </button>
             </div>
           )}
-          <h2 className="section-title">{e.enLigne ? 'Ou par transfert direct' : 'Comment payer'}</h2>
-          <div className="card">
-            <p style={{ marginBottom: 8 }}>
-              Envoyez le montant par Mobile Money{e.paiement.beneficiaire ? <> à <b>{e.paiement.beneficiaire}</b></> : null} :
+          <div className="card" style={{ borderLeft: '4px solid var(--line)' }}>
+            <b>Payer en espèces</b>
+            <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>
+              Remettez le montant à un représentant de {e.paiement.beneficiaire || 'School'} contre un reçu. Le paiement apparaîtra ici, avec son
+              reçu, dès son enregistrement.
             </p>
-            {e.paiement.orangeMoney && (
-              <p>
-                🟠 Orange Money : <b>{e.paiement.orangeMoney}</b>
-              </p>
+            {e.paiement.telephone && (
+              <a className="btn btn-quiet" href={`tel:${e.paiement.telephone.replace(/\s/g, '')}`} style={{ marginTop: 10, padding: '10px 14px', fontSize: 14 }}>
+                📞 Prendre rendez-vous · {e.paiement.telephone}
+              </a>
             )}
-            {e.paiement.mtnMomo && (
-              <p>
-                🟡 MTN MoMo : <b>{e.paiement.mtnMomo}</b>
-              </p>
-            )}
-            {!e.paiement.orangeMoney && !e.paiement.mtnMomo && <p className="muted">Les numéros de paiement seront bientôt affichés ici.</p>}
-            {e.paiement.instructions && (
-              <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>
-                {e.paiement.instructions}
-              </p>
-            )}
-            <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>
-              Vous pouvez payer en une ou plusieurs fois. Puis déclarez le paiement ci-dessous.
-            </p>
           </div>
-          <form className="card" onSubmit={declarer}>
-            <b>Déclarer un paiement</b>
-            <div className="grid2" style={{ marginTop: 10 }}>
-              <Field label="Montant (FCFA)">
-                <input className="input" inputMode="numeric" placeholder={String(e.reste)} value={f.montant} onChange={(x) => setF({ ...f, montant: x.target.value.replace(/\D/g, '') })} />
-              </Field>
-              <Field label="Moyen">
-                <select className="input" value={f.moyen} onChange={(x) => setF({ ...f, moyen: x.target.value })}>
-                  {['orange_money', 'mtn_momo', 'virement', 'especes', 'autre'].map((m) => (
-                    <option key={m} value={m}>
-                      {MOYENS[m]}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <Field label="Référence de la transaction">
-              <input className="input" placeholder="ex. MP261103.1452.A12345" value={f.reference} onChange={(x) => setF({ ...f, reference: x.target.value })} required />
-            </Field>
-            <Note>{error}</Note>
-            <Note kind="ok">{ok}</Note>
-            <button className="btn btn-block" type="submit" disabled={busy}>
-              {busy ? 'Envoi…' : `Déclarer ${fcfa(Number(f.montant || e.reste))}`}
-            </button>
-          </form>
         </>
       )}
 

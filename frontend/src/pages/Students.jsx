@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { IcClasses, IcImport } from '../icones.jsx'
 
 // Eleves de l'etablissement : recherche, filtre par classe, placement, fiche
 export default function Students() {
@@ -31,25 +32,31 @@ export default function Students() {
 
   return (
     <>
-      <div className="actions" style={{ marginTop: 4, marginBottom: 12 }}>
-        <a className="btn" href="#/import-eleves" style={{ flex: 1 }}>
-          📄 Importer une liste
+      <div className="eleves-tete">
+        <div>
+          <h1 className="page-title" style={{ margin: 0 }}>Élèves</h1>
+          <p className="muted" style={{ fontSize: 14 }}>
+            {eleves.loading ? 'Chargement…' : `${liste.length.toLocaleString('fr-FR')} élève(s)`}
+            {sansClasse > 0 && !classe ? ` · ${sansClasse} sans classe` : ''}
+          </p>
+        </div>
+        <a className="btn btn-quiet bouton-icone" href="#/classes" aria-label="Classes">
+          <IcClasses size={18} /> Classes
         </a>
-        <a className="btn btn-quiet" href="#/classes" style={{ flex: 1 }}>
-          📚 Classes
+        <a className="btn bouton-icone" href="#/import-eleves" aria-label="Importer une liste">
+          <IcImport size={18} /> Importer
         </a>
       </div>
       <form
-        className="searchbar"
+        className="filtres-eleves"
         onSubmit={(e) => {
           e.preventDefault()
           setRecherche(q)
         }}
-        style={{ display: 'flex', gap: 8 }}
       >
-        <input className="input" placeholder="Rechercher un élève" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="input" style={{ width: 'auto', maxWidth: 140 }} value={classe} onChange={(e) => setClasse(e.target.value)}>
-          <option value="">Toutes</option>
+        <input className="input" type="search" placeholder="Rechercher un nom…" value={q} onChange={(e) => setQ(e.target.value)} onBlur={() => setRecherche(q)} />
+        <select className="input" value={classe} onChange={(e) => setClasse(e.target.value)}>
+          <option value="">Toutes les classes</option>
           {(classes.data || []).map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -57,25 +64,27 @@ export default function Students() {
           ))}
         </select>
       </form>
-      <p className="muted" style={{ marginBottom: 10, fontSize: 14 }}>
-        {eleves.loading ? 'Chargement…' : `${liste.length} élève(s)`}
-        {sansClasse > 0 && !classe ? ` · ${sansClasse} sans classe` : ''}
-      </p>
       <Note>{error}</Note>
       {liste.length > 0 && (
-        <ul className="rows">
+        <ul className="liste-eleves">
           {liste.map((e) => (
-            <li className="row" key={e.id}>
-              <a className="row-main" href={`#/eleves/${e.id}`} style={{ color: 'inherit' }}>
-                <div className="row-title">
-                  {e.last_name} {e.first_name}
-                </div>
-                <div className="row-sub">
-                  {e.class_name || `Déclaré : ${e.declared_class || '—'}`}
-                  {e.parents > 0 ? ` · ${e.parents} parent(s)` : ''}
-                </div>
-                <span className={`tag ${e.a_un_compte ? 'tag-now' : 'tag-off'}`} style={{ marginTop: 4, fontSize: 11 }}>
-                  {e.a_un_compte ? 'Compte créé' : 'Sans compte'}
+            <li key={e.id}>
+              <a href={`#/eleves/${e.id}`}>
+                <span className="initiales">
+                  {(e.last_name || '?')[0]}
+                  {(e.first_name || '')[0]}
+                </span>
+                <span className="nom">
+                  <b>
+                    {e.last_name} {e.first_name}
+                  </b>
+                  <small>
+                    {e.class_name || `Déclaré : ${e.declared_class || '—'}`}
+                    {e.parents > 0 ? ` · ${e.parents} parent(s)` : ''}
+                  </small>
+                </span>
+                <span className={`statut ${e.a_un_compte ? 'actif' : ''}`} title={e.a_un_compte ? 'Compte créé' : 'Sans compte'}>
+                  {e.a_un_compte ? 'Compte' : ''}
                 </span>
               </a>
               {!e.class_id && (
@@ -98,9 +107,7 @@ export default function Students() {
           ))}
         </ul>
       )}
-      {!eleves.loading && liste.length === 0 && (
-        <p className="lede">Aucun élève. Importez une liste de classe pour commencer.</p>
-      )}
+      {!eleves.loading && liste.length === 0 && <p className="lede">Aucun élève. Importez une liste de classe pour commencer.</p>}
     </>
   )
 }
