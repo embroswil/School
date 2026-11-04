@@ -62,8 +62,13 @@ const inscription = async (req, res, next) => {
     if (typeof b.password !== "string" || b.password.length < 8 || b.password.length > 72) {
       throw new ApiError(400, "Mot de passe : 8 caractères minimum");
     }
-    const ecole = await q("SELECT id, name FROM schools WHERE id = $1 AND is_active = true", [schoolId]);
-    if (!ecole.rows[0]) throw new ApiError(404, "Établissement introuvable");
+    // Un parent (ou donateur) s'inscrit sans etablissement : il trouvera ses enfants une fois connecte
+    let nomEcole = "";
+    if (role !== "parent") {
+      const ecole = await q("SELECT id, name FROM schools WHERE id = $1 AND is_active = true", [schoolId]);
+      if (!ecole.rows[0]) throw new ApiError(404, "Établissement introuvable");
+      nomEcole = ecole.rows[0].name;
+    }
     if ((await q("SELECT 1 FROM users WHERE email = $1", [email])).rows[0]) {
       throw new ApiError(409, "Un compte existe déjà avec cet email");
     }
@@ -112,7 +117,7 @@ const inscription = async (req, res, next) => {
       const u = await q(
         `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, school_id, status)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [email, hash, role, prenom, nom, texte(b.phone, 30) || null, schoolId, statut]
+        [email, hash, role, prenom, nom, texte(b.phone, 30) || null, role === "parent" ? null : schoolId, statut]
       );
       userId = u.rows[0].id;
     }
@@ -143,7 +148,7 @@ const inscription = async (req, res, next) => {
       }
     }
 
-    if (role === "parent") {
+    if (role === "parent" && schoolId) {
       const enfants = Array.isArray(b.enfants) ? b.enfants.slice(0, 10) : [];
       for (const e of enfants) {
         if (!texte(e.prenom) || !texte(e.nom)) continue;
@@ -204,7 +209,7 @@ const inscription = async (req, res, next) => {
       success: true,
       message:
         role === "teacher"
-          ? `Compte créé. ${ecole.rows[0].name} doit valider votre compte enseignant avant votre première connexion.`
+          ? `Compte créé. ${nomEcole} doit valider votre compte enseignant avant votre première connexion.`
           : "Compte créé. Vous pouvez vous connecter.",
       data: { role, enAttente: role === "teacher", enfantsRelies, codeEnvoye },
     });

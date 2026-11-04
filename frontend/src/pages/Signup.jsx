@@ -5,13 +5,12 @@ import { Field, Note } from '../ui.jsx'
 import { VerificationEmail } from './CodeEmail.jsx'
 
 const PROFILS = [
-  { id: 'parent', ico: '👨‍👩‍👧', titre: 'Parent ou proche', texte: 'Père, mère, tuteur, oncle… je suis la scolarité d’un ou plusieurs enfants.' },
+  { id: 'parent', ico: '👨‍👩‍👧', titre: 'Parent, tuteur ou donateur', texte: 'Je suis la scolarité d’un enfant, ou je paie la scolarité d’un élève.' },
   { id: 'student', ico: '🎒', titre: 'Élève', texte: 'Je consulte mes notes et les infos de ma classe.' },
   { id: 'teacher', ico: '👩‍🏫', titre: 'Enseignant', texte: 'Je publie les notes et je fais l’appel. Compte validé par l’établissement.' },
 ]
 const TYPES = { maternelle: 'Maternelle', primaire: 'École primaire', college: 'Collège', lycee: 'Lycée' }
-const enfantVide = { prenom: '', nom: '', classe: '', dateNaissance: '', lien: 'pere' }
-const LIENS = [['pere', 'Père'], ['mere', 'Mère'], ['tuteur', 'Tuteur / tutrice'], ['oncle_tante', 'Oncle / tante'], ['grand_parent', 'Grand-parent'], ['frere_soeur', 'Frère / sœur'], ['autre', 'Autre proche']]
+export const LIENS = [['pere', 'Père'], ['mere', 'Mère'], ['tuteur', 'Tuteur / tutrice'], ['oncle_tante', 'Oncle / tante'], ['grand_parent', 'Grand-parent'], ['frere_soeur', 'Frère / sœur'], ['autre', 'Autre proche']]
 
 export default function Signup() {
   const { login, signup } = useAuth()
@@ -21,7 +20,6 @@ export default function Signup() {
   const [recherche, setRecherche] = useState('')
   const [ecole, setEcole] = useState(null)
   const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', classe: '', dateNaissance: '', matieres: '', diplome: '', experience: '', message: '' })
-  const [enfants, setEnfants] = useState([{ ...enfantVide }])
   // Enseignant : matieres et classes de l'etablissement choisi
   const [structure, setStructure] = useState(null)
   const [matiereIds, setMatiereIds] = useState([])
@@ -53,7 +51,6 @@ export default function Signup() {
   }, [ecoles, recherche])
 
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
-  const majEnfant = (i, k) => (e) => setEnfants((l) => l.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)))
 
   async function envoyer(e) {
     e.preventDefault()
@@ -62,9 +59,8 @@ export default function Signup() {
     try {
       const donnees = {
         role,
-        schoolId: ecole.id,
+        schoolId: role === 'parent' ? undefined : ecole.id,
         ...f,
-        enfants: role === 'parent' ? enfants : undefined,
         matiereIds: role === 'teacher' ? matiereIds : undefined,
         classeIds: role === 'teacher' ? classeIds : undefined,
       }
@@ -150,7 +146,8 @@ export default function Signup() {
                   aria-pressed={role === p.id}
                   onClick={() => {
                     setRole(p.id)
-                    setEtape(2)
+                    // Le parent choisit l'etablissement et l'enfant une fois connecte
+                    setEtape(p.id === 'parent' ? 3 : 2)
                   }}
                 >
                   <span className="ico">{p.ico}</span>
@@ -210,12 +207,14 @@ export default function Signup() {
 
         {etape === 3 && (
           <form onSubmit={envoyer}>
-            <button type="button" className="back" style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0 }} onClick={() => setEtape(2)}>
+            <button type="button" className="back" style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0 }} onClick={() => setEtape(role === 'parent' ? 1 : 2)}>
               ← Retour
             </button>
             <h1 className="page-title">Vos informations</h1>
             <p className="lede">
-              {ecole?.name}
+              {role === 'parent'
+                ? 'Une fois connecté, vous retrouverez votre enfant dans son établissement, ou vous pourrez payer la scolarité de n’importe quel élève.'
+                : ecole?.name}
               {role === 'teacher' && ' · votre compte sera validé par l’établissement'}
             </p>
 
@@ -285,44 +284,6 @@ export default function Signup() {
                     </p>
                   </div>
                 )}
-              </>
-            )}
-
-            {role === 'parent' && (
-              <>
-                <h2 className="section-title">Le ou les enfants que vous suivez</h2>
-                {enfants.map((en, i) => (
-                  <div className="card" key={i}>
-                    <div className="grid2">
-                      <Field label="Prénom de l’enfant">
-                        <input className="input" value={en.prenom} onChange={majEnfant(i, 'prenom')} required={i === 0} />
-                      </Field>
-                      <Field label="Nom de l’enfant">
-                        <input className="input" value={en.nom} onChange={majEnfant(i, 'nom')} required={i === 0} />
-                      </Field>
-                      <Field label="Classe">
-                        <input className="input" placeholder="ex. CM2" value={en.classe} onChange={majEnfant(i, 'classe')} />
-                      </Field>
-                      <Field label="Date de naissance">
-                        <input className="input" type="date" value={en.dateNaissance} onChange={majEnfant(i, 'dateNaissance')} />
-                      </Field>
-                    </div>
-                    <Field label="Vous êtes son ou sa">
-                      <select className="input" value={en.lien} onChange={majEnfant(i, 'lien')}>
-                        {LIENS.map(([k, v]) => (
-                          <option key={k} value={k}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
-                ))}
-                <div className="actions" style={{ marginBottom: 12 }}>
-                  <button type="button" className="btn btn-quiet" onClick={() => setEnfants((l) => [...l, { ...enfantVide }])}>
-                    + Ajouter un enfant
-                  </button>
-                </div>
               </>
             )}
 

@@ -294,6 +294,7 @@ function EspaceEtablissement() {
       <Action href="#/actualites" Icone={IcActus} titre="Actualités" texte="Annonces, événements, conseils de discipline" />
       <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements et moyens de paiement" />
       <Action href="#/enseignants" Icone={IcEcole} titre="Enseignants" texte="Équipe pédagogique" />
+      <Action href="#/rattachements" Icone={IcEleves} titre="Demandes des parents" texte="Parents qui demandent à suivre un élève" />
       <Action href="#/abonnement" Icone={IcCarte} titre="Abonnement School" texte="Montant, échéance, paiement et reçus" />
     </>
   )
@@ -322,11 +323,15 @@ function EspaceParent() {
             </div>
           </div>
           <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-            Pas encore retrouvé dans l’établissement. Il sera relié automatiquement dès qu’il y sera inscrit sous les mêmes prénom et nom.
+            En attente de validation par l’établissement.
           </p>
         </div>
       ))}
-      {enfants.data?.length === 0 && enAttente.length === 0 && <p className="muted">Aucun enfant déclaré.</p>}
+      {enfants.data?.length === 0 && enAttente.length === 0 && (
+        <p className="muted">Retrouvez votre enfant dans son établissement pour suivre ses notes, ses absences et sa scolarité.</p>
+      )}
+      <Action href="#/trouver-eleve" Icone={IcPlus} titre="Ajouter mon enfant" texte="Le retrouver dans son établissement" />
+      <Action href="#/trouver-eleve" Icone={IcCarte} titre="Payer la scolarité d’un élève" texte="Pour votre enfant, un proche, ou en don" />
       <h2 className="section-title">Raccourcis</h2>
       <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais payés, reste à payer, paiement" />
       <Action href="#/messages" Icone={IcActus} titre="Écrire à l’établissement" texte="Une question, une absence à justifier…" />

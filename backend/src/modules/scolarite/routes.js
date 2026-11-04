@@ -517,7 +517,7 @@ router.post("/paiements", async (req, res, next) => {
 router.get("/recus/:id", async (req, res, next) => {
   try {
     const { rows } = await db.query(
-      `SELECT p.id, p.montant, p.mode, p.reference, p.created_at, p.confirme_le, p.numero_recu, p.frais_service, p.student_id, p.school_id,
+      `SELECT p.id, p.montant, p.mode, p.reference, p.created_at, p.confirme_le, p.numero_recu, p.frais_service, p.student_id, p.school_id, p.paye_par,
               f.nom AS frais, f.montant AS frais_montant, u.first_name, u.last_name, ${SQL_CLASSE} AS classe,
               s.name AS ecole, s.city, s.photo IS NOT NULL AS a_photo, sr.admission_number AS matricule,
               pp.first_name AS payeur_prenom, pp.last_name AS payeur_nom
@@ -530,7 +530,7 @@ router.get("/recus/:id", async (req, res, next) => {
     if (!r) throw new ApiError(404, "Reçu introuvable");
     const u = req.user;
     const autorise =
-      (u.role === "principal" && u.schoolId === r.school_id) || u.role === "admin" || (await elevesAccessibles(u)).includes(r.student_id);
+      (u.role === "principal" && u.schoolId === r.school_id) || u.role === "admin" || r.paye_par === u.id || (await elevesAccessibles(u)).includes(r.student_id);
     if (!autorise) throw new ApiError(404, "Reçu introuvable");
     if (!r.numero_recu) {
       await attribuerRecu(r.id);

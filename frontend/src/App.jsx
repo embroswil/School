@@ -37,6 +37,9 @@ import AbonnementsAdmin from './pages/AbonnementsAdmin.jsx'
 import Recu from './pages/Recu.jsx'
 import RecuScolarite from './pages/RecuScolarite.jsx'
 import OrdrePaiement, { ListeOrdres } from './pages/OrdrePaiement.jsx'
+import TrouverEleve from './pages/TrouverEleve.jsx'
+import PayerEleve from './pages/PayerEleve.jsx'
+import Rattachements from './pages/Rattachements.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -103,6 +106,10 @@ function Pages({ path }) {
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
   if (path === '/abonnement') return reserve(user.role === 'principal', <Abonnement />)
   if (path === '/abonnements') return reserve(user.role === 'admin', <AbonnementsAdmin />)
+  if (path === '/trouver-eleve') return reserve(user.role === 'parent', <TrouverEleve />)
+  if (path === '/rattachements') return reserve(user.role === 'principal', <Rattachements />)
+  const payerMatch = path.match(/^\/payer\/(\d+)$/)
+  if (payerMatch) return reserve(user.role === 'parent', <PayerEleve key={payerMatch[1]} id={Number(payerMatch[1])} />)
   const ordreMatch = path.match(/^\/ordres\/(\d+)$/)
   if (ordreMatch) return <OrdrePaiement key={ordreMatch[1]} id={Number(ordreMatch[1])} />
   if (path === '/litiges')

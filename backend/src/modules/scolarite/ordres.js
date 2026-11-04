@@ -100,7 +100,8 @@ router.post("/", async (req, res, next) => {
     const fraisId = entier(req.body?.fraisId);
     const montant = entier(req.body?.montant);
     const moyen = OPERATEURS[req.body?.moyen] ? req.body.moyen : null;
-    if (!(await S.elevesAccessibles(u)).includes(studentId)) throw new ApiError(403, "Élève non relié à votre compte");
+    // Parent relie, ou donateur (tout compte parent) : on peut payer pour n'importe quel eleve
+    if (u.role !== "parent" && !(await S.elevesAccessibles(u)).includes(studentId)) throw new ApiError(403, "Élève non relié à votre compte");
     if (!moyen) throw new ApiError(400, "Choisissez Orange Money ou MTN MoMo");
     const s = await S.situationEleve(studentId);
     const f = s?.frais.find((x) => x.id === fraisId);
