@@ -424,7 +424,7 @@ export default function Home() {
   return (
     <>
       {user.emailVerifie === false && (
-        <a className="note" href="#/verifier-email" style={{ display: 'block', background: '#fff4dc', color: '#7a5200', marginTop: 4 }}>
+        <a className="note" href="#/verifier-email" style={{ display: 'block', background: 'rgba(255, 211, 77, 0.12)', color: 'var(--primary)', marginTop: 4 }}>
           ✉️ Confirmez votre adresse email pour sécuriser votre compte (mot de passe oublié…). <u>Confirmer</u>
         </a>
       )}

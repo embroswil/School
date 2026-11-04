@@ -87,7 +87,7 @@ export default function Publier() {
     <form onSubmit={publier}>
       <input ref={champ} type="file" hidden multiple accept="image/*,video/*" onChange={ajouter} />
       {fichiers.length === 0 ? (
-        <button type="button" className="card" onClick={() => champ.current?.click()} style={{ width: '100%', aspectRatio: '1', display: 'grid', placeItems: 'center', border: '2px dashed var(--line)', background: '#fff', cursor: 'pointer' }}>
+        <button type="button" className="card" onClick={() => champ.current?.click()} style={{ width: '100%', aspectRatio: '1', display: 'grid', placeItems: 'center', border: '2px dashed var(--line)', background: 'var(--card)', color: 'var(--text)', cursor: 'pointer' }}>
           <span>
             <span style={{ fontSize: 48, display: 'block' }}>📷</span>
             <b>Ajouter des photos ou des vidéos</b>
