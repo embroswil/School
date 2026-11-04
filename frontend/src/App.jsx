@@ -40,6 +40,7 @@ import OrdrePaiement, { ListeOrdres } from './pages/OrdrePaiement.jsx'
 import TrouverEleve from './pages/TrouverEleve.jsx'
 import PayerEleve from './pages/PayerEleve.jsx'
 import Rattachements from './pages/Rattachements.jsx'
+import Publier from './pages/Publier.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -106,6 +107,7 @@ function Pages({ path }) {
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
   if (path === '/abonnement') return reserve(user.role === 'principal', <Abonnement />)
   if (path === '/abonnements') return reserve(user.role === 'admin', <AbonnementsAdmin />)
+  if (path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Publier />)
   if (path === '/trouver-eleve') return reserve(user.role === 'parent', <TrouverEleve />)
   if (path === '/rattachements') return reserve(user.role === 'principal', <Rattachements />)
   const payerMatch = path.match(/^\/payer\/(\d+)$/)

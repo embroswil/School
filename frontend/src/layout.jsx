@@ -20,20 +20,18 @@ const NAV = {
   ],
   teacher: [
     ['/', IcAccueil, 'Accueil'],
-    ['/actualites', IcActus, 'Actualités'],
+    ['/publier', IcPlus, 'Publier'],
     ['/messages', IcMessages, 'Messages'],
     ['/compte', IcProfil, 'Profil'],
   ],
   parent: [
     ['/', IcAccueil, 'Accueil'],
-    ['/actualites', IcActus, 'Actualités'],
     ['/scolarite', IcCarte, 'Scolarité'],
     ['/messages', IcMessages, 'Messages'],
     ['/compte', IcProfil, 'Profil'],
   ],
   student: [
     ['/', IcAccueil, 'Accueil'],
-    ['/actualites', IcActus, 'Actualités'],
     ['/scolarite', IcCarte, 'Scolarité'],
     ['/messages', IcMessages, 'Messages'],
     ['/compte', IcProfil, 'Profil'],
@@ -49,6 +47,7 @@ const TITRES = {
   '/compte': 'Mon profil',
   '/notifications': 'Notifications',
   '/actualites': 'Actualités',
+  '/publier': 'Nouvelle publication',
   '/scolarite': 'Scolarité',
   '/import-eleves': 'Importer des élèves',
   '/etablissements': 'Établissements',
@@ -74,7 +73,8 @@ const TITRES = {
 
 const ACTIONS = [
   ['/import-eleves', IcImport, 'Ajouter des élèves', 'Photo ou fichier de la liste'],
-  ['/actualites', IcActus, 'Publier une actualité', 'Annonce, événement, discipline…'],
+  ['/publier', IcPhoto, 'Publier une photo ou une vidéo', 'Dans le fil de l’établissement'],
+  ['/actualites', IcActus, 'Publier une annonce', 'Annonce, événement, conseil de discipline…'],
   ['/scolarite', IcCarte, 'Enregistrer un paiement', 'Paiement reçu au guichet'],
   ['/enseignants', IcEleves, 'Valider un enseignant', 'Comptes en attente'],
   ['/discipline', IcPhoto, 'Discipline par document', 'Photo ou fichier d’un PV, d’une liste…'],

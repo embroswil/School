@@ -41,6 +41,7 @@ app.use("/api/demandes-etablissements", require("./modules/demandes-etablissemen
 app.use("/api/etablissement", require("./modules/etablissement/routes"));
 app.use("/api/boite", require("./modules/boite/routes"));
 app.use("/api/actualites", require("./modules/actualites/routes"));
+app.use("/api/medias", require("./modules/medias/routes"));
 app.use("/api/familles", require("./modules/familles/routes"));
 app.use("/api/scolarite/ordres", require("./modules/scolarite/ordres"));
 app.use("/api/scolarite", require("./modules/scolarite/routes"));

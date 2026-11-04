@@ -301,72 +301,38 @@ function EspaceEtablissement() {
   )
 }
 
-// Petite pastille d'un enfant (accueil du parent)
-function PuceEnfant({ e, attente }) {
-  const contenu = (
-    <>
-      <span className="avatar" style={attente ? { background: 'var(--line)', color: 'var(--muted)' } : undefined}>
-        {(e.prenom || '?')[0]}
-        {(e.nom || '')[0]}
+// Story d'action (ajouter un enfant, payer une scolarite)
+function StoryAction({ href, ico, libelle }) {
+  return (
+    <a className="story" href={href}>
+      <span className="story-anneau gris">
+        <span style={{ fontSize: 24 }}>{ico}</span>
       </span>
-      <span>
-        <b style={{ display: 'block', fontSize: 14 }}>{e.prenom}</b>
-        <span className="muted" style={{ fontSize: 12 }}>
-          {attente ? 'en attente' : e.classe || '—'}
-          {!attente && e.absencesMois ? ` · ${e.absencesMois} abs.` : ''}
-        </span>
-      </span>
-    </>
+      <b>{libelle}</b>
+    </a>
   )
-  return attente ? <span className="enfant-puce" style={{ opacity: 0.7 }}>{contenu}</span> : <a className="enfant-puce" href={`#/suivi/${e.id}`}>{contenu}</a>
 }
 
-// Accueil du parent, du tuteur ou du donateur : ses enfants en bref, puis le fil d'actualite
+// Accueil du parent, du tuteur ou du donateur : stories (enfants, ecoles) puis le fil
 function EspaceParent() {
   const enfants = useApi('/api/suivi/eleves')
-  const declares = useApi('/api/inscriptions/mes-enfants')
-  const enAttente = (declares.data || []).filter((e) => e.status === 'pending')
-  const aucun = enfants.data?.length === 0 && enAttente.length === 0
   return (
-    <>
-      {(enfants.data?.length > 0 || enAttente.length > 0) && (
-        <div className="enfants-bande">
-          {enfants.data?.map((e) => (
-            <PuceEnfant key={e.id} e={e} />
-          ))}
-          {enAttente.map((e) => (
-            <PuceEnfant key={`a${e.id}`} e={{ prenom: e.child_first_name, nom: e.child_last_name }} attente />
-          ))}
-        </div>
-      )}
-      {aucun && (
-        <p className="muted" style={{ fontSize: 14, margin: '4px 2px 10px' }}>
-          Retrouvez votre enfant dans son établissement pour suivre ses notes, ses absences et sa scolarité.
-        </p>
-      )}
-      <div className="actions-parent">
-        <a href="#/trouver-eleve">
-          <IcPlus size={18} /> Mon enfant
-        </a>
-        <a href="#/trouver-eleve">
-          <IcCarte size={18} /> Payer une scolarité
-        </a>
-      </div>
-      <Fil />
-    </>
+    <Fil
+      enfants={enfants.data || []}
+      actions={
+        <>
+          <StoryAction href="#/trouver-eleve" ico="＋" libelle="Mon enfant" />
+          <StoryAction href="#/trouver-eleve" ico="💳" libelle="Payer" />
+        </>
+      }
+    />
   )
 }
 
-// Accueil de l'eleve : son suivi en bref, puis le fil d'actualite
+// Accueil de l'eleve : sa story, puis le fil
 function EspaceEleve() {
   const moi = useApi('/api/suivi/eleves')
-  return (
-    <>
-      {moi.data?.map((e) => <CarteEleve key={e.id} e={e} />)}
-      <div style={{ height: 8 }} />
-      <Fil />
-    </>
-  )
+  return <Fil enfants={moi.data || []} />
 }
 
 function EspaceEnseignant() {
@@ -463,9 +429,6 @@ export default function Home() {
         </a>
       )}
       {user.role !== 'admin' && user.schoolId && <BandeauAbonnement role={user.role} />}
-      {['parent', 'student'].includes(user.role) && (
-        <h1 style={{ font: '800 22px/1.2 var(--font-display)', margin: '6px 2px 12px' }}>Bonjour, {user.firstName} 👋</h1>
-      )}
       {user.role === 'teacher' && (
       <section className="hero-card" style={{ marginTop: 8 }}>
         <span className="badge">{ROLES[user.role] || user.role}</span>
@@ -478,7 +441,12 @@ export default function Home() {
       {user.role === 'parent' && <EspaceParent />}
       {user.role === 'student' && <EspaceEleve />}
       {user.role === 'teacher' && <EspaceEnseignant />}
-      {user.role === 'teacher' && <DernieresActualites />}
+      {user.role === 'teacher' && (
+        <>
+          <h2 className="section-title">Fil d’actualité</h2>
+          <Fil />
+        </>
+      )}
     </>
   )
 }

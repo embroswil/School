@@ -57,6 +57,16 @@ const ecoleDe = (req) => {
   return id;
 };
 const peutPublier = (u) => u.role === "principal" || u.role === "admin";
+// Les enseignants publient aussi dans le fil de leur etablissement (sauf les conseils de discipline)
+const peutPoster = (u) => peutPublier(u) || u.role === "teacher";
+const lireMedias = (liste) => {
+  const { prefixePublic } = require("../medias/routes");
+  const pre = prefixePublic();
+  return (Array.isArray(liste) ? liste : [])
+    .slice(0, 10)
+    .filter((m) => ["image", "video"].includes(m?.type) && typeof m.url === "string" && pre.length > 40 && m.url.startsWith(pre))
+    .map((m) => ({ type: m.type, url: m.url }));
+};
 
 // GET /api/actualites?limite=20
 router.get("/", async (req, res, next) => {
@@ -66,7 +76,7 @@ router.get("/", async (req, res, next) => {
     const publicRole = PUBLIC_DU_ROLE[req.user.role];
     const { rows } = await db.query(
       `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
-              p.pinned, p.created_at, s.name AS school_name
+              p.pinned, p.created_at, s.name AS school_name, p.medias
        FROM publications p JOIN schools s ON s.id = p.school_id
        WHERE p.school_id = $1 AND ($2::text IS NULL OR p.audience IN ('tous', $2))
        ORDER BY p.pinned DESC, p.created_at DESC LIMIT $3`,
@@ -106,8 +116,11 @@ router.get("/fil", async (req, res, next) => {
     const publicRole = PUBLIC_DU_ROLE[req.user.role] || "tous";
     const { rows } = await db.query(
       `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
-              p.pinned, p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, (s.photo IS NOT NULL) AS a_photo
-       FROM publications p JOIN schools s ON s.id = p.school_id AND s.is_active
+              p.pinned, p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, (s.photo IS NOT NULL) AS a_photo,
+              p.medias, CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant,
+              (SELECT COUNT(*)::int FROM publication_jaime j WHERE j.publication_id = p.id) AS jaime,
+              EXISTS (SELECT 1 FROM publication_jaime j WHERE j.publication_id = p.id AND j.user_id = $5) AS aime
+       FROM publications p JOIN schools s ON s.id = p.school_id AND s.is_active LEFT JOIN users a ON a.id = p.author_id
        WHERE (cardinality($1::int[]) = 0 OR p.school_id = ANY($1))
          AND ($3::timestamp IS NULL OR p.created_at < $3)
          AND (
@@ -115,7 +128,7 @@ router.get("/fil", async (req, res, next) => {
            OR (p.type <> 'conseil_discipline' AND p.audience IN ('tous', $4))
          )
        ORDER BY p.created_at DESC LIMIT 20`,
-      [choisies, miennes, avant, publicRole]
+      [choisies, miennes, avant, publicRole, req.user.id]
     );
     res.json({
       success: true,
@@ -133,15 +146,35 @@ router.get("/fil", async (req, res, next) => {
   }
 });
 
+// POST /api/actualites/:id/jaime : aimer / ne plus aimer
+router.post("/:id/jaime", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10) || 0;
+    const del = await db.query("DELETE FROM publication_jaime WHERE publication_id = $1 AND user_id = $2", [id, req.user.id]);
+    if (!del.rowCount) {
+      await db.query(
+        "INSERT INTO publication_jaime (publication_id, user_id) SELECT $1, $2 WHERE EXISTS (SELECT 1 FROM publications WHERE id = $1) ON CONFLICT DO NOTHING",
+        [id, req.user.id]
+      );
+    }
+    const n = (await db.query("SELECT COUNT(*)::int AS n FROM publication_jaime WHERE publication_id = $1", [id])).rows[0].n;
+    res.json({ success: true, data: { aime: !del.rowCount, jaime: n } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // POST /api/actualites (administrateur de l'etablissement)
 router.post("/", async (req, res, next) => {
   try {
-    if (!peutPublier(req.user)) throw new ApiError(403, "Seul l'établissement peut publier");
+    if (!peutPoster(req.user)) throw new ApiError(403, "Seuls l'établissement et les enseignants peuvent publier");
     const ecole = ecoleDe(req);
     const b = req.body || {};
-    const type = TYPES.includes(b.type) ? b.type : "annonce";
-    const titre = texte(b.title, 200);
-    if (!titre) throw new ApiError(400, "Le titre est obligatoire");
+    let type = TYPES.includes(b.type) ? b.type : "annonce";
+    if (req.user.role === "teacher" && type === "conseil_discipline") type = "annonce";
+    const medias = lireMedias(b.medias);
+    const titre = texte(b.title, 200) || (medias.length || b.image ? "" : null);
+    if (titre === null) throw new ApiError(400, "Ajoutez un titre, une photo ou une vidéo");
     const audience = PUBLICS.includes(b.audience) ? b.audience : "tous";
     const eleves = Array.isArray(b.students)
       ? b.students
@@ -158,8 +191,8 @@ router.post("/", async (req, res, next) => {
       if (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 600000) throw new ApiError(400, "Image invalide ou trop lourde");
     }
     const { rows } = await db.query(
-      `INSERT INTO publications (school_id, author_id, type, title, body, event_date, event_place, students, image, audience, pinned)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      `INSERT INTO publications (school_id, author_id, type, title, body, event_date, event_place, students, image, audience, pinned, medias)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
       [
         ecole,
         req.user.id,
@@ -171,7 +204,8 @@ router.post("/", async (req, res, next) => {
         eleves && eleves.length ? JSON.stringify(eleves) : null,
         image,
         audience,
-        Boolean(b.pinned),
+        peutPublier(req.user) && Boolean(b.pinned),
+        JSON.stringify(medias),
       ]
     );
     // Notification aux utilisateurs concernes de l'etablissement
@@ -181,7 +215,7 @@ router.post("/", async (req, res, next) => {
         `INSERT INTO notifications (user_id, title, message, type, data)
          SELECT id, $2, $3, 'announcement', $4 FROM users
          WHERE school_id = $1 AND role = ANY($5) AND status = 'active' AND is_active = true`,
-        [ecole, `${LIBELLES[type]} : ${titre}`, texte(b.body, 140) || titre, JSON.stringify({ lien: "/actualites" }), roles]
+        [ecole, `${LIBELLES[type]}${titre ? ` : ${titre}` : ""}`, texte(b.body, 140) || titre || "Nouvelle publication", JSON.stringify({ lien: "/" }), roles]
       )
       .catch(() => {});
     res.status(201).json({ success: true, data: { id: rows[0].id } });
@@ -192,9 +226,14 @@ router.post("/", async (req, res, next) => {
 
 router.delete("/:id", async (req, res, next) => {
   try {
-    if (!peutPublier(req.user)) throw new ApiError(403, "Action réservée à l'établissement");
+    if (!peutPoster(req.user)) throw new ApiError(403, "Action réservée à l'établissement");
     const ecole = ecoleDe(req);
-    const r = await db.query("DELETE FROM publications WHERE id = $1 AND school_id = $2", [parseInt(req.params.id, 10), ecole]);
+    // L'enseignant ne retire que ses propres publications
+    const r = await db.query("DELETE FROM publications WHERE id = $1 AND school_id = $2 AND ($3::int IS NULL OR author_id = $3)", [
+      parseInt(req.params.id, 10),
+      ecole,
+      req.user.role === "teacher" ? req.user.id : null,
+    ]);
     if (!r.rowCount) throw new ApiError(404, "Publication introuvable");
     res.json({ success: true });
   } catch (e) {

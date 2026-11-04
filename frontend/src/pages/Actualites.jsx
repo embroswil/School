@@ -43,6 +43,11 @@ export function Publication({ p, onDelete }) {
   return (
     <article className="card" style={{ padding: 0, overflow: 'hidden' }}>
       {p.image && <img src={p.image.startsWith('/api/') ? `${API_BASE}${p.image}` : p.image} alt="" loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 260, objectFit: 'cover' }} />}
+      {!p.image && p.medias?.[0] && (p.medias[0].type === 'video' ? (
+        <video src={p.medias[0].url} controls playsInline style={{ display: 'block', width: '100%', maxHeight: 320, background: '#000' }} />
+      ) : (
+        <img src={p.medias[0].url} alt="" loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 260, objectFit: 'cover' }} />
+      ))}
       <div style={{ padding: 16 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={`tag ${p.type === 'conseil_discipline' ? 'tag-wait' : ''}`}>

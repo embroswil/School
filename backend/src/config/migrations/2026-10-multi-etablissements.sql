@@ -342,3 +342,12 @@ CREATE TABLE IF NOT EXISTS messages_ordre (
 -- Telephone de contact de l'etablissement (paiements) et index du fil d'actualite
 ALTER TABLE schools ADD COLUMN IF NOT EXISTS telephone VARCHAR(30);
 CREATE INDEX IF NOT EXISTS idx_publications_fil ON publications (created_at DESC);
+
+-- Publications : photos et videos (Supabase Storage, bucket « medias »), j'aime
+ALTER TABLE publications ADD COLUMN IF NOT EXISTS medias JSONB NOT NULL DEFAULT '[]';
+CREATE TABLE IF NOT EXISTS publication_jaime (
+  publication_id INTEGER NOT NULL REFERENCES publications(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (publication_id, user_id)
+);
