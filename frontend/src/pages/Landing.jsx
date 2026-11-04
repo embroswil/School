@@ -33,7 +33,11 @@ export default function Landing() {
         <a className="vitrine-lien" href="#/inscrire-etablissement">
           Vous dirigez un établissement ? Inscrivez-le
         </a>
-        <p className="vitrine-pied">School by Embroswil · © {new Date().getFullYear()}</p>
+        <p className="vitrine-pied">
+          School by Embroswil · © {new Date().getFullYear()}
+          <br />
+          <a href="#/confidentialite">Confidentialité</a> · <a href="#/conditions">Conditions d’utilisation</a>
+        </p>
       </div>
     </div>
   )

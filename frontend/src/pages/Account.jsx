@@ -197,14 +197,10 @@ export default function Account() {
       <p className="groupe-titre">Aide</p>
       <div className="liste-reglages">
         {moi.role !== 'admin' && moi.role !== 'principal' && <Reglage Icone={IcAide} titre="Contacter l’établissement" href="#/messages" />}
-        <Reglage Icone={IcBouclier} titre="Confidentialité" valeur="Vos données restent privées" onClick={() => bascule('conf')} />
+        <Reglage Icone={IcAide} titre="Guide de démarrage" href="#/guide" />
+        <Reglage Icone={IcBouclier} titre="Confidentialité" valeur="Vos données" href="#/confidentialite" />
+        <Reglage Icone={IcBouclier} titre="Conditions d’utilisation" href="#/conditions" />
       </div>
-      {ouvert === 'conf' && (
-        <div className="card" style={{ marginTop: 12, fontSize: 15 }}>
-          Vos informations ne sont visibles que par votre établissement et les personnes autorisées (vous, et pour un élève, ses parents). Elles ne
-          sont jamais revendues. Pour toute question, écrivez à l’établissement depuis l’onglet Messages.
-        </div>
-      )}
 
       <div className="liste-reglages" style={{ marginTop: 22 }}>
         <Reglage Icone={IcSortie} titre="Se déconnecter" onClick={logout} danger />

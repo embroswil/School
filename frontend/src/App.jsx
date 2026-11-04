@@ -42,6 +42,8 @@ import PayerEleve from './pages/PayerEleve.jsx'
 import Rattachements from './pages/Rattachements.jsx'
 import Publier from './pages/Publier.jsx'
 import InfoDetail from './pages/InfoDetail.jsx'
+import { Confidentialite, Conditions } from './pages/Legal.jsx'
+import Guide from './pages/Guide.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -108,6 +110,9 @@ function Pages({ path }) {
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
   if (path === '/abonnement') return reserve(user.role === 'principal', <Abonnement />)
   if (path === '/abonnements') return reserve(user.role === 'admin', <AbonnementsAdmin />)
+  if (path === '/confidentialite') return <Confidentialite />
+  if (path === '/conditions') return <Conditions />
+  if (path === '/guide') return <Guide />
   const infoMatch = path.match(/^\/infos\/(\d+)$/)
   if (infoMatch) return <InfoDetail key={infoMatch[1]} id={Number(infoMatch[1])} />
   if (path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Publier />)
@@ -168,6 +173,8 @@ function Root() {
     if (path === '/inscription') return <Signup />
     if (path === '/inscrire-etablissement') return <SchoolSignup />
     if (path === '/mot-de-passe-oublie') return <MotDePasseOublie />
+    if (path === '/confidentialite') return <Confidentialite />
+    if (path === '/conditions') return <Conditions />
     return <Landing />
   }
   return (

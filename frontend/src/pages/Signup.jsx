@@ -15,6 +15,7 @@ export const LIENS = [['pere', 'Père'], ['mere', 'Mère'], ['tuteur', 'Tuteur /
 export default function Signup() {
   const { login, signup } = useAuth()
   const [confirmation, setConfirmation] = useState('')
+  const [accepte, setAccepte] = useState(false)
   const [etape, setEtape] = useState(1)
   const [role, setRole] = useState('')
   const [ecoles, setEcoles] = useState(null)
@@ -55,6 +56,10 @@ export default function Signup() {
 
   async function envoyer(e) {
     e.preventDefault()
+    if (!accepte) {
+      setError('Acceptez les conditions d’utilisation et la politique de confidentialité pour continuer.')
+      return
+    }
     if (f.password !== confirmation) {
       setError('Les deux mots de passe ne correspondent pas.')
       return
@@ -266,6 +271,13 @@ export default function Signup() {
                   <span style={{ color: 'var(--danger)', fontSize: 13 }}>Les mots de passe ne correspondent pas</span>
                 )}
               </Field>
+              <label className="check" style={{ fontSize: 14 }}>
+                <input type="checkbox" checked={accepte} onChange={(e) => setAccepte(e.target.checked)} />
+                <span>
+                  J’accepte les <a href="#/conditions" target="_blank">conditions d’utilisation</a> et la{' '}
+                  <a href="#/confidentialite" target="_blank">politique de confidentialité</a>.
+                </span>
+              </label>
             </div>
 
             {role === 'student' && (

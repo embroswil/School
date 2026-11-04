@@ -670,3 +670,13 @@ h1, h2, h3, .page-title, .section-title { color: var(--text); font-family: var(-
 .tuile-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: rgba(47, 107, 255, 0.14); color: #7aa5ff; }
 .tuile b { font: 700 14px/1.2 var(--font-display); }
 .tuile span:last-child { font-size: 11px; color: var(--muted); line-height: 1.3; }
+
+/* ---------- pages legales et guide ---------- */
+.legal { max-width: 720px; margin: 0 auto; padding: 18px 18px 40px; line-height: 1.6; }
+.legal h2 { font: 700 18px/1.3 var(--font-display); margin: 22px 0 6px; }
+.legal p, .legal li { color: var(--text); font-size: 15px; }
+.legal ul { padding-left: 20px; display: grid; gap: 6px; }
+.guide { list-style: none; display: grid; gap: 10px; margin-top: 12px; }
+.guide li { display: flex; gap: 12px; padding: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.guide-num { flex: none; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: rgba(47, 107, 255, 0.16); color: #7aa5ff; font-weight: 800; }
+.guide p { font-size: 14px; margin-top: 2px; }
