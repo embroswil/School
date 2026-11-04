@@ -50,6 +50,7 @@ const TITRES = {
   '/publier': 'Nouvelle publication',
   '/infos': 'Information',
   '/guide': 'Guide',
+  '/absences': 'Absences du jour',
   '/confidentialite': 'Confidentialité',
   '/conditions': 'Conditions',
   '/scolarite': 'Scolarité',

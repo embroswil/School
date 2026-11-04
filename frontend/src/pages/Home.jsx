@@ -303,6 +303,7 @@ function EspaceEtablissement() {
       <Action href="#/actualites" Icone={IcActus} titre="Actualités" texte="Annonces, événements, conseils de discipline" />
       <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements et moyens de paiement" />
       <Action href="#/enseignants" Icone={IcEcole} titre="Enseignants" texte="Équipe pédagogique" />
+      <Action href="#/absences" Icone={IcCoche} titre="Absences du jour" texte="Absents et retards de tout l’établissement, justifications" />
       <Action href="#/rattachements" Icone={IcEleves} titre="Demandes des parents" texte="Parents qui demandent à suivre un élève" />
       <Action href="#/abonnement" Icone={IcCarte} titre="Abonnement School" texte="Montant, échéance, paiement et reçus" />
     </>

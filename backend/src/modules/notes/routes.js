@@ -329,11 +329,76 @@ const periodeDe = (v) => {
 };
 const heureTxt = (p) => (p === null ? "" : `${String(Math.floor(p / 100)).padStart(2, "0")}h${String(p % 100).padStart(2, "0")}`);
 
+// Date du jour au Cameroun (UTC+1), pour ne pas changer de jour a minuit UTC
+const jourCameroun = () => new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10);
+
+// GET /api/notes/absences?date= : absences et retards du jour dans tout l'etablissement (administration)
+router.get("/absences", async (req, res, next) => {
+  try {
+    if (!["principal", "admin"].includes(req.user.role)) throw new ApiError(403, "Réservé à l’administration de l’établissement");
+    const ecole = req.user.schoolId;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || "") ? req.query.date : jourCameroun();
+    const { rows } = await db.query(
+      `SELECT a.student_id, a.class_id, a.period_number, a.status, u.first_name, u.last_name, c.name AS classe,
+              (SELECT COUNT(*)::int FROM parent_student_links l WHERE l.student_id = u.id) AS parents
+       FROM attendance a JOIN users u ON u.id = a.student_id JOIN classes c ON c.id = a.class_id
+       JOIN academic_years ay ON ay.id = c.academic_year_id
+       WHERE ay.school_id = $1 AND a.date = $2 AND a.status IN ('absent', 'late', 'excused')
+       ORDER BY c.name, u.last_name, u.first_name, a.period_number NULLS FIRST`,
+      [ecole, date]
+    );
+    const appels = (
+      await db.query(
+        `SELECT COUNT(DISTINCT ap.class_id)::int AS faits,
+                (SELECT COUNT(*)::int FROM classes c2 JOIN academic_years a2 ON a2.id = c2.academic_year_id AND a2.is_current WHERE a2.school_id = $1) AS classes
+         FROM appels ap JOIN classes c ON c.id = ap.class_id JOIN academic_years ay ON ay.id = c.academic_year_id
+         WHERE ay.school_id = $1 AND ap.date = $2`,
+        [ecole, date]
+      )
+    ).rows[0];
+    res.json({
+      success: true,
+      data: {
+        date,
+        classesAppel: appels.faits,
+        classes: appels.classes,
+        absents: new Set(rows.filter((r) => r.status === "absent").map((r) => r.student_id)).size,
+        retards: rows.filter((r) => r.status === "late").length,
+        justifiees: rows.filter((r) => r.status === "excused").length,
+        lignes: rows.map((r) => ({ ...r, heure: heureTxt(r.period_number) || "Journée" })),
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /api/notes/appel/:classId/justifier { studentId, date, periode, justifie }
+// L'administration justifie (ou non) une absence, apres le mot des parents
+router.post("/appel/:classId/justifier", async (req, res, next) => {
+  try {
+    if (!["principal", "admin"].includes(req.user.role)) throw new ApiError(403, "Réservé à l’administration de l’établissement");
+    const c = await verifierClasse(req.user, entier(req.params.classId));
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : null;
+    if (!date) throw new ApiError(400, "Date invalide");
+    const r = await db.query(
+      `UPDATE attendance SET status = $5, updated_at = NOW()
+       WHERE class_id = $1 AND student_id = $2 AND date = $3 AND period_number IS NOT DISTINCT FROM $4::int AND status IN ('absent', 'excused')
+       RETURNING id`,
+      [c.id, entier(req.body?.studentId), date, periodeDe(req.body?.periode), req.body?.justifie === false ? "absent" : "excused"]
+    );
+    if (!r.rowCount) throw new ApiError(404, "Absence introuvable");
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // GET /api/notes/appel/:classId?date=AAAA-MM-JJ&periode=730
 router.get("/appel/:classId", async (req, res, next) => {
   try {
     const c = await verifierClasse(req.user, entier(req.params.classId));
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || "") ? req.query.date : new Date().toISOString().slice(0, 10);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || "") ? req.query.date : jourCameroun();
     const periode = periodeDe(req.query.periode);
     // Cours du jour d'apres l'emploi du temps (ceux de l'enseignant s'il s'agit d'un enseignant)
     const jour = new Date(`${date}T12:00:00`).getDay(); // 0 = dimanche
@@ -383,7 +448,11 @@ router.get("/appel/:classId", async (req, res, next) => {
 router.put("/appel/:classId", async (req, res, next) => {
   try {
     const c = await verifierClasse(req.user, entier(req.params.classId), null, "saisie");
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : new Date().toISOString().slice(0, 10);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : jourCameroun();
+    // Pas d'appel pour un jour a venir, ni plus de 7 jours en arriere
+    const ecart = (new Date(`${jourCameroun()}T12:00:00Z`) - new Date(`${date}T12:00:00Z`)) / 86400000;
+    if (ecart < 0) throw new ApiError(400, "Impossible de faire l’appel d’un jour à venir");
+    if (ecart > 7) throw new ApiError(400, "L’appel ne peut plus être modifié au-delà de 7 jours : contactez l’administration");
     const periode = periodeDe(req.body?.periode);
     const liste = (Array.isArray(req.body?.presences) ? req.body.presences : []).filter((p) =>
       ["present", "absent", "late", "excused"].includes(p.statut)
