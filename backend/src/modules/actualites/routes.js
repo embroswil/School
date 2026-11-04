@@ -117,9 +117,7 @@ router.get("/fil", async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
               p.pinned, p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, (s.photo IS NOT NULL) AS a_photo,
-              p.medias, CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant,
-              (SELECT COUNT(*)::int FROM publication_jaime j WHERE j.publication_id = p.id) AS jaime,
-              EXISTS (SELECT 1 FROM publication_jaime j WHERE j.publication_id = p.id AND j.user_id = $5) AS aime
+              p.medias, CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant
        FROM publications p JOIN schools s ON s.id = p.school_id AND s.is_active LEFT JOIN users a ON a.id = p.author_id
        WHERE (cardinality($1::int[]) = 0 OR p.school_id = ANY($1))
          AND ($3::timestamp IS NULL OR p.created_at < $3)
@@ -128,7 +126,7 @@ router.get("/fil", async (req, res, next) => {
            OR (p.type <> 'conseil_discipline' AND p.audience IN ('tous', $4))
          )
        ORDER BY p.created_at DESC LIMIT 20`,
-      [choisies, miennes, avant, publicRole, req.user.id]
+      [choisies, miennes, avant, publicRole]
     );
     res.json({
       success: true,
@@ -141,24 +139,6 @@ router.get("/fil", async (req, res, next) => {
         })),
       },
     });
-  } catch (e) {
-    next(e);
-  }
-});
-
-// POST /api/actualites/:id/jaime : aimer / ne plus aimer
-router.post("/:id/jaime", async (req, res, next) => {
-  try {
-    const id = parseInt(req.params.id, 10) || 0;
-    const del = await db.query("DELETE FROM publication_jaime WHERE publication_id = $1 AND user_id = $2", [id, req.user.id]);
-    if (!del.rowCount) {
-      await db.query(
-        "INSERT INTO publication_jaime (publication_id, user_id) SELECT $1, $2 WHERE EXISTS (SELECT 1 FROM publications WHERE id = $1) ON CONFLICT DO NOTHING",
-        [id, req.user.id]
-      );
-    }
-    const n = (await db.query("SELECT COUNT(*)::int AS n FROM publication_jaime WHERE publication_id = $1", [id])).rows[0].n;
-    res.json({ success: true, data: { aime: !del.rowCount, jaime: n } });
   } catch (e) {
     next(e);
   }

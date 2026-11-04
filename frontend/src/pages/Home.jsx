@@ -301,19 +301,7 @@ function EspaceEtablissement() {
   )
 }
 
-// Story d'action (ajouter un enfant, payer une scolarite)
-function StoryAction({ href, ico, libelle }) {
-  return (
-    <a className="story" href={href}>
-      <span className="story-anneau gris">
-        <span style={{ fontSize: 24 }}>{ico}</span>
-      </span>
-      <b>{libelle}</b>
-    </a>
-  )
-}
-
-// Accueil du parent, du tuteur ou du donateur : stories (enfants, ecoles) puis le fil
+// Accueil du parent, du tuteur ou du donateur : ses enfants, puis le fil d'informations
 function EspaceParent() {
   const enfants = useApi('/api/suivi/eleves')
   return (
@@ -321,15 +309,19 @@ function EspaceParent() {
       enfants={enfants.data || []}
       actions={
         <>
-          <StoryAction href="#/trouver-eleve" ico="＋" libelle="Mon enfant" />
-          <StoryAction href="#/trouver-eleve" ico="💳" libelle="Payer" />
+          <a className="enfant-carte action" href="#/trouver-eleve">
+            ＋ Mon enfant
+          </a>
+          <a className="enfant-carte action" href="#/trouver-eleve">
+            Payer une scolarité
+          </a>
         </>
       }
     />
   )
 }
 
-// Accueil de l'eleve : sa story, puis le fil
+// Accueil de l'eleve : son suivi, puis le fil d'informations
 function EspaceEleve() {
   const moi = useApi('/api/suivi/eleves')
   return <Fil enfants={moi.data || []} />
@@ -443,7 +435,7 @@ export default function Home() {
       {user.role === 'teacher' && <EspaceEnseignant />}
       {user.role === 'teacher' && (
         <>
-          <h2 className="section-title">Fil d’actualité</h2>
+          <h2 className="section-title">Informations</h2>
           <Fil />
         </>
       )}

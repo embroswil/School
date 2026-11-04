@@ -507,137 +507,134 @@ a.choice { color: var(--text); }
 
 
 /* =====================================================================
-   Theme « Ardoise » de School : un tableau noir vert ardoise, l'ecriture a la
-   craie (blanc casse) et des craies de couleur pour les actions (jaune),
-   les alertes (corail), les informations (bleu ciel) et les reussites (menthe).
+   Theme « Nuit » de School : noir profond, bleu electrique, blanc.
+   Le rouge est reserve aux nouveautes (notifications, messages non lus, alertes).
    ===================================================================== */
 :root {
-  --bg: #0e1a17;
-  --card: #16241f;
-  --card-2: #1d2e28;
-  --line: rgba(232, 240, 226, 0.12);
-  --text: #eef2e8;
-  --muted: #9db0a6;
-  --primary: #ffd34d;
-  --primary-dark: #ffc21a;
-  --primary-soft: rgba(255, 211, 77, 0.14);
-  --sur-primaire: #1b1a12;
-  --accent: #ff8a7a;
-  --ciel: #7cc7ff;
-  --ok: #5fe0a5;
-  --ok-soft: rgba(95, 224, 165, 0.14);
-  --danger: #ff7a7a;
-  --danger-soft: rgba(255, 122, 122, 0.14);
-  --radius: 18px;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-  --degrade: linear-gradient(120deg, #ffd34d 0%, #ff8a7a 50%, #7cc7ff 100%);
-  --cadre: #8a5a31;
-  --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Fredoka', 'Nunito', system-ui, sans-serif;
-  --font-craie: 'Caveat', 'Fredoka', cursive;
+  --bg: #07080b;
+  --card: #111318;
+  --card-2: #181b22;
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #ffffff;
+  --muted: #98a2b3;
+  --primary: #2f6bff;
+  --primary-dark: #1f55e0;
+  --primary-soft: rgba(47, 107, 255, 0.16);
+  --sur-primaire: #ffffff;
+  --accent: #ff3b3b;
+  --rouge: #ff3b3b;
+  --ok: #5b9bff;
+  --ok-soft: rgba(91, 155, 255, 0.14);
+  --danger: #ff4d4d;
+  --danger-soft: rgba(255, 77, 77, 0.14);
+  --radius: 16px;
+  --shadow: none;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
   color-scheme: dark;
 }
-body {
-  background-color: var(--bg);
-  /* poussiere de craie, tres discrete */
-  background-image:
-    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.035) 0, transparent 40%),
-    radial-gradient(circle at 80% 60%, rgba(255, 255, 255, 0.03) 0, transparent 45%),
-    radial-gradient(circle at 40% 90%, rgba(255, 211, 77, 0.03) 0, transparent 35%);
-  background-attachment: fixed;
-  color: var(--text);
-}
-a { color: var(--ciel); }
-.brand { font: 700 32px/1 var(--font-craie); color: var(--text); letter-spacing: 0; }
+body { background: var(--bg); color: var(--text); }
+a { color: #7aa5ff; }
+.brand { font: 800 26px/1 var(--font-display); color: var(--text); letter-spacing: -0.04em; }
 .brand span { color: var(--primary); }
-.page-title, .section-title, h1, h2, h3 { color: var(--text); }
-.page-title { font-family: var(--font-display); font-weight: 600; }
-.section-title { font-family: var(--font-display); font-weight: 600; }
+h1, h2, h3, .page-title, .section-title { color: var(--text); font-family: var(--font-display); letter-spacing: -0.02em; }
+.muted, .row-sub, .row-end, .field-label { color: var(--muted); }
 
 /* barres */
-.topbar { background: rgba(14, 26, 23, 0.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); box-shadow: none; }
-.nav { background: rgba(18, 31, 27, 0.96); backdrop-filter: blur(12px); border-top: 1px solid var(--line); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25); }
-.nav a { color: var(--muted); }
-.nav a[aria-current='page'] { color: var(--primary); background: var(--primary-soft); }
+.topbar { background: rgba(7, 8, 11, 0.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); box-shadow: none; }
+.nav { background: rgba(10, 11, 15, 0.96); backdrop-filter: blur(14px); border-top: 1px solid var(--line); box-shadow: none; }
+.nav a { color: var(--muted); position: relative; background: transparent; }
+.nav a[aria-current='page'] { color: var(--text); background: transparent; }
+.nav a[aria-current='page']::after { content: ''; position: absolute; top: 2px; left: 50%; width: 22px; height: 3px; margin-left: -11px; border-radius: 3px; background: var(--primary); }
+.nav a[aria-current='page'] svg { color: var(--primary); }
+.pastille, .count { background: var(--rouge) !important; color: #fff !important; box-shadow: 0 0 0 2px var(--bg); }
 
 /* surfaces */
-.card, .rows, .row, .ecole-carte, .kpi, .atout, .public-carte, .liste-reglages, .action-row, .stat, .reglage, .post, .ordre-tete, .etapes {
+.card, .rows, .row, .ecole-carte, .kpi, .atout, .public-carte, .liste-reglages, .action-row, .stat, .reglage, .ordre-tete, .etapes {
   background: var(--card); border-color: var(--line); color: var(--text); box-shadow: none;
 }
 .rows .row { border-color: var(--line); }
-.row-sub, .row-end { color: var(--muted); }
-.kpi-ico, .pastille-ico, .ico { background: var(--primary-soft); color: var(--primary); }
+.kpi-ico, .pastille-ico, .ico { background: var(--primary-soft); color: #7aa5ff; }
 .ecole-chiffres span { background: var(--card-2); color: var(--muted); }
 .ecole-chiffres b { color: var(--text); }
+.hero-card { background: linear-gradient(135deg, #12204a 0%, #0d1530 55%, #0a0f22 100%); border: 1px solid rgba(47, 107, 255, 0.35); color: var(--text); box-shadow: none; }
+.badge { background: var(--primary-soft); color: #9dbcff; }
+.avatar { background: linear-gradient(135deg, #2f6bff, #1a3fa8); color: #fff; }
 
-/* le tableau noir encadre de bois : cartes d'accueil */
-.hero-card {
-  background: linear-gradient(160deg, #1f3b33 0%, #17302a 100%);
-  border: 6px solid var(--cadre); box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35), 0 12px 30px rgba(0, 0, 0, 0.3); color: var(--text);
-}
-.hero-card h2 { font-family: var(--font-craie); font-size: 32px; font-weight: 700; }
-.badge { background: rgba(255, 255, 255, 0.1); color: var(--primary); }
-
-/* boutons a la craie jaune */
-.btn { background: var(--primary); color: var(--sur-primaire); border-radius: 14px; font-weight: 800; }
+/* boutons */
+.btn { background: var(--primary); color: #fff; border-radius: 12px; font-weight: 700; }
 .btn:hover { background: var(--primary-dark); }
 .btn-quiet { background: var(--card-2); color: var(--text); border: 1px solid var(--line); }
-.btn-quiet:hover { background: #24372f; }
+.btn-quiet:hover { background: #20242d; }
 .btn-danger { color: var(--danger); }
-.btn-accent { background: var(--degrade); color: var(--sur-primaire); }
+.btn-accent { background: #fff; color: #07080b; }
 
 /* formulaires */
-.input, select.input, textarea.input { background: #0f1d19; color: var(--text); border-color: var(--line); }
-.input::placeholder { color: #6f8279; }
+.input, select.input, textarea.input { background: #0c0e12; color: var(--text); border-color: rgba(255, 255, 255, 0.12); }
+.input::placeholder { color: #5f6878; }
 .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-.field-label { color: var(--muted); }
 .check { color: var(--text); }
 
 /* pastilles, etiquettes, notes */
 .chip { background: var(--card-2); color: var(--text); border-color: var(--line); }
-.chip[aria-pressed='true'] { background: var(--primary); color: var(--sur-primaire); border-color: var(--primary); }
+.chip[aria-pressed='true'] { background: #fff; color: #07080b; border-color: #fff; }
 .tag { background: var(--card-2); color: var(--muted); border-radius: 8px; }
 .tag-now { background: var(--ok-soft); color: var(--ok); }
 .tag-off { background: var(--card-2); color: var(--muted); }
-.tag-wait { background: rgba(255, 211, 77, 0.14); color: var(--primary); }
+.tag-wait { background: var(--danger-soft); color: var(--danger); }
 .note { background: var(--card-2); color: var(--text); }
 .note-error { background: var(--danger-soft); color: var(--danger); }
-.note-ok { background: var(--ok-soft); color: var(--ok); }
-.count { background: var(--accent); color: var(--sur-primaire); }
+.note-ok { background: var(--primary-soft); color: #9dbcff; }
+.action-row.urgent .ico { background: var(--danger-soft); color: var(--danger); }
 
-/* ecrans de connexion : un tableau noir avec un cadre en bois */
+/* ecrans de connexion */
 .auth { background: var(--bg); }
-.auth-haut { background: linear-gradient(160deg, #1f3b33, #15302a); border-bottom: 6px solid var(--cadre); }
-.auth-haut .brand { color: var(--text) !important; }
+.auth-haut { background: radial-gradient(120% 160% at 0% 0%, #2f6bff 0%, #12204a 45%, #07080b 100%); }
 .auth-entete, .auth-main .card { background: var(--card); }
-.auth-main .card { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35); }
+.auth-main .card { box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); }
 
 /* accueil public */
-.vitrine { background: transparent; }
-.vitrine .brand { font-size: 72px; }
-.vitrine-mosaique span { filter: saturate(0.9); }
-.vitrine-pied, .vitrine-texte { color: var(--muted); }
+.vitrine { background: radial-gradient(90% 60% at 50% 0%, rgba(47, 107, 255, 0.22), transparent 70%), var(--bg); }
+.vitrine .brand { font-size: 56px; }
+.vitrine-mosaique span { background: var(--card) !important; border: 1px solid var(--line); }
+.vitrine-texte, .vitrine-pied { color: var(--muted); }
 
-/* fil, stories, ordres */
-.story { color: var(--text); }
-.story-anneau { background: var(--degrade); }
-.story-anneau.gris { background: var(--line); }
-.story-anneau > span, .story-anneau > img { border-color: var(--bg); background: var(--card-2); color: var(--text); }
-.post { border-color: var(--line); }
-.post-tete .ordre-logo { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary); }
-.carrousel-points { background: transparent !important; }
-.carrousel-points span { background: var(--line); }
-.carrousel-points span.on { background: var(--primary); }
-.post-actions button { color: var(--text); }
-.ordre-logo { background: var(--card-2); color: var(--primary); }
-.ordre-chrono { background: rgba(255, 211, 77, 0.12); color: var(--primary); }
+/* ordres de paiement */
+.ordre-logo { background: var(--card-2); color: #7aa5ff; border-radius: 12px; }
+.ordre-chrono { background: var(--danger-soft); color: var(--danger); }
 .etapes-ordre::before { background: var(--line); }
 .etapes-ordre li span { background: var(--card); border-color: var(--line); }
-.enfant-puce, .actions-parent a { background: var(--card); border-color: var(--line); color: var(--text); }
-.action-row.urgent .ico { background: rgba(255, 138, 122, 0.16); color: var(--accent); }
-.avatar { background: linear-gradient(135deg, #2e6f5e, #1f4d42); color: var(--primary); }
-.force-mdp span { background: var(--line); }
 .champ-mdp .oeil:hover { background: var(--card-2); }
+.force-mdp span { background: var(--line); }
+
+/* ---------- le fil « Infos » : des fiches d'information en lecture seule ---------- */
+.filtres-ecoles { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 12px; scrollbar-width: none; }
+.filtre-ecole { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: 600 13px/1 var(--font-body); cursor: pointer; }
+.filtre-ecole[aria-pressed='true'] { border-color: var(--primary); background: var(--primary-soft); }
+.filtre-ecole .ordre-logo { width: 26px !important; height: 26px !important; font-size: 12px; border-radius: 8px; }
+.enfants-raccourcis { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
+.enfant-carte { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 10px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--text); }
+.enfant-carte .avatar { width: 36px; height: 36px; border-radius: 10px; font-size: 13px; }
+.enfant-carte.action { border-style: dashed; color: #9dbcff; font-weight: 700; font-size: 14px; }
+.info { display: grid; grid-template-columns: 54px 1fr; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; position: relative; overflow: hidden; }
+.info::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--couleur, var(--primary)); }
+.info-date { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 2px; }
+.info-date b { font: 800 24px/1 var(--font-display); color: var(--text); }
+.info-date span { font: 700 11px/1.4 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.info-ecole { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.info-ecole .ordre-logo { width: 22px !important; height: 22px !important; font-size: 11px; border-radius: 6px; }
+.info-ecole b { color: var(--text); font-weight: 600; }
+.info-type { display: inline-block; margin-top: 8px; font: 700 11px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--couleur, var(--primary)); }
+.info h3 { font: 700 17px/1.3 var(--font-display); margin-top: 4px; }
+.info-texte { margin-top: 6px; color: #d7dce5; line-height: 1.55; white-space: pre-wrap; }
+.info-evt { margin-top: 10px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--card-2); font-size: 14px; }
+.info-medias { grid-column: 1 / -1; border-radius: 12px; overflow: hidden; position: relative; background: #000; }
+.info-medias .piste { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.info-medias .piste > * { flex: none; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; scroll-snap-align: center; background: #000; }
+.info-medias .compteur { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.6); color: #fff; font: 700 12px/1 var(--font-body); }
+.info-eleves { margin-top: 10px; border-top: 1px solid var(--line); }
+.info-eleves li { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.info-plus { border: 0; background: none; padding: 0; color: #7aa5ff; font: inherit; font-weight: 700; cursor: pointer; }
 
 /* les bulletins et les recus restent sur papier blanc (impression) */
 .bulletin { background: #fff; color: #111; }
