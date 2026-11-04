@@ -56,6 +56,19 @@ function Situation() {
     setError('')
     setBusy(true)
     try {
+      // Paiement en ligne (NotchPay : Orange Money, MTN MoMo, carte)
+      if (paiement.moyen === 'enligne') {
+        const r = await api.post('/api/scolarite/payer', {
+          studentId: paiement.eleve.id,
+          fraisId: paiement.frais.id,
+          montant: Number(String(montant).replace(/\s/g, '')),
+        })
+        try {
+          localStorage.setItem('school-paiement', r.data.reference)
+        } catch (_) {}
+        window.location.href = r.data.url
+        return
+      }
       const r = await api.post('/api/scolarite/ordres', {
         studentId: paiement.eleve.id,
         fraisId: paiement.frais.id,
@@ -117,13 +130,13 @@ function Situation() {
                   ) : (
                     <>
                       <span className="tag tag-wait">Reste {fcfa(f.reste)}</span>
-                      {(s.moyens?.orange || s.moyens?.mtn) ? (
+                      {(s.moyens?.enLigne || s.moyens?.orange || s.moyens?.mtn) ? (
                         <button
                           type="button"
                           className="btn"
                           style={{ padding: '9px 14px', fontSize: 14 }}
                           onClick={() => {
-                            setPaiement({ eleve: s.eleve, frais: f, moyens: s.moyens, moyen: s.moyens.orange ? 'orange_money' : 'mtn_momo' })
+                            setPaiement({ eleve: s.eleve, frais: f, moyens: s.moyens, moyen: s.moyens.enLigne ? 'enligne' : s.moyens.orange ? 'orange_money' : 'mtn_momo' })
                             setMontant(String(f.reste))
                             setError('')
                           }}
@@ -168,9 +181,16 @@ function Situation() {
             {paiement.frais.nom} · {paiement.eleve.prenom}
           </b>
           <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>
-            Vous payez directement l’établissement depuis votre téléphone. School vous indique le numéro, le montant et un code à mettre en motif.
+            {paiement.moyen === 'enligne'
+              ? 'Paiement sécurisé par NotchPay : vous validez sur votre téléphone, le reçu est émis automatiquement.'
+              : 'Transfert direct à l’établissement : School vous indique le numéro, le montant et un code à mettre en motif.'}
           </p>
           <div className="chips">
+            {paiement.moyens.enLigne && (
+              <button type="button" className="chip" aria-pressed={paiement.moyen === 'enligne'} onClick={() => setPaiement({ ...paiement, moyen: 'enligne' })}>
+                💳 En ligne · Orange, MTN, carte
+              </button>
+            )}
             {paiement.moyens.orange && (
               <button type="button" className="chip" aria-pressed={paiement.moyen === 'orange_money'} onClick={() => setPaiement({ ...paiement, moyen: 'orange_money' })}>
                 🟠 Orange Money
@@ -188,7 +208,7 @@ function Situation() {
           <Note>{error}</Note>
           <div className="actions">
             <button className="btn" type="submit" disabled={busy}>
-              {busy ? 'Création…' : 'Continuer'}
+              {busy ? 'Un instant…' : paiement.moyen === 'enligne' ? 'Payer maintenant' : 'Continuer'}
             </button>
             <button className="btn btn-quiet" type="button" onClick={() => setPaiement(null)}>
               Annuler
@@ -502,6 +522,22 @@ function AConfirmerAncien() {
   )
 }
 
+function Reversements() {
+  const d = useApi('/api/scolarite/reversements')
+  if (!d.data || d.data.encaisse === 0) return null
+  return (
+    <div className="card" style={{ borderLeft: '4px solid var(--primary)', marginBottom: 12 }}>
+      <b>Paiements en ligne (NotchPay)</b>
+      <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>
+        Encaissés par School pour votre établissement : {fcfa(d.data.encaisse)} · déjà reversés : {fcfa(d.data.reverse)}
+      </p>
+      <p style={{ marginTop: 4 }}>
+        À recevoir : <b style={{ color: d.data.du > 0 ? '#7aa5ff' : undefined }}>{fcfa(d.data.du)}</b>
+      </p>
+    </div>
+  )
+}
+
 function Recouvrement() {
   const d = useApi('/api/scolarite/recouvrement')
   const [classe, setClasse] = useState(null)
@@ -525,6 +561,7 @@ function Recouvrement() {
   const taux = t.attendu ? Math.round((t.encaisse / t.attendu) * 100) : 0
   return (
     <>
+      <Reversements />
       <div className="kpis">
         <div className="kpi">
           <b>{taux} %</b>

@@ -351,3 +351,11 @@ CREATE TABLE IF NOT EXISTS publication_jaime (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   PRIMARY KEY (publication_id, user_id)
 );
+
+-- Paiement en ligne via le compte NotchPay de la plateforme, et reversements aux etablissements
+ALTER TABLE paiements_scolaires ADD COLUMN IF NOT EXISTS encaisse_par VARCHAR(12) NOT NULL DEFAULT 'ecole';
+CREATE TABLE IF NOT EXISTS reversements (
+  id SERIAL PRIMARY KEY, school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  montant INTEGER NOT NULL CHECK (montant > 0), reference VARCHAR(120), note VARCHAR(300),
+  cree_par INTEGER REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

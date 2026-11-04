@@ -144,6 +144,33 @@ router.get("/fil", async (req, res, next) => {
   }
 });
 
+// GET /api/actualites/:id/detail : une information complete (memes regles de visibilite que le fil)
+router.get("/:id/detail", async (req, res, next) => {
+  try {
+    const miennes = await mesEcoles(req.user);
+    const publicRole = PUBLIC_DU_ROLE[req.user.role] || "tous";
+    const { rows } = await db.query(
+      `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
+              p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, p.medias,
+              CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant
+       FROM publications p JOIN schools s ON s.id = p.school_id LEFT JOIN users a ON a.id = p.author_id
+       WHERE p.id = $1 AND (
+         $4::boolean
+         OR (p.school_id = ANY($2) AND p.audience IN ('tous', $3))
+         OR (p.type <> 'conseil_discipline' AND p.audience IN ('tous', $3)))`,
+      [parseInt(req.params.id, 10) || 0, miennes, publicRole, ["admin"].includes(req.user.role) || (req.user.role === "principal" || req.user.role === "teacher")]
+    );
+    const p = rows[0];
+    if (!p || (["principal", "teacher"].includes(req.user.role) && p.school_id !== req.user.schoolId && p.type === "conseil_discipline")) {
+      throw new ApiError(404, "Information introuvable");
+    }
+    const { a_image, ...reste } = p;
+    res.json({ success: true, data: { ...reste, image: a_image ? `/api/actualites/${p.id}/image` : null } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // POST /api/actualites (administrateur de l'etablissement)
 router.post("/", async (req, res, next) => {
   try {

@@ -41,6 +41,7 @@ import TrouverEleve from './pages/TrouverEleve.jsx'
 import PayerEleve from './pages/PayerEleve.jsx'
 import Rattachements from './pages/Rattachements.jsx'
 import Publier from './pages/Publier.jsx'
+import InfoDetail from './pages/InfoDetail.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -107,6 +108,8 @@ function Pages({ path }) {
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
   if (path === '/abonnement') return reserve(user.role === 'principal', <Abonnement />)
   if (path === '/abonnements') return reserve(user.role === 'admin', <AbonnementsAdmin />)
+  const infoMatch = path.match(/^\/infos\/(\d+)$/)
+  if (infoMatch) return <InfoDetail key={infoMatch[1]} id={Number(infoMatch[1])} />
   if (path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Publier />)
   if (path === '/trouver-eleve') return reserve(user.role === 'parent', <TrouverEleve />)
   if (path === '/rattachements') return reserve(user.role === 'principal', <Rattachements />)

@@ -638,3 +638,9 @@ h1, h2, h3, .page-title, .section-title { color: var(--text); font-family: var(-
 
 /* les bulletins et les recus restent sur papier blanc (impression) */
 .bulletin { background: #fff; color: #111; }
+.info.cliquable { cursor: pointer; }
+.info.cliquable:active { background: var(--card-2); }
+.info-voir { display: inline-block; margin-top: 10px; font: 700 13px/1 var(--font-body); color: #7aa5ff; }
+.classe-ligne { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 13px 14px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: 600 15px/1.2 var(--font-body); cursor: pointer; text-align: left; }
+.classe-ligne:first-child { border-top: 0; }
+.niveau-titre { margin: 16px 2px 6px; font: 700 12px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }

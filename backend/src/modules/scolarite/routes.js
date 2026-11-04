@@ -73,12 +73,16 @@ const moyensEcole = async (schoolId) => {
     [schoolId]
   );
   const e = rows[0] || {};
+  const cleEcole = e.notchpay_public_key || null;
+  const clePlateforme = process.env.NOTCHPAY_PUBLIC_KEY || null;
   return {
-    cle: e.notchpay_public_key || null,
+    cle: cleEcole || clePlateforme,
+    // Sans compte NotchPay propre a l'etablissement, School encaisse puis reverse a l'ecole
+    viaPlateforme: !cleEcole && Boolean(clePlateforme),
     // Frais de transaction du paiement en ligne : ajoutes au montant paye par le parent, si l'etablissement le choisit
     fraisServicePct: e.frais_service_parent ? Number(e.frais_service_pct || 0) : 0,
     public: {
-      enLigne: Boolean(e.notchpay_public_key),
+      enLigne: Boolean(cleEcole || clePlateforme),
       fraisServicePct: e.frais_service_parent ? Number(e.frais_service_pct || 0) : 0,
       orange: e.orange_money || null,
       mtn: e.mtn_momo || null,
@@ -121,23 +125,23 @@ router.post("/payer", async (req, res, next) => {
     const fraisId = entier(req.body?.fraisId);
     const montant = entier(req.body?.montant);
     const telephone = texte(req.body?.telephone, 30);
-    if (!(await elevesAccessibles(u)).includes(studentId)) throw new ApiError(403, "Élève non relié à votre compte");
+    // Parent relie, ou tout parent/donateur : on peut payer la scolarite de n'importe quel eleve
+    if (u.role !== "parent" && !(await elevesAccessibles(u)).includes(studentId)) throw new ApiError(403, "Élève non relié à votre compte");
     const s = await situationEleve(studentId);
     const frais = s?.frais.find((f) => f.id === fraisId);
     if (!frais) throw new ApiError(404, "Frais introuvable");
     if (!(montant >= 100) || montant > frais.reste) throw new ApiError(400, `Montant entre 100 et ${fcfa(frais.reste)}`);
     const eleve = await db.query("SELECT school_id FROM users WHERE id = $1", [studentId]);
-    // L'argent va directement sur le compte NotchPay de l'etablissement
-    const { cle, fraisServicePct } = await moyensEcole(eleve.rows[0].school_id);
-    if (!cle) throw new ApiError(400, "L'établissement n'a pas activé le paiement en ligne : utilisez ses numéros Mobile Money");
+    const { cle, fraisServicePct, viaPlateforme } = await moyensEcole(eleve.rows[0].school_id);
+    if (!cle) throw new ApiError(400, "Le paiement en ligne n'est pas encore activé : utilisez le transfert direct");
     const fraisService = Math.ceil((montant * fraisServicePct) / 100);
     const reference = `SCH-${studentId}-${fraisId}-${Date.now()}`;
     await db.query(
-      `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, telephone, paye_par, frais_service)
-       VALUES ($1, $2, $3, $4, 'mobile_money', 'en_attente', $5, $6, $7, $8)`,
-      [eleve.rows[0].school_id, fraisId, studentId, montant, reference, telephone || null, u.id, fraisService]
+      `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, telephone, paye_par, frais_service, encaisse_par)
+       VALUES ($1, $2, $3, $4, 'mobile_money', 'en_attente', $5, $6, $7, $8, $9)`,
+      [eleve.rows[0].school_id, fraisId, studentId, montant, reference, telephone || null, u.id, fraisService, viaPlateforme ? "plateforme" : "ecole"]
     );
-    const retour = `${(process.env.FRONTEND_URL || "").split(",")[0].trim()}/#/scolarite`;
+    const retour = `${(process.env.FRONTEND_URL || "").split(",")[0].trim()}/#/${req.body?.retour === "payer" ? `payer/${studentId}` : "scolarite"}`;
     const r = await fetch("https://api.notchpay.co/payments/initialize", {
       method: "POST",
       headers: { Authorization: cle, "Content-Type": "application/json", Accept: "application/json" },
@@ -622,6 +626,25 @@ router.post("/relancer", async (req, res, next) => {
     }
     await db.query("UPDATE schools SET derniere_relance = NOW() WHERE id = $1", [ecole]);
     res.json({ success: true, data: { parents: rows.length } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /api/scolarite/reversements : paiements en ligne encaisses par School pour l'etablissement
+router.get("/reversements", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const t = (
+      await db.query(
+        `SELECT COALESCE((SELECT SUM(montant) FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi' AND encaisse_par = 'plateforme'), 0)::bigint AS encaisse,
+                COALESCE((SELECT SUM(montant) FROM reversements WHERE school_id = $1), 0)::bigint AS reverse`,
+        [ecole]
+      )
+    ).rows[0];
+    const liste = (await db.query("SELECT montant, reference, note, created_at FROM reversements WHERE school_id = $1 ORDER BY created_at DESC LIMIT 50", [ecole])).rows;
+    res.json({ success: true, data: { encaisse: Number(t.encaisse), reverse: Number(t.reverse), du: Number(t.encaisse) - Number(t.reverse), reversements: liste } });
   } catch (e) {
     next(e);
   }

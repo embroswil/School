@@ -253,4 +253,51 @@ router.put("/admin/reglages", isPlatformAdmin, async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------- reversements aux etablissements
+// Paiements de scolarite encaisses en ligne par School (compte NotchPay de la plateforme) a reverser.
+
+// GET /api/abonnement/admin/reversements
+router.get("/admin/reversements", isPlatformAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT s.id, s.name, s.city, s.orange_money, s.mtn_momo,
+              COALESCE((SELECT SUM(montant) FROM paiements_scolaires p WHERE p.school_id = s.id AND p.statut = 'reussi' AND p.encaisse_par = 'plateforme'), 0)::bigint AS encaisse,
+              COALESCE((SELECT SUM(montant) FROM reversements r WHERE r.school_id = s.id), 0)::bigint AS reverse
+       FROM schools s ORDER BY s.name`
+    );
+    const data = rows.map((r) => ({ ...r, encaisse: Number(r.encaisse), reverse: Number(r.reverse), du: Number(r.encaisse) - Number(r.reverse) }));
+    res.json({ success: true, data: { ecoles: data.filter((x) => x.encaisse > 0), totalDu: data.reduce((s, x) => s + x.du, 0) } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/abonnement/admin/reversements { schoolId, montant, reference, note }
+router.post("/admin/reversements", isPlatformAdmin, async (req, res, next) => {
+  try {
+    const schoolId = entier(req.body?.schoolId);
+    const montant = entier(req.body?.montant);
+    if (!(montant > 0)) throw new ApiError(400, "Montant invalide");
+    await db.query("INSERT INTO reversements (school_id, montant, reference, note, cree_par) VALUES ($1, $2, $3, $4, $5)", [
+      schoolId,
+      montant,
+      String(req.body?.reference || "").slice(0, 120) || null,
+      String(req.body?.note || "").slice(0, 300) || null,
+      req.user.id,
+    ]);
+    const chefs = await db.query("SELECT id FROM users WHERE school_id = $1 AND role = 'principal'", [schoolId]);
+    for (const c of chefs.rows) {
+      await notifierUtilisateur(c.id, {
+        title: "Reversement des paiements en ligne",
+        message: `${fcfa(montant)} vous ont été reversés${req.body?.reference ? ` (réf. ${req.body.reference})` : ""}.`,
+        type: "payment",
+        data: { lien: "/scolarite" },
+      }).catch(() => {});
+    }
+    res.status(201).json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

@@ -73,6 +73,46 @@ router.get("/ecoles/:id/eleves", async (req, res, next) => {
   }
 });
 
+// Consultation des listes de classes : reservee aux comptes dont l'email est confirme
+const exigerEmailConfirme = async (u) => {
+  const r = (await db.query("SELECT email_verifie FROM users WHERE id = $1", [u.id])).rows[0];
+  if (!r?.email_verifie) throw new ApiError(403, "Confirmez d’abord votre adresse email (Profil) pour consulter les listes de classes");
+};
+
+// GET /api/familles/ecoles/:id/classes : classes de l'annee en cours, avec effectif
+router.get("/ecoles/:id/classes", async (req, res, next) => {
+  try {
+    reserveParent(req);
+    const { rows } = await db.query(
+      `SELECT c.id, c.name, (SELECT COUNT(*)::int FROM class_students cs WHERE cs.class_id = c.id AND cs.status = 'active') AS effectif
+       FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
+       WHERE ay.school_id = $1 ORDER BY c.name`,
+      [entier(req.params.id)]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /api/familles/classes/:id/eleves : liste d'une classe (noms seulement)
+router.get("/classes/:id/eleves", async (req, res, next) => {
+  try {
+    reserveParent(req);
+    await exigerEmailConfirme(req.user);
+    const { rows } = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, c.name AS classe,
+              EXISTS (SELECT 1 FROM parent_student_links l WHERE l.student_id = u.id AND l.parent_id = $2) AS deja_relie
+       FROM class_students cs JOIN users u ON u.id = cs.student_id JOIN classes c ON c.id = cs.class_id
+       WHERE cs.class_id = $1 AND cs.status = 'active' AND u.is_active ORDER BY u.last_name, u.first_name`,
+      [entier(req.params.id), req.user.id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // POST /api/familles/relier { studentId, dateNaissance, lien } : « C'est mon enfant »
 router.post("/relier", async (req, res, next) => {
   try {
@@ -138,7 +178,7 @@ router.get("/eleves/:id/frais", async (req, res, next) => {
       data: {
         eleve: { id: e.id, prenom: e.first_name, nom: e.last_name, classe: e.classe, ecole: e.ecole },
         frais: (sit?.frais || []).map((f) => ({ id: f.id, nom: f.nom, montant: f.montant, reste: f.reste, echeance: f.echeance, obligatoire: f.obligatoire, categorie: f.categorie })),
-        moyens: { orange: moyens.orange, mtn: moyens.mtn },
+        moyens: { orange: moyens.orange, mtn: moyens.mtn, enLigne: moyens.enLigne },
       },
     });
   } catch (e) {

@@ -32,10 +32,18 @@ export function BandeauAbonnement({ role }) {
         : `Abonnement ${e.annee} : ${fcfa(e.reste)} à régler avant le ${jourLong(e.echeance)}.`
   const contenu = (
     <>
-      💳 {texte} {role === 'principal' && <u>Voir</u>}
+      {texte} {role === 'principal' && <b style={{ color: urgent ? 'var(--danger)' : '#7aa5ff' }}>Voir ›</b>}
     </>
   )
-  const style = { display: 'block', background: STATUTS[e.statut][2], color: STATUTS[e.statut][1], marginTop: 4 }
+  const urgent = ['en_retard', 'lecture_seule'].includes(e.statut)
+  const style = {
+    display: 'block',
+    marginTop: 4,
+    background: 'var(--card)',
+    color: 'var(--text)',
+    border: '1px solid var(--line)',
+    borderLeft: `4px solid ${urgent ? 'var(--danger)' : 'var(--primary)'}`,
+  }
   return role === 'principal' ? (
     <a className="note" href="#/abonnement" style={style}>
       {contenu}

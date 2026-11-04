@@ -48,6 +48,7 @@ const TITRES = {
   '/notifications': 'Notifications',
   '/actualites': 'Actualités',
   '/publier': 'Nouvelle publication',
+  '/infos': 'Information',
   '/scolarite': 'Scolarité',
   '/import-eleves': 'Importer des élèves',
   '/etablissements': 'Établissements',

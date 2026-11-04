@@ -136,6 +136,57 @@ function Reglages({ r, onChange }) {
   )
 }
 
+// Paiements de scolarite encaisses en ligne par School, a reverser aux etablissements
+function Reversements() {
+  const d = useApi('/api/abonnement/admin/reversements')
+  const [f, setF] = useState({})
+  const [ok, setOk] = useState('')
+  if (!d.data) return <p className="muted">Chargement…</p>
+  return (
+    <>
+      <p className="muted" style={{ marginBottom: 10 }}>
+        Total à reverser : <b style={{ color: 'var(--text)' }}>{fcfa(d.data.totalDu)}</b>. Reversez sur le Mobile Money de l’école, puis enregistrez le reversement.
+      </p>
+      <Note kind="ok">{ok}</Note>
+      {d.data.ecoles.length === 0 && <p className="muted">Aucun paiement en ligne encaissé pour le moment.</p>}
+      {d.data.ecoles.map((e) => {
+        const v = f[e.id] || { montant: '', reference: '' }
+        return (
+          <div className="card" key={e.id}>
+            <b>{e.name}</b>
+            <div className="muted" style={{ fontSize: 14 }}>
+              encaissé {fcfa(e.encaisse)} · reversé {fcfa(e.reverse)} · <b style={{ color: e.du > 0 ? 'var(--danger)' : 'var(--text)' }}>dû {fcfa(e.du)}</b>
+            </div>
+            <div className="muted" style={{ fontSize: 13 }}>
+              {e.orange_money ? `Orange ${e.orange_money}` : ''} {e.mtn_momo ? `· MTN ${e.mtn_momo}` : ''}
+            </div>
+            {e.du > 0 && (
+              <>
+                <div className="grid2" style={{ marginTop: 8 }}>
+                  <input className="input" inputMode="numeric" placeholder={`Montant (${e.du})`} value={v.montant} onChange={(x) => setF({ ...f, [e.id]: { ...v, montant: x.target.value.replace(/\D/g, '') } })} />
+                  <input className="input" placeholder="Référence du transfert" value={v.reference} onChange={(x) => setF({ ...f, [e.id]: { ...v, reference: x.target.value } })} />
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-block"
+                  style={{ marginTop: 8 }}
+                  onClick={async () => {
+                    await api.post('/api/abonnement/admin/reversements', { schoolId: e.id, montant: Number(v.montant || e.du), reference: v.reference })
+                    setOk(`Reversement de ${fcfa(Number(v.montant || e.du))} enregistré pour ${e.name}.`)
+                    d.reload()
+                  }}
+                >
+                  Enregistrer le reversement
+                </button>
+              </>
+            )}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 // Abonnements des etablissements (administrateur de la plateforme)
 export default function AbonnementsAdmin() {
   const d = useApi('/api/abonnement/admin')
@@ -204,11 +255,16 @@ export default function AbonnementsAdmin() {
         <button type="button" className="chip" aria-pressed={onglet === 'ecoles'} onClick={() => setOnglet('ecoles')}>
           Établissements ({ecoles.length})
         </button>
+        <button type="button" className="chip" aria-pressed={onglet === 'reversements'} onClick={() => setOnglet('reversements')}>
+          Reversements
+        </button>
         <button type="button" className="chip" aria-pressed={onglet === 'reglages'} onClick={() => setOnglet('reglages')}>
           Réglages
         </button>
       </div>
-      {onglet === 'ecoles' ? (
+      {onglet === 'reversements' ? (
+        <Reversements />
+      ) : onglet === 'ecoles' ? (
         ecoles.length === 0 ? (
           <p className="muted">Aucun établissement pour le moment.</p>
         ) : (

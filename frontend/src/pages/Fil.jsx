@@ -26,15 +26,21 @@ function Medias({ medias }) {
   )
 }
 
-// Une information de l'etablissement (lecture seule)
-function Info({ p }) {
-  const [tout, setTout] = useState(false)
+// Une information de l'etablissement : apercu court, la fiche entiere s'ouvre au toucher
+export function Info({ p, complet = false }) {
   const t = TYPES[p.type] || TYPES.autre
   const d = new Date(p.created_at)
   const medias = [...(p.medias || []), ...(p.image ? [{ type: 'image', url: `${API}${p.image}` }] : [])]
-  const long = (p.body || '').length > 220
+  const long = !complet && (p.body || '').length > 200
+  const eleves = p.students || []
+  const montres = complet ? eleves : eleves.slice(0, 3)
+  const tronque = long || (!complet && eleves.length > 3)
+  const ouvrir = (e) => {
+    if (complet || e.target.closest('video, .piste')) return
+    window.location.hash = `/infos/${p.id}`
+  }
   return (
-    <article className="info" style={{ '--couleur': COULEURS[p.type] || COULEURS.autre }}>
+    <article className={`info ${complet ? '' : 'cliquable'}`} style={{ '--couleur': COULEURS[p.type] || COULEURS.autre }} onClick={ouvrir}>
       <div className="info-date">
         <b>{d.getDate()}</b>
         <span>{MOIS[d.getMonth()]}</span>
@@ -47,16 +53,7 @@ function Info({ p }) {
         </div>
         <span className="info-type">{t.nom}</span>
         {p.title && <h3>{p.title}</h3>}
-        {p.body && (
-          <p className="info-texte">
-            {long && !tout ? `${p.body.slice(0, 220)}… ` : p.body}
-            {long && (
-              <button type="button" className="info-plus" onClick={() => setTout(!tout)}>
-                {tout ? ' Réduire' : 'Lire la suite'}
-              </button>
-            )}
-          </p>
-        )}
+        {p.body && <p className="info-texte">{long ? `${p.body.slice(0, 200)}…` : p.body}</p>}
         {p.event_date && (
           <div className="info-evt">
             <span style={{ fontSize: 20 }}>🗓️</span>
@@ -66,17 +63,19 @@ function Info({ p }) {
             </span>
           </div>
         )}
-        {p.students?.length > 0 && (
+        {montres.length > 0 && (
           <ul className="info-eleves">
-            {p.students.map((e, i) => (
+            {montres.map((e, i) => (
               <li key={i}>
                 <b>{e.nom}</b>
                 {e.classe ? ` · ${e.classe}` : ''}
                 {e.motif ? ` · ${e.motif}` : ''}
               </li>
             ))}
+            {!complet && eleves.length > 3 && <li className="muted">+ {eleves.length - 3} autre(s)…</li>}
           </ul>
         )}
+        {tronque && <span className="info-voir">Voir tout ›</span>}
       </div>
       {medias.length > 0 && <Medias medias={medias} />}
     </article>
