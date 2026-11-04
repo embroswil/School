@@ -64,11 +64,21 @@ router.get("/eleves", async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, (u.email NOT LIKE '%@inscrit.school') AS a_un_compte, sr.declared_class, sr.date_of_birth,
               c.id AS class_id, c.name AS class_name,
-              (SELECT COUNT(*)::int FROM parent_student_links p WHERE p.student_id = u.id) AS parents
+              (SELECT COUNT(*)::int FROM parent_student_links p WHERE p.student_id = u.id) AS parents,
+              sc.du AS scol_du, sc.paye AS scol_paye
        FROM users u
        LEFT JOIN student_records sr ON sr.student_id = u.id
        LEFT JOIN class_students cs ON cs.student_id = u.id AND cs.status = 'active' AND cs.academic_year_id = $2
        LEFT JOIN classes c ON c.id = cs.class_id
+       -- Scolarite : frais obligatoires de sa classe, et ce qui est paye (en ligne, P2P ou au guichet)
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(SUM(f.montant), 0)::int AS du,
+                COALESCE(SUM(LEAST(f.montant, COALESCE((SELECT SUM(p.montant) FROM paiements_scolaires p
+                  WHERE p.frais_id = f.id AND p.student_id = u.id AND p.statut = 'reussi'), 0))), 0)::int AS paye
+         FROM frais_scolaires f
+         WHERE f.school_id = $1 AND f.obligatoire AND (f.academic_year_id IS NULL OR f.academic_year_id = $2)
+           AND (f.classes IS NULL OR cardinality(f.classes) = 0 OR lower(COALESCE(c.name, '')) = ANY (SELECT lower(x) FROM unnest(f.classes) x))
+       ) sc ON true
        WHERE u.school_id = $1 AND u.role = 'student'
          AND ($3 = '' OR (u.first_name || ' ' || u.last_name) ILIKE '%' || $3 || '%' OR (u.last_name || ' ' || u.first_name) ILIKE '%' || $3 || '%')
          AND ($4::int IS NULL OR c.id = $4 OR ($4 = 0 AND c.id IS NULL))

@@ -54,7 +54,15 @@ const situationEleve = async (studentId) => {
      WHERE p.student_id = $1 AND p.statut = 'reussi' ORDER BY p.created_at DESC LIMIT 30`,
     [eleve.id]
   );
+  // Statut de la scolarite (frais obligatoires) : reglee, partielle, non payee
+  const oblig = frais.filter((f) => f.obligatoire)
+  const resteOblig = oblig.reduce((s, f) => s + f.reste, 0)
+  const statut = !oblig.length ? "aucun" : resteOblig === 0 ? "regle" : oblig.some((f) => f.paye > 0) ? "partiel" : "non_paye"
+  const aujourdhui = new Date().toISOString().slice(0, 10)
   return {
+    statut,
+    resteObligatoire: resteOblig,
+    enRetard: oblig.some((f) => f.reste > 0 && f.echeance && new Date(f.echeance).toISOString().slice(0, 10) < aujourdhui),
     moyens: (await moyensEcole(eleve.school_id)).public,
     eleve: { id: eleve.id, prenom: eleve.first_name, nom: eleve.last_name, classe: eleve.classe },
     frais,

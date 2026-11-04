@@ -76,6 +76,13 @@ export default function PayerEleve({ id }) {
           Total obligatoire restant : <b style={{ color: 'var(--danger)' }}>{fcfa(total)}</b>
         </p>
       )}
+      {aPayer.filter((f) => f.obligatoire).length === 0 && d.data.frais.some((f) => f.obligatoire) && (
+        <p style={{ margin: '4px 0 12px' }}>
+          <span style={{ display: 'inline-block', padding: '8px 14px', borderRadius: 999, background: 'rgba(47, 107, 255, 0.16)', color: '#7aa5ff', fontWeight: 700 }}>
+            ✓ Scolarité réglée
+          </span>
+        </p>
+      )}
       {aPayer.length === 0 && <p className="muted">Tous les frais de cet élève sont réglés. 👏</p>}
       <Note kind="ok">{info}</Note>
       {!moyens.enLigne && !moyens.orange && !moyens.mtn && aPayer.length > 0 && <Note>Le paiement n’est pas encore disponible pour cet établissement.</Note>}

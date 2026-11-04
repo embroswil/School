@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { ListeOrdres } from './OrdrePaiement.jsx'
+import StatutScolarite from './StatutScolarite.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
@@ -100,6 +101,9 @@ function Situation() {
             <h2 style={{ marginTop: 8, fontSize: 21 }}>
               {s.eleve.prenom} {s.eleve.nom}
             </h2>
+            <div style={{ marginTop: 8 }}>
+              <StatutScolarite statut={s.statut} reste={s.resteObligatoire} enRetard={s.enRetard} grand />
+            </div>
             <div className="grid2" style={{ marginTop: 12 }}>
               <div>
                 <div style={{ opacity: 0.8, fontSize: 13 }}>Payé</div>

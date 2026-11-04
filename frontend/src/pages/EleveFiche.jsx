@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import Discipline from './Discipline.jsx'
+import StatutScolarite from './StatutScolarite.jsx'
 import { Note } from '../ui.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
@@ -101,6 +102,11 @@ export default function EleveFiche({ id }) {
       )}
 
       <p className="groupe-titre">Scolarité</p>
+      {scol.data && (
+        <div style={{ margin: '4px 0 10px' }}>
+          <StatutScolarite statut={scol.data.statut} reste={scol.data.resteObligatoire} enRetard={scol.data.enRetard} grand />
+        </div>
+      )}
       {scol.data ? (
         <div className="card">
           <div className="grid2">

@@ -363,3 +363,6 @@ CREATE TABLE IF NOT EXISTS reversements (
 -- Abonnement paye en ligne (NotchPay de la plateforme)
 ALTER TABLE paiements_abonnement DROP CONSTRAINT IF EXISTS paiements_abonnement_statut_check;
 ALTER TABLE paiements_abonnement ADD CONSTRAINT paiements_abonnement_statut_check CHECK (statut IN ('declare','confirme','rejete','en_attente','echoue'));
+
+-- Statut « scolarite reglee » : acces rapide aux paiements d'un eleve
+CREATE INDEX IF NOT EXISTS idx_paiements_eleve_frais ON paiements_scolaires (student_id, frais_id) WHERE statut = 'reussi';

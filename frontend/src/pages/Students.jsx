@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { IcClasses, IcImport } from '../icones.jsx'
+import StatutScolarite from './StatutScolarite.jsx'
 
 // Eleves de l'etablissement : recherche, filtre par classe, placement, fiche
 export default function Students() {
@@ -13,6 +14,7 @@ export default function Students() {
   const classes = useApi('/api/etablissement/classes')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(null)
+  const [scol, setScol] = useState('') // '' | 'regle' | 'non'
 
   async function placer(eleveId, classId) {
     if (!classId) return
@@ -27,7 +29,9 @@ export default function Students() {
     setBusy(null)
   }
 
-  const liste = eleves.data || []
+  const statutDe = (e) => (!e.scol_du ? 'aucun' : e.scol_paye >= e.scol_du ? 'regle' : e.scol_paye > 0 ? 'partiel' : 'non_paye')
+  const tous = eleves.data || []
+  const liste = scol === 'regle' ? tous.filter((e) => statutDe(e) === 'regle') : scol === 'non' ? tous.filter((e) => ['partiel', 'non_paye'].includes(statutDe(e))) : tous
   const sansClasse = liste.filter((e) => !e.class_id).length
 
   return (
@@ -64,6 +68,19 @@ export default function Students() {
           ))}
         </select>
       </form>
+      {tous.some((e) => e.scol_du) && (
+        <div className="chips" style={{ marginBottom: 10 }}>
+          <button type="button" className="chip" aria-pressed={!scol} onClick={() => setScol('')}>
+            Tous
+          </button>
+          <button type="button" className="chip" aria-pressed={scol === 'regle'} onClick={() => setScol('regle')}>
+            Scolarité réglée ({tous.filter((e) => statutDe(e) === 'regle').length})
+          </button>
+          <button type="button" className="chip" aria-pressed={scol === 'non'} onClick={() => setScol('non')}>
+            Non réglée ({tous.filter((e) => ['partiel', 'non_paye'].includes(statutDe(e))).length})
+          </button>
+        </div>
+      )}
       <Note>{error}</Note>
       {liste.length > 0 && (
         <ul className="liste-eleves">
@@ -81,11 +98,10 @@ export default function Students() {
                   <small>
                     {e.class_name || `Déclaré : ${e.declared_class || '—'}`}
                     {e.parents > 0 ? ` · ${e.parents} parent(s)` : ''}
+                    {e.a_un_compte ? ' · compte' : ''}
                   </small>
                 </span>
-                <span className={`statut ${e.a_un_compte ? 'actif' : ''}`} title={e.a_un_compte ? 'Compte créé' : 'Sans compte'}>
-                  {e.a_un_compte ? 'Compte' : ''}
-                </span>
+                <StatutScolarite statut={statutDe(e)} reste={e.scol_du - e.scol_paye} />
               </a>
               {!e.class_id && (
                 <select
