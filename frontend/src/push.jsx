@@ -9,6 +9,26 @@ const versCle = (b64) => {
   return Uint8Array.from(s, (c) => c.charCodeAt(0))
 }
 
+// Inscrit ce telephone aupres du serveur (abonnement cree au besoin). Sans risque si deja fait.
+async function synchroniser(cle) {
+  const reg = await navigator.serviceWorker.ready
+  const abo = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: versCle(cle) }))
+  await api.post('/api/push/abonnement', { ...abo.toJSON(), appareil: navigator.userAgent.slice(0, 120) })
+}
+
+// A l'ouverture de School : si les alertes sont autorisees, ce telephone est (re)inscrit
+export function SynchroPush() {
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
+    if (Notification.permission !== 'granted') return
+    api
+      .get('/api/push/cle')
+      .then((r) => r.data.cle && synchroniser(r.data.cle))
+      .catch(() => {})
+  }, [])
+  return null
+}
+
 // etat : 'chargement' | 'indisponible' | 'installer' (iPhone : installer School d'abord) | 'refuse' | 'actif' | 'inactif'
 export function usePush() {
   const [etat, setEtat] = useState('chargement')
@@ -23,9 +43,12 @@ export function usePush() {
       setCle(k)
       if (!k) return setEtat('indisponible')
       if (Notification.permission === 'denied') return setEtat('refuse')
-      const reg = await navigator.serviceWorker.ready
-      const abo = await reg.pushManager.getSubscription()
-      setEtat(abo && Notification.permission === 'granted' ? 'actif' : 'inactif')
+      if (Notification.permission === 'granted') {
+        // Deja autorise : on (re)inscrit ce telephone aupres du serveur, a chaque ouverture
+        await synchroniser(k)
+        return setEtat('actif')
+      }
+      setEtat('inactif')
     } catch (_) {
       setEtat('indisponible')
     }
@@ -36,9 +59,7 @@ export function usePush() {
   async function activer() {
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return setEtat(permission === 'denied' ? 'refuse' : 'inactif')
-    const reg = await navigator.serviceWorker.ready
-    const abo = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: versCle(cle) }))
-    await api.post('/api/push/abonnement', { ...abo.toJSON(), appareil: navigator.userAgent.slice(0, 120) })
+    await synchroniser(cle)
     setEtat('actif')
   }
   async function desactiver() {
