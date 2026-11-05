@@ -31,16 +31,17 @@
       rel="stylesheet"
     />
     <link rel="preload" as="image" href="/splash/logo-demarrage.png" />
+    <link rel="preload" as="image" href="/splash/signature.png" />
     <style>
       /* Ecran de demarrage : identique, au pixel pres, a l'image de demarrage d'iOS
-         (bloc de 260 px centre, signature a 93 % de la hauteur), puis anime en douceur. */
+         (bloc de 260 px centre, signature Embroswil de 150 px a 90 % de la hauteur), puis anime en douceur. */
       html, body { background: #07080b; margin: 0; }
       #demarrage { position: fixed; inset: 0; z-index: 9999; background: #07080b; transition: opacity 0.45s ease; }
       #demarrage .bloc { position: absolute; left: 50%; top: 50%; width: 260px; transform: translate(-50%, -50%); }
       #demarrage .bloc img { display: block; width: 260px; height: auto; animation: respire 2.4s ease-in-out 0.4s infinite; }
-      #demarrage .signe { position: absolute; left: 50%; top: 93%; transform: translateX(-50%); width: 26px; }
-      #demarrage .signe img { display: block; height: auto; width: auto; max-height: 14px; }
-      #demarrage .barre { position: absolute; left: 50%; top: calc(50% + 122px); width: 110px; height: 3px; margin-left: -55px; border-radius: 3px;
+      #demarrage .signe { position: absolute; left: 50%; top: 90%; width: 150px; margin-left: -75px; }
+      #demarrage .signe img { display: block; width: 150px; height: auto; }
+      #demarrage .barre { position: absolute; left: 50%; top: calc(50% + 68px); width: 110px; height: 3px; margin-left: -55px; border-radius: 3px;
         background: rgba(255, 255, 255, 0.07); overflow: hidden; opacity: 0; animation: apparait 0.4s ease 0.5s forwards; }
       #demarrage .barre i { display: block; width: 40%; height: 100%; border-radius: 3px; background: #2f6bff; animation: glisse 1.1s ease-in-out infinite; }
       #demarrage.fini { opacity: 0; pointer-events: none; }
@@ -56,7 +57,7 @@
     <div id="demarrage" aria-hidden="true">
       <div class="bloc"><img src="/splash/logo-demarrage.png" alt="" /></div>
       <div class="barre"><i></i></div>
-      <div class="signe" style="width: auto"><img src="/splash/signe.png" alt="" style="height: 13.67px; max-height: none" /></div>
+      <div class="signe"><img src="/splash/signature.png" alt="" /></div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
