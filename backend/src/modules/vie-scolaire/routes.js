@@ -86,6 +86,17 @@ router.put("/emplois/classes/:id", async (req, res, next) => {
       );
     }
     await client.query("COMMIT");
+    // Fil automatique (une publication par classe et par jour)
+    if (liste.length) {
+      require("../../utils/fil").publierAuto({
+        schoolId: c.school_id,
+        type: "autre",
+        categorie: "Emploi du temps",
+        titre: `Emploi du temps de la ${c.name}`,
+        corps: "Le nouvel emploi du temps est disponible dans la fiche de suivi de chaque élève de la classe.",
+        cle: `edt-${c.id}-${new Date().toISOString().slice(0, 10)}`,
+      });
+    }
     res.json({ success: true, data: { creneaux: liste.length } });
   } catch (e) {
     try {

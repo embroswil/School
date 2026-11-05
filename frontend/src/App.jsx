@@ -40,7 +40,7 @@ import OrdrePaiement, { ListeOrdres } from './pages/OrdrePaiement.jsx'
 import TrouverEleve from './pages/TrouverEleve.jsx'
 import PayerEleve from './pages/PayerEleve.jsx'
 import Rattachements from './pages/Rattachements.jsx'
-import Publier from './pages/Publier.jsx'
+import Documents from './pages/Documents.jsx'
 import InfoDetail from './pages/InfoDetail.jsx'
 import { Confidentialite, Conditions } from './pages/Legal.jsx'
 import Guide from './pages/Guide.jsx'
@@ -88,7 +88,8 @@ function Pages({ path }) {
   if (path === '/compte') return <Account />
   if (path === '/verifier-email') return <VerifierEmailConnecte />
   if (path === '/notifications') return <Notifications />
-  if (path === '/actualites') return <Actualites />
+  // Le fil se remplit avec les documents televerses : etablissement et enseignants passent par Documents
+  if (path === '/actualites') return ['principal', 'teacher'].includes(user.role) ? <Documents /> : <Actualites />
   if (path === '/notes') return reserve(['parent', 'student'].includes(user.role), <MesNotes />)
   if (path === '/mes-classes') return reserve(user.role === 'teacher', <MesAffectations />)
   const suiviMatch = path.match(/^\/suivi\/(\d+)$/)
@@ -117,7 +118,7 @@ function Pages({ path }) {
   if (path === '/absences') return reserve(['principal', 'admin'].includes(user.role), <AbsencesJour />)
   const infoMatch = path.match(/^\/infos\/(\d+)$/)
   if (infoMatch) return <InfoDetail key={infoMatch[1]} id={Number(infoMatch[1])} />
-  if (path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Publier />)
+  if (path === '/document' || path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Documents />)
   if (path === '/trouver-eleve') return reserve(user.role === 'parent', <TrouverEleve />)
   if (path === '/rattachements') return reserve(user.role === 'principal', <Rattachements />)
   const payerMatch = path.match(/^\/payer\/(\d+)$/)

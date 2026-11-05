@@ -4,7 +4,7 @@
 const ApiError = require("./ApiError");
 
 /** images : data URLs ; texte : contenu deja extrait (Excel, PDF texte). Renvoie l'objet JSON produit. */
-const lireDocument = async ({ images = [], texte = "", consigne }) => {
+const lireDocument = async ({ images = [], pdfs = [], texte = "", consigne, maxTokens = 8000 }) => {
   const cle = process.env.ANTHROPIC_API_KEY;
   if (!cle) throw new ApiError(503, "La lecture automatique des documents n'est pas encore activée (clé ANTHROPIC_API_KEY manquante)");
   const blocs = [];
@@ -13,13 +13,14 @@ const lireDocument = async ({ images = [], texte = "", consigne }) => {
     if (!m) throw new ApiError(400, "Image invalide");
     blocs.push({ type: "image", source: { type: "base64", media_type: m[1], data: m[3] } });
   }
+  for (const pdf of pdfs.slice(0, 2)) blocs.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf } });
   if (texte) blocs.push({ type: "text", text: `Contenu du document :\n${String(texte).slice(0, 60000)}` });
   if (!blocs.length) throw new ApiError(400, "Aucun document à lire");
   blocs.push({ type: "text", text: `${consigne}\nRéponds UNIQUEMENT avec un JSON valide, sans texte autour.` });
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": cle, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5", max_tokens: 8000, messages: [{ role: "user", content: blocs }] }),
+    body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5", max_tokens: maxTokens, messages: [{ role: "user", content: blocs }] }),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new ApiError(502, j?.error?.message || "Le service de lecture ne répond pas");

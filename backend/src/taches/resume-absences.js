@@ -33,7 +33,7 @@ const envoyerResumes = async () => {
      JOIN users p ON p.id = l.parent_id
      JOIN users e ON e.id = a.student_id
      JOIN classes c ON c.id = a.class_id
-     WHERE a.date >= $1 AND a.date < $2 AND a.status IN ('absent', 'late')
+     WHERE a.date >= $1 AND a.date < $2 AND a.status = 'absent'
        AND p.email_verifie AND p.notif_email AND p.is_active
        AND NOT EXISTS (SELECT 1 FROM resumes_mensuels r WHERE r.mois = $3 AND r.parent_id = l.parent_id)
      ORDER BY l.parent_id, e.id, a.date, a.period_number NULLS FIRST`,
@@ -47,18 +47,18 @@ const envoyerResumes = async () => {
     const enf = p.enfants.get(r.eleve_id);
     r.status === "absent" ? enf.abs++ : enf.ret++;
     const jour = new Date(r.date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-    enf.lignes.push(`${jour}${heure(r.period_number)} : ${r.status === "absent" ? "absence" : "retard"}`);
+    enf.lignes.push(`${jour}${heure(r.period_number)}`);
   }
   let envoyes = 0;
   for (const [parentId, p] of parParent) {
     const blocs = [...p.enfants.values()];
     const texte = blocs
-      .map((e) => `${e.nom} (${e.classe}) : ${e.abs} absence(s), ${e.ret} retard(s)\n${e.lignes.map((l) => `  - ${l}`).join("\n")}`)
+      .map((e) => `${e.nom} (${e.classe}) : ${e.abs} absence(s)\n${e.lignes.map((l) => `  - ${l}`).join("\n")}`)
       .join("\n\n");
     const html = blocs
       .map(
         (e) => `<h2 style="margin:18px 0 6px;font-size:17px">${e.nom} <span style="color:#5d6789;font-weight:normal">· ${e.classe}</span></h2>
-        <p style="margin:0 0 8px;font-size:15px"><b style="color:#d92d4b">${e.abs} absence(s)</b> · <b>${e.ret} retard(s)</b></p>
+        <p style="margin:0 0 8px;font-size:15px"><b style="color:#d92d4b">${e.abs} absence(s)</b></p>
         <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:#33405f">${e.lignes.map((l) => `<li>${l}</li>`).join("")}</ul>`
       )
       .join("");
@@ -66,14 +66,14 @@ const envoyerResumes = async () => {
       await envoyerEmail({
         a: p.email,
         nom: p.prenom,
-        sujet: `School · Absences et retards de ${m.libelle}`,
-        texte: `Bonjour ${p.prenom},\n\nVoici le récapitulatif des absences et retards de ${m.libelle} :\n\n${texte}\n\nLe détail est disponible à tout moment dans School : ${APP()}\n\nPour ne plus recevoir ces emails : Profil › Notifications par email.`,
+        sujet: `School · Absences de ${m.libelle}`,
+        texte: `Bonjour ${p.prenom},\n\nVoici le récapitulatif des absences de ${m.libelle} :\n\n${texte}\n\nLe détail est disponible à tout moment dans School : ${APP()}\n\nPour ne plus recevoir ces emails : Profil › Notifications par email.`,
         html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:18px;border:1px solid #e3e8f4;overflow:hidden">
 <tr><td style="background:#2446d8;padding:18px 24px;color:#fff;font-size:20px;font-weight:bold">School<span style="color:#ffb020">.</span></td></tr>
 <tr><td style="padding:24px"><p style="margin:0 0 6px;font-size:15px">Bonjour ${p.prenom},</p>
-<h1 style="margin:0 0 4px;font-size:19px">Absences et retards de ${m.libelle}</h1>${html}
+<h1 style="margin:0 0 4px;font-size:19px">Absences de ${m.libelle}</h1>${html}
 <p style="margin:22px 0 0"><a href="${APP()}" style="display:inline-block;background:#2446d8;color:#fff;text-decoration:none;font-weight:bold;padding:12px 18px;border-radius:12px">Voir le détail dans School</a></p></td></tr>
 <tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">Récapitulatif mensuel. Pour ne plus recevoir ces emails : Profil › Notifications par email.</td></tr>
 </table></td></tr></table></body></html>`,

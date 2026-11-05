@@ -30,13 +30,15 @@ function Medias({ medias }) {
 export function Info({ p, complet = false }) {
   const t = TYPES[p.type] || TYPES.autre
   const d = new Date(p.created_at)
-  const medias = [...(p.medias || []), ...(p.image ? [{ type: 'image', url: `${API}${p.image}` }] : [])]
+  const tous = [...(p.medias || []), ...(p.image ? [{ type: 'image', url: `${API}${p.image}` }] : [])]
+  const medias = tous.filter((m) => m.type !== 'document')
+  const documents = tous.filter((m) => m.type === 'document')
   const long = !complet && (p.body || '').length > 200
   const eleves = p.students || []
   const montres = complet ? eleves : eleves.slice(0, 3)
   const tronque = long || (!complet && eleves.length > 3)
   const ouvrir = (e) => {
-    if (complet || e.target.closest('video, .piste')) return
+    if (complet || e.target.closest('video, .piste, .info-doc')) return
     window.location.hash = `/infos/${p.id}`
   }
   return (
@@ -51,7 +53,7 @@ export function Info({ p, complet = false }) {
           <b>{p.school_name}</b>
           {p.enseignant ? <span>· {p.enseignant}</span> : null}
         </div>
-        <span className="info-type">{t.nom}</span>
+        <span className="info-type">{p.categorie || t.nom}</span>
         {p.title && <h3>{p.title}</h3>}
         {p.body && <p className="info-texte">{long ? `${p.body.slice(0, 200)}…` : p.body}</p>}
         {p.event_date && (
@@ -75,6 +77,15 @@ export function Info({ p, complet = false }) {
             {!complet && eleves.length > 3 && <li className="muted">+ {eleves.length - 3} autre(s)…</li>}
           </ul>
         )}
+        {documents.map((m, k) => (
+          <a key={k} className="info-doc" href={m.url} target="_blank" rel="noreferrer">
+            <span className="info-doc-ico">PDF</span>
+            <span style={{ minWidth: 0 }}>
+              <b>{m.nom || 'Document'}</b>
+              <small>Toucher pour ouvrir</small>
+            </span>
+          </a>
+        ))}
         {tronque && <span className="info-voir">Voir tout ›</span>}
       </div>
       {medias.length > 0 && <Medias medias={medias} />}

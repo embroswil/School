@@ -300,7 +300,7 @@ function EspaceEtablissement() {
       ) : (
         <Action href="#/eleves" Icone={IcEleves} titre="Élèves et classes" texte={`${d.eleves ?? '…'} élèves · ${d.classes ?? '…'} classes`} />
       )}
-      <Action href="#/actualites" Icone={IcActus} titre="Actualités" texte="Annonces, événements, conseils de discipline" />
+      <Action href="#/document" Icone={IcActus} titre="Documents" texte="Communiqués, emplois du temps, calendriers : publiés automatiquement" />
       <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements et moyens de paiement" />
       <Action href="#/enseignants" Icone={IcEcole} titre="Enseignants" texte="Équipe pédagogique" />
       <Action href="#/absences" Icone={IcCoche} titre="Absences du jour" texte="Absents et retards de tout l’établissement, justifications" />

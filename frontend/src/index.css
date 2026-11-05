@@ -680,3 +680,11 @@ h1, h2, h3, .page-title, .section-title { color: var(--text); font-family: var(-
 .guide li { display: flex; gap: 12px; padding: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
 .guide-num { flex: none; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: rgba(47, 107, 255, 0.16); color: #7aa5ff; font-weight: 800; }
 .guide p { font-size: 14px; margin-top: 2px; }
+
+/* ---------- documents du fil ---------- */
+.info-doc { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); color: var(--text); }
+.info-doc b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.info-doc small { color: var(--muted); font-size: 12px; }
+.info-doc-ico { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: rgba(255, 77, 87, 0.16); color: #ff8b92; font: 800 11px/1 var(--font-body); }
+.depot { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 30px 16px; margin-bottom: 12px; border: 2px dashed var(--line); border-radius: 18px; background: var(--card); color: var(--text); cursor: pointer; }
+.depot small { color: var(--muted); }

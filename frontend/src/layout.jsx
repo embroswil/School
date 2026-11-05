@@ -20,7 +20,7 @@ const NAV = {
   ],
   teacher: [
     ['/', IcAccueil, 'Accueil'],
-    ['/publier', IcPlus, 'Publier'],
+    ['/document', IcPlus, 'Documents'],
     ['/messages', IcMessages, 'Messages'],
     ['/compte', IcProfil, 'Profil'],
   ],
@@ -47,7 +47,8 @@ const TITRES = {
   '/compte': 'Mon profil',
   '/notifications': 'Notifications',
   '/actualites': 'Actualités',
-  '/publier': 'Nouvelle publication',
+  '/publier': 'Documents',
+  '/document': 'Documents',
   '/infos': 'Information',
   '/guide': 'Guide',
   '/absences': 'Absences du jour',
@@ -78,8 +79,8 @@ const TITRES = {
 
 const ACTIONS = [
   ['/import-eleves', IcImport, 'Élèves', 'Importer une liste'],
-  ['/publier', IcPhoto, 'Publier', 'Photo ou vidéo'],
-  ['/actualites', IcActus, 'Annonce', 'Événement, conseil'],
+  ['/document', IcActus, 'Document', 'Publié aux familles'],
+  ['/absences', IcEleves, 'Absences', 'Du jour'],
   ['/scolarite', IcCarte, 'Encaisser', 'Paiement en espèces'],
   ['/enseignants', IcEleves, 'Enseignants', 'Comptes à valider'],
   ['/discipline', IcPhoto, 'Discipline', 'Par document'],

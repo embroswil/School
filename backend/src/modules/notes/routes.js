@@ -226,6 +226,16 @@ router.put("/evaluations/:id", async (req, res, next) => {
     // Publication : les parents et les eleves voient les notes
     if (req.body?.publiee === true && !e.publiee) {
       await db.query("UPDATE evaluations SET publiee = true WHERE id = $1", [e.id]);
+      // Fil automatique : l'information (jamais les notes elles-memes)
+      require("../../utils/fil").publierAuto({
+        schoolId: e.school_id,
+        type: "resultats",
+        categorie: "Notes",
+        titre: `Notes de ${e.matiere} publiées · ${e.classe}`,
+        corps: `${e.titre} (séquence ${e.sequence}). Les parents et les élèves les consultent dans la fiche de suivi.`,
+        audience: "tous",
+        cle: `notes-${e.id}`,
+      });
       await db
         .query(
           `INSERT INTO notifications (user_id, title, message, type, data)
@@ -332,7 +342,7 @@ const heureTxt = (p) => (p === null ? "" : `${String(Math.floor(p / 100)).padSta
 // Date du jour au Cameroun (UTC+1), pour ne pas changer de jour a minuit UTC
 const jourCameroun = () => new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10);
 
-// GET /api/notes/absences?date= : absences et retards du jour dans tout l'etablissement (administration)
+// GET /api/notes/absences?date= : absences du jour dans tout l'etablissement (administration)
 router.get("/absences", async (req, res, next) => {
   try {
     if (!["principal", "admin"].includes(req.user.role)) throw new ApiError(403, "Réservé à l’administration de l’établissement");
@@ -343,7 +353,7 @@ router.get("/absences", async (req, res, next) => {
               (SELECT COUNT(*)::int FROM parent_student_links l WHERE l.student_id = u.id) AS parents
        FROM attendance a JOIN users u ON u.id = a.student_id JOIN classes c ON c.id = a.class_id
        JOIN academic_years ay ON ay.id = c.academic_year_id
-       WHERE ay.school_id = $1 AND a.date = $2 AND a.status IN ('absent', 'late', 'excused')
+       WHERE ay.school_id = $1 AND a.date = $2 AND a.status = 'absent'
        ORDER BY c.name, u.last_name, u.first_name, a.period_number NULLS FIRST`,
       [ecole, date]
     );
@@ -362,33 +372,10 @@ router.get("/absences", async (req, res, next) => {
         date,
         classesAppel: appels.faits,
         classes: appels.classes,
-        absents: new Set(rows.filter((r) => r.status === "absent").map((r) => r.student_id)).size,
-        retards: rows.filter((r) => r.status === "late").length,
-        justifiees: rows.filter((r) => r.status === "excused").length,
+        absents: new Set(rows.map((r) => r.student_id)).size,
         lignes: rows.map((r) => ({ ...r, heure: heureTxt(r.period_number) || "Journée" })),
       },
     });
-  } catch (e) {
-    next(e);
-  }
-});
-
-// POST /api/notes/appel/:classId/justifier { studentId, date, periode, justifie }
-// L'administration justifie (ou non) une absence, apres le mot des parents
-router.post("/appel/:classId/justifier", async (req, res, next) => {
-  try {
-    if (!["principal", "admin"].includes(req.user.role)) throw new ApiError(403, "Réservé à l’administration de l’établissement");
-    const c = await verifierClasse(req.user, entier(req.params.classId));
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : null;
-    if (!date) throw new ApiError(400, "Date invalide");
-    const r = await db.query(
-      `UPDATE attendance SET status = $5, updated_at = NOW()
-       WHERE class_id = $1 AND student_id = $2 AND date = $3 AND period_number IS NOT DISTINCT FROM $4::int AND status IN ('absent', 'excused')
-       RETURNING id`,
-      [c.id, entier(req.body?.studentId), date, periodeDe(req.body?.periode), req.body?.justifie === false ? "absent" : "excused"]
-    );
-    if (!r.rowCount) throw new ApiError(404, "Absence introuvable");
-    res.json({ success: true });
   } catch (e) {
     next(e);
   }
@@ -429,7 +416,7 @@ router.get("/appel/:classId", async (req, res, next) => {
       await db.query(
         `SELECT ap.period_number AS periode,
                 (SELECT COUNT(*)::int FROM attendance a WHERE a.class_id = ap.class_id AND a.date = ap.date AND a.period_number IS NOT DISTINCT FROM ap.period_number AND a.status = 'absent') AS absents,
-                (SELECT COUNT(*)::int FROM attendance a WHERE a.class_id = ap.class_id AND a.date = ap.date AND a.period_number IS NOT DISTINCT FROM ap.period_number AND a.status = 'late') AS retards
+                0 AS retards
          FROM appels ap WHERE ap.class_id = $1 AND ap.date = $2 ORDER BY ap.period_number NULLS FIRST`,
         [c.id, date]
       )
@@ -455,7 +442,7 @@ router.put("/appel/:classId", async (req, res, next) => {
     if (ecart > 7) throw new ApiError(400, "L’appel ne peut plus être modifié au-delà de 7 jours : contactez l’administration");
     const periode = periodeDe(req.body?.periode);
     const liste = (Array.isArray(req.body?.presences) ? req.body.presences : []).filter((p) =>
-      ["present", "absent", "late", "excused"].includes(p.statut)
+      ["present", "absent"].includes(p.statut)
     );
     const avant = await db.query(
       "SELECT student_id, status FROM attendance WHERE class_id = $1 AND date = $2 AND period_number IS NOT DISTINCT FROM $3::int",
@@ -562,8 +549,7 @@ router.get("/classes/:id/bulletins", async (req, res, next) => {
         `SELECT u.id, u.first_name, u.last_name, sr.admission_number, sr.date_of_birth, sr.gender,
                 (SELECT COUNT(*)::int FROM attendance a WHERE a.student_id = u.id AND a.status = 'absent'
                    AND ($2::date IS NULL OR a.date BETWEEN $2 AND $3)) AS absences,
-                (SELECT COUNT(*)::int FROM attendance a WHERE a.student_id = u.id AND a.status = 'late'
-                   AND ($2::date IS NULL OR a.date BETWEEN $2 AND $3)) AS retards
+                0 AS retards
          FROM class_students cs JOIN users u ON u.id = cs.student_id
          LEFT JOIN student_records sr ON sr.student_id = u.id
          WHERE cs.class_id = $1 AND cs.status = 'active'
@@ -828,6 +814,16 @@ router.put("/classes/:id/decisions", async (req, res, next) => {
          ON CONFLICT (class_id, student_id) DO UPDATE SET decision = EXCLUDED.decision, observation = EXCLUDED.observation, auteur_id = EXCLUDED.auteur_id, updated_at = NOW()`,
         [c.id, entier(d.studentId), d.decision, String(d.observation || "").trim().slice(0, 300) || null, req.user.id]
       );
+    }
+    if (liste.length) {
+      require("../../utils/fil").publierAuto({
+        schoolId: c.school_id,
+        type: "resultats",
+        categorie: "Fin d’année",
+        titre: `Décisions de fin d’année · ${c.name}`,
+        corps: "Les décisions du conseil de classe (passage, redoublement) sont disponibles dans la fiche de suivi de chaque élève.",
+        cle: `decisions-${c.id}-${c.academic_year_id}`,
+      });
     }
     res.json({ success: true, data: { enregistrees: liste.length } });
   } catch (e) {

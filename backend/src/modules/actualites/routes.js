@@ -64,8 +64,8 @@ const lireMedias = (liste) => {
   const pre = prefixePublic();
   return (Array.isArray(liste) ? liste : [])
     .slice(0, 10)
-    .filter((m) => ["image", "video"].includes(m?.type) && typeof m.url === "string" && pre.length > 40 && m.url.startsWith(pre))
-    .map((m) => ({ type: m.type, url: m.url }));
+    .filter((m) => ["image", "video", "document"].includes(m?.type) && typeof m.url === "string" && pre.length > 40 && m.url.startsWith(pre))
+    .map((m) => ({ type: m.type, url: m.url, ...(m.nom ? { nom: String(m.nom).slice(0, 120) } : {}) }));
 };
 
 // GET /api/actualites?limite=20
@@ -102,8 +102,8 @@ const mesEcoles = async (u) => {
 };
 
 // GET /api/actualites/fil?ecoles=1,2&avant=ISO : fil de tous les etablissements (comme un reseau social)
-// Public : annonces, evenements, resultats destines a tous. Les conseils de discipline (noms d'eleves)
-// ne sont visibles que dans les etablissements de l'utilisateur.
+// Public : les documents destines a tous. Les informations automatiques (notes publiees, emplois du
+// temps…) et les conseils de discipline ne sont visibles que dans les etablissements de l'utilisateur.
 router.get("/fil", async (req, res, next) => {
   try {
     const miennes = await mesEcoles(req.user);
@@ -117,13 +117,13 @@ router.get("/fil", async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
               p.pinned, p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, (s.photo IS NOT NULL) AS a_photo,
-              p.medias, CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant
+              p.medias, p.categorie, p.source, CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant
        FROM publications p JOIN schools s ON s.id = p.school_id AND s.is_active LEFT JOIN users a ON a.id = p.author_id
        WHERE (cardinality($1::int[]) = 0 OR p.school_id = ANY($1))
          AND ($3::timestamp IS NULL OR p.created_at < $3)
          AND (
            (p.school_id = ANY($2) AND p.audience IN ('tous', $4))
-           OR (p.type <> 'conseil_discipline' AND p.audience IN ('tous', $4))
+           OR (p.type <> 'conseil_discipline' AND COALESCE(p.source, '') <> 'auto' AND p.audience IN ('tous', $4))
          )
        ORDER BY p.created_at DESC LIMIT 20`,
       [choisies, miennes, avant, publicRole]
@@ -144,6 +144,98 @@ router.get("/fil", async (req, res, next) => {
   }
 });
 
+// POST /api/actualites/documents { titre, categorie, description, audience, fichiers: [{ type, url, nom }] }
+// Etablissement et enseignants : tout document televerse (communique, emploi du temps,
+// resultats, calendrier…) apparait automatiquement dans le fil d'informations.
+router.post("/documents", async (req, res, next) => {
+  try {
+    if (!["principal", "teacher"].includes(req.user.role)) throw new ApiError(403, "Réservé à l’établissement et aux enseignants");
+    const { categorieDe, devinerCategorie } = require("../../utils/fil");
+    const b = req.body || {};
+    const medias = lireMedias(b.fichiers);
+    if (!medias.length) throw new ApiError(400, "Ajoutez au moins un fichier (PDF ou photo)");
+    const titre = texte(b.titre, 200) || texte(medias[0].nom, 200) || "Document";
+    const [cle, libelle, type] = categorieDe(b.categorie || devinerCategorie(`${titre} ${medias[0].nom || ""}`));
+    const audience = PUBLICS.includes(b.audience) ? b.audience : "tous";
+    const date = /^\d{4}-\d{2}-\d{2}/.test(b.dateEvenement || "") ? b.dateEvenement : null;
+    const { rows } = await db.query(
+      `INSERT INTO publications (school_id, author_id, type, title, body, audience, medias, categorie, source, event_date, event_place)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'document', $9, $10) RETURNING id`,
+      [req.user.schoolId, req.user.id, type, titre, texte(b.description, 2000) || null, audience, JSON.stringify(medias), libelle, date, texte(b.lieu, 200) || null]
+    );
+    res.status(201).json({ success: true, data: { id: rows[0].id, categorie: cle } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /api/actualites/documents/analyser { url, mime, nom }
+// Lecture du document par l'IA : categorie, titre, resume, date d'evenement ; et detection des
+// documents qui n'ont pas leur place dans le fil (listes d'eleves, discipline, notes nominatives).
+// Sans cle IA : categorie devinee d'apres le nom du fichier.
+router.post("/documents/analyser", async (req, res, next) => {
+  try {
+    if (!["principal", "teacher"].includes(req.user.role)) throw new ApiError(403, "Accès réservé");
+    const { CATEGORIES, devinerCategorie } = require("../../utils/fil");
+    const { prefixePublic } = require("../medias/routes");
+    const url = String(req.body?.url || "");
+    const nom = texte(req.body?.nom, 120);
+    const repli = { categorie: devinerCategorie(nom), titre: nom.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim(), resume: "", ia: false };
+    if (!process.env.ANTHROPIC_API_KEY || !url.startsWith(prefixePublic())) return res.json({ success: true, data: repli });
+    const r = await fetch(url);
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!r.ok || buf.length > 15 * 1024 * 1024) return res.json({ success: true, data: repli });
+    const mime = String(req.body?.mime || "");
+    const b64 = buf.toString("base64");
+    const { lireDocument } = require("../../utils/ia");
+    const liste = CATEGORIES.map((c) => c[0]).join(", ");
+    const j = await lireDocument({
+      images: mime.startsWith("image/") ? [`data:${mime === "image/png" ? "image/png" : mime === "image/webp" ? "image/webp" : "image/jpeg"};base64,${b64}`] : [],
+      pdfs: mime === "application/pdf" ? [b64] : [],
+      maxTokens: 800,
+      consigne: `Tu aides un établissement scolaire camerounais. Ce document vient d'être téléversé pour être affiché aux familles.
+Renvoie : {"nature": "information" | "liste_eleves" | "discipline" | "notes_nominatives", "categorie": une valeur parmi [${liste}],
+"titre": titre court et clair (max 80 caractères), "resume": 1 à 2 phrases utiles aux parents (max 250 caractères),
+"date_evenement": "AAAA-MM-JJ" ou null, "lieu": texte ou null}.
+"liste_eleves" : une liste nominative d'élèves (liste de classe, effectifs nominatifs). "discipline" : sanctions, conseil de discipline,
+exclusions. "notes_nominatives" : relevé de notes ou bulletins d'élèves nommés. Sinon "information".`,
+    });
+    res.json({
+      success: true,
+      data: {
+        nature: ["liste_eleves", "discipline", "notes_nominatives"].includes(j.nature) ? j.nature : "information",
+        categorie: CATEGORIES.some((c) => c[0] === j.categorie) ? j.categorie : repli.categorie,
+        titre: texte(j.titre, 200) || repli.titre,
+        resume: texte(j.resume, 500),
+        dateEvenement: /^\d{4}-\d{2}-\d{2}$/.test(j.date_evenement || "") ? j.date_evenement : null,
+        lieu: texte(j.lieu, 120) || null,
+        ia: true,
+      },
+    });
+  } catch (e) {
+    // En cas d'echec de la lecture, on retombe sur le nom du fichier
+    const { devinerCategorie } = require("../../utils/fil");
+    const nom = texte(req.body?.nom, 120);
+    res.json({ success: true, data: { categorie: devinerCategorie(nom), titre: nom.replace(/\.[a-z0-9]+$/i, ""), resume: "", ia: false } });
+  }
+});
+
+// GET /api/actualites/documents : documents de l'etablissement (gestion)
+router.get("/documents", async (req, res, next) => {
+  try {
+    if (!["principal", "teacher"].includes(req.user.role)) throw new ApiError(403, "Accès réservé");
+    const { rows } = await db.query(
+      `SELECT p.id, p.title, p.categorie, p.audience, p.medias, p.created_at, p.author_id, u.first_name, u.last_name
+       FROM publications p LEFT JOIN users u ON u.id = p.author_id
+       WHERE p.school_id = $1 AND p.source = 'document' ORDER BY p.created_at DESC LIMIT 100`,
+      [req.user.schoolId]
+    );
+    res.json({ success: true, data: rows.map((r) => ({ ...r, mien: r.author_id === req.user.id })) });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // GET /api/actualites/:id/detail : une information complete (memes regles de visibilite que le fil)
 router.get("/:id/detail", async (req, res, next) => {
   try {
@@ -151,13 +243,13 @@ router.get("/:id/detail", async (req, res, next) => {
     const publicRole = PUBLIC_DU_ROLE[req.user.role] || "tous";
     const { rows } = await db.query(
       `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
-              p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, p.medias,
+              p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, p.medias, p.categorie, p.source,
               CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant
        FROM publications p JOIN schools s ON s.id = p.school_id LEFT JOIN users a ON a.id = p.author_id
        WHERE p.id = $1 AND (
          $4::boolean
          OR (p.school_id = ANY($2) AND p.audience IN ('tous', $3))
-         OR (p.type <> 'conseil_discipline' AND p.audience IN ('tous', $3)))`,
+         OR (p.type <> 'conseil_discipline' AND COALESCE(p.source, '') <> 'auto' AND p.audience IN ('tous', $3)))`,
       [parseInt(req.params.id, 10) || 0, miennes, publicRole, ["admin"].includes(req.user.role) || (req.user.role === "principal" || req.user.role === "teacher")]
     );
     const p = rows[0];
@@ -174,7 +266,8 @@ router.get("/:id/detail", async (req, res, next) => {
 // POST /api/actualites (administrateur de l'etablissement)
 router.post("/", async (req, res, next) => {
   try {
-    if (!peutPoster(req.user)) throw new ApiError(403, "Seuls l'établissement et les enseignants peuvent publier");
+    // Le fil n'est plus alimente a la main : les documents televerses y apparaissent automatiquement
+    if (req.user.role !== "admin") throw new ApiError(403, "Le fil se remplit automatiquement : téléversez un document (bouton + › Document)");
     const ecole = ecoleDe(req);
     const b = req.body || {};
     let type = TYPES.includes(b.type) ? b.type : "annonce";

@@ -3,11 +3,10 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 
+// Seules les absences sont enregistrees
 const STATUTS = [
-  ['present', 'P', 'Présent', 'var(--ok)'],
+  ['present', 'P', 'Présent', '#2f6bff'],
   ['absent', 'A', 'Absent', 'var(--danger)'],
-  ['late', 'R', 'Retard', '#c25a00'],
-  ['excused', 'J', 'Justifié', 'var(--muted)'],
 ]
 
 // Date du jour sur le telephone (et non en temps universel)
@@ -42,19 +41,9 @@ export default function Appel({ id }) {
     const t = maintenantHHMM()
     const enCours = d.data.cours.find((c) => Number(c.debut.replace(':', '')) <= t && t < Number(c.fin.replace(':', '')))
     const suivant = d.data.cours.find((c) => !c.fait)
-    const choix = enCours || suivant
+    const choix = enCours || suivant || d.data.cours[d.data.cours.length - 1]
     if (choix) setPeriode(choix.periode)
   }, [d.data, auto, periode])
-
-  async function justifier(e, oui) {
-    setError('')
-    try {
-      await api.post(`/api/notes/appel/${id}/justifier`, { studentId: e.id, date, periode, justifie: oui })
-      d.reload()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
 
   async function enregistrer() {
     setError('')
@@ -95,6 +84,9 @@ export default function Appel({ id }) {
         }}
         style={{ marginBottom: 12 }}
       />
+      {d.data && !d.data.cours?.length && (
+        <Note kind="ok">Pas d’emploi du temps pour ce jour : l’appel vaut pour toute la journée. L’établissement saisit l’emploi du temps de chaque classe.</Note>
+      )}
       {d.data?.cours?.length > 0 && (
         <div className="chips">
           {d.data.cours.map((c) => (
@@ -103,9 +95,6 @@ export default function Appel({ id }) {
               {c.debut} {c.matiere || ''}
             </button>
           ))}
-          <button type="button" className="chip" aria-pressed={periode === null} onClick={() => setPeriode(null)}>
-            Toute la journée
-          </button>
         </div>
       )}
       {!modif && d.data?.resume?.length > 0 && (
@@ -115,7 +104,7 @@ export default function Appel({ id }) {
             <div key={r.heure} style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span className="muted">{r.heure}</span>
               <span>
-                {r.absents} absent(s) · {r.retards} retard(s)
+                {r.absents} absent(s)
               </span>
             </div>
           ))}
@@ -128,7 +117,7 @@ export default function Appel({ id }) {
             : (
               <>
                 {d.data.faite && modif ? '✓ Appel déjà fait ce jour (modifiable). ' : ''}
-                {compte('present')} présent(s) · {compte('absent')} absent(s) · {compte('late')} retard(s) · {compte('excused')} justifié(s)
+                {compte('present')} présent(s) · {compte('absent')} absent(s)
               </>
             )}
         </p>
@@ -152,18 +141,8 @@ export default function Appel({ id }) {
                 {!modif ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 800, color: (STATUTS.find((s) => s[0] === e.status) || [])[3] || 'var(--muted)' }}>
-                      {e.status ? (STATUTS.find((s) => s[0] === e.status) || [])[2] : '—'}
+                      {e.status ? (STATUTS.find((s) => s[0] === e.status) || [])[2] || 'Présent' : '—'}
                     </span>
-                    {e.status === 'absent' && (
-                      <button type="button" className="btn btn-quiet" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => justifier(e, true)}>
-                        Justifier
-                      </button>
-                    )}
-                    {e.status === 'excused' && (
-                      <button type="button" className="btn btn-quiet" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => justifier(e, false)}>
-                        Annuler
-                      </button>
-                    )}
                   </span>
                 ) : (
                 <div style={{ display: 'flex', gap: 4 }}>
@@ -195,8 +174,8 @@ export default function Appel({ id }) {
           </ul>
           {modif && (
             <p className="muted" style={{ fontSize: 13, margin: '8px 4px' }}>
-              P : présent · A : absent · R : retard · J : absence justifiée. Les parents des absents reçoivent une notification. Faites l’appel à
-              chaque heure de cours (choisissez le cours en haut).
+              Touchez A pour les absents. Le cours est choisi automatiquement selon l’emploi du temps de la classe ; les parents des absents sont
+              prévenus.
             </p>
           )}
           {modif && (

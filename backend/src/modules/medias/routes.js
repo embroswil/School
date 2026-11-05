@@ -18,6 +18,7 @@ const TYPES = {
   "video/mp4": ["video", "mp4", 50],
   "video/quicktime": ["video", "mov", 50],
   "video/webm": ["video", "webm", 50],
+  "application/pdf": ["document", "pdf", 20],
 };
 const base = () => String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const prefixePublic = () => `${base()}/storage/v1/object/public/${BUCKET}/`;

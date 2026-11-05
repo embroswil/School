@@ -366,3 +366,10 @@ ALTER TABLE paiements_abonnement ADD CONSTRAINT paiements_abonnement_statut_chec
 
 -- Statut « scolarite reglee » : acces rapide aux paiements d'un eleve
 CREATE INDEX IF NOT EXISTS idx_paiements_eleve_frais ON paiements_scolaires (student_id, frais_id) WHERE statut = 'reussi';
+
+-- Fil automatique : documents televerses et informations generees par School
+ALTER TABLE publications ADD COLUMN IF NOT EXISTS categorie VARCHAR(60);
+ALTER TABLE publications ADD COLUMN IF NOT EXISTS source VARCHAR(20);
+ALTER TABLE publications ADD COLUMN IF NOT EXISTS cle_auto VARCHAR(120);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_publications_cle_auto ON publications (cle_auto) WHERE cle_auto IS NOT NULL;
+-- (Supabase Storage : le bucket « medias » accepte aussi application/pdf)

@@ -78,23 +78,15 @@ function Presences({ id }) {
   if (!d.data) return <p className="muted">Chargement…</p>
   return (
     <>
-      <div className="stats" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginTop: 0 }}>
+      <div className="stats" style={{ gridTemplateColumns: '1fr', marginTop: 0 }}>
         <div className="stat">
           <b style={{ color: d.data.absences ? 'var(--danger)' : undefined }}>{d.data.absences}</b>
-          <span>absences</span>
-        </div>
-        <div className="stat">
-          <b>{d.data.retards}</b>
-          <span>retards</span>
-        </div>
-        <div className="stat">
-          <b>{d.data.justifiees}</b>
-          <span>justifiées</span>
+          <span>heure(s) d’absence cette année</span>
         </div>
       </div>
       {d.data.evenements.length === 0 ? (
         <p className="muted" style={{ marginTop: 14 }}>
-          Aucune absence ni retard. 👏
+          Aucune absence. 👏
         </p>
       ) : (
         <ul className="rows" style={{ marginTop: 14 }}>

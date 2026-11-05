@@ -109,9 +109,9 @@ function Bulletin({ d, b, classId }) {
           </div>
         )}
         <div>
-          <span>Absences non justifiées · retards</span>
+          <span>Heures d’absence</span>
           <b>
-            {b.absences} · {b.retards}
+            {b.absences}
           </b>
         </div>
       </div>

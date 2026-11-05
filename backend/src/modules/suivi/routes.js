@@ -83,7 +83,7 @@ router.get("/eleves", async (req, res, next) => {
       }
       const abs = (
         await db.query(
-          `SELECT COUNT(*) FILTER (WHERE status = 'absent')::int AS absences, COUNT(*) FILTER (WHERE status = 'late')::int AS retards
+          `SELECT COUNT(*) FILTER (WHERE status = 'absent')::int AS absences, 0 AS retards
            FROM attendance WHERE student_id = $1 AND date >= date_trunc('month', CURRENT_DATE)`,
           [id]
         )
@@ -166,13 +166,13 @@ router.get("/eleves/:id/presences", async (req, res, next) => {
     await verifierAcces(req.user, id);
     const { rows } = await db.query(
       `SELECT a.date, a.status, c.name AS classe FROM attendance a JOIN classes c ON c.id = a.class_id
-       WHERE a.student_id = $1 AND a.status <> 'present' ORDER BY a.date DESC LIMIT 200`,
+       WHERE a.student_id = $1 AND a.status = 'absent' ORDER BY a.date DESC LIMIT 200`,
       [id]
     );
     const total = (
       await db.query(
-        `SELECT COUNT(*) FILTER (WHERE status = 'absent')::int AS absences, COUNT(*) FILTER (WHERE status = 'late')::int AS retards,
-                COUNT(*) FILTER (WHERE status = 'excused')::int AS justifiees, COUNT(*)::int AS jours
+        `SELECT COUNT(*) FILTER (WHERE status = 'absent')::int AS absences, 0 AS retards,
+                0 AS justifiees, COUNT(*)::int AS jours
          FROM attendance WHERE student_id = $1`,
         [id]
       )
