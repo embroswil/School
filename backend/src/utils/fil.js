@@ -25,6 +25,7 @@ const publierAuto = async ({ schoolId, type = "autre", titre, corps = null, cate
 
 // Categories de documents, reconnues automatiquement d'apres le nom du fichier
 const CATEGORIES = [
+  ["absences", "Récapitulatif des absences", "autre", /absence|absent/i],
   ["communique", "Communiqué", "annonce", /communiqu|note de service|note-de-service|avis|information/i],
   ["reunion", "Réunion", "evenement", /r[ée]union|assembl[ée]e|apee|parents/i],
   ["emploi", "Emploi du temps", "autre", /emploi|edt|horaire|planning/i],

@@ -40,7 +40,7 @@ export default function Evaluation({ id }) {
         })),
         publiee: publier ? true : undefined,
       })
-      setOk(publier ? 'Notes publiées : les parents et les élèves sont notifiés.' : 'Notes enregistrées (brouillon).')
+      setOk('Notes enregistrées et publiées : parents et élèves sont notifiés, et le résumé apparaît dans le fil de l’établissement.')
       d.reload()
     } catch (err) {
       setError(err.message)
@@ -77,11 +77,8 @@ export default function Evaluation({ id }) {
               {saisies}/{eleves.length} notes
             </b>
           </div>
-          <button type="button" className="btn btn-quiet" style={{ padding: '10px 12px', fontSize: 14 }} disabled={busy} onClick={() => enregistrer(false)}>
-            Enregistrer
-          </button>
-          <button type="button" className="btn" style={{ padding: '10px 12px', fontSize: 14 }} disabled={busy} onClick={() => enregistrer(true)}>
-            {ev.publiee ? 'Mettre à jour' : 'Publier'}
+          <button type="button" className="btn" style={{ padding: '10px 14px', fontSize: 14 }} disabled={busy} onClick={() => enregistrer(true)}>
+            {busy ? 'Enregistrement…' : 'Enregistrer'}
           </button>
         </div>
       </div>

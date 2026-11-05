@@ -20,7 +20,7 @@ const NAV = {
   ],
   teacher: [
     ['/', IcAccueil, 'Accueil'],
-    ['/document', IcPlus, 'Documents'],
+    ['/info', IcPlus, 'Informer'],
     ['/messages', IcMessages, 'Messages'],
     ['/compte', IcProfil, 'Profil'],
   ],
@@ -49,6 +49,9 @@ const TITRES = {
   '/actualites': 'Actualités',
   '/publier': 'Documents',
   '/document': 'Documents',
+  '/info': 'Information',
+  '/presence-enseignants': 'Enseignants',
+  '/mon-absence': 'Mon absence',
   '/infos': 'Information',
   '/guide': 'Guide',
   '/absences': 'Absences du jour',
@@ -78,12 +81,12 @@ const TITRES = {
 }
 
 const ACTIONS = [
-  ['/import-eleves', IcImport, 'Élèves', 'Importer une liste'],
-  ['/document', IcActus, 'Document', 'Publié aux familles'],
-  ['/absences', IcEleves, 'Absences', 'Du jour'],
-  ['/scolarite', IcCarte, 'Encaisser', 'Paiement en espèces'],
-  ['/enseignants', IcEleves, 'Enseignants', 'Comptes à valider'],
-  ['/discipline', IcPhoto, 'Discipline', 'Par document'],
+  ['/info', IcActus, 'Informer', 'Info, cours, photos'],
+  ['/document', IcImport, 'Document', 'PDF ou photo'],
+  ['/scolarite', IcCarte, 'Encaisser', 'Paiement au guichet'],
+  ['/absences', IcEleves, 'Absences', 'Élèves du jour'],
+  ['/presence-enseignants', IcPhoto, 'Enseignants', 'Cours assurés'],
+  ['/import-eleves', IcPlus, 'Élèves', 'Importer une liste'],
 ]
 
 export default function Shell({ path, children }) {

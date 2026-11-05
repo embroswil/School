@@ -41,6 +41,9 @@ import TrouverEleve from './pages/TrouverEleve.jsx'
 import PayerEleve from './pages/PayerEleve.jsx'
 import Rattachements from './pages/Rattachements.jsx'
 import Documents from './pages/Documents.jsx'
+import InfoPublier from './pages/InfoPublier.jsx'
+import PresenceEnseignants from './pages/PresenceEnseignants.jsx'
+import MonAbsence from './pages/MonAbsence.jsx'
 import InfoDetail from './pages/InfoDetail.jsx'
 import { Confidentialite, Conditions } from './pages/Legal.jsx'
 import Guide from './pages/Guide.jsx'
@@ -118,6 +121,9 @@ function Pages({ path }) {
   if (path === '/absences') return reserve(['principal', 'admin'].includes(user.role), <AbsencesJour />)
   const infoMatch = path.match(/^\/infos\/(\d+)$/)
   if (infoMatch) return <InfoDetail key={infoMatch[1]} id={Number(infoMatch[1])} />
+  if (path === '/info') return reserve(['principal', 'teacher'].includes(user.role), <InfoPublier />)
+  if (path === '/presence-enseignants') return reserve(user.role === 'principal', <PresenceEnseignants />)
+  if (path === '/mon-absence') return reserve(user.role === 'teacher', <MonAbsence />)
   if (path === '/document' || path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Documents />)
   if (path === '/trouver-eleve') return reserve(user.role === 'parent', <TrouverEleve />)
   if (path === '/rattachements') return reserve(user.role === 'principal', <Rattachements />)

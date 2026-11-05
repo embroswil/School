@@ -226,16 +226,6 @@ router.put("/evaluations/:id", async (req, res, next) => {
     // Publication : les parents et les eleves voient les notes
     if (req.body?.publiee === true && !e.publiee) {
       await db.query("UPDATE evaluations SET publiee = true WHERE id = $1", [e.id]);
-      // Fil automatique : l'information (jamais les notes elles-memes)
-      require("../../utils/fil").publierAuto({
-        schoolId: e.school_id,
-        type: "resultats",
-        categorie: "Notes",
-        titre: `Notes de ${e.matiere} publiées · ${e.classe}`,
-        corps: `${e.titre} (séquence ${e.sequence}). Les parents et les élèves les consultent dans la fiche de suivi.`,
-        audience: "tous",
-        cle: `notes-${e.id}`,
-      });
       await db
         .query(
           `INSERT INTO notifications (user_id, title, message, type, data)
@@ -252,11 +242,48 @@ router.put("/evaluations/:id", async (req, res, next) => {
     } else if (req.body?.publiee === false) {
       await db.query("UPDATE evaluations SET publiee = false WHERE id = $1", [e.id]);
     }
+    // Fil de l'etablissement : chaque evaluation publiee, avec tous ses details (mis a jour a chaque modification)
+    if (req.body?.publiee === true || (e.publiee && req.body?.publiee !== false)) await publierNotesAuFil(e);
     res.json({ success: true });
   } catch (err) {
     next(err);
   }
 });
+
+// Publie (ou met a jour) dans le fil de l'etablissement le resume d'une evaluation :
+// classe, matiere, sequence, numero du controle, date, bareme et statistiques de la classe.
+// Les notes de chaque eleve restent visibles uniquement par l'eleve et ses parents.
+async function publierNotesAuFil(e) {
+  try {
+    const st = (
+      await db.query(
+        `SELECT COUNT(note)::int AS notes, ROUND(AVG(note)::numeric, 2) AS moyenne, MAX(note) AS max, MIN(note) AS min,
+                COUNT(*) FILTER (WHERE note >= $2 / 2.0)::int AS reussite, COUNT(*) FILTER (WHERE absent)::int AS absents,
+                (SELECT COUNT(*)::int FROM evaluations x WHERE x.class_id = $3 AND x.subject_id = $4 AND x.sequence = $5 AND x.id <= $1) AS numero
+         FROM notes_eleves WHERE evaluation_id = $1`,
+        [e.id, Number(e.bareme), e.class_id, e.subject_id, e.sequence]
+      )
+    ).rows[0];
+    if (!st.notes) return;
+    const nb = (v) => String(Number(v)).replace(".", ",");
+    const date = e.date_eval ? new Date(e.date_eval).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : null;
+    await require("../../utils/fil").publierAuto({
+      schoolId: e.school_id,
+      type: "resultats",
+      categorie: "Notes",
+      titre: `${e.matiere} · ${e.classe} · contrôle n° ${st.numero} (séquence ${e.sequence})`,
+      corps:
+        `${e.titre}${date ? ` du ${date}` : ""} · noté sur ${nb(e.bareme)}.\n` +
+        `Moyenne de la classe : ${nb(st.moyenne)} · plus haute : ${nb(st.max)} · plus basse : ${nb(st.min)}.\n` +
+        `${st.reussite} élève(s) sur ${st.notes} ont la moyenne${st.absents ? ` · ${st.absents} absent(s)` : ""}.\n` +
+        "Chaque parent voit la note de son enfant dans sa fiche de suivi.",
+      audience: "tous",
+      cle: `notes-${e.id}`,
+    });
+  } catch (_) {
+    /* le fil n'empeche jamais l'enregistrement des notes */
+  }
+}
 
 router.delete("/evaluations/:id", async (req, res, next) => {
   try {

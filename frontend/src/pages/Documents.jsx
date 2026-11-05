@@ -113,6 +113,9 @@ export default function Documents() {
     <>
       <h1 className="page-title">Documents</h1>
       <p className="lede">Téléversez un communiqué, un emploi du temps, un calendrier, des résultats… School le lit, le classe et l’affiche automatiquement aux familles.</p>
+      <a className="btn btn-quiet btn-block" href="#/info" style={{ marginBottom: 12 }}>
+        ✏️ Plutôt écrire une information (avec photos)
+      </a>
       <input ref={champ} type="file" hidden multiple accept="application/pdf,image/*" onChange={choisir} />
       {!fichiers.length && (
         <button type="button" className="depot" onClick={() => champ.current?.click()} disabled={Boolean(etat)}>

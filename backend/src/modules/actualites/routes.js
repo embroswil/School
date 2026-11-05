@@ -123,7 +123,7 @@ router.get("/fil", async (req, res, next) => {
          AND ($3::timestamp IS NULL OR p.created_at < $3)
          AND (
            (p.school_id = ANY($2) AND p.audience IN ('tous', $4))
-           OR (p.type <> 'conseil_discipline' AND COALESCE(p.source, '') <> 'auto' AND p.audience IN ('tous', $4))
+           OR (p.type <> 'conseil_discipline' AND COALESCE(p.source, '') NOT IN ('auto', 'prive') AND p.audience IN ('tous', $4))
          )
        ORDER BY p.created_at DESC LIMIT 20`,
       [choisies, miennes, avant, publicRole]
@@ -158,10 +158,13 @@ router.post("/documents", async (req, res, next) => {
     const [cle, libelle, type] = categorieDe(b.categorie || devinerCategorie(`${titre} ${medias[0].nom || ""}`));
     const audience = PUBLICS.includes(b.audience) ? b.audience : "tous";
     const date = /^\d{4}-\d{2}-\d{2}/.test(b.dateEvenement || "") ? b.dateEvenement : null;
+    // Le recapitulatif des absences (nominatif) est reserve aux familles de l'etablissement, et a l'administration
+    if (cle === "absences" && req.user.role !== "principal") throw new ApiError(403, "Le récapitulatif des absences est publié par l’administration");
     const { rows } = await db.query(
       `INSERT INTO publications (school_id, author_id, type, title, body, audience, medias, categorie, source, event_date, event_place)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'document', $9, $10) RETURNING id`,
-      [req.user.schoolId, req.user.id, type, titre, texte(b.description, 2000) || null, audience, JSON.stringify(medias), libelle, date, texte(b.lieu, 200) || null]
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+      [req.user.schoolId, req.user.id, type, titre, texte(b.description, 2000) || null, audience, JSON.stringify(medias), libelle,
+       cle === "absences" ? "prive" : "document", date, texte(b.lieu, 200) || null]
     );
     res.status(201).json({ success: true, data: { id: rows[0].id, categorie: cle } });
   } catch (e) {
@@ -194,17 +197,18 @@ router.post("/documents/analyser", async (req, res, next) => {
       pdfs: mime === "application/pdf" ? [b64] : [],
       maxTokens: 800,
       consigne: `Tu aides un établissement scolaire camerounais. Ce document vient d'être téléversé pour être affiché aux familles.
-Renvoie : {"nature": "information" | "liste_eleves" | "discipline" | "notes_nominatives", "categorie": une valeur parmi [${liste}],
+Renvoie : {"nature": "information" | "absences" | "liste_eleves" | "discipline" | "notes_nominatives", "categorie": une valeur parmi [${liste}],
 "titre": titre court et clair (max 80 caractères), "resume": 1 à 2 phrases utiles aux parents (max 250 caractères),
 "date_evenement": "AAAA-MM-JJ" ou null, "lieu": texte ou null}.
-"liste_eleves" : une liste nominative d'élèves (liste de classe, effectifs nominatifs). "discipline" : sanctions, conseil de discipline,
+"absences" : un récapitulatif des absences d'élèves (par mois, par séquence…) : categorie "absences".
+"liste_eleves" : une liste nominative d'élèves sans autre information (liste de classe, effectifs nominatifs). "discipline" : sanctions, conseil de discipline,
 exclusions. "notes_nominatives" : relevé de notes ou bulletins d'élèves nommés. Sinon "information".`,
     });
     res.json({
       success: true,
       data: {
         nature: ["liste_eleves", "discipline", "notes_nominatives"].includes(j.nature) ? j.nature : "information",
-        categorie: CATEGORIES.some((c) => c[0] === j.categorie) ? j.categorie : repli.categorie,
+        categorie: j.nature === "absences" ? "absences" : CATEGORIES.some((c) => c[0] === j.categorie) ? j.categorie : repli.categorie,
         titre: texte(j.titre, 200) || repli.titre,
         resume: texte(j.resume, 500),
         dateEvenement: /^\d{4}-\d{2}-\d{2}$/.test(j.date_evenement || "") ? j.date_evenement : null,
@@ -220,6 +224,59 @@ exclusions. "notes_nominatives" : relevé de notes ou bulletins d'élèves nomm�
   }
 });
 
+// POST /api/actualites/infos { genre: 'info'|'cours'|'evenement', titre, texte, classeId, date, heure, lieu, photos: [{type,url}], image }
+// Une information a faire passer (cours supplementaire, changement de salle, reunion…), avec photos.
+// Les cours supplementaires ne concernent que l'etablissement : visibles de ses seules familles.
+router.post("/infos", async (req, res, next) => {
+  try {
+    if (!["principal", "teacher"].includes(req.user.role)) throw new ApiError(403, "Réservé à l’établissement et aux enseignants");
+    const b = req.body || {};
+    const genre = ["info", "cours", "evenement"].includes(b.genre) ? b.genre : "info";
+    const corps = texte(b.texte, 3000);
+    if (!corps) throw new ApiError(400, "Écrivez l’information à faire passer");
+    let classe = null;
+    if (b.classeId) {
+      classe = (
+        await db.query(
+          "SELECT c.id, c.name FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id WHERE c.id = $1 AND ay.school_id = $2",
+          [parseInt(b.classeId, 10) || 0, req.user.schoolId]
+        )
+      ).rows[0];
+      if (!classe) throw new ApiError(404, "Classe introuvable");
+    }
+    if (genre === "cours" && !classe) throw new ApiError(400, "Choisissez la classe du cours");
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || "") ? b.date : null;
+    const heure = /^\d{2}:\d{2}$/.test(b.heure || "") ? b.heure : null;
+    const quand = date ? `${date}T${heure || "08:00"}:00` : null;
+    const titre =
+      texte(b.titre, 200) ||
+      (genre === "cours" ? `Cours supplémentaire · ${classe.name}` : genre === "evenement" ? "Événement" : "Information") +
+        (genre !== "cours" && classe ? ` · ${classe.name}` : "");
+    const photos = lireMedias(b.photos).filter((m) => m.type === "image");
+    const image = typeof b.image === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(b.image) && b.image.length < 700000 ? b.image : null;
+    const { rows } = await db.query(
+      `INSERT INTO publications (school_id, author_id, type, title, body, event_date, event_place, audience, medias, image, categorie, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'tous', $8, $9, $10, $11) RETURNING id`,
+      [
+        req.user.schoolId,
+        req.user.id,
+        genre === "evenement" || genre === "cours" ? "evenement" : "annonce",
+        titre,
+        corps,
+        quand,
+        texte(b.lieu, 200) || null,
+        JSON.stringify(photos),
+        image,
+        genre === "cours" ? "Cours supplémentaire" : genre === "evenement" ? "Événement" : "Information",
+        genre === "cours" ? "prive" : "info",
+      ]
+    );
+    res.status(201).json({ success: true, data: { id: rows[0].id } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // GET /api/actualites/documents : documents de l'etablissement (gestion)
 router.get("/documents", async (req, res, next) => {
   try {
@@ -227,7 +284,7 @@ router.get("/documents", async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT p.id, p.title, p.categorie, p.audience, p.medias, p.created_at, p.author_id, u.first_name, u.last_name
        FROM publications p LEFT JOIN users u ON u.id = p.author_id
-       WHERE p.school_id = $1 AND p.source = 'document' ORDER BY p.created_at DESC LIMIT 100`,
+       WHERE p.school_id = $1 AND p.source IN ('document', 'info', 'prive') ORDER BY p.created_at DESC LIMIT 100`,
       [req.user.schoolId]
     );
     res.json({ success: true, data: rows.map((r) => ({ ...r, mien: r.author_id === req.user.id })) });
@@ -249,7 +306,7 @@ router.get("/:id/detail", async (req, res, next) => {
        WHERE p.id = $1 AND (
          $4::boolean
          OR (p.school_id = ANY($2) AND p.audience IN ('tous', $3))
-         OR (p.type <> 'conseil_discipline' AND COALESCE(p.source, '') <> 'auto' AND p.audience IN ('tous', $3)))`,
+         OR (p.type <> 'conseil_discipline' AND COALESCE(p.source, '') NOT IN ('auto', 'prive') AND p.audience IN ('tous', $3)))`,
       [parseInt(req.params.id, 10) || 0, miennes, publicRole, ["admin"].includes(req.user.role) || (req.user.role === "principal" || req.user.role === "teacher")]
     );
     const p = rows[0];

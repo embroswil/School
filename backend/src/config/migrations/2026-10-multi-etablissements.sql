@@ -373,3 +373,11 @@ ALTER TABLE publications ADD COLUMN IF NOT EXISTS source VARCHAR(20);
 ALTER TABLE publications ADD COLUMN IF NOT EXISTS cle_auto VARCHAR(120);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_publications_cle_auto ON publications (cle_auto) WHERE cle_auto IS NOT NULL;
 -- (Supabase Storage : le bucket « medias » accepte aussi application/pdf)
+
+-- Presence des enseignants : absences signalees (par l'enseignant ou l'administration)
+CREATE TABLE IF NOT EXISTS absences_enseignants (
+  id SERIAL PRIMARY KEY, school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, date DATE NOT NULL, motif VARCHAR(300),
+  declare_par INTEGER REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(), UNIQUE (teacher_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_absences_enseignants ON absences_enseignants (school_id, date);

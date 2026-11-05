@@ -6,7 +6,7 @@ import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
-import { IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcEcole, IcEleves, IcImport, IcPhoto, IcPlus, IcProfil } from '../icones.jsx'
+import { IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcEcole, IcEleves, IcImport, IcMessages, IcPhoto, IcPlus, IcProfil, IcCasquette, IcGraphique } from '../icones.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -247,65 +247,87 @@ function EnteteEtablissement({ d, onChange }) {
   )
 }
 
+// Grande tuile de l'accueil (etablissement et enseignant)
+function Tuile({ href, Icone, titre, texte, chiffre, alerte }) {
+  return (
+    <a className={`grande-tuile ${alerte ? 'alerte' : ''}`} href={href}>
+      <span className="gt-ico">
+        <Icone size={22} />
+      </span>
+      {chiffre !== undefined && <b className="gt-chiffre">{chiffre}</b>}
+      <b className="gt-titre">{titre}</b>
+      <span className="gt-texte">{texte}</span>
+    </a>
+  )
+}
+
+const aujourdhuiLocal = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Accueil de l'etablissement : la journee en 3 chiffres, ce qui attend, puis 6 grandes portes d'entree
 function EspaceEtablissement() {
   const t = useApi('/api/etablissement/tableau')
-  const confirmer = useApi('/api/scolarite/a-confirmer')
+  const abs = useApi(`/api/notes/absences?date=${aujourdhuiLocal()}`)
+  const prof = useApi(`/api/presence-enseignants?date=${aujourdhuiLocal()}`)
+  const ordres = useApi('/api/scolarite/ordres?statut=paye,litige')
+  const demandes = useApi('/api/familles/demandes')
   const d = t.data || {}
-  const nbConfirmer = confirmer.data?.length || 0
-  const urgences = (d.enseignants_attente || 0) + nbConfirmer
+  const sansAppel = prof.data ? prof.data.cours.filter((c) => c.etat === 'sans_appel').length + prof.data.absences.length : null
+  const aConfirmer = ordres.data?.length ?? null
+  const taches = [
+    d.eleves === 0 && ['#/import-eleves', 'Ajoutez vos élèves', 'Importez vos listes de classe (Excel, PDF ou photo)'],
+    d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`, 'Vérifiez et validez leurs comptes'],
+    demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`, 'Demandes de suivi d’un élève'],
+    d.eleves_sans_classe > 0 && ['#/eleves', `${d.eleves_sans_classe} élève(s) sans classe`, 'À placer dans leur classe'],
+  ].filter(Boolean)
   return (
     <>
       {t.error && (
         <div className="note note-error" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <span>{t.error}</span>
-          <button type="button" className="btn btn-quiet" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => (t.reload(), confirmer.reload())}>
+          <button type="button" className="btn btn-quiet" style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => t.reload()}>
             Réessayer
           </button>
         </div>
       )}
       <EnteteEtablissement d={d} onChange={() => t.reload()} />
-      <div className="stats">
-        <a className="stat" href="#/eleves" style={{ color: 'inherit' }}>
-          <b>{d.eleves ?? '…'}</b>
-          <span>élèves</span>
+
+      <h2 className="section-title">Aujourd’hui</h2>
+      <div className="jour-chiffres">
+        <a href="#/absences">
+          <b className={abs.data?.absents ? 'rouge' : ''}>{abs.data ? abs.data.absents : '…'}</b>
+          <span>élève(s) absent(s)</span>
         </a>
-        <a className="stat" href="#/enseignants" style={{ color: 'inherit' }}>
-          <b>{d.enseignants ?? '…'}</b>
-          <span>enseignants</span>
+        <a href="#/presence-enseignants">
+          <b className={sansAppel ? 'rouge' : ''}>{sansAppel ?? '…'}</b>
+          <span>cours non assuré(s)</span>
         </a>
-        <div className="stat">
-          <b>{d.parents ?? '…'}</b>
-          <span>parents</span>
-        </div>
-        <a className="stat" href="#/classes" style={{ color: 'inherit' }}>
-          <b>{d.classes ?? '…'}</b>
-          <span>classes</span>
+        <a href="#/scolarite">
+          <b className={aConfirmer ? 'rouge' : ''}>{aConfirmer ?? '…'}</b>
+          <span>paiement(s) à confirmer</span>
         </a>
       </div>
 
-      <h2 className="section-title">{urgences ? 'À traiter' : 'Tout est à jour ✓'}</h2>
-      {d.enseignants_attente > 0 && (
-        <Action href="#/enseignants" Icone={IcCoche} titre="Enseignants à valider" texte="Vérifiez leurs informations" compteur={d.enseignants_attente} urgent />
-      )}
-      {nbConfirmer > 0 && (
-        <Action href="#/scolarite" Icone={IcCarte} titre="Paiements à confirmer" texte="Transferts déclarés par les parents" compteur={nbConfirmer} urgent />
-      )}
-      {d.eleves_sans_classe > 0 && (
-        <Action href="#/eleves" Icone={IcEleves} titre="Élèves sans classe" texte="À placer dans leur classe" compteur={d.eleves_sans_classe} urgent />
+      {taches.length > 0 && (
+        <>
+          <h2 className="section-title">À faire</h2>
+          {taches.map(([href, titre, texte]) => (
+            <Action key={href} href={href} Icone={IcCoche} titre={titre} texte={texte} urgent />
+          ))}
+        </>
       )}
 
-      <h2 className="section-title">Gérer l’établissement</h2>
-      {d.eleves === 0 ? (
-        <Action href="#/import-eleves" Icone={IcImport} titre="Ajouter vos élèves" texte="Photographiez ou envoyez vos listes de classe" />
-      ) : (
-        <Action href="#/eleves" Icone={IcEleves} titre="Élèves et classes" texte={`${d.eleves ?? '…'} élèves · ${d.classes ?? '…'} classes`} />
-      )}
-      <Action href="#/document" Icone={IcActus} titre="Documents" texte="Communiqués, emplois du temps, calendriers : publiés automatiquement" />
-      <Action href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements et moyens de paiement" />
-      <Action href="#/enseignants" Icone={IcEcole} titre="Enseignants" texte="Équipe pédagogique" />
-      <Action href="#/absences" Icone={IcCoche} titre="Absences du jour" texte="Absents et retards de tout l’établissement, justifications" />
-      <Action href="#/rattachements" Icone={IcEleves} titre="Demandes des parents" texte="Parents qui demandent à suivre un élève" />
-      <Action href="#/abonnement" Icone={IcCarte} titre="Abonnement School" texte="Montant, échéance, paiement et reçus" />
+      <h2 className="section-title">Mon établissement</h2>
+      <div className="grille-tuiles">
+        <Tuile href="#/eleves" Icone={IcEleves} titre="Élèves" texte="Listes, classes, fiches" chiffre={d.eleves ?? '…'} />
+        <Tuile href="#/presence-enseignants" Icone={IcCasquette} titre="Enseignants" texte="Présence, cours assurés" chiffre={d.enseignants ?? '…'} />
+        <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
+        <Tuile href="#/document" Icone={IcActus} titre="Informer" texte="Documents et informations" />
+        <Tuile href="#/messages" Icone={IcMessages} titre="Messages" texte="Parents et enseignants" />
+        <Tuile href="#/abonnement" Icone={IcGraphique} titre="Abonnement" texte="School, paiement, reçus" />
+      </div>
     </>
   )
 }
@@ -336,68 +358,89 @@ function EspaceEleve() {
   return <Fil enfants={moi.data || []} />
 }
 
+// Cours du moment (ou le prochain de la journee) d'apres l'emploi du temps de l'enseignant
+function coursDuMoment(creneaux) {
+  const d = new Date()
+  const jour = d.getDay()
+  const t = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const auj = creneaux.filter((c) => c.jour === jour).sort((a, b) => a.debut.localeCompare(b.debut))
+  return { maintenant: auj.find((c) => c.debut <= t && t < c.fin), suivant: auj.find((c) => c.debut > t), nombre: auj.length }
+}
+
+// Accueil de l'enseignant : le cours du moment, 4 actions, ses classes, puis le fil
 function EspaceEnseignant() {
   const classes = useApi('/api/notes/mes-classes')
+  const edt = useApi('/api/vie-scolaire/emplois/moi')
+  const { maintenant, suivant, nombre } = coursDuMoment(edt.data?.creneaux || [])
+  const cours = maintenant || suivant
   return (
     <>
+      <section className="cours-moment">
+        {cours ? (
+          <>
+            <span className="badge">{maintenant ? 'En ce moment' : 'Prochain cours'}</span>
+            <h2>
+              {cours.classe} · {cours.matiere}
+            </h2>
+            <p>
+              {cours.debut} – {cours.fin}
+              {cours.salle ? ` · salle ${cours.salle}` : ''}
+            </p>
+            <a className="btn btn-block" href={`#/classes/${cours.class_id}/appel`}>
+              Faire l’appel
+            </a>
+          </>
+        ) : (
+          <>
+            <span className="badge">Aujourd’hui</span>
+            <h2>{nombre ? 'Vos cours du jour sont terminés' : 'Pas de cours aujourd’hui'}</h2>
+            <p>{edt.data?.creneaux?.length ? 'Bonne fin de journée !' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</p>
+          </>
+        )}
+      </section>
+
+      <div className="grille-tuiles quatre">
+        <Tuile href="#/info" Icone={IcActus} titre="Informer" texte="Info, cours supplémentaire, photos" />
+        <Tuile href="#/document" Icone={IcImport} titre="Document" texte="PDF ou photo" />
+        <Tuile href="#/emploi" Icone={IcClasses} titre="Emploi du temps" texte="Mes cours" />
+        <Tuile href="#/mon-absence" Icone={IcCoche} titre="Mon absence" texte="Prévenir l’établissement" />
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <h2 className="section-title">Mes classes</h2>
         <a href="#/mes-classes" style={{ fontWeight: 700, fontSize: 14 }}>
           Modifier
         </a>
       </div>
-      <Action href="#/emploi" Icone={IcClasses} titre="Mon emploi du temps" texte="Mes cours de la semaine" />
-      <Action href="#/discipline" Icone={IcPhoto} titre="Discipline par document" texte="Photographier un rapport, une liste de sanctions…" />
-      <div style={{ height: 10 }} />
-      {classes.loading && !classes.data && <p className="muted">Chargement…</p>}
-      {classes.data?.length === 0 && (
-        <Action href="#/mes-classes" Icone={IcClasses} titre="Choisir mes classes" texte="Indiquez vos matières et vos classes" />
-      )}
-      {classes.data?.map((c) => (
-        <div className="ecole-carte" key={c.id}>
-          <div className="ecole-tete">
-            <span className="pastille-ico" style={{ width: 44, height: 44 }}>
-              <IcClasses size={20} />
-            </span>
-            <div className="row-main">
-              <div className="row-title">
-                {c.name} {c.prof_principal && <span className="tag">Prof. principal</span>}
-              </div>
-              <div className="row-sub">
-                {c.matieres.length ? c.matieres.join(', ') : 'Aucune matière'} · {c.eleves} élèves
-              </div>
-            </div>
-          </div>
-          <div className="actions" style={{ marginTop: 12 }}>
-            {c.matieres.length > 0 && (
-              <a className={`btn ${c.appel_fait ? 'btn-quiet' : ''}`} style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/appel`}>
-                {c.appel_fait ? '✓ Appel fait' : 'Faire l’appel'}
+      {classes.data?.length === 0 && <Action href="#/mes-classes" Icone={IcClasses} titre="Choisir mes classes" texte="Indiquez vos matières et vos classes" />}
+      {classes.data?.length > 0 && (
+        <ul className="liste-eleves">
+          {classes.data.map((c) => (
+            <li key={c.id} style={{ padding: '10px 12px', gap: 6, flexWrap: 'wrap' }}>
+              <span className="nom" style={{ flex: '1 1 140px', minWidth: 0 }}>
+                <b>
+                  {c.name}
+                  {c.prof_principal ? ' · PP' : ''}
+                </b>
+                <small>
+                  {c.matieres.join(', ') || '—'} · {c.eleves} élèves
+                </small>
+              </span>
+              <a className="btn btn-quiet" style={{ padding: '7px 10px', fontSize: 13 }} href={`#/classes/${c.id}/notes`}>
+                Notes
               </a>
-            )}
-            <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/notes`}>
-              Notes
-            </a>
-            {c.matieres.length > 0 && (
-              <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/devoirs`}>
+              <a className="btn btn-quiet" style={{ padding: '7px 10px', fontSize: 13 }} href={`#/classes/${c.id}/devoirs`}>
                 Devoirs
               </a>
-            )}
-            {c.prof_principal && (
-              <>
-                <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/notes?onglet=resultats`}>
-                  Résultats
-                </a>
-                <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/bulletins`}>
+              {c.prof_principal && (
+                <a className="btn btn-quiet" style={{ padding: '7px 10px', fontSize: 13 }} href={`#/classes/${c.id}/bulletins`}>
                   Bulletins
                 </a>
-                <a className="btn btn-quiet" style={{ padding: '10px 14px', fontSize: 14 }} href={`#/classes/${c.id}/annuel`}>
-                  Fin d’année
-                </a>
-              </>
-            )}
-          </div>
-        </div>
-      ))}
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   )
 }

@@ -688,3 +688,34 @@ h1, h2, h3, .page-title, .section-title { color: var(--text); font-family: var(-
 .info-doc-ico { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: rgba(255, 77, 87, 0.16); color: #ff8b92; font: 800 11px/1 var(--font-body); }
 .depot { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 30px 16px; margin-bottom: 12px; border: 2px dashed var(--line); border-radius: 18px; background: var(--card); color: var(--text); cursor: pointer; }
 .depot small { color: var(--muted); }
+
+/* ---------- publier une information ---------- */
+.genres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.genre { display: flex; flex-direction: column; gap: 4px; padding: 12px 10px; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); cursor: pointer; }
+.genre b { font-size: 14px; }
+.genre span { font-size: 11px; color: var(--muted); line-height: 1.3; }
+.genre[aria-pressed='true'] { border-color: #2f6bff; background: rgba(47, 107, 255, 0.12); }
+.vignettes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.vignettes button { position: relative; aspect-ratio: 1; padding: 0; border: 0; border-radius: 10px; overflow: hidden; cursor: pointer; }
+.vignettes img { width: 100%; height: 100%; object-fit: cover; }
+.vignettes span { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 14px; line-height: 20px; }
+
+/* ---------- accueils simplifies (etablissement et enseignant) ---------- */
+.jour-chiffres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.jour-chiffres a { display: flex; flex-direction: column; gap: 4px; padding: 14px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; color: var(--text); }
+.jour-chiffres b { font: 800 28px/1 var(--font-display); }
+.jour-chiffres b.rouge { color: #ff6b74; }
+.jour-chiffres span { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.grille-tuiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 8px; }
+.grande-tuile { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px 14px; min-height: 120px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; color: var(--text); }
+.grande-tuile:active { background: var(--card-2); }
+.gt-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(47, 107, 255, 0.14); color: #7aa5ff; margin-bottom: 6px; }
+.gt-chiffre { position: absolute; top: 16px; right: 14px; font: 800 22px/1 var(--font-display); color: var(--text); }
+.gt-titre { font: 700 16px/1.2 var(--font-display); }
+.gt-texte { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.cours-moment { padding: 18px; margin: 4px 0 14px; border-radius: 22px; background: linear-gradient(150deg, #1d3fb8 0%, #2f6bff 60%, #4f86ff 100%); color: #fff; }
+.cours-moment .badge { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.cours-moment h2 { font: 800 22px/1.2 var(--font-display); margin: 10px 0 4px; color: #fff; }
+.cours-moment p { color: rgba(255, 255, 255, 0.85); margin-bottom: 14px; }
+.cours-moment p:last-child { margin-bottom: 0; }
+.cours-moment .btn { background: #fff; color: #0b1330; }

@@ -20,6 +20,10 @@ export default function AbsencesJour() {
   return (
     <>
       <h1 className="page-title">Absences du jour</h1>
+      <p className="lede">
+        Les absences sont saisies par les enseignants à chaque cours. Pour informer les familles, publiez votre récapitulatif mensuel ou par séquence :{' '}
+        <a href="#/document">téléverser le récapitulatif</a>.
+      </p>
       <input className="input" type="date" value={date} max={aujourdhui()} onChange={(e) => setDate(e.target.value)} style={{ marginBottom: 12 }} />
       {d.data && (
         <div className="kpis">
