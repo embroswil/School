@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
+import { ReglagePush } from '../push.jsx'
 import { Field, Note } from '../ui.jsx'
 import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
 
@@ -167,6 +168,7 @@ export default function Account() {
           </button>
         )}
       </div>
+      <ReglagePush />
       {ouvert === 'infos' && (
         <div style={{ marginTop: 12 }}>
           <Informations

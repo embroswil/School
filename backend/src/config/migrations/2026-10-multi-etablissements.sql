@@ -381,3 +381,12 @@ CREATE TABLE IF NOT EXISTS absences_enseignants (
   declare_par INTEGER REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(), UNIQUE (teacher_id, date)
 );
 CREATE INDEX IF NOT EXISTS idx_absences_enseignants ON absences_enseignants (school_id, date);
+
+-- Notifications push (telephones abonnes)
+CREATE TABLE IF NOT EXISTS push_abonnements (
+  id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE, p256dh VARCHAR(200) NOT NULL, auth VARCHAR(100) NOT NULL,
+  appareil VARCHAR(120), created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+ALTER TABLE push_abonnements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS push_envoye BOOLEAN NOT NULL DEFAULT false;

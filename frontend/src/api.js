@@ -126,5 +126,5 @@ export const api = {
   post: (path, body, options) => request(path, { method: 'POST', body: body ?? {}, ...options }),
   put: (path, body) => request(path, { method: 'PUT', body: body ?? {} }),
   patch: (path, body) => request(path, { method: 'PATCH', body: body ?? {} }),
-  delete: (path) => request(path, { method: 'DELETE' }),
+  delete: (path, body) => request(path, body ? { method: 'DELETE', body } : { method: 'DELETE' }),
 }
