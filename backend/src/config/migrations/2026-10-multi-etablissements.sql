@@ -390,3 +390,8 @@ CREATE TABLE IF NOT EXISTS push_abonnements (
 );
 ALTER TABLE push_abonnements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS push_envoye BOOLEAN NOT NULL DEFAULT false;
+
+-- Codes de verification par WhatsApp ; connexion avec le numero de telephone
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telephone_verifie BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE codes_email ADD COLUMN IF NOT EXISTS canal VARCHAR(10) NOT NULL DEFAULT 'email';
+CREATE INDEX IF NOT EXISTS idx_users_tel ON users ((right(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9)));

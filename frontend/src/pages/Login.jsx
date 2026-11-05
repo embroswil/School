@@ -34,8 +34,8 @@ export default function Login() {
       }
     >
       <form className="card" onSubmit={onSubmit}>
-        <Field label="Adresse e-mail">
-          <input className="input" type="email" autoComplete="email" placeholder="vous@exemple.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Field label="Numéro WhatsApp ou adresse e-mail">
+          <input className="input" type="text" autoComplete="username" autoCapitalize="none" placeholder="6 XX XX XX XX ou vous@exemple.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
         <Field label="Mot de passe">
           <ChampMotDePasse value={password} onChange={(e) => setPassword(e.target.value)} />

@@ -51,7 +51,7 @@ export function SaisieCode({ email, envoyer, onValide, libelle = 'Confirmer' }) 
         {busy ? 'Vérification…' : libelle}
       </button>
       <p className="muted" style={{ fontSize: 14, marginTop: 12, textAlign: 'center' }}>
-        Pas reçu ? Regardez dans les courriers indésirables (spam), ou{' '}
+        Pas reçu ? Vérifiez WhatsApp, ou vos courriers indésirables (spam), ou{' '}
         <button type="button" onClick={renvoyer} style={{ border: 0, background: 'none', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', padding: 0, font: 'inherit' }}>
           renvoyez le code
         </button>
@@ -62,15 +62,26 @@ export function SaisieCode({ email, envoyer, onValide, libelle = 'Confirmer' }) 
 }
 
 // Confirmation de l'email apres l'inscription (ou depuis l'espace connecte)
-export function VerificationEmail({ email, onConfirme, onPlusTard }) {
+export function VerificationEmail({ email, canal, destination, onConfirme, onPlusTard }) {
+  const wa = canal === 'whatsapp'
   return (
     <>
-      <div style={{ fontSize: 48, textAlign: 'center' }}>✉️</div>
+      <div style={{ fontSize: 48, textAlign: 'center' }}>{wa ? '💬' : '✉️'}</div>
       <h1 className="page-title" style={{ textAlign: 'center' }}>
-        Vérifiez votre email
+        {wa ? 'Regardez votre WhatsApp' : 'Vérifiez votre email'}
       </h1>
       <p className="lede" style={{ textAlign: 'center' }}>
-        Nous avons envoyé un code à 6 chiffres à <b>{email}</b>.
+        {wa ? (
+          <>
+            Nous avons envoyé un code à 6 chiffres <b>sur WhatsApp</b>, au <b>{destination}</b>.
+          </>
+        ) : canal === 'email' || /@/.test(email) ? (
+          <>
+            Nous avons envoyé un code à 6 chiffres à <b>{destination || email}</b>.
+          </>
+        ) : (
+          <>Le code n’a pas encore pu être envoyé : touchez « renvoyez le code » ci-dessous dans un instant.</>
+        )}
       </p>
       <SaisieCode
         email={email}
@@ -115,7 +126,7 @@ export default function MotDePasseOublie() {
   }
 
   return (
-    <PageAuth titre="Mot de passe oublié" sousTitre="Recevez un code par email pour en choisir un nouveau." retour={<a href="#/connexion">Se connecter</a>}>
+    <PageAuth titre="Mot de passe oublié" sousTitre="Recevez un code par WhatsApp ou par email pour en choisir un nouveau." retour={<a href="#/connexion">Se connecter</a>}>
       <div className="card">
         {fini ? (
           <div style={{ textAlign: 'center', paddingTop: 30 }}>
@@ -128,10 +139,10 @@ export default function MotDePasseOublie() {
           </div>
         ) : etape === 1 ? (
           <>
-            <p className="lede">Indiquez l’adresse email de votre compte : nous vous enverrons un code pour choisir un nouveau mot de passe.</p>
+            <p className="lede">Indiquez votre numéro WhatsApp ou votre adresse email : nous vous enverrons un code pour choisir un nouveau mot de passe.</p>
             <form className="card" onSubmit={demander}>
-              <Field label="Adresse e-mail">
-                <input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Field label="Numéro WhatsApp ou adresse e-mail">
+                <input className="input" type="text" autoComplete="username" placeholder="6 XX XX XX XX ou vous@exemple.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </Field>
               <Note>{error}</Note>
               <button className="btn btn-block" type="submit" disabled={busy}>
@@ -143,7 +154,7 @@ export default function MotDePasseOublie() {
           <>
             <h1 className="page-title">Nouveau mot de passe</h1>
             <p className="lede">
-              Si un compte existe avec <b>{email}</b>, un code à 6 chiffres vient d’y être envoyé (valable 15 minutes).
+              Si un compte existe avec <b>{email}</b>, un code à 6 chiffres vient de vous être envoyé, sur WhatsApp ou par email (valable 15 minutes).
             </p>
             <div className="card" style={{ marginBottom: 12 }}>
               <Field label="Nouveau mot de passe (8 caractères minimum)">
@@ -165,7 +176,7 @@ export default function MotDePasseOublie() {
               }}
             />
             <button type="button" className="back" style={{ border: 0, background: 'none', cursor: 'pointer' }} onClick={() => setEtape(1)}>
-              ← Changer d’adresse email
+              ← Changer de numéro ou d’adresse
             </button>
           </>
         )}

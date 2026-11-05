@@ -40,7 +40,9 @@ const toPublicUser = (u) => ({
   createdAt: u.created_at,
   schoolId: u.school_id || null,
   schoolName: u.school_name || null,
-  emailVerifie: u.email_verifie !== false,
+  // Compte confirme : par email OU par WhatsApp
+  emailVerifie: u.email_verifie !== false || u.telephone_verifie === true,
+  emailTechnique: /@(tel|inscrit)\.school$/.test(u.email || ""),
   notifEmail: u.notif_email !== false,
   status: u.status || "active",
 });
@@ -76,9 +78,21 @@ const issueTokens = async (user, { ip, userAgent }) => {
 // --- authentification -------------------------------------------------------
 
 const login = async ({ email, password, ip, userAgent }) => {
-  const normalized = normalizeEmail(email);
+  let normalized = normalizeEmail(email);
   if (!normalized || typeof password !== "string" || !password) {
     throw new ApiError(400, "Email and password are required");
+  }
+  // Connexion avec le numero de telephone (comptes crees avec WhatsApp, ou numero du profil)
+  if (!normalized.includes("@")) {
+    const tel = require("../../utils/whatsapp").normaliserTel(normalized);
+    const r = tel
+      ? await require("../../config/db").query(
+          `SELECT email FROM users WHERE right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 9) = right($1, 9)
+             AND email NOT LIKE '%@inscrit.school' ORDER BY is_active DESC, id DESC LIMIT 1`,
+          [tel]
+        )
+      : { rows: [] };
+    normalized = r.rows[0]?.email || "inconnu@tel.school";
   }
 
   const user = await userSql.findByEmail(normalized);

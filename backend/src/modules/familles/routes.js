@@ -75,8 +75,8 @@ router.get("/ecoles/:id/eleves", async (req, res, next) => {
 
 // Consultation des listes de classes : reservee aux comptes dont l'email est confirme
 const exigerEmailConfirme = async (u) => {
-  const r = (await db.query("SELECT email_verifie FROM users WHERE id = $1", [u.id])).rows[0];
-  if (!r?.email_verifie) throw new ApiError(403, "Confirmez d’abord votre adresse email (Profil) pour consulter les listes de classes");
+  const r = (await db.query("SELECT email_verifie, telephone_verifie FROM users WHERE id = $1", [u.id])).rows[0];
+  if (!r?.email_verifie && !r?.telephone_verifie) throw new ApiError(403, "Confirmez d’abord votre compte (code reçu par WhatsApp ou par email) pour consulter les listes de classes");
 };
 
 // GET /api/familles/ecoles/:id/classes : classes de l'annee en cours, avec effectif

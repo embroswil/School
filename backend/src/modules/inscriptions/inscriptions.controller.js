@@ -55,10 +55,22 @@ const inscription = async (req, res, next) => {
     if (!role) throw new ApiError(400, "Choisissez votre profil : parent, élève ou enseignant");
     // Le parent (ou donateur) s'inscrit sans etablissement
     const schoolId = role === "parent" && !b.schoolId ? null : parseId(b.schoolId);
-    const email = texte(b.email, 255).toLowerCase();
+    const WA = require("../../utils/whatsapp");
+    let email = texte(b.email, 255).toLowerCase();
     const prenom = texte(b.firstName);
     const nom = texte(b.lastName);
     if (!prenom || !nom) throw new ApiError(400, "Votre prénom et votre nom sont obligatoires");
+    // Parent sans email : il s'inscrit avec son numero WhatsApp (adresse technique interne)
+    const tel = WA.normaliserTel(b.phone);
+    if (!email && role === "parent") {
+      if (!tel) throw new ApiError(400, "Indiquez votre numéro WhatsApp (ou une adresse email)");
+      const pris = await q(
+        "SELECT 1 FROM users WHERE right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 9) = right($1, 9) AND email NOT LIKE '%@inscrit.school' LIMIT 1",
+        [tel]
+      );
+      if (pris.rows[0]) throw new ApiError(409, "Un compte existe déjà avec ce numéro : connectez-vous, ou utilisez « Mot de passe oublié »");
+      email = `t${tel}@tel.school`;
+    }
     if (!EMAIL_RE.test(email)) throw new ApiError(400, "Adresse email invalide");
     if (typeof b.password !== "string" || b.password.length < 8 || b.password.length > 72) {
       throw new ApiError(400, "Mot de passe : 8 caractères minimum");
@@ -188,9 +200,10 @@ const inscription = async (req, res, next) => {
 
     // Code de verification de l'adresse email
     let codeEnvoye = false;
+    let envoi = null;
     try {
       const { envoyerCode } = require("../codes/routes");
-      await envoyerCode({ id: userId, email, first_name: prenom }, "verification");
+      envoi = await envoyerCode({ id: userId, email, phone: texte(b.phone, 30) || null, first_name: prenom }, "verification");
       codeEnvoye = true;
     } catch (_) {
       // l'inscription reste valable ; un nouveau code pourra etre demande
@@ -212,7 +225,7 @@ const inscription = async (req, res, next) => {
         role === "teacher"
           ? `Compte créé. ${nomEcole} doit valider votre compte enseignant avant votre première connexion.`
           : "Compte créé. Vous pouvez vous connecter.",
-      data: { role, enAttente: role === "teacher", enfantsRelies, codeEnvoye },
+      data: { role, enAttente: role === "teacher", enfantsRelies, codeEnvoye, canal: envoi?.canal || null, destination: envoi?.destination || null, identifiant: email.endsWith("@tel.school") ? texte(b.phone, 30) : email },
     });
   } catch (e) {
     try {

@@ -75,7 +75,7 @@ export default function Signup() {
         classeIds: role === 'teacher' ? classeIds : undefined,
       }
       const res = await signup(donnees)
-      setAVerifier({ message: res.message })
+      setAVerifier({ message: res.message, ...(res.data || {}) })
     } catch (err) {
       setError(err.message)
     }
@@ -94,13 +94,15 @@ export default function Signup() {
         <main className="auth-main">
           <div className="card">
           <VerificationEmail
-            email={f.email.trim().toLowerCase()}
+            email={aVerifier.identifiant || f.email.trim().toLowerCase()}
+            canal={aVerifier.canal}
+            destination={aVerifier.destination}
             onConfirme={async () => {
               if (role === 'teacher') {
                 setFini(aVerifier.message)
                 return
               }
-              await login(f.email, f.password)
+              await login(aVerifier.identifiant || f.email, f.password)
               window.location.hash = '/'
             }}
             onPlusTard={async () => {
@@ -243,12 +245,28 @@ export default function Signup() {
                   <input className="input" value={f.lastName} onChange={maj('lastName')} required />
                 </Field>
               </div>
-              <Field label="Adresse e-mail">
-                <input className="input" type="email" autoComplete="email" value={f.email} onChange={maj('email')} required />
-              </Field>
-              <Field label="Téléphone">
-                <input className="input" type="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} />
-              </Field>
+              {role === 'parent' ? (
+                <>
+                  <Field label="Numéro WhatsApp">
+                    <input className="input" type="tel" autoComplete="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} required />
+                  </Field>
+                  <p className="muted" style={{ fontSize: 13, margin: '-4px 0 12px' }}>
+                    Vous recevrez votre code de confirmation sur WhatsApp, et vous vous connecterez avec ce numéro.
+                  </p>
+                  <Field label="Adresse e-mail (facultatif)">
+                    <input className="input" type="email" autoComplete="email" value={f.email} onChange={maj('email')} />
+                  </Field>
+                </>
+              ) : (
+                <>
+                  <Field label="Adresse e-mail">
+                    <input className="input" type="email" autoComplete="email" value={f.email} onChange={maj('email')} required />
+                  </Field>
+                  <Field label="Numéro WhatsApp">
+                    <input className="input" type="tel" autoComplete="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} />
+                  </Field>
+                </>
+              )}
               <Field label="Mot de passe (8 caractères minimum)">
                 <ChampMotDePasse autoComplete="new-password" minLength={8} value={f.password} onChange={maj('password')} />
                 <span className="force-mdp" aria-hidden="true">

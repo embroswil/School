@@ -12,7 +12,7 @@ const APP = () => (process.env.FRONTEND_URL || "").split(",")[0].trim();
 const emailNotification = async (userId, { title, message, data }) => {
   try {
     const { rows } = await db.query(
-      "SELECT email, first_name, email_verifie, notif_email FROM users WHERE id = $1 AND email NOT LIKE '%@inscrit.school'",
+      "SELECT email, first_name, email_verifie, notif_email FROM users WHERE id = $1 AND email NOT LIKE '%@inscrit.school' AND email NOT LIKE '%@tel.school'",
       [userId]
     );
     const u = rows[0];
