@@ -510,6 +510,38 @@ router.get("/eleves/:id", async (req, res, next) => {
   }
 });
 
+// POST /api/etablissement/lire-images { images: [dataUrl, ...] }
+// Photos ou scans de listes d'eleves (imprimees ou ecrites a la main), lus par l'IA.
+router.post("/lire-images", async (req, res, next) => {
+  try {
+    ecoleDe(req);
+    const images = Array.isArray(req.body?.images) ? req.body.images.slice(0, 8) : [];
+    if (!images.length) throw new ApiError(400, "Aucune image");
+    const { lireDocument } = require("../../utils/ia");
+    const donnees = await lireDocument({
+      images,
+      consigne: `Ces images sont une liste d'élèves d'un établissement scolaire camerounais (imprimée ou écrite à la main, éventuellement sur plusieurs pages).
+Extrais TOUS les élèves, dans l'ordre. Pour chacun : nom (nom de famille, souvent en MAJUSCULES), prenom, classe (si indiquée sur la ligne ou en titre de la liste, ex. "6e A", "Tle C"), dateNaissance (JJ/MM/AAAA si présente), sexe ("M" ou "F" si présent), matricule (si présent).
+Ignore les en-têtes, signatures, totaux et cachets. Si un champ est absent ou illisible, mets une chaîne vide.
+Format : {"classe": "classe du titre ou vide", "eleves": [{"nom":"","prenom":"","classe":"","dateNaissance":"","sexe":"","matricule":""}]}`,
+    });
+    const classeTitre = String(donnees.classe || "").trim();
+    const eleves = (Array.isArray(donnees.eleves) ? donnees.eleves : [])
+      .map((e) => ({
+        nom: String(e.nom || "").trim(),
+        prenom: String(e.prenom || "").trim(),
+        classe: String(e.classe || classeTitre || "").trim(),
+        dateNaissance: String(e.dateNaissance || "").trim(),
+        sexe: String(e.sexe || "").trim(),
+        matricule: String(e.matricule || "").trim(),
+      }))
+      .filter((e) => e.nom);
+    res.json({ success: true, data: eleves });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Photo de l'etablissement (image redimensionnee par le telephone, en data URL)
 router.put("/photo", async (req, res, next) => {
   try {
