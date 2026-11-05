@@ -197,6 +197,7 @@ export default function Account() {
       <p className="groupe-titre">Aide</p>
       <div className="liste-reglages">
         {moi.role !== 'admin' && moi.role !== 'principal' && <Reglage Icone={IcAide} titre="Contacter l’établissement" href="#/messages" />}
+        <Reglage Icone={IcAide} titre="Installer l’application" valeur="Écran d’accueil" href="#/installer" />
         <Reglage Icone={IcAide} titre="Guide de démarrage" href="#/guide" />
         <Reglage Icone={IcBouclier} titre="Confidentialité" valeur="Vos données" href="#/confidentialite" />
         <Reglage Icone={IcBouclier} titre="Conditions d’utilisation" href="#/conditions" />

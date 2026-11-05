@@ -24,6 +24,12 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
+      // Installation : on garde l'evenement d'installation (il peut arriver avant l'application)
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault()
+        window.__installSchool = e
+        window.dispatchEvent(new Event('school-installable'))
+      })
       // Application installable : enregistrement du service worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))

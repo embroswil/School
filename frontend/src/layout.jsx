@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { useAuth } from './auth.jsx'
+import { BandeauInstallation } from './installation.jsx'
 import { IcAccueil, IcActus, IcCarte, IcCloche, IcEcole, IcEleves, IcImport, IcMessages, IcPhoto, IcPlus, IcProfil, IcRetour } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
@@ -54,6 +55,7 @@ const TITRES = {
   '/mon-absence': 'Mon absence',
   '/infos': 'Information',
   '/guide': 'Guide',
+  '/installer': 'Installer School',
   '/absences': 'Absences du jour',
   '/confidentialite': 'Confidentialité',
   '/conditions': 'Conditions',
@@ -166,7 +168,10 @@ export default function Shell({ path, children }) {
       )}
 
       <div className="sheet-wrap">
-        <main className="sheet">{children}</main>
+        <main className="sheet">
+          {path === '/' && <BandeauInstallation />}
+          {children}
+        </main>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 // Service worker de School : l'application s'ouvre vite et reste affichable
 // hors connexion (les pages deja vues). Les donnees (API) ne sont jamais mises en cache.
-const CACHE = 'school-v1'
+const CACHE = 'school-v2'
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((cles) => Promise.all(cles.filter((c) => c !== CACHE).map((c) => caches.delete(c)))))

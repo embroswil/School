@@ -719,3 +719,16 @@ h1, h2, h3, .page-title, .section-title { color: var(--text); font-family: var(-
 .cours-moment p { color: rgba(255, 255, 255, 0.85); margin-bottom: 14px; }
 .cours-moment p:last-child { margin-bottom: 0; }
 .cours-moment .btn { background: #fff; color: #0b1330; }
+
+/* ---------- installation sur l'ecran d'accueil ---------- */
+.bandeau-install { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 12px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid #2f6bff; border-radius: 14px; }
+.bandeau-install img { width: 40px; height: 40px; border-radius: 10px; }
+.bandeau-install b { display: block; font-size: 14px; }
+.bandeau-install small { color: var(--muted); font-size: 12px; }
+.bandeau-install .fermer { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 4px; cursor: pointer; }
+.page-install { max-width: 480px; margin: 0 auto; padding: 16px 16px 30px; }
+.logo-install { display: block; width: 88px; height: 88px; margin: 6px auto 12px; border-radius: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+.etapes-install { list-style: none; display: grid; gap: 14px; }
+.etapes-install li { display: flex; gap: 12px; align-items: flex-start; line-height: 1.45; }
+.etapes-install .num { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #2f6bff; color: #fff; font-weight: 800; font-size: 14px; }
+.etapes-install .pictos { display: inline-flex; vertical-align: middle; color: #7aa5ff; }

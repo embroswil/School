@@ -48,6 +48,7 @@ import InfoDetail from './pages/InfoDetail.jsx'
 import { Confidentialite, Conditions } from './pages/Legal.jsx'
 import Guide from './pages/Guide.jsx'
 import AbsencesJour from './pages/AbsencesJour.jsx'
+import PageInstallation from './installation.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
 
@@ -118,6 +119,7 @@ function Pages({ path }) {
   if (path === '/confidentialite') return <Confidentialite />
   if (path === '/conditions') return <Conditions />
   if (path === '/guide') return <Guide />
+  if (path === '/installer') return <PageInstallation />
   if (path === '/absences') return reserve(['principal', 'admin'].includes(user.role), <AbsencesJour />)
   const infoMatch = path.match(/^\/infos\/(\d+)$/)
   if (infoMatch) return <InfoDetail key={infoMatch[1]} id={Number(infoMatch[1])} />
@@ -184,6 +186,7 @@ function Root() {
     if (path === '/mot-de-passe-oublie') return <MotDePasseOublie />
     if (path === '/confidentialite') return <Confidentialite />
     if (path === '/conditions') return <Conditions />
+    if (path === '/installer') return <PageInstallation />
     return <Landing />
   }
   return (
