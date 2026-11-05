@@ -16,27 +16,6 @@ const ROLES = {
   student: 'Élève',
 }
 
-function Tuile({ href, ico, titre, texte, compteur }) {
-  const contenu = (
-    <>
-      <span className="ico">{ico}</span>
-      <b>
-        {titre} {compteur > 0 && <span className="count">{compteur}</span>}
-      </b>
-      <small>{texte}</small>
-    </>
-  )
-  return href ? (
-    <a className="tile" href={href}>
-      {contenu}
-    </a>
-  ) : (
-    <div className="tile" style={{ opacity: 0.6 }}>
-      {contenu}
-    </div>
-  )
-}
-
 function Bientot() {
   return <small className="tag tag-wait">Bientôt</small>
 }
