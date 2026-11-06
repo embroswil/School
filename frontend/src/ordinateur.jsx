@@ -12,10 +12,16 @@ export const ordiForce = () => {
   }
 }
 
+// « Version pour ordinateur » demandee dans Safari ou Chrome sur iPhone / iPad : le navigateur
+// se presente alors comme un Mac (MacIntel) tout en ayant un ecran tactile.
+const versionOrdiDuNavigateur = () => navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+const petitEcran = () => Math.min(window.screen?.width || 0, window.screen?.height || 0) < 600
+
 export function appliquerVersionOrdi() {
   const mq = window.matchMedia?.(requete)
   const maj = () => {
-    const force = ordiForce()
+    // Sur iPhone, « Version pour ordinateur » du navigateur affiche la version ordinateur de School
+    const force = ordiForce() || (versionOrdiDuNavigateur() && petitEcran())
     document.documentElement.classList.toggle('ordi', force || Boolean(mq?.matches))
     // Apercu sur telephone : la page est dessinee comme sur un ecran d'ordinateur, puis reduite
     const meta = document.querySelector('meta[name="viewport"]')

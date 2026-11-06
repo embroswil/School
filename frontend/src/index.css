@@ -746,7 +746,7 @@ h1, h2, h3, .page-title, .section-title { color: var(--text); font-family: var(-
 .nav .nav-marque, .nav .nav-ordi, .nav .nav-plus-texte { display: none; }
 /* Ces regles s'appliquent quand <html> porte la classe « ordi » : ordinateur
    (grand ecran + souris), ou apercu force depuis le Profil. */
-html.ordi .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-areas: 'nav top' 'nav main'; padding-bottom: 0; }
+html.ordi .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'nav top' 'nav main'; align-items: start; padding-bottom: 0; }
 html.ordi .topbar { grid-area: top; padding: 16px 40px; }
 html.ordi .topbar > .brand { visibility: hidden; }
 html.ordi .nav { grid-area: nav; position: sticky; top: 0; inset: auto; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; padding: 24px 14px; border-top: 0; border-right: 1px solid var(--line); box-shadow: none; background: #0b0d12; }
