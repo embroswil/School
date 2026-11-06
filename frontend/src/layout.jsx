@@ -40,6 +40,27 @@ const NAV = {
   ],
 }
 
+// Sur ordinateur, la barre laterale montre aussi ces raccourcis
+const NAV_ORDI = {
+  principal: [
+    ['/scolarite', IcCarte, 'Scolarité'],
+    ['/presence-enseignants', IcEcole, 'Enseignants'],
+    ['/absences', IcEleves, 'Absences du jour'],
+    ['/document', IcActus, 'Documents'],
+    ['/abonnement', IcCarte, 'Abonnement'],
+  ],
+  teacher: [
+    ['/emploi', IcEcole, 'Emploi du temps'],
+    ['/document', IcActus, 'Documents'],
+    ['/mon-absence', IcProfil, 'Mon absence'],
+  ],
+  parent: [['/trouver-eleve', IcEleves, 'Trouver un élève']],
+  admin: [
+    ['/abonnements', IcCarte, 'Abonnements'],
+    ['/litiges', IcActus, 'Litiges'],
+  ],
+}
+
 // Titre affiche en haut selon la page
 const TITRES = {
   '/eleves': 'Élèves',
@@ -131,10 +152,14 @@ export default function Shell({ path, children }) {
       </header>
 
       <nav className="nav" aria-label="Navigation principale">
+        <a href="#/" className="nav-marque">
+          School<span>.</span>
+        </a>
         {items.map(([to, Icone, label]) =>
           to === '+' ? (
             <button key="+" type="button" className="nav-plus" aria-label="Actions rapides" onClick={() => setActions(true)}>
               <Icone size={26} />
+              <span className="nav-plus-texte">Actions rapides</span>
             </button>
           ) : (
             <a key={to} href={`#${to}`} aria-current={isCurrent(to) ? 'page' : undefined}>
@@ -146,6 +171,14 @@ export default function Shell({ path, children }) {
             </a>
           ),
         )}
+        {(NAV_ORDI[user.role] || []).map(([to, Icone, label]) => (
+          <a key={`o${to}`} href={`#${to}`} className="nav-ordi" aria-current={isCurrent(to) ? 'page' : undefined}>
+            <span className="ico">
+              <Icone size={21} />
+            </span>
+            <span>{label}</span>
+          </a>
+        ))}
       </nav>
 
       {actions && (

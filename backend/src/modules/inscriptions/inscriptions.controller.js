@@ -62,7 +62,7 @@ const inscription = async (req, res, next) => {
     if (!prenom || !nom) throw new ApiError(400, "Votre prénom et votre nom sont obligatoires");
     // Parent sans email : il s'inscrit avec son numero WhatsApp (adresse technique interne)
     const tel = WA.normaliserTel(b.phone);
-    if (!email && role === "parent") {
+    if (!email && role === "parent" && WA.configure()) {
       if (!tel) throw new ApiError(400, "Indiquez votre numéro WhatsApp (ou une adresse email)");
       const pris = await q(
         "SELECT 1 FROM users WHERE right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 9) = right($1, 9) AND email NOT LIKE '%@inscrit.school' LIMIT 1",

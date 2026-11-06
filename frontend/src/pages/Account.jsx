@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { ReglagePush } from '../push.jsx'
+import { ChoixLangue } from '../i18n.jsx'
 import { Field, Note } from '../ui.jsx'
 import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
 
@@ -169,6 +170,16 @@ export default function Account() {
         )}
       </div>
       <ReglagePush />
+      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
+        <span style={{ fontSize: 24 }}>🌐</span>
+        <div style={{ flex: 1 }}>
+          <b>Langue · Language</b>
+          <div className="muted" style={{ fontSize: 13 }} data-brut>
+            Français · English
+          </div>
+        </div>
+        <ChoixLangue />
+      </div>
       {ouvert === 'infos' && (
         <div style={{ marginTop: 12 }}>
           <Informations

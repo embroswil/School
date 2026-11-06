@@ -1,4 +1,5 @@
 import { useState as useStateUi } from 'react'
+import { ChoixLangue } from './i18n.jsx'
 
 export function Field({ label, children }) {
   return (
@@ -69,7 +70,10 @@ export function PageAuth({ titre, sousTitre, retour, children, pied }) {
         <a className="brand" href="#/" style={{ color: '#fff' }}>
           School<span>.</span>
         </a>
-        {retour}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <ChoixLangue />
+          {retour}
+        </span>
       </header>
       <main className="auth-main">
         <div className="auth-entete">

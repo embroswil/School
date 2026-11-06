@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { ChampMotDePasse, Field, Note } from '../ui.jsx'
+import { ChoixLangue } from '../i18n.jsx'
 import { VerificationEmail } from './CodeEmail.jsx'
 
 const PROFILS = [
@@ -141,7 +142,10 @@ export default function Signup() {
         <a className="brand" href="#/" style={{ color: '#fff' }}>
           School<span>.</span>
         </a>
-        <a href="#/connexion">Se connecter</a>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <ChoixLangue />
+          <a href="#/connexion">Se connecter</a>
+        </span>
       </header>
       <main className="auth-main">
         <div className="card">
@@ -245,28 +249,13 @@ export default function Signup() {
                   <input className="input" value={f.lastName} onChange={maj('lastName')} required />
                 </Field>
               </div>
-              {role === 'parent' ? (
-                <>
-                  <Field label="Numéro WhatsApp">
-                    <input className="input" type="tel" autoComplete="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} required />
-                  </Field>
-                  <p className="muted" style={{ fontSize: 13, margin: '-4px 0 12px' }}>
-                    Vous recevrez votre code de confirmation sur WhatsApp, et vous vous connecterez avec ce numéro.
-                  </p>
-                  <Field label="Adresse e-mail (facultatif)">
-                    <input className="input" type="email" autoComplete="email" value={f.email} onChange={maj('email')} />
-                  </Field>
-                </>
-              ) : (
-                <>
-                  <Field label="Adresse e-mail">
-                    <input className="input" type="email" autoComplete="email" value={f.email} onChange={maj('email')} required />
-                  </Field>
-                  <Field label="Numéro WhatsApp">
-                    <input className="input" type="tel" autoComplete="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} />
-                  </Field>
-                </>
-              )}
+              {/* Code de confirmation par email (WhatsApp plus tard, une fois l'API activee) */}
+              <Field label="Adresse e-mail">
+                <input className="input" type="email" autoComplete="email" value={f.email} onChange={maj('email')} required />
+              </Field>
+              <Field label="Téléphone">
+                <input className="input" type="tel" autoComplete="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} />
+              </Field>
               <Field label="Mot de passe (8 caractères minimum)">
                 <ChampMotDePasse autoComplete="new-password" minLength={8} value={f.password} onChange={maj('password')} />
                 <span className="force-mdp" aria-hidden="true">

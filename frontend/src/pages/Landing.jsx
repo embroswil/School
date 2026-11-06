@@ -1,4 +1,5 @@
 import { BoutonInstaller } from '../installation.jsx'
+import { ChoixLangue } from '../i18n.jsx'
 
 // Page d'accueil publique, sobre
 const MOSAIQUE = [
@@ -13,6 +14,7 @@ const MOSAIQUE = [
 export default function Landing() {
   return (
     <div className="vitrine">
+      <ChoixLangue style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', right: 16 }} />
       <div className="vitrine-bloc">
         <div className="brand">
           School<span>.</span>
