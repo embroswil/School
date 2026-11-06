@@ -204,7 +204,7 @@ export default function Account() {
       <p className="groupe-titre">Préférences</p>
       <div className="liste-reglages">
         <Reglage Icone={IcAide} titre="Langue" droite={<ChoixLangue />} />
-        {['principal', 'teacher', 'admin'].includes(moi.role) && (
+        {(
           <Reglage
             Icone={IcEcole}
             titre="Version ordinateur"
