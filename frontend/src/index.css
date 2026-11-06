@@ -791,3 +791,17 @@ html.ordi .info, html.ordi .fil-filtres, html.ordi .stories { max-width: 760px; 
 .interrupteur i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
 .interrupteur.on { background: #2f6bff; }
 .interrupteur.on i { transform: translateX(18px); }
+
+/* ---------- glisser-deposer des fichiers ---------- */
+.depot-voile { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(7, 8, 11, 0.78); backdrop-filter: blur(4px); pointer-events: none; }
+.depot-cadre { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 64px; border: 3px dashed #2f6bff; border-radius: 24px; background: rgba(47, 107, 255, 0.1); color: #fff; text-align: center; }
+.depot-cadre b { font: 800 22px/1.2 var(--font-display); }
+.depot-cadre span { color: #9bb8ff; }
+.depot-icone { font-size: 46px; line-height: 1; }
+.depot-choix { display: grid; gap: 8px; }
+.depot-choix button { display: flex; align-items: center; gap: 14px; padding: 14px; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); cursor: pointer; font: inherit; }
+.depot-choix button:hover { border-color: #2f6bff; }
+.depot-choix b { display: block; font-size: 15px; }
+.depot-choix small { color: var(--muted); font-size: 13px; }
+.astuce-depot { display: none; }
+html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }

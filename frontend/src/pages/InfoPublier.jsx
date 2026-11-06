@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
+import { useDepotPage } from '../depot.jsx'
 
 const reduire = (fichier, max = 1440, q = 0.82) =>
   new Promise((ok) => {
@@ -41,6 +42,8 @@ export default function InfoPublier() {
   const [etat, setEtat] = useState('')
   const [error, setError] = useState('')
   const maj = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const ajouterPhotos = (e) => setPhotos((l) => [...l, ...[...(e.target.files || [])].filter((x) => x.type.startsWith('image/'))].slice(0, 6))
+  const zoneDepot = useDepotPage(ajouterPhotos, { texte: 'Déposez vos photos', detail: 'Jusqu’à 6 images' })
 
   async function publier(e) {
     e.preventDefault()
@@ -72,6 +75,7 @@ export default function InfoPublier() {
 
   return (
     <form onSubmit={publier}>
+      {zoneDepot}
       <h1 className="page-title">Faire passer une information</h1>
       <div className="genres">
         {GENRES.map(([k, t, d]) => (

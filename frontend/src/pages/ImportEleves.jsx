@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { Field, Note } from '../ui.jsx'
+import { useDepotPage } from '../depot.jsx'
 import { lireListeEleves, lirePhotos } from '../lecture-fichier.js'
 
 // Import des eleves depuis une liste (PDF, Excel, CSV), avec verification avant l'envoi
@@ -35,6 +36,8 @@ export default function ImportEleves() {
     setBusy(false)
     e.target.value = ''
   }
+  const zoneDepot = useDepotPage(choisir, { texte: 'Déposez la liste d’élèves', detail: 'PDF, Excel ou photo' })
+
 
   const maj = (i, k) => (e) =>
     setEleves((l) => l.map((x, j) => (j === i ? { ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value } : x)))
@@ -74,6 +77,7 @@ export default function ImportEleves() {
 
   return (
     <>
+      {zoneDepot}
       <a className="back" href="#/eleves">
         ← Élèves
       </a>

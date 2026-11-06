@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
+import { useDepotPage } from '../depot.jsx'
 import { Field, Note } from '../ui.jsx'
 
 // Categories (memes cles que le serveur)
@@ -85,6 +86,8 @@ export default function Documents() {
     }
     setEtat('')
   }
+  const zoneDepot = useDepotPage(choisir, { texte: 'Déposez le document', detail: 'PDF, Excel ou photo' })
+
 
   async function publier() {
     setError('')
@@ -111,6 +114,7 @@ export default function Documents() {
   const refus = analyse && REFUS[analyse.nature]
   return (
     <>
+      {zoneDepot}
       <h1 className="page-title">Documents</h1>
       <p className="lede">Téléversez un communiqué, un emploi du temps, un calendrier, des résultats… School le lit, le classe et l’affiche automatiquement aux familles.</p>
       <a className="btn btn-quiet btn-block" href="#/info" style={{ marginBottom: 12 }}>
@@ -122,6 +126,7 @@ export default function Documents() {
           <span style={{ fontSize: 34 }}>📄</span>
           <b>{etat || 'Choisir un document'}</b>
           <small>PDF ou photo · jusqu’à 5 fichiers</small>
+          <small className="astuce-depot">ou glissez-déposez vos fichiers n’importe où sur cette page</small>
         </button>
       )}
       <Note kind="ok">{ok}</Note>

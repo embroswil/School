@@ -1,4 +1,3 @@
-import { BoutonInstaller } from '../installation.jsx'
 import { ChoixLangue } from '../i18n.jsx'
 
 // Page d'accueil publique, sobre
@@ -34,9 +33,6 @@ export default function Landing() {
         <a className="btn btn-quiet btn-block" href="#/inscription">
           Créer un compte
         </a>
-        <div style={{ marginTop: 12 }}>
-          <BoutonInstaller className="btn btn-quiet btn-block" />
-        </div>
         <a className="vitrine-lien" href="#/inscrire-etablissement">
           Vous dirigez un établissement ? Inscrivez-le
         </a>

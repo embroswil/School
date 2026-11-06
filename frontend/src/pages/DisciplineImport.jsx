@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { Note } from '../ui.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
+import { useDepotPage } from '../depot.jsx'
 import { TYPES_SANCTION } from './Discipline.jsx'
 
 // Discipline par document : photo ou fichier (PV de conseil de discipline,
@@ -32,6 +33,8 @@ export default function DisciplineImport() {
     }
     setBusy('')
   }
+  const zoneDepot = useDepotPage(lire, { texte: 'Déposez le document de discipline', detail: 'PDF, Excel ou photo' })
+
 
   const maj = (i, k, v) => setEntrees((l) => l.map((x, j) => (j === i ? { ...x, [k]: v } : x)))
 
@@ -64,6 +67,7 @@ export default function DisciplineImport() {
 
   return (
     <>
+      {zoneDepot}
       <h1 className="page-title">Discipline par document</h1>
       <p className="lede">
         Photographiez ou envoyez un document disciplinaire (procès-verbal du conseil de discipline, liste de sanctions, rapport…), imprimé

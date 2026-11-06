@@ -4,6 +4,7 @@ import { useAuth } from './auth.jsx'
 import { BandeauInstallation } from './installation.jsx'
 import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue } from './i18n.jsx'
+import { DepotGlobal } from './depot.jsx'
 import { IcAccueil, IcActus, IcCarte, IcCloche, IcEcole, IcEleves, IcImport, IcMessages, IcPhoto, IcPlus, IcProfil, IcRetour } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
@@ -210,6 +211,7 @@ export default function Shell({ path, children }) {
           {path === '/' && <BandeauInstallation />}
           {path === '/' && <EncartPush />}
           <SynchroPush />
+          <DepotGlobal role={user.role} />
           {children}
         </main>
       </div>
