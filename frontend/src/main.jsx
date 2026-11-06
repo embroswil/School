@@ -3,9 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { demarrerTraduction } from './i18n.jsx'
+import { appliquerVersionOrdi } from './ordinateur.jsx'
 
 // Francais ou anglais (avant le premier affichage)
 demarrerTraduction()
+appliquerVersionOrdi()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

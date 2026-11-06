@@ -3,6 +3,7 @@ import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { ReglagePush } from '../push.jsx'
 import { ChoixLangue } from '../i18n.jsx'
+import { basculerVersionOrdi, ordiForce } from '../ordinateur.jsx'
 import { Field, Note } from '../ui.jsx'
 import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
 
@@ -179,6 +180,18 @@ export default function Account() {
           </div>
         </div>
         <ChoixLangue />
+      </div>
+      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
+        <span style={{ fontSize: 24 }}>🖥️</span>
+        <div style={{ flex: 1 }}>
+          <b>Version ordinateur</b>
+          <div className="muted" style={{ fontSize: 13 }}>
+            {ordiForce() ? 'Affichée sur cet appareil (aperçu)' : 'Pour voir l’affichage d’un ordinateur sur ce téléphone'}
+          </div>
+        </div>
+        <button type="button" className={ordiForce() ? 'btn btn-quiet' : 'btn'} style={{ padding: '8px 12px', fontSize: 13 }} onClick={() => basculerVersionOrdi(!ordiForce())}>
+          {ordiForce() ? 'Version mobile' : 'Afficher'}
+        </button>
       </div>
       {ouvert === 'infos' && (
         <div style={{ marginTop: 12 }}>

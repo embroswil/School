@@ -21,6 +21,11 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Version ordinateur": "Desktop version",
+  "Affichée sur cet appareil (aperçu)": "Shown on this device (preview)",
+  "Pour voir l’affichage d’un ordinateur sur ce téléphone": "To see the computer layout on this phone",
+  "Version mobile": "Mobile version",
+  "Afficher": "Show",
   "(ou « Ajouter à l’écran d’accueil »).": "(or “Add to Home Screen”).",
   "), ou envoyez un fichier": "), or send a file",
   "+ Ajouter": "+ Add",
