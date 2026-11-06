@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
-import { ReglagePush } from '../push.jsx'
+import { ReglagePush, installee } from '../push.jsx'
 import { ChoixLangue } from '../i18n.jsx'
 import { basculerVersionOrdi, ordiForce } from '../ordinateur.jsx'
 import { Field, Note } from '../ui.jsx'
@@ -15,7 +15,7 @@ const ROLES = {
   student: 'Élève',
 }
 
-function Reglage({ Icone, titre, valeur, onClick, href, danger }) {
+function Reglage({ Icone, titre, valeur, onClick, href, danger, droite }) {
   const contenu = (
     <>
       <span className="ico">
@@ -23,11 +23,16 @@ function Reglage({ Icone, titre, valeur, onClick, href, danger }) {
       </span>
       <span>{titre}</span>
       <span className="val">
-        {valeur}
-        <IcChevron size={16} />
+        {droite || (
+          <>
+            {valeur}
+            <IcChevron size={16} />
+          </>
+        )}
       </span>
     </>
   )
+  if (droite && !href && !onClick) return <div className={`reglage ${danger ? 'danger' : ''}`}>{contenu}</div>
   return href ? (
     <a className={`reglage ${danger ? 'danger' : ''}`} href={href}>
       {contenu}
@@ -125,76 +130,38 @@ export default function Account() {
   const [ouvert, setOuvert] = useState(null)
   const bascule = (k) => setOuvert((o) => (o === k ? null : k))
   const initiales = `${(moi.firstName || '?')[0]}${(moi.lastName || '')[0] || ''}`.toUpperCase()
+  const emailReel = moi.email && !/@(tel|inscrit)\.school$/.test(moi.email)
+  const emailActif = moi.notifEmail !== false
+
+  async function basculerEmail() {
+    const v = !emailActif
+    await api.put('/api/auth/me', { notifEmail: v })
+    setMoi((m) => ({ ...m, notifEmail: v }))
+    const s2 = session.get()
+    if (s2?.user) session.set({ ...s2, user: { ...s2.user, notifEmail: v } })
+  }
 
   return (
-    <>
-      <section className="card profil-tete" style={{ marginTop: 4 }}>
-        <span className="avatar">{initiales}</span>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ font: '800 20px/1.2 var(--font-display)' }}>
+    <div className="profil">
+      <section className="profil-carte">
+        <span className="profil-avatar">{initiales}</span>
+        <div className="profil-identite">
+          <h1>
             {moi.firstName} {moi.lastName}
-          </div>
-          <div className="muted" style={{ fontSize: 14 }}>
-            {ROLES[moi.role] || moi.role}
-          </div>
-          {moi.schoolName && (
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)', marginTop: 2 }}>{moi.schoolName}</div>
-          )}
+          </h1>
+          <span className="profil-role">{ROLES[moi.role] || moi.role}</span>
+          {moi.schoolName && <p className="profil-ecole">{moi.schoolName}</p>}
+          <p className="profil-contact">
+            {emailReel && <span>{moi.email}</span>}
+            {moi.phone && <span>{moi.phone}</span>}
+          </p>
         </div>
-      </section>
-
-      <p className="groupe-titre">Mon compte</p>
-      <div className="liste-reglages">
-        <Reglage Icone={IcCrayon} titre="Informations personnelles" valeur={moi.phone || ''} onClick={() => bascule('infos')} />
-        <Reglage Icone={IcCle} titre="Mot de passe" valeur="••••••••" onClick={() => bascule('mdp')} />
-        <Reglage Icone={IcCloche} titre="Notifications" href="#/notifications" />
-        {moi.role !== 'admin' && (
-          <button
-            type="button"
-            className="reglage"
-            onClick={async () => {
-              const v = !(moi.notifEmail !== false)
-              await api.put('/api/auth/me', { notifEmail: v })
-              setMoi((m) => ({ ...m, notifEmail: v }))
-              const s2 = session.get()
-              if (s2?.user) session.set({ ...s2, user: { ...s2.user, notifEmail: v } })
-            }}
-          >
-            <span className="ico">
-              <IcCloche size={20} />
-            </span>
-            <span>Notifications par email</span>
-            <span className="val">
-              <span className={`tag ${moi.notifEmail !== false ? 'tag-now' : 'tag-off'}`}>{moi.notifEmail !== false ? 'Activées' : 'Désactivées'}</span>
-            </span>
-          </button>
-        )}
-      </div>
-      <ReglagePush />
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
-        <span style={{ fontSize: 24 }}>🌐</span>
-        <div style={{ flex: 1 }}>
-          <b>Langue · Language</b>
-          <div className="muted" style={{ fontSize: 13 }} data-brut>
-            Français · English
-          </div>
-        </div>
-        <ChoixLangue />
-      </div>
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
-        <span style={{ fontSize: 24 }}>🖥️</span>
-        <div style={{ flex: 1 }}>
-          <b>Version ordinateur</b>
-          <div className="muted" style={{ fontSize: 13 }}>
-            {ordiForce() ? 'Affichée sur cet appareil (aperçu)' : 'Pour voir l’affichage d’un ordinateur sur ce téléphone'}
-          </div>
-        </div>
-        <button type="button" className={ordiForce() ? 'btn btn-quiet' : 'btn'} style={{ padding: '8px 12px', fontSize: 13 }} onClick={() => basculerVersionOrdi(!ordiForce())}>
-          {ordiForce() ? 'Version mobile' : 'Afficher'}
+        <button type="button" className="btn btn-quiet profil-modifier" onClick={() => bascule('infos')}>
+          Modifier
         </button>
-      </div>
+      </section>
       {ouvert === 'infos' && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ margin: '12px 0' }}>
           <Informations
             user={moi}
             onDone={(d) => {
@@ -204,18 +171,60 @@ export default function Account() {
           />
         </div>
       )}
+
+      <p className="groupe-titre">Compte</p>
+      <div className="liste-reglages">
+        <Reglage Icone={IcCrayon} titre="Informations personnelles" onClick={() => bascule('infos')} />
+        <Reglage Icone={IcCle} titre="Mot de passe" valeur="••••••••" onClick={() => bascule('mdp')} />
+      </div>
       {ouvert === 'mdp' && (
         <div style={{ marginTop: 12 }}>
           <MotDePasse logout={logout} />
         </div>
       )}
 
+      <p className="groupe-titre">Notifications</p>
+      <div className="liste-reglages">
+        <Reglage Icone={IcCloche} titre="Notifications reçues" valeur="Tout voir" href="#/notifications" />
+        {moi.role !== 'admin' && emailReel && (
+          <Reglage
+            Icone={IcCloche}
+            titre="Notifications par email"
+            onClick={basculerEmail}
+            droite={
+              <span className={`interrupteur ${emailActif ? 'on' : ''}`} role="switch" aria-checked={emailActif}>
+                <i />
+              </span>
+            }
+          />
+        )}
+      </div>
+      <ReglagePush />
+
+      <p className="groupe-titre">Préférences</p>
+      <div className="liste-reglages">
+        <Reglage Icone={IcAide} titre="Langue" droite={<ChoixLangue />} />
+        {['principal', 'teacher', 'admin'].includes(moi.role) && (
+          <Reglage
+            Icone={IcEcole}
+            titre="Version ordinateur"
+            onClick={() => basculerVersionOrdi(!ordiForce())}
+            droite={
+              <span className={`interrupteur ${ordiForce() ? 'on' : ''}`} role="switch" aria-checked={ordiForce()}>
+                <i />
+              </span>
+            }
+          />
+        )}
+      </div>
+
       {moi.role === 'principal' && (
         <>
           <p className="groupe-titre">Mon établissement</p>
           <div className="liste-reglages">
-            <Reglage Icone={IcEcole} titre="Enseignants" href="#/enseignants" />
+            <Reglage Icone={IcEcole} titre="Enseignants" href="#/presence-enseignants" />
             <Reglage Icone={IcCarte} titre="Moyens de paiement" valeur="Orange, MTN…" href="#/scolarite" />
+            <Reglage Icone={IcCarte} titre="Abonnement School" href="#/abonnement" />
           </div>
         </>
       )}
@@ -223,18 +232,18 @@ export default function Account() {
       <p className="groupe-titre">Aide</p>
       <div className="liste-reglages">
         {moi.role !== 'admin' && moi.role !== 'principal' && <Reglage Icone={IcAide} titre="Contacter l’établissement" href="#/messages" />}
-        <Reglage Icone={IcAide} titre="Installer l’application" valeur="Écran d’accueil" href="#/installer" />
+        {!installee() && <Reglage Icone={IcAide} titre="Installer l’application" valeur="Écran d’accueil" href="#/installer" />}
         <Reglage Icone={IcAide} titre="Guide de démarrage" href="#/guide" />
-        <Reglage Icone={IcBouclier} titre="Confidentialité" valeur="Vos données" href="#/confidentialite" />
+        <Reglage Icone={IcBouclier} titre="Confidentialité" href="#/confidentialite" />
         <Reglage Icone={IcBouclier} titre="Conditions d’utilisation" href="#/conditions" />
       </div>
 
-      <div className="liste-reglages" style={{ marginTop: 22 }}>
-        <Reglage Icone={IcSortie} titre="Se déconnecter" onClick={logout} danger />
-      </div>
-      <p className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 18 }}>
-        {moi.email} · School by Embroswil
+      <button type="button" className="btn btn-quiet btn-danger btn-block profil-sortie" onClick={logout}>
+        <IcSortie size={18} /> Se déconnecter
+      </button>
+      <p className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 14 }}>
+        School by Embroswil
       </p>
-    </>
+    </div>
   )
 }

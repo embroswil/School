@@ -3,6 +3,7 @@ import { api } from './api.js'
 import { useAuth } from './auth.jsx'
 import { BandeauInstallation } from './installation.jsx'
 import { EncartPush, SynchroPush } from './push.jsx'
+import { DrapeauLangue } from './i18n.jsx'
 import { IcAccueil, IcActus, IcCarte, IcCloche, IcEcole, IcEleves, IcImport, IcMessages, IcPhoto, IcPlus, IcProfil, IcRetour } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
@@ -145,10 +146,13 @@ export default function Shell({ path, children }) {
             <span>{titre}</span>
           </div>
         )}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <DrapeauLangue />
         <a href="#/notifications" className="icon-btn" aria-label="Notifications">
           <IcCloche />
           {compteurs.notifications > 0 && <span className="pastille">{compteurs.notifications}</span>}
         </a>
+        </span>
       </header>
 
       <nav className="nav" aria-label="Navigation principale">

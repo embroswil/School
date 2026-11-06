@@ -122,9 +122,13 @@ export function EncartPush() {
 }
 
 // Ligne de reglage (Profil)
+export { installee }
+
 export function ReglagePush() {
   const { etat, activer, desactiver } = usePush()
   const [erreur, setErreur] = useState('')
+  // Seulement dans l'application installee, et seulement tant que les alertes ne sont pas activees
+  if (!installee() || !['inactif', 'refuse'].includes(etat)) return null
   const textes = {
     chargement: 'Vérification…',
     indisponible: 'Non disponible sur ce navigateur',

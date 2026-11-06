@@ -21,6 +21,12 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Bonjour,": "Hello,",
+  "Préférences": "Preferences",
+  "Compte": "Account",
+  "Langue": "Language",
+  "Aperçu de l’affichage ordinateur sur ce téléphone": "Preview the computer layout on this phone",
+  "Notifications reçues": "Received notifications",
   "Version ordinateur": "Desktop version",
   "Affichée sur cet appareil (aperçu)": "Shown on this device (preview)",
   "Pour voir l’affichage d’un ordinateur sur ce téléphone": "To see the computer layout on this phone",
@@ -1123,5 +1129,23 @@ export function ChoixLangue({ style }) {
         EN
       </button>
     </span>
+  )
+}
+
+// Drapeau a cote de la cloche : touche pour passer en anglais / en francais
+export function DrapeauLangue() {
+  const autre = langue === 'en' ? 'fr' : 'en'
+  return (
+    <button
+      type="button"
+      className="icon-btn drapeau"
+      data-brut
+      onClick={() => changerLangue(autre)}
+      aria-label={langue === 'en' ? 'Passer en français' : 'Switch to English'}
+      title={langue === 'en' ? 'Français' : 'English'}
+    >
+      <span aria-hidden="true">{langue === 'en' ? '🇬🇧' : '🇫🇷'}</span>
+      <small>{langue.toUpperCase()}</small>
+    </button>
   )
 }
