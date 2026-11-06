@@ -3,7 +3,35 @@ const env = require("../config/env");
 const ApiError = require("../utils/ApiError");
 const { executerAvec } = require("../utils/contexte");
 
+// Compte toujours existant et actif ? (verifie au plus une fois par minute et par compte)
+// Un compte supprime ou desactive est deconnecte, meme si son jeton est encore valide.
+const comptesVus = new Map();
+const compteValide = async (id) => {
+  const c = comptesVus.get(id);
+  if (c && c.expire > Date.now()) return c.ok;
+  const { rows } = await require("../config/db").query("SELECT is_active FROM users WHERE id = $1", [id]);
+  const ok = Boolean(rows[0]?.is_active);
+  comptesVus.set(id, { ok, expire: Date.now() + 60 * 1000 });
+  if (comptesVus.size > 5000) comptesVus.clear();
+  return ok;
+};
+
 const authenticate = (req, res, next) => {
+  const suiteAuth = authenticateJeton.bind(null, req, res);
+  const header = req.headers.authorization || "";
+  const [, token] = header.split(" ");
+  let id = null;
+  try {
+    id = Number(jwt.verify(token, env.jwt.secret, { algorithms: ["HS256"] }).sub);
+  } catch (_) {
+    return suiteAuth(next);
+  }
+  compteValide(id)
+    .then((ok) => (ok ? suiteAuth(next) : next(new ApiError(401, "Ce compte n’existe plus ou a été désactivé. Reconnectez-vous."))))
+    .catch(() => suiteAuth(next));
+};
+
+const authenticateJeton = (req, res, next) => {
   const header = req.headers.authorization || "";
   const [scheme, token] = header.split(" ");
 
