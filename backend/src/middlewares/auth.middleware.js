@@ -9,11 +9,19 @@ const comptesVus = new Map();
 const compteValide = async (id) => {
   const c = comptesVus.get(id);
   if (c && c.expire > Date.now()) return c.ok;
-  const { rows } = await require("../config/db").query("SELECT is_active FROM users WHERE id = $1", [id]);
+  const { rows } = await require("../config/db").query("SELECT is_active, langue FROM users WHERE id = $1", [id]);
   const ok = Boolean(rows[0]?.is_active);
-  comptesVus.set(id, { ok, expire: Date.now() + 60 * 1000 });
+  comptesVus.set(id, { ok, langue: rows[0]?.langue || "fr", expire: Date.now() + 60 * 1000 });
   if (comptesVus.size > 5000) comptesVus.clear();
   return ok;
+};
+// Memorise la langue choisie dans l'application (pour les notifications, alertes et emails)
+const noterLangue = (id, req) => {
+  const l = String(req.headers["x-langue"] || "").slice(0, 2);
+  const c = comptesVus.get(id);
+  if (!["fr", "en"].includes(l) || !c || c.langue === l) return;
+  c.langue = l;
+  require("../config/db").query("UPDATE users SET langue = $2 WHERE id = $1", [id, l]).catch(() => {});
 };
 
 const authenticate = (req, res, next) => {
@@ -27,7 +35,11 @@ const authenticate = (req, res, next) => {
     return suiteAuth(next);
   }
   compteValide(id)
-    .then((ok) => (ok ? suiteAuth(next) : next(new ApiError(401, "Ce compte n’existe plus ou a été désactivé. Reconnectez-vous."))))
+    .then((ok) => {
+      if (!ok) return next(new ApiError(401, "Ce compte n’existe plus ou a été désactivé. Reconnectez-vous."));
+      noterLangue(id, req);
+      return suiteAuth(next);
+    })
     .catch(() => suiteAuth(next));
 };
 

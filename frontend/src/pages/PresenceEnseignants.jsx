@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { BoutonExcel, exporterExcel } from '../export.jsx'
 
 const aujourdhui = () => {
   const d = new Date()
@@ -35,7 +36,40 @@ export default function PresenceEnseignants() {
   const sansAppel = v?.cours.filter((c) => c.etat === 'sans_appel').length || 0
   return (
     <>
-      <h1 className="page-title">Présence des enseignants</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h1 className="page-title" style={{ flex: 1 }}>
+          Présence des enseignants
+        </h1>
+        {v && (
+          <BoutonExcel
+            onClick={() =>
+              exporterExcel(`presence-enseignants-${date}`, [
+                {
+                  nom: `Cours du ${date}`,
+                  lignes: v.cours.map((c) => ({
+                    Heure: `${c.debut}–${c.fin}`,
+                    Classe: c.classe,
+                    Matière: c.matiere || '',
+                    Enseignant: c.last_name ? `${c.last_name} ${c.first_name}` : '',
+                    État: c.etat === 'assure' ? 'Appel fait' : c.etat === 'sans_appel' ? 'Pas d’appel' : 'À venir',
+                    Absent: c.absent ? 'Oui' : '',
+                  })),
+                },
+                {
+                  nom: 'Bilan 30 jours',
+                  lignes: v.bilan.map((b) => ({
+                    Enseignant: `${b.last_name} ${b.first_name}`,
+                    'Cours prévus': b.prevus,
+                    'Sans appel': b.sans_appel,
+                    'Absences signalées': b.absences,
+                    'Taux de cours assurés (%)': b.prevus ? Math.round(((b.prevus - b.sans_appel) / b.prevus) * 100) : 100,
+                  })),
+                },
+              ])
+            }
+          />
+        )}
+      </div>
       <div className="chips" style={{ marginBottom: 10 }}>
         <button type="button" className="chip" aria-pressed={onglet === 'jour'} onClick={() => setOnglet('jour')}>
           Jour par jour

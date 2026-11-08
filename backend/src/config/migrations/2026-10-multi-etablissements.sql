@@ -395,3 +395,6 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS push_envoye BOOLEAN NOT NULL 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS telephone_verifie BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE codes_email ADD COLUMN IF NOT EXISTS canal VARCHAR(10) NOT NULL DEFAULT 'email';
 CREATE INDEX IF NOT EXISTS idx_users_tel ON users ((right(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9)));
+
+-- Langue de chaque utilisateur (notifications, alertes et emails en francais ou en anglais)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS langue VARCHAR(2) NOT NULL DEFAULT 'fr';

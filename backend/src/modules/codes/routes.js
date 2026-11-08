@@ -21,7 +21,7 @@ const nouveauCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, "0");
 const compteParEmail = async (email) =>
   (
     await db.query(
-      "SELECT id, email, phone, first_name, email_verifie, telephone_verifie, is_active FROM users WHERE email = $1 AND email NOT LIKE '%@inscrit.school'",
+      "SELECT id, email, phone, first_name, email_verifie, telephone_verifie, is_active, langue FROM users WHERE email = $1 AND email NOT LIKE '%@inscrit.school'",
       [email]
     )
   ).rows[0] || null;
@@ -34,7 +34,7 @@ const compteParIdentifiant = async (identifiant) => {
   return (
     (
       await db.query(
-        `SELECT id, email, phone, first_name, email_verifie, telephone_verifie, is_active FROM users
+        `SELECT id, email, phone, first_name, email_verifie, telephone_verifie, is_active, langue FROM users
          WHERE right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 9) = right($1, 9) AND email NOT LIKE '%@inscrit.school'
          ORDER BY is_active DESC, id DESC LIMIT 1`,
         [tel]
@@ -76,8 +76,12 @@ const envoyerCode = async (u, type) => {
   }
   const contenu =
     type === "verification"
-      ? emailCode({ prenom: u.first_name, code, minutes: DUREE[type], titre: "Confirmez votre adresse email", intro: "Voici votre code pour confirmer votre adresse email sur School." })
-      : emailCode({ prenom: u.first_name, code, minutes: DUREE[type], titre: "Réinitialisation du mot de passe", intro: "Vous avez demandé à changer votre mot de passe School. Voici votre code." });
+      ? u.langue === "en"
+        ? emailCode({ langue: "en", prenom: u.first_name, code, minutes: DUREE[type], titre: "Confirm your email address", intro: "Here is your code to confirm your email address on School." })
+        : emailCode({ prenom: u.first_name, code, minutes: DUREE[type], titre: "Confirmez votre adresse email", intro: "Voici votre code pour confirmer votre adresse email sur School." })
+      : u.langue === "en"
+        ? emailCode({ langue: "en", prenom: u.first_name, code, minutes: DUREE[type], titre: "Password reset", intro: "You asked to change your School password. Here is your code." })
+        : emailCode({ prenom: u.first_name, code, minutes: DUREE[type], titre: "Réinitialisation du mot de passe", intro: "Vous avez demandé à changer votre mot de passe School. Voici votre code." });
   await envoyerEmail({
     a: u.email,
     nom: u.first_name,

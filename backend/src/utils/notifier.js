@@ -12,26 +12,31 @@ const APP = () => (process.env.FRONTEND_URL || "").split(",")[0].trim();
 const emailNotification = async (userId, { title, message, data }) => {
   try {
     const { rows } = await db.query(
-      "SELECT email, first_name, email_verifie, notif_email FROM users WHERE id = $1 AND email NOT LIKE '%@inscrit.school' AND email NOT LIKE '%@tel.school'",
+      "SELECT email, first_name, email_verifie, notif_email, langue FROM users WHERE id = $1 AND email NOT LIKE '%@inscrit.school' AND email NOT LIKE '%@tel.school'",
       [userId]
     );
     const u = rows[0];
     if (!u || !u.email_verifie || !u.notif_email) return;
     const { envoyerEmail } = require("./email");
     const lien = `${APP()}/#${data?.lien || "/"}`;
+    const en = u.langue === "en";
+    if (en) ({ title, message } = require("./langue").traduireNotification({ title, message }, "en"));
+    const T = en
+      ? { bonjour: "Hello", ouvrir: "Open School", stop: "To stop these emails: Profile › Email notifications." }
+      : { bonjour: "Bonjour", ouvrir: "Ouvrir School", stop: "Pour ne plus recevoir ces emails : Profil › Notifications par email." };
     await envoyerEmail({
       a: u.email,
       nom: u.first_name,
       sujet: `School · ${title}`,
-      texte: `Bonjour ${u.first_name},\n\n${title}\n${message}\n\nOuvrir School : ${lien}\n\nPour ne plus recevoir ces emails : Profil › Notifications par email.`,
+      texte: `${T.bonjour} ${u.first_name},\n\n${title}\n${message}\n\n${T.ouvrir} : ${lien}\n\n${T.stop}`,
       html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#fff;border-radius:18px;border:1px solid #e3e8f4;overflow:hidden">
 <tr><td style="background:#2446d8;padding:18px 24px;color:#fff;font-size:20px;font-weight:bold">School<span style="color:#ffb020">.</span></td></tr>
-<tr><td style="padding:24px"><p style="margin:0 0 6px;font-size:15px">Bonjour ${u.first_name},</p>
+<tr><td style="padding:24px"><p style="margin:0 0 6px;font-size:15px">${T.bonjour} ${u.first_name},</p>
 <h1 style="margin:0 0 8px;font-size:19px">${title}</h1><p style="margin:0 0 20px;font-size:15px;line-height:1.5">${message}</p>
-<a href="${lien}" style="display:inline-block;background:#2446d8;color:#fff;text-decoration:none;font-weight:bold;padding:12px 18px;border-radius:12px">Ouvrir School</a></td></tr>
-<tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">Pour ne plus recevoir ces emails : Profil › Notifications par email.</td></tr>
+<a href="${lien}" style="display:inline-block;background:#2446d8;color:#fff;text-decoration:none;font-weight:bold;padding:12px 18px;border-radius:12px">${T.ouvrir}</a></td></tr>
+<tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">${T.stop}</td></tr>
 </table></td></tr></table></body></html>`,
     });
   } catch (e) {

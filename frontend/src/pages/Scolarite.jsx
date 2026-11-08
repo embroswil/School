@@ -5,6 +5,7 @@ import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { ListeOrdres } from './OrdrePaiement.jsx'
 import StatutScolarite from './StatutScolarite.jsx'
+import { BoutonExcel, exporterExcel } from '../export.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
@@ -431,7 +432,33 @@ function Paiements() {
         </button>
       </form>
 
-      <h2 className="section-title">Paiements reçus {liste.data ? `· ${fcfa((liste.data || []).reduce((s, p) => s + p.montant, 0))}` : ''}</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h2 className="section-title" style={{ flex: 1 }}>
+          Paiements reçus {liste.data ? `· ${fcfa((liste.data || []).reduce((s, p) => s + p.montant, 0))}` : ''}
+        </h2>
+        {liste.data?.length > 0 && (
+          <BoutonExcel
+            onClick={() =>
+              exporterExcel('paiements', [
+                {
+                  nom: 'Paiements reçus',
+                  lignes: liste.data.map((p) => ({
+                    Date: new Date(p.created_at).toLocaleDateString('fr-FR'),
+                    'Reçu n°': p.numero_recu || '',
+                    Nom: p.last_name,
+                    'Prénom(s)': p.first_name,
+                    Classe: p.classe || '',
+                    Frais: p.frais,
+                    'Montant (FCFA)': p.montant,
+                    Mode: MODES[p.mode] || p.mode,
+                    Référence: p.reference || '',
+                  })),
+                },
+              ])
+            }
+          />
+        )}
+      </div>
       {liste.data?.length === 0 && <p className="muted">Aucun paiement pour le moment.</p>}
       {liste.data?.length > 0 && (
         <ul className="rows">
@@ -562,6 +589,40 @@ function Recouvrement() {
           <span>reste à encaisser</span>
           <small>{t.enRetard} élève(s) en retard</small>
         </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+        <BoutonExcel
+          texte="Exporter le recouvrement"
+          onClick={async () => {
+            const tous = (await api.get('/api/scolarite/recouvrement?tous=1')).data
+            await exporterExcel('recouvrement', [
+              {
+                nom: 'Par classe',
+                lignes: d.data.classes.map((c) => ({
+                  Classe: c.classe,
+                  Effectif: c.effectif,
+                  'Attendu (FCFA)': Number(c.attendu),
+                  'Encaissé (FCFA)': Number(c.encaisse),
+                  'Reste (FCFA)': Number(c.reste),
+                  'Taux (%)': Number(c.attendu) ? Math.round((Number(c.encaisse) / Number(c.attendu)) * 100) : 0,
+                  'Élèves en retard': c.en_retard,
+                })),
+              },
+              {
+                nom: 'Élèves',
+                lignes: tous.map((e) => ({
+                  Classe: e.classe,
+                  Nom: e.last_name,
+                  'Prénom(s)': e.first_name,
+                  'Dû (FCFA)': e.du,
+                  'Payé (FCFA)': e.paye,
+                  'Reste (FCFA)': e.reste,
+                  'En retard': e.en_retard ? 'Oui' : '',
+                })),
+              },
+            ])
+          }}
+        />
       </div>
       <p className="muted" style={{ fontSize: 13, margin: '8px 2px' }}>
         Frais obligatoires uniquement. {d.data.derniereRelance ? `Dernier rappel : ${jour(d.data.derniereRelance)}.` : ''}

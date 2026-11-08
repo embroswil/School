@@ -4,6 +4,7 @@ import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { IcClasses, IcImport } from '../icones.jsx'
 import StatutScolarite from './StatutScolarite.jsx'
+import { BoutonExcel, TableauTriable, exporterExcel, surOrdinateur } from '../export.jsx'
 
 // Eleves de l'etablissement : recherche, filtre par classe, placement, fiche
 export default function Students() {
@@ -33,6 +34,26 @@ export default function Students() {
   const tous = eleves.data || []
   const liste = scol === 'regle' ? tous.filter((e) => statutDe(e) === 'regle') : scol === 'non' ? tous.filter((e) => ['partiel', 'non_paye'].includes(statutDe(e))) : tous
   const sansClasse = liste.filter((e) => !e.class_id).length
+  const libelleStatut = { regle: 'Réglée', partiel: 'Partielle', non_paye: 'Non payée', aucun: '' }
+  const exporter = () =>
+    exporterExcel('eleves', [
+      {
+        nom: 'Élèves',
+        lignes: liste.map((e) => ({
+          Nom: e.last_name,
+          'Prénom(s)': e.first_name,
+          Classe: e.class_name || e.declared_class || '',
+          Matricule: e.matricule || '',
+          'Date de naissance': e.date_of_birth ? new Date(e.date_of_birth).toLocaleDateString('fr-FR') : '',
+          'Parents reliés': e.parents || 0,
+          'Compte créé': e.a_un_compte ? 'Oui' : 'Non',
+          'Frais obligatoires (FCFA)': e.scol_du || 0,
+          'Payé (FCFA)': e.scol_paye || 0,
+          'Reste (FCFA)': Math.max(0, (e.scol_du || 0) - (e.scol_paye || 0)),
+          Scolarité: libelleStatut[statutDe(e)],
+        })),
+      },
+    ])
 
   return (
     <>
@@ -47,6 +68,7 @@ export default function Students() {
         <a className="btn btn-quiet bouton-icone" href="#/classes" aria-label="Classes">
           <IcClasses size={18} /> Classes
         </a>
+        {liste.length > 0 && <BoutonExcel onClick={exporter} />}
         <a className="btn bouton-icone" href="#/import-eleves" aria-label="Importer une liste">
           <IcImport size={18} /> Importer
         </a>
@@ -82,7 +104,50 @@ export default function Students() {
         </div>
       )}
       <Note>{error}</Note>
-      {liste.length > 0 && (
+      {liste.length > 0 && surOrdinateur() && (
+        <TableauTriable
+          lignes={liste}
+          onLigne={(e) => (window.location.hash = `/eleves/${e.id}`)}
+          colonnes={[
+            { cle: 'last_name', titre: 'Nom', rendu: (e) => <b>{e.last_name}</b> },
+            { cle: 'first_name', titre: 'Prénom(s)' },
+            {
+              cle: 'class_name',
+              titre: 'Classe',
+              rendu: (e) =>
+                e.class_id ? (
+                  e.class_name
+                ) : (
+                  <select
+                    className="input"
+                    style={{ width: 'auto', padding: '6px 8px', fontSize: 13 }}
+                    value=""
+                    onClick={(ev) => ev.stopPropagation()}
+                    disabled={busy === e.id || !classes.data?.length}
+                    onChange={(ev) => placer(e.id, ev.target.value)}
+                  >
+                    <option value="">{e.declared_class ? `${e.declared_class} → placer…` : 'Placer…'}</option>
+                    {(classes.data || []).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                ),
+            },
+            { cle: 'matricule', titre: 'Matricule' },
+            { cle: 'parents', titre: 'Parents', style: { textAlign: 'center' } },
+            { cle: 'a_un_compte', titre: 'Compte', rendu: (e) => (e.a_un_compte ? 'Oui' : '—'), tri: (e) => (e.a_un_compte ? 1 : 0) },
+            {
+              cle: 'reste',
+              titre: 'Scolarité',
+              tri: (e) => Math.max(0, (e.scol_du || 0) - (e.scol_paye || 0)),
+              rendu: (e) => <StatutScolarite statut={statutDe(e)} reste={(e.scol_du || 0) - (e.scol_paye || 0)} />,
+            },
+          ]}
+        />
+      )}
+      {liste.length > 0 && !surOrdinateur() && (
         <ul className="liste-eleves">
           {liste.map((e) => (
             <li key={e.id}>

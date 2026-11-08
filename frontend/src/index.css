@@ -805,3 +805,17 @@ html.ordi .info, html.ordi .fil-filtres, html.ordi .stories { max-width: 760px; 
 .depot-choix small { color: var(--muted); font-size: 13px; }
 .astuce-depot { display: none; }
 html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
+
+/* ---------- tableaux (version ordinateur) et export Excel ---------- */
+.bouton-excel { gap: 6px; }
+.tableau-ordi-cadre { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.tableau-ordi { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tableau-ordi th { position: sticky; top: 0; background: var(--card-2, #181b22); color: var(--muted); font: 700 12px/1.2 var(--font-body); text-transform: uppercase; letter-spacing: 0.05em; text-align: left; padding: 11px 14px; cursor: pointer; white-space: nowrap; user-select: none; border-bottom: 1px solid var(--line); }
+.tableau-ordi th:hover { color: var(--text); }
+.tableau-ordi th .tri { color: #7aa5ff; }
+.tableau-ordi td { padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--text); vertical-align: middle; }
+.tableau-ordi tr:last-child td { border-bottom: 0; }
+.tableau-ordi tr.cliquable { cursor: pointer; }
+.tableau-ordi tr.cliquable:hover td { background: rgba(47, 107, 255, 0.06); }
+.barre-outils { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.barre-outils .espace { flex: 1; }

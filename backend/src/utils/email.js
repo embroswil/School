@@ -35,7 +35,7 @@ const envoyerEmail = async ({ a, nom, sujet, html, texte }) => {
 };
 
 // Gabarit : un code a 6 chiffres
-const emailCode = ({ prenom, code, titre, intro, minutes }) => ({
+const emailCode = ({ prenom, code, titre, intro, minutes, langue = "fr" }) => (langue === "en" ? emailCodeEn({ prenom, code, titre, intro, minutes }) : {
   texte: `${titre}\n\nBonjour ${prenom || ""},\n${intro}\n\nVotre code : ${code}\n\nIl est valable ${minutes} minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n\nSchool`,
   html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
@@ -51,6 +51,26 @@ const emailCode = ({ prenom, code, titre, intro, minutes }) => ({
       <p style="margin:0;font-size:13px;color:#5d6789;line-height:1.5">Ce code est valable ${minutes} minutes. Si vous n’êtes pas à l’origine de cette demande, ignorez simplement ce message.</p>
     </td></tr>
     <tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">School by Embroswil · la vie scolaire, simplement</td></tr>
+  </table></td></tr></table></body></html>`,
+});
+
+// Version anglaise du gabarit
+const emailCodeEn = ({ prenom, code, titre, intro, minutes }) => ({
+  texte: `${titre}\n\nHello ${prenom || ""},\n${intro}\n\nYour code: ${code}\n\nIt is valid for ${minutes} minutes. If you did not make this request, ignore this message.\n\nSchool`,
+  html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e3e8f4">
+    <tr><td style="background:#2446d8;padding:20px 24px;color:#ffffff;font-size:22px;font-weight:bold">School<span style="color:#ffb020">.</span></td></tr>
+    <tr><td style="padding:24px">
+      <h1 style="margin:0 0 12px;font-size:20px">${titre}</h1>
+      <p style="margin:0 0 6px;font-size:15px;line-height:1.5">Hello ${prenom || ""},</p>
+      <p style="margin:0 0 18px;font-size:15px;line-height:1.5">${intro}</p>
+      <div style="text-align:center;margin:0 0 18px">
+        <span style="display:inline-block;font-size:34px;letter-spacing:10px;font-weight:bold;background:#e8edff;color:#2446d8;padding:14px 22px;border-radius:14px">${code}</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:#5d6789;line-height:1.5">This code is valid for ${minutes} minutes. If you did not make this request, simply ignore this message.</p>
+    </td></tr>
+    <tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">School by Embroswil · school life, made simple</td></tr>
   </table></td></tr></table></body></html>`,
 });
 

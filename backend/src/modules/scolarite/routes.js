@@ -580,6 +580,15 @@ router.get("/recouvrement", async (req, res, next) => {
     reserve(req);
     const ecole = ecoleDe(req);
     const annee = await assurerAnneeScolaire(ecole);
+    // Export : tous les eleves, avec leur reste (pour Excel)
+    if (req.query.tous) {
+      const { rows } = await db.query(
+        `SELECT id, first_name, last_name, classe, SUM(montant)::int AS du, SUM(paye)::int AS paye, SUM(reste)::int AS reste, bool_or(en_retard) AS en_retard
+         FROM (${SQL_DU}) x GROUP BY id, first_name, last_name, classe ORDER BY classe, last_name, first_name`,
+        [ecole, annee?.id || null]
+      );
+      return res.json({ success: true, data: rows });
+    }
     if (req.query.classe) {
       const { rows } = await db.query(
         `SELECT id, first_name, last_name, SUM(montant)::int AS du, SUM(paye)::int AS paye, SUM(reste)::int AS reste, bool_or(en_retard) AS en_retard

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { BoutonExcel, exporterExcel } from '../export.jsx'
 
 // Saisie des notes d'une evaluation : une ligne par eleve
 export default function Evaluation({ id }) {
@@ -57,9 +58,29 @@ export default function Evaluation({ id }) {
 
   return (
     <>
-      <h1 className="page-title" style={{ fontSize: 22 }}>
-        {ev.matiere} · {ev.classe}
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h1 className="page-title" style={{ fontSize: 22, flex: 1 }}>
+          {ev.matiere} · {ev.classe}
+        </h1>
+        <BoutonExcel
+          onClick={() =>
+            exporterExcel(`notes-${ev.classe}-${ev.matiere}`.replace(/\s+/g, '-'), [
+              {
+                nom: `${ev.classe} ${ev.matiere}`,
+                lignes: eleves.map((e, i) => {
+                  const n = notes[e.id] || {}
+                  return {
+                    'N°': i + 1,
+                    Nom: e.last_name,
+                    'Prénom(s)': e.first_name,
+                    [`Note /${bareme}`]: n.absent ? 'Abs' : n.note === '' || n.note === undefined ? '' : Number(String(n.note).replace(',', '.')),
+                  }
+                }),
+              },
+            ])
+          }
+        />
+      </div>
       <p className="lede" style={{ marginBottom: 12 }}>
         {ev.titre} · Séquence {ev.sequence} · noté sur {bareme} · {ev.publiee ? 'publiée' : 'brouillon'}
       </p>

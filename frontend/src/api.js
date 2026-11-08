@@ -1,3 +1,4 @@
+import { langue } from './i18n.jsx'
 // Petit client pour l'API du backend : ajoute le token, le renouvelle si besoin
 // et traduit les messages d'erreur courants en français.
 
@@ -93,7 +94,8 @@ async function renewSession() {
 
 async function request(path, { method = 'GET', body, auth = true, retry = true } = {}) {
   const current = session.get()
-  const headers = { 'Content-Type': 'application/json' }
+  // Langue de l'application : le serveur l'utilise pour les notifications, alertes et emails
+  const headers = { 'Content-Type': 'application/json', 'X-Langue': langue }
   if (auth && current?.accessToken) headers.Authorization = `Bearer ${current.accessToken}`
 
   let res

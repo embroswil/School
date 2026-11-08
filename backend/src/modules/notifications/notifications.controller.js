@@ -57,9 +57,16 @@ const getUserNotifications = async (req, res, next) => {
       unreadOnly === "true"
     );
 
+    const { traduireNotification } = require("../../utils/langue");
+    const langue = String(req.headers["x-langue"] || "fr").slice(0, 2);
+    const traduites = Array.isArray(notifications)
+      ? notifications.map((n) => traduireNotification(n, langue))
+      : notifications && Array.isArray(notifications.notifications)
+        ? { ...notifications, notifications: notifications.notifications.map((n) => traduireNotification(n, langue)) }
+        : notifications;
     res.json({
       success: true,
-      data: notifications
+      data: traduites
     });
   } catch (error) {
     next(error);

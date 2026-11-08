@@ -17,11 +17,18 @@ const envoyer = async () => {
        RETURNING id, user_id, title, message, data`
     );
     if (!rows.length) return;
-    const abos = (await db.query("SELECT * FROM push_abonnements WHERE user_id = ANY($1)", [[...new Set(rows.map((r) => r.user_id))]])).rows;
+    const abos = (
+      await db.query(
+        "SELECT a.*, u.langue FROM push_abonnements a JOIN users u ON u.id = a.user_id WHERE a.user_id = ANY($1)",
+        [[...new Set(rows.map((r) => r.user_id))]]
+      )
+    ).rows;
+    const { traduireNotification } = require("../utils/langue");
     for (const n of rows) {
       for (const a of abos.filter((x) => x.user_id === n.user_id)) {
         try {
-          const statut = await W.envoyer(a, { title: n.title, body: n.message || "", lien: n.data?.lien || "/notifications", tag: `n${n.id}` });
+          const t = traduireNotification(n, a.langue);
+          const statut = await W.envoyer(a, { title: t.title, body: t.message || "", lien: n.data?.lien || "/notifications", tag: `n${n.id}` });
           if (statut === 404 || statut === 410) await db.query("DELETE FROM push_abonnements WHERE id = $1", [a.id]);
         } catch (e) {
           logger.error(`Push : ${e.message}`);

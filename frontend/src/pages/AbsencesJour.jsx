@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { BoutonExcel, exporterExcel } from '../export.jsx'
 
 const aujourdhui = () => {
   const d = new Date()
@@ -19,7 +20,23 @@ export default function AbsencesJour() {
 
   return (
     <>
-      <h1 className="page-title">Absences du jour</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h1 className="page-title" style={{ flex: 1 }}>
+          Absences du jour
+        </h1>
+        {d.data?.lignes?.length > 0 && (
+          <BoutonExcel
+            onClick={() =>
+              exporterExcel(`absences-${date}`, [
+                {
+                  nom: `Absences ${date}`,
+                  lignes: d.data.lignes.map((l) => ({ Classe: l.classe, Nom: l.last_name, 'Prénom(s)': l.first_name, Heure: l.heure, 'Parent relié': l.parents ? 'Oui' : 'Non' })),
+                },
+              ])
+            }
+          />
+        )}
+      </div>
       <p className="lede">
         Les absences sont saisies par les enseignants à chaque cours. Pour informer les familles, publiez votre récapitulatif mensuel ou par séquence :{' '}
         <a href="#/document">téléverser le récapitulatif</a>.
