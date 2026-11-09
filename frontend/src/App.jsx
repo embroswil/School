@@ -22,6 +22,8 @@ import Conversation from './pages/Conversation.jsx'
 import Actualites from './pages/Actualites.jsx'
 import Scolarite from './pages/Scolarite.jsx'
 import ImportEleves from './pages/ImportEleves.jsx'
+import ImportEnseignants from './pages/ImportEnseignants.jsx'
+import Administrateurs from './pages/Administrateurs.jsx'
 import ClassNotes from './pages/ClassNotes.jsx'
 import Evaluation from './pages/Evaluation.jsx'
 import Appel from './pages/Appel.jsx'
@@ -100,6 +102,8 @@ function Pages({ path }) {
   if (suiviMatch) return reserve(['parent', 'student'].includes(user.role), <Suivi key={suiviMatch[1]} id={Number(suiviMatch[1])} />)
   if (path.split('?')[0] === '/scolarite') return reserve(user.role !== 'teacher', <Scolarite />)
   if (path === '/import-eleves') return reserve(gestion, <ImportEleves />)
+  if (path === '/import-enseignants') return reserve(user.role === 'principal', <ImportEnseignants />)
+  if (path === '/administrateurs') return reserve(user.role === 'principal', <Administrateurs />)
   if (path === '/messages') return <Messages />
   const convMatch = path.match(/^\/messages\/(\d+)$/)
   if (convMatch) return <Conversation key={convMatch[1]} id={Number(convMatch[1])} />

@@ -147,6 +147,107 @@ router.get("/enseignants", async (req, res, next) => {
   }
 });
 
+// ---- Liste des enseignants fournie par l'etablissement (Excel, CSV)
+// POST /enseignants/import { enseignants: [{ nom, prenom, matieres, classes, principalDe, telephone, email }] }
+router.post("/enseignants/import", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const lignes = Array.isArray(req.body?.enseignants) ? req.body.enseignants : [];
+    if (!lignes.length) throw new ApiError(400, "Aucun enseignant à importer");
+    const resultat = await require("../../utils/enseignants-attendus").importer(ecole, lignes);
+    res.json({ success: true, data: resultat });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /enseignants/attendus : la liste importee, avec l'etat de chaque compte
+router.get("/enseignants/attendus", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const { rows } = await db.query(
+      `SELECT a.id, a.last_name, a.first_name, a.matieres, a.classes, a.principal_de, a.phone, a.email, a.user_id,
+              (u.id IS NOT NULL) AS a_un_compte, u.status
+       FROM enseignants_attendus a LEFT JOIN users u ON u.id = a.user_id
+       WHERE a.school_id = $1 ORDER BY a.last_name, a.first_name`,
+      [ecole]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/enseignants/attendus/:id", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    await db.query("DELETE FROM enseignants_attendus WHERE id = $1 AND school_id = $2", [parseInt(req.params.id, 10), ecole]);
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---- Administrateurs de l'etablissement (3 au maximum)
+const MAX_ADMINS = 3;
+router.get("/administrateurs", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const { rows } = await db.query(
+      "SELECT id, first_name, last_name, email, phone, last_login, created_at FROM users WHERE school_id = $1 AND role = 'principal' AND is_active = true ORDER BY created_at",
+      [ecole]
+    );
+    res.json({ success: true, data: rows, meta: { max: MAX_ADMINS } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /administrateurs { email, firstName, lastName, phone, password } : un nouveau compte,
+// ou un enseignant de l'etablissement deja inscrit (cree par son email)
+router.post("/administrateurs", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const b = req.body || {};
+    const email = String(b.email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Adresse email invalide");
+    const n = (await db.query("SELECT COUNT(*)::int AS n FROM users WHERE school_id = $1 AND role = 'principal' AND is_active = true", [ecole])).rows[0].n;
+    if (n >= MAX_ADMINS) throw new ApiError(400, `Un établissement peut avoir ${MAX_ADMINS} administrateurs au maximum`);
+    const ex = (await db.query("SELECT id, role, school_id FROM users WHERE email = $1", [email])).rows[0];
+    if (ex) {
+      if (ex.role !== "teacher" || ex.school_id !== ecole) throw new ApiError(409, "Cet email est déjà utilisé par un autre compte");
+      await db.query("UPDATE users SET role = 'principal', status = 'active', updated_at = NOW() WHERE id = $1", [ex.id]);
+      return res.status(201).json({ success: true, message: "L’enseignant est maintenant administrateur" });
+    }
+    if (!b.firstName || !b.lastName) throw new ApiError(400, "Prénom et nom obligatoires");
+    if (typeof b.password !== "string" || b.password.length < 8) throw new ApiError(400, "Mot de passe : 8 caractères minimum");
+    await db.query(
+      `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, school_id, status, email_verifie)
+       VALUES ($1, $2, 'principal', $3, $4, $5, $6, 'active', false)`,
+      [email, await bcrypt.hash(b.password, 10), String(b.firstName).trim(), String(b.lastName).trim(), String(b.phone || "").slice(0, 30) || null, ecole]
+    );
+    res.status(201).json({ success: true, message: "Administrateur ajouté" });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// DELETE /administrateurs/:id : retire un administrateur (jamais le dernier, ni soi-meme)
+router.delete("/administrateurs/:id", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const id = parseInt(req.params.id, 10);
+    if (id === req.user.id) throw new ApiError(400, "Vous ne pouvez pas retirer votre propre accès : demandez à un autre administrateur");
+    const n = (await db.query("SELECT COUNT(*)::int AS n FROM users WHERE school_id = $1 AND role = 'principal' AND is_active = true", [ecole])).rows[0].n;
+    if (n <= 1) throw new ApiError(400, "Il faut au moins un administrateur");
+    const r = await db.query("UPDATE users SET role = 'teacher', updated_at = NOW() WHERE id = $1 AND school_id = $2 AND role = 'principal'", [id, ecole]);
+    if (!r.rowCount) throw new ApiError(404, "Administrateur introuvable");
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Classe de l'annee : retrouvee par son nom, ou creee (ex. « 3e A » : niveau 3e, section A)
 const classeParNom = async (anneeId, nom) => {
   const n = String(nom || "").trim().replace(/\s+/g, " ").slice(0, 50);

@@ -3,7 +3,7 @@ import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { ReglagePush, installee } from '../push.jsx'
 import { ChoixLangue } from '../i18n.jsx'
-import { Field, Note } from '../ui.jsx'
+import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
 
 const ROLES = {
@@ -123,6 +123,53 @@ function MotDePasse({ logout }) {
   )
 }
 
+// Suppression de son propre compte (mot de passe demandé)
+function SuppressionCompte({ logout }) {
+  const [ouvert, setOuvert] = useState(false)
+  const [mdp, setMdp] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function supprimer(e) {
+    e.preventDefault()
+    if (!window.confirm('Supprimer définitivement votre compte ? Cette action est irréversible.')) return
+    setBusy(true)
+    setError('')
+    try {
+      await api.delete('/api/comptes/moi', { password: mdp })
+      logout()
+    } catch (err) {
+      setError(err.message)
+      setBusy(false)
+    }
+  }
+  if (!ouvert)
+    return (
+      <button type="button" className="lien-discret" onClick={() => setOuvert(true)}>
+        Supprimer mon compte
+      </button>
+    )
+  return (
+    <form onSubmit={supprimer} className="card" style={{ marginTop: 14 }}>
+      <b>Supprimer mon compte</b>
+      <p className="muted" style={{ fontSize: 13 }}>
+        Votre compte et vos accès seront supprimés. Les données de l’établissement (notes, absences, paiements) sont conservées par l’établissement.
+      </p>
+      <Field label="Votre mot de passe">
+        <ChampMotDePasse value={mdp} onChange={(e) => setMdp(e.target.value)} />
+      </Field>
+      <Note>{error}</Note>
+      <div className="actions">
+        <button className="btn btn-danger" disabled={busy || !mdp}>
+          {busy ? 'Suppression…' : 'Supprimer définitivement'}
+        </button>
+        <button type="button" className="btn btn-quiet" onClick={() => setOuvert(false)}>
+          Annuler
+        </button>
+      </div>
+    </form>
+  )
+}
+
 export default function Account() {
   const { user, logout } = useAuth()
   const [moi, setMoi] = useState(user)
@@ -210,6 +257,8 @@ export default function Account() {
           <p className="groupe-titre">Mon établissement</p>
           <div className="liste-reglages">
             <Reglage Icone={IcEcole} titre="Enseignants" href="#/presence-enseignants" />
+            <Reglage Icone={IcEcole} titre="Liste des enseignants" valeur="Importer" href="#/import-enseignants" />
+            <Reglage Icone={IcCle} titre="Administrateurs" valeur="3 max." href="#/administrateurs" />
             <Reglage Icone={IcCarte} titre="Moyens de paiement" valeur="Orange, MTN…" href="#/scolarite" />
             <Reglage Icone={IcCarte} titre="Abonnement School" href="#/abonnement" />
           </div>
@@ -228,6 +277,7 @@ export default function Account() {
       <button type="button" className="btn btn-quiet btn-danger btn-block profil-sortie" onClick={logout}>
         <IcSortie size={18} /> Se déconnecter
       </button>
+      {moi.role !== 'admin' && <SuppressionCompte logout={logout} />}
       <p className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 14 }}>
         School by Embroswil
       </p>

@@ -398,3 +398,13 @@ CREATE INDEX IF NOT EXISTS idx_users_tel ON users ((right(regexp_replace(COALESC
 
 -- Langue de chaque utilisateur (notifications, alertes et emails en francais ou en anglais)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS langue VARCHAR(2) NOT NULL DEFAULT 'fr';
+
+-- Liste des enseignants fournie par l'etablissement (validation automatique, classes affectees)
+CREATE TABLE IF NOT EXISTS enseignants_attendus (
+  id SERIAL PRIMARY KEY, school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  nom_cle TEXT NOT NULL, last_name VARCHAR(100) NOT NULL, first_name VARCHAR(100) NOT NULL DEFAULT '',
+  matieres TEXT, classes TEXT, principal_de TEXT, phone VARCHAR(30), email VARCHAR(255),
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (school_id, nom_cle)
+);
+ALTER TABLE enseignants_attendus ENABLE ROW LEVEL SECURITY;

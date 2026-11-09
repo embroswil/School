@@ -198,6 +198,16 @@ const inscription = async (req, res, next) => {
     }
     await q("COMMIT");
 
+    // Enseignant present dans la liste de l'etablissement : compte valide et classes affectees tout de suite
+    let reconnu = false;
+    if (role === "teacher") {
+      try {
+        reconnu = Boolean(await require("../../utils/enseignants-attendus").reconnaitre(schoolId, userId, nom, prenom));
+      } catch (_) {
+        reconnu = false;
+      }
+    }
+
     // Code de verification de l'adresse email
     let codeEnvoye = false;
     let envoi = null;
@@ -209,7 +219,7 @@ const inscription = async (req, res, next) => {
       // l'inscription reste valable ; un nouveau code pourra etre demande
     }
 
-    if (role === "teacher") {
+    if (role === "teacher" && !reconnu) {
       await notifierEtablissement(schoolId, {
         title: "Nouvel enseignant à valider",
         message: `${prenom} ${nom} (${matieresChoisies.map((m) => m.name).join(", ")}) a créé un compte enseignant.`,
@@ -222,10 +232,12 @@ const inscription = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message:
-        role === "teacher"
+        role === "teacher" && reconnu
+          ? `Compte créé. Vous figurez dans la liste de ${nomEcole} : votre compte est validé et vos classes sont déjà affectées.`
+          : role === "teacher"
           ? `Compte créé. ${nomEcole} doit valider votre compte enseignant avant votre première connexion.`
           : "Compte créé. Vous pouvez vous connecter.",
-      data: { role, enAttente: role === "teacher", enfantsRelies, codeEnvoye, canal: envoi?.canal || null, destination: envoi?.destination || null, identifiant: email.endsWith("@tel.school") ? texte(b.phone, 30) : email },
+      data: { role, enAttente: role === "teacher" && !reconnu, reconnu, enfantsRelies, codeEnvoye, canal: envoi?.canal || null, destination: envoi?.destination || null, identifiant: email.endsWith("@tel.school") ? texte(b.phone, 30) : email },
     });
   } catch (e) {
     try {

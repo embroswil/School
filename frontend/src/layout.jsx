@@ -85,6 +85,8 @@ const TITRES = {
   '/conditions': 'Conditions',
   '/scolarite': 'Scolarité',
   '/import-eleves': 'Importer des élèves',
+  '/import-enseignants': 'Liste des enseignants',
+  '/administrateurs': 'Administrateurs',
   '/etablissements': 'Établissements',
   '/utilisateurs': 'Comptes',
   '/evaluations': 'Saisie des notes',

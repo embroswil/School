@@ -201,9 +201,26 @@ export default function Users() {
             {u.id === me.id ? (
               <span className="row-sub">Vous</span>
             ) : (
-              <button className={u.isActive ? 'btn btn-quiet btn-danger' : 'btn btn-quiet'} type="button" onClick={() => toggle(u)}>
-                {u.isActive ? 'Désactiver' : 'Réactiver'}
-              </button>
+              <span style={{ display: 'flex', gap: 6 }}>
+                <button className={u.isActive ? 'btn btn-quiet btn-danger' : 'btn btn-quiet'} type="button" onClick={() => toggle(u)}>
+                  {u.isActive ? 'Désactiver' : 'Réactiver'}
+                </button>
+                <button
+                  className="btn btn-quiet btn-danger"
+                  type="button"
+                  onClick={async () => {
+                    if (!window.confirm(`Supprimer définitivement le compte de ${u.firstName} ${u.lastName} ? Cette action est irréversible.`)) return
+                    try {
+                      await api.delete(`/api/comptes/${u.id}`)
+                      list.reload()
+                    } catch (e) {
+                      window.alert(e.message)
+                    }
+                  }}
+                >
+                  Supprimer
+                </button>
+              </span>
             )}
           </li>
         ))}

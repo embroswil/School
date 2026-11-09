@@ -40,6 +40,9 @@ export default function PresenceEnseignants() {
         <h1 className="page-title" style={{ flex: 1 }}>
           Présence des enseignants
         </h1>
+        <a className="btn btn-quiet bouton-icone" href="#/import-enseignants">
+          Liste
+        </a>
         {v && (
           <BoutonExcel
             onClick={() =>

@@ -95,6 +95,7 @@ export function useDepotPage(traiter, { texte = 'Déposez vos fichiers ici', det
 const CHOIX = {
   principal: [
     ['/import-eleves', '📋', 'Liste d’élèves', 'Excel, PDF ou photo : importer les élèves'],
+    ['/import-enseignants', '🧑‍🏫', 'Liste d’enseignants', 'Excel ou CSV : matières et classes'],
     ['/document', '📄', 'Document pour les familles', 'Communiqué, calendrier, récapitulatif…'],
     ['/discipline', '⚖️', 'Discipline', 'Procès-verbal, liste de sanctions'],
     ['/info', '🖼️', 'Photos pour une information', 'Images seulement'],
@@ -134,7 +135,7 @@ export function DepotGlobal({ role }) {
             </p>
             <div className="depot-choix">
               {choix
-                .filter(([to]) => to !== '/info' || images)
+                .filter(([to]) => (to !== '/info' || images) && (to !== '/import-enseignants' || fichiers.every((f) => /\.(xlsx|xls|csv)$/i.test(f.name))))
                 .map(([to, ico, titre, texte]) => (
                   <button
                     key={to}

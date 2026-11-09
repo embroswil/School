@@ -857,3 +857,5 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 .doc-cat { display: inline-block; margin-right: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: var(--text); font-weight: 600; }
 
 .retour-fleche.avec-texte { width: auto; padding: 0 14px 0 8px; display: inline-flex; align-items: center; gap: 2px; font: 700 14px/1 var(--font-body); }
+
+.lien-discret { display: block; margin: 18px auto 0; border: 0; background: none; color: var(--muted); font: 600 13px/1 var(--font-body); text-decoration: underline; cursor: pointer; }
