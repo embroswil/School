@@ -819,3 +819,41 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 .tableau-ordi tr.cliquable:hover td { background: rgba(47, 107, 255, 0.06); }
 .barre-outils { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
 .barre-outils .espace { flex: 1; }
+
+/* ---------- page Eleves : classes par niveau ---------- */
+.grille-classes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.carte-classe { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); cursor: pointer; font: inherit; text-align: left; }
+.carte-classe:hover { border-color: #2f6bff; }
+.carte-classe b { font: 700 16px/1.2 var(--font-display); }
+.carte-classe span { color: var(--muted); font-size: 13px; }
+.carte-alerte { border: 1px solid rgba(255, 77, 87, 0.35); border-radius: 14px; background: rgba(255, 77, 87, 0.06); margin-bottom: 6px; }
+.choix-eleve-liste { max-height: 280px; overflow-y: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.choix-eleve-liste button { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px; padding: 10px 12px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.choix-eleve-liste button:first-child { border-top: 0; }
+.choix-eleve-liste button:hover { background: rgba(47, 107, 255, 0.08); }
+.choix-eleve-liste small { color: var(--muted); }
+.choix-eleve-choisi { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #2f6bff; border-radius: 12px; background: rgba(47, 107, 255, 0.08); }
+.choix-eleve-choisi small { color: var(--muted); }
+
+/* ---------- fleche de retour (connexion, inscription) ---------- */
+.retour-fleche { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.1); color: #fff; cursor: pointer; padding: 0; }
+.retour-fleche:hover { background: rgba(255, 255, 255, 0.18); }
+.public-top .retour-fleche { border-color: var(--line); background: var(--card); color: var(--text); }
+
+/* ---------- documents : cartes d'envoi et liste publiee ---------- */
+.doc-carte { margin-top: 12px; }
+.doc-entete { display: flex; align-items: center; gap: 10px; }
+.doc-badge { flex: none; min-width: 44px; padding: 6px 8px; border-radius: 8px; background: rgba(47, 107, 255, 0.14); color: #9bb8ff; font: 800 10.5px/1 var(--font-body); letter-spacing: 0.04em; text-align: center; }
+.doc-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.doc-croix { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; }
+.doc-croix:hover { color: #ff7a82; border-color: #ff7a82; }
+.doc-libelle { margin: 4px 2px 6px; color: var(--muted); font: 700 12px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; }
+.docs-publies { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.doc-ligne { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.doc-ligne:first-child { border-top: 0; }
+.doc-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.doc-texte b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-texte small { color: var(--muted); font-size: 12.5px; }
+.doc-cat { display: inline-block; margin-right: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: var(--text); font-weight: 600; }
+
+.retour-fleche.avec-texte { width: auto; padding: 0 14px 0 8px; display: inline-flex; align-items: center; gap: 2px; font: 700 14px/1 var(--font-body); }

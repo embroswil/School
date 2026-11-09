@@ -5,7 +5,7 @@ import { BandeauInstallation } from './installation.jsx'
 import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
-import { IcAccueil, IcActus, IcCarte, IcCloche, IcEcole, IcEleves, IcImport, IcMessages, IcPhoto, IcPlus, IcProfil, IcRetour } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcListe, IcMegaphone, IcMessages, IcPlus, IcProf, IcProfil, IcRetour } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
 const NAV = {
@@ -107,12 +107,12 @@ const TITRES = {
 }
 
 const ACTIONS = [
-  ['/info', IcActus, 'Informer', 'Info, cours, photos'],
-  ['/document', IcImport, 'Document', 'PDF ou photo'],
-  ['/scolarite', IcCarte, 'Encaisser', 'Paiement au guichet'],
-  ['/absences', IcEleves, 'Absences', 'Élèves du jour'],
-  ['/presence-enseignants', IcPhoto, 'Enseignants', 'Cours assurés'],
-  ['/import-eleves', IcPlus, 'Élèves', 'Importer une liste'],
+  ['/info', IcMegaphone, 'Informer', 'Info, cours, photos'],
+  ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
+  ['/scolarite', IcBillets, 'Encaisser', 'Paiement au guichet'],
+  ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
+  ['/presence-enseignants', IcProf, 'Enseignants', 'Cours assurés'],
+  ['/import-eleves', IcListe, 'Élèves', 'Importer une liste'],
 ]
 
 export default function Shell({ path, children }) {

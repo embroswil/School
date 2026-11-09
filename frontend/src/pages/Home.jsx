@@ -6,7 +6,7 @@ import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
-import { IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcEcole, IcEleves, IcImport, IcMessages, IcPhoto, IcPlus, IcProfil, IcCasquette, IcGraphique } from '../icones.jsx'
+import { IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcMessages, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -301,9 +301,9 @@ function EspaceEtablissement() {
       <h2 className="section-title">Mon établissement</h2>
       <div className="grille-tuiles">
         <Tuile href="#/eleves" Icone={IcEleves} titre="Élèves" texte="Listes, classes, fiches" chiffre={d.eleves ?? '…'} />
-        <Tuile href="#/presence-enseignants" Icone={IcCasquette} titre="Enseignants" texte="Présence, cours assurés" chiffre={d.enseignants ?? '…'} />
+        <Tuile href="#/presence-enseignants" Icone={IcProf} titre="Enseignants" texte="Présence, cours assurés" chiffre={d.enseignants ?? '…'} />
         <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
-        <Tuile href="#/document" Icone={IcActus} titre="Informer" texte="Documents et informations" />
+        <Tuile href="#/document" Icone={IcMegaphone} titre="Informer" texte="Documents et informations" />
         <Tuile href="#/messages" Icone={IcMessages} titre="Messages" texte="Parents et enseignants" />
         <Tuile href="#/abonnement" Icone={IcGraphique} titre="Abonnement" texte="School, paiement, reçus" />
       </div>
@@ -379,8 +379,8 @@ function EspaceEnseignant() {
       </section>
 
       <div className="grille-tuiles quatre">
-        <Tuile href="#/info" Icone={IcActus} titre="Informer" texte="Info, cours supplémentaire, photos" />
-        <Tuile href="#/document" Icone={IcImport} titre="Document" texte="PDF ou photo" />
+        <Tuile href="#/info" Icone={IcMegaphone} titre="Informer" texte="Info, cours supplémentaire, photos" />
+        <Tuile href="#/document" Icone={IcFichier} titre="Document" texte="PDF, photo, Excel…" />
         <Tuile href="#/emploi" Icone={IcClasses} titre="Emploi du temps" texte="Mes cours" />
         <Tuile href="#/mon-absence" Icone={IcCoche} titre="Mon absence" texte="Prévenir l’établissement" />
       </div>

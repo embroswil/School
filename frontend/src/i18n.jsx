@@ -21,6 +21,17 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Ne pas ajouter ce document": "Do not add this document",
+  "Catégorie": "Category",
+  "Tout annuler": "Cancel all",
+  "Ajouter d’autres documents": "Add more documents",
+  "Choisir des documents": "Choose documents",
+  "PDF, Word, Excel, PowerPoint, photos, vidéos · jusqu’à 10 fichiers": "PDF, Word, Excel, PowerPoint, photos, videos · up to 10 files",
+  "Déposez vos documents": "Drop your documents",
+  "PDF, Word, Excel, PowerPoint, photos, vidéos": "PDF, Word, Excel, PowerPoint, photos, videos",
+  "Mot de passe (nouveau compte, 8 caractères minimum)": "Password (new account, at least 8 characters)",
+  "Les deux mots de passe ne correspondent pas": "The two passwords do not match",
+  "Téléversez des communiqués, emplois du temps, calendriers, résultats… School lit chaque document, le classe et l’affiche aux familles.": "Upload announcements, timetables, calendars, results… School reads each document, classifies it and shows it to families.",
   "Abonnement invalide": "Invalid subscription",
   "Absence introuvable": "Absence not found",
   "Accès non autorisé": "Unauthorised access",
@@ -1184,6 +1195,8 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Paiements reçus(.*)$/, 'Payments received$1'],
+  [/^Documents? publiés?(.*)$/, 'Published documents$1'],
   [/^(\d[\d\s\u202f\u00a0.,]*) élève\(s\)$/, '$1 student(s)'],
   [/^(\d[\d\s\u202f\u00a0.,]*) élèves$/, '$1 students'],
   [/^(\d+) élèves ›$/, '$1 students ›'],

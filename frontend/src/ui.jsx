@@ -62,14 +62,34 @@ export function ChampMotDePasse({ value, onChange, autoComplete = 'current-passw
   )
 }
 
+// Fleche de retour (ecrans de connexion et d'inscription) : page precedente, sinon l'accueil
+export function BoutonRetour({ vers = '/', libelle = '' }) {
+  return (
+    <button
+      type="button"
+      className={`retour-fleche ${libelle ? 'avec-texte' : ''}`}
+      aria-label="Retour"
+      onClick={() => (window.history.length > 1 ? window.history.back() : (window.location.hash = vers))}
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7" />
+      </svg>
+      {libelle && <span>{libelle}</span>}
+    </button>
+  )
+}
+
 // Mise en page des ecrans de connexion, d'inscription et de mot de passe oublie
 export function PageAuth({ titre, sousTitre, retour, children, pied }) {
   return (
     <div className="auth">
       <header className="auth-haut">
-        <a className="brand" href="#/" style={{ color: '#fff' }}>
-          School<span>.</span>
-        </a>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <BoutonRetour libelle="Retour" />
+          <a className="brand" href="#/" style={{ color: '#fff' }}>
+            School<span>.</span>
+          </a>
+        </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <ChoixLangue />
           {retour}

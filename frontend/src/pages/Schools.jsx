@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Field, Note } from '../ui.jsx'
+import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 
 const TYPES = { maternelle: 'Maternelle', primaire: 'École primaire', college: 'Collège', lycee: 'Lycée' }
 const vide = { name: '', type: 'lycee', city: '', code: '' }
-const adminVide = { email: '', firstName: '', lastName: '', phone: '', password: '' }
+const adminVide = { email: '', firstName: '', lastName: '', phone: '', password: '', password2: '' }
 
 export function Administrateur({ ecole, onDone }) {
   const [f, setF] = useState(adminVide)
@@ -17,7 +17,13 @@ export function Administrateur({ ecole, onDone }) {
     setError('')
     setBusy(true)
     try {
-      await api.post(`/api/schools/${ecole.id}/administrateur`, f)
+      if (f.password && f.password !== f.password2) {
+        setError('Les deux mots de passe ne correspondent pas')
+        setBusy(false)
+        return
+      }
+      const { password2, ...donnees } = f
+      await api.post(`/api/schools/${ecole.id}/administrateur`, donnees)
       setF(adminVide)
       onDone()
     } catch (err) {
@@ -45,10 +51,15 @@ export function Administrateur({ ecole, onDone }) {
         <Field label="Téléphone">
           <input className="input" value={f.phone} onChange={maj('phone')} />
         </Field>
-        <Field label="Mot de passe">
-          <input className="input" type="password" value={f.password} onChange={maj('password')} placeholder="Nouveau compte" />
-        </Field>
       </div>
+      <Field label="Mot de passe (nouveau compte, 8 caractères minimum)">
+        <ChampMotDePasse autoComplete="new-password" minLength={8} required={false} value={f.password} onChange={maj('password')} />
+      </Field>
+      {f.password && (
+        <Field label="Confirmer le mot de passe">
+          <ChampMotDePasse autoComplete="new-password" minLength={8} value={f.password2} onChange={maj('password2')} invalide={f.password2 !== '' && f.password !== f.password2} />
+        </Field>
+      )}
       <Note>{error}</Note>
       <button className="btn" type="submit" disabled={busy}>
         {busy ? 'Enregistrement…' : 'Désigner l’administrateur'}

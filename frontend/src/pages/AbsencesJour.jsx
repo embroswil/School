@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { BoutonExcel, exporterExcel } from '../export.jsx'
+import { comparerClasses } from '../classes.js'
 
 const aujourdhui = () => {
   const d = new Date()
@@ -60,7 +61,7 @@ export default function AbsencesJour() {
       <Note>{d.error}</Note>
       {!d.data && !d.error && <p className="muted">Chargement…</p>}
       {d.data && lignes.length === 0 && <p className="muted">Aucune absence enregistrée ce jour. 👍</p>}
-      {Object.entries(parClasse).map(([classe, ls]) => (
+      {Object.entries(parClasse).sort(([a], [b]) => comparerClasses(a, b)).map(([classe, ls]) => (
         <section key={classe}>
           <p className="niveau-titre">{classe}</p>
           <ul className="liste-eleves">

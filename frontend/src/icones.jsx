@@ -35,3 +35,12 @@ export const IcTableau = I(<><rect x="3" y="4" width="18" height="12" rx="1.5" /
 export const IcGraphique = I(<><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M22 20H2" /></>)
 export const IcTelephone = I(<><rect x="7" y="2.5" width="10" height="19" rx="2" /><path d="M11 18.5h2" /></>)
 export const IcCadenas = I(<><rect x="4.5" y="10.5" width="15" height="10" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></>)
+export const IcDocument = I(<><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M14 3v5h5" /><path d="M9 13h6" /><path d="M9 17h6" /></>)
+
+// Icones du menu « + » : chacune dit ce qu'elle fait
+export const IcMegaphone = I(<><path d="M3 10v4h3l8 4V6L6 10H3z" /><path d="M17.5 8.5a5 5 0 0 1 0 7" /><path d="M6 14l1.2 5h2.6L9 15.5" /></>)
+export const IcFichier = I(<><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h4" /></>)
+export const IcBillets = I(<><rect x="2.5" y="6.5" width="19" height="11" rx="2" /><circle cx="12" cy="12" r="2.6" /><path d="M6 10v.01M18 14v.01" /></>)
+export const IcAppel = I(<><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 3h6v3H9z" /><path d="m9.5 11 3 3m0-3-3 3" /><path d="M9 17.5h6" /></>)
+export const IcProf = I(<><rect x="2.5" y="3.5" width="19" height="9" rx="1.5" /><path d="M7 8h6" /><circle cx="12" cy="16" r="2.2" /><path d="M7.5 21c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" /></>)
+export const IcListe = I(<><circle cx="9" cy="8" r="3" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M17 8h4M17 12h4M17 16h4" /></>)

@@ -3,7 +3,6 @@ import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { ReglagePush, installee } from '../push.jsx'
 import { ChoixLangue } from '../i18n.jsx'
-import { basculerVersionOrdi, ordiForce } from '../ordinateur.jsx'
 import { Field, Note } from '../ui.jsx'
 import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
 
@@ -204,18 +203,6 @@ export default function Account() {
       <p className="groupe-titre">Préférences</p>
       <div className="liste-reglages">
         <Reglage Icone={IcAide} titre="Langue" droite={<ChoixLangue />} />
-        {(
-          <Reglage
-            Icone={IcEcole}
-            titre="Version ordinateur"
-            onClick={() => basculerVersionOrdi(!ordiForce())}
-            droite={
-              <span className={`interrupteur ${ordiForce() ? 'on' : ''}`} role="switch" aria-checked={ordiForce()}>
-                <i />
-              </span>
-            }
-          />
-        )}
       </div>
 
       {moi.role === 'principal' && (
