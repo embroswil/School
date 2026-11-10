@@ -258,6 +258,8 @@ export default function Account() {
           <div className="liste-reglages">
             <Reglage Icone={IcEcole} titre="Enseignants" href="#/presence-enseignants" />
             <Reglage Icone={IcEcole} titre="Liste des enseignants" valeur="Importer" href="#/import-enseignants" />
+            <Reglage Icone={IcEcole} titre="Emplois du temps" valeur="Importer" href="#/import-emplois" />
+            <Reglage Icone={IcEcole} titre="Cahier d’appel" valeur="Importer" href="#/import-absences" />
             <Reglage Icone={IcCle} titre="Administrateurs" valeur="3 max." href="#/administrateurs" />
             <Reglage Icone={IcCarte} titre="Moyens de paiement" valeur="Orange, MTN…" href="#/scolarite" />
             <Reglage Icone={IcCarte} titre="Abonnement School" href="#/abonnement" />

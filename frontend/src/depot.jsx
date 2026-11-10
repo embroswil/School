@@ -96,6 +96,8 @@ const CHOIX = {
   principal: [
     ['/import-eleves', '📋', 'Liste d’élèves', 'Excel, PDF ou photo : importer les élèves'],
     ['/import-enseignants', '🧑‍🏫', 'Liste d’enseignants', 'Excel ou CSV : matières et classes'],
+    ['/import-emplois', '🗓️', 'Emploi du temps', 'PDF, photo ou Excel : une ou plusieurs classes'],
+    ['/import-absences', '📒', 'Cahier d’appel', 'Met à jour les absences des élèves'],
     ['/document', '📄', 'Document pour les familles', 'Communiqué, calendrier, récapitulatif…'],
     ['/discipline', '⚖️', 'Discipline', 'Procès-verbal, liste de sanctions'],
     ['/info', '🖼️', 'Photos pour une information', 'Images seulement'],

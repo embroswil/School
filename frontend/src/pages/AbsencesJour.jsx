@@ -25,6 +25,9 @@ export default function AbsencesJour() {
         <h1 className="page-title" style={{ flex: 1 }}>
           Absences du jour
         </h1>
+        <a className="btn btn-quiet bouton-icone" href="#/import-absences">
+          Cahier d’appel
+        </a>
         {d.data?.lignes?.length > 0 && (
           <BoutonExcel
             onClick={() =>

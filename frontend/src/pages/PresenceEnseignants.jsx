@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { BoutonExcel, exporterExcel } from '../export.jsx'
+import { demandeAppel } from './Appel.jsx'
 
 const aujourdhui = () => {
   const d = new Date()
@@ -139,6 +140,20 @@ export default function PresenceEnseignants() {
                     </small>
                   </span>
                   <b style={{ color: ETAT[c.etat][1], fontSize: 12, whiteSpace: 'nowrap' }}>{ETAT[c.etat][0]}</b>
+                  {c.etat !== 'a_venir' && c.etat !== 'assure' && (
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ padding: '5px 8px', fontSize: 12 }}
+                      onClick={() => {
+                        demandeAppel.date = date
+                        demandeAppel.periode = Number(c.debut.replace(':', ''))
+                        window.location.hash = `/classes/${c.class_id}/appel`
+                      }}
+                    >
+                      Faire l’appel
+                    </button>
+                  )}
                   {c.teacher_id && !c.absent && c.etat !== 'assure' && (
                     <button type="button" className="btn btn-quiet" style={{ padding: '5px 8px', fontSize: 12 }} onClick={() => marquer(c.teacher_id, `${c.first_name} ${c.last_name}`)}>
                       Absent

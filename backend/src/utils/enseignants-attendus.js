@@ -134,4 +134,4 @@ const reconnaitre = async (ecole, userId, nom, prenom) => {
   return a;
 };
 
-module.exports = { cle, decouper, importer, reconnaitre, affecter };
+module.exports = { cle, decouper, importer, reconnaitre, affecter, matiereId, sansAccent };

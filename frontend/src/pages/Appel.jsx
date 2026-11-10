@@ -19,11 +19,20 @@ const maintenantHHMM = () => {
   return d.getHours() * 100 + d.getMinutes()
 }
 
+// Cours choisi depuis la presence des enseignants (appel fait a la place d'un enseignant absent)
+export const demandeAppel = { date: null, periode: null }
+
 // Appel d'une classe pour un jour : tout le monde present par defaut, on touche les absents
 export default function Appel({ id }) {
-  const [date, setDate] = useState(aujourdhui())
-  const [auto, setAuto] = useState(true) // choisir le cours en cours automatiquement
-  const [periode, setPeriode] = useState(null) // heure du cours (ex. 730) ; null : la journee
+  const [demande] = useState(() => {
+    const x = { ...demandeAppel }
+    demandeAppel.date = null
+    demandeAppel.periode = null
+    return x
+  })
+  const [date, setDate] = useState(demande.date || aujourdhui())
+  const [auto, setAuto] = useState(demande.periode === null) // choisir le cours en cours automatiquement
+  const [periode, setPeriode] = useState(demande.periode) // heure du cours (ex. 730) ; null : la journee
   const d = useApi(`/api/notes/appel/${id}?date=${date}${periode !== null ? `&periode=${periode}` : ''}`)
   const [statuts, setStatuts] = useState({})
   const [error, setError] = useState('')

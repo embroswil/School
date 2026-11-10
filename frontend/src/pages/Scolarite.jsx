@@ -9,6 +9,7 @@ import { BoutonExcel, exporterExcel } from '../export.jsx'
 import Comptabilite from './Comptabilite.jsx'
 import { envoyer } from './Documents.jsx'
 import { useDepotPage } from '../depot.jsx'
+import ChoixEleve from '../ChoixEleve.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
@@ -474,9 +475,10 @@ function Frais() {
 
 function Paiements() {
   const liste = useApi('/api/scolarite/paiements')
-  const eleves = useApi('/api/etablissement/eleves')
   const [eleveId, setEleveId] = useState('')
   const situation = useApi(eleveId ? `/api/scolarite/eleves/${eleveId}` : null)
+  const tousFrais = useApi('/api/scolarite/frais')
+  const [ed, setEd] = useState(null) // modification du frais choisi, sans quitter l'encaissement
   const [f, setF] = useState({ fraisId: '', montant: '', mode: 'especes', reference: '' })
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
@@ -506,21 +508,40 @@ function Paiements() {
   }
 
   const dus = (situation.data?.frais || []).filter((x) => x.reste > 0)
+  const fraisChoisi = (tousFrais.data || []).find((x) => String(x.id) === String(f.fraisId))
+
+  function ouvrirModif() {
+    if (!fraisChoisi) return
+    setEd({ nom: fraisChoisi.nom, montant: String(fraisChoisi.montant), echeance: fraisChoisi.echeance ? String(fraisChoisi.echeance).slice(0, 10) : '' })
+    setError('')
+  }
+  async function enregistrerModif() {
+    setError('')
+    try {
+      await api.put(`/api/scolarite/frais/${fraisChoisi.id}`, {
+        nom: ed.nom,
+        montant: Number(String(ed.montant).replace(/\s/g, '')),
+        echeance: ed.echeance || null,
+        classes: fraisChoisi.classes || [],
+        categorie: fraisChoisi.categorie,
+        obligatoire: fraisChoisi.obligatoire,
+      })
+      setEd(null)
+      setOk('✓ Frais modifié. Le reste à payer est mis à jour.')
+      setF((y) => ({ ...y, montant: '' }))
+      tousFrais.reload()
+      situation.reload()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   return (
     <>
       <form className="card" onSubmit={enregistrer}>
         <b>Enregistrer un paiement reçu au guichet</b>
         <Field label="Élève">
-          <select className="input" value={eleveId} onChange={(e) => setEleveId(e.target.value)} required>
-            <option value="">Choisir l’élève</option>
-            {(eleves.data || []).map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.last_name} {x.first_name}
-                {x.class_name ? ` (${x.class_name})` : ''}
-              </option>
-            ))}
-          </select>
+          <ChoixEleve valeur={eleveId} onChange={setEleveId} />
         </Field>
         {situation.data && (
           <p className="muted" style={{ marginBottom: 10 }}>
@@ -547,6 +568,38 @@ function Paiements() {
                 ))}
               </select>
             </Field>
+            {fraisChoisi && !ed && (
+              <button type="button" className="lien-discret" style={{ margin: '-4px 0 10px', textAlign: 'left' }} onClick={ouvrirModif}>
+                ✏️ Modifier ce frais
+              </button>
+            )}
+            {ed && (
+              <div className="card" style={{ marginBottom: 10, background: 'rgba(47,107,255,0.06)' }}>
+                <b>Modifier « {fraisChoisi?.nom} »</b>
+                <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 8px' }}>
+                  Le changement s’applique à tous les élèves concernés par ce frais.
+                </p>
+                <Field label="Nom">
+                  <input className="input" value={ed.nom} onChange={(e) => setEd({ ...ed, nom: e.target.value })} />
+                </Field>
+                <div className="grid2">
+                  <Field label="Montant (FCFA)">
+                    <input className="input" inputMode="numeric" value={ed.montant} onChange={(e) => setEd({ ...ed, montant: e.target.value })} />
+                  </Field>
+                  <Field label="Échéance (facultative)">
+                    <input className="input" type="date" value={ed.echeance} onChange={(e) => setEd({ ...ed, echeance: e.target.value })} />
+                  </Field>
+                </div>
+                <div className="actions">
+                  <button type="button" className="btn" onClick={enregistrerModif}>
+                    Enregistrer
+                  </button>
+                  <button type="button" className="btn btn-quiet" onClick={() => setEd(null)}>
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="grid2">
               <Field label="Montant (FCFA)">
                 <input className="input" inputMode="numeric" value={f.montant} onChange={(e) => setF({ ...f, montant: e.target.value })} required />

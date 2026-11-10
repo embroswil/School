@@ -87,6 +87,8 @@ const TITRES = {
   '/import-eleves': 'Importer des élèves',
   '/import-enseignants': 'Liste des enseignants',
   '/administrateurs': 'Administrateurs',
+  '/import-emplois': 'Emplois du temps',
+  '/import-absences': 'Cahier d’appel',
   '/etablissements': 'Établissements',
   '/utilisateurs': 'Comptes',
   '/evaluations': 'Saisie des notes',

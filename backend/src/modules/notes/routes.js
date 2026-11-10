@@ -450,7 +450,7 @@ router.get("/appel/:classId", async (req, res, next) => {
     ).rows.map((r) => ({ ...r, heure: r.periode === null ? "Journée" : heureTxt(r.periode) }));
     res.json({
       success: true,
-      data: { classe: c.name, date, periode, cours, resume, eleves: rows, faite, modifiable: req.user.role === "teacher" },
+      data: { classe: c.name, date, periode, cours, resume, eleves: rows, faite, modifiable: ["teacher", "principal"].includes(req.user.role) },
     });
   } catch (e) {
     next(e);
@@ -461,13 +461,24 @@ router.get("/appel/:classId", async (req, res, next) => {
 // L'appel est fait en classe par l'enseignant, heure par heure. Les parents des absents sont prevenus.
 router.put("/appel/:classId", async (req, res, next) => {
   try {
-    const c = await verifierClasse(req.user, entier(req.params.classId), null, "saisie");
+    // L'appel est fait par l'enseignant ; si celui-ci est absent, un administrateur (surveillant general) le fait a sa place
+    const admin = req.user.role !== "teacher";
+    const c = await verifierClasse(req.user, entier(req.params.classId), null, admin ? "lecture" : "saisie");
+    if (req.user.role === "admin") throw new ApiError(403, "L’appel est fait par l’enseignant ou par l’administration de l’établissement");
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : jourCameroun();
     // Pas d'appel pour un jour a venir, ni plus de 7 jours en arriere
     const ecart = (new Date(`${jourCameroun()}T12:00:00Z`) - new Date(`${date}T12:00:00Z`)) / 86400000;
     if (ecart < 0) throw new ApiError(400, "Impossible de faire l’appel d’un jour à venir");
     if (ecart > 7) throw new ApiError(400, "L’appel ne peut plus être modifié au-delà de 7 jours : contactez l’administration");
     const periode = periodeDe(req.body?.periode);
+    if (admin) {
+      const deja = await db.query("SELECT marked_by FROM appels WHERE class_id = $1 AND date = $2 AND period_number IS NOT DISTINCT FROM $3::int", [c.id, date, periode]);
+      const par = deja.rows[0]?.marked_by;
+      if (par && par !== req.user.id) {
+        const m = (await db.query("SELECT role FROM users WHERE id = $1", [par])).rows[0];
+        if (m?.role === "teacher") throw new ApiError(403, "L’appel a déjà été fait par l’enseignant : il le modifie lui-même");
+      }
+    }
     const liste = (Array.isArray(req.body?.presences) ? req.body.presences : []).filter((p) =>
       ["present", "absent"].includes(p.statut)
     );

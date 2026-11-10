@@ -21,6 +21,23 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Emplois du temps": "Timetables",
+  "Déposez l’emploi du temps": "Drop the timetable",
+  "Choisir l’emploi du temps": "Choose the timetable",
+  "Lecture de l’emploi du temps… (jusqu’à une minute)": "Reading the timetable… (up to a minute)",
+  "Cahier d’appel": "Attendance register",
+  "Déposez le cahier d’appel": "Drop the attendance register",
+  "Choisir le cahier d’appel": "Choose the attendance register",
+  "Lecture du cahier d’appel… (jusqu’à une minute)": "Reading the attendance register… (up to a minute)",
+  "PDF, photo ou Excel : une ou plusieurs classes": "PDF, photo or Excel: one or several classes",
+  "Met à jour les absences des élèves": "Updates students’ absences",
+  "Photo, PDF, Excel ou CSV": "Photo, PDF, Excel or CSV",
+  "Classe du cahier (si le document ne l’indique pas)": "Class of the register (if the document does not say)",
+  "Indiquée dans le document": "Stated in the document",
+  "Non reconnu": "Not recognised",
+  "Journée": "Whole day",
+  "✏️ Modifier ce frais": "✏️ Edit this fee",
+  "Le changement s’applique à tous les élèves concernés par ce frais.": "The change applies to all students concerned by this fee.",
   "Comptabilité": "Accounting",
   "📈 Comptabilité": "📈 Accounting",
   "Importer un document de frais": "Import a fees document",
@@ -1254,6 +1271,8 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) absence\(s\) reconnue\(s\)(.*)$/, '$1 absence(s) recognised$2'],
+  [/^Modifier « (.+) »$/, 'Edit “$1”'],
   [/^Comptabilité · (.+)$/, 'Accounting · $1'],
   [/^(\d+) frais trouvé\(s\) dans le document$/, '$1 fee(s) found in the document'],
   [/^Modifier le frais « (.+) »$/, 'Edit the fee “$1”'],
