@@ -56,7 +56,7 @@ const ETIQUETTE = (nom, type) => {
 }
 const ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,video/*'
 
-async function envoyer(fichier) {
+export async function envoyer(fichier) {
   const estImage = fichier.type.startsWith('image/')
   const blob = estImage ? await reduire(fichier) : fichier
   const mime = estImage ? 'image/jpeg' : mimeDe(fichier)

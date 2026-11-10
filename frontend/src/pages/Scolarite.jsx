@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
@@ -6,6 +6,9 @@ import { Field, Note } from '../ui.jsx'
 import { ListeOrdres } from './OrdrePaiement.jsx'
 import StatutScolarite from './StatutScolarite.jsx'
 import { BoutonExcel, exporterExcel } from '../export.jsx'
+import Comptabilite from './Comptabilite.jsx'
+import { envoyer } from './Documents.jsx'
+import { useDepotPage } from '../depot.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
@@ -226,30 +229,64 @@ function Situation() {
 }
 
 // ------------------------------------------------------------ etablissement
+const FRAIS_VIDE = { id: null, nom: '', montant: '', echeance: '', classes: '', categorie: 'scolarite', obligatoire: true }
+const STATUT_LU = { nouveau: ['Nouveau', '#5fd0a0'], modifie: ['Modifié', '#e0a21a'], identique: ['Identique', '#8c96aa'] }
+
+// Lecture d'un document de frais : PDF, photo, Excel ou CSV
+async function texteDuTableur(fichier) {
+  const XLSX = await import('xlsx')
+  const wb = XLSX.read(await fichier.arrayBuffer(), { type: 'array' })
+  return wb.SheetNames.map((n) => `Feuille « ${n} »\n${XLSX.utils.sheet_to_csv(wb.Sheets[n])}`).join('\n\n')
+}
+
 function Frais() {
   const frais = useApi('/api/scolarite/frais')
-  const [f, setF] = useState({ nom: '', montant: '', echeance: '', classes: '', categorie: 'scolarite', obligatoire: true })
+  const champ = useRef(null)
+  const [f, setF] = useState(FRAIS_VIDE)
   const [error, setError] = useState('')
+  const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
+  const [lus, setLus] = useState(null)
+  const [lecture, setLecture] = useState('')
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
+  const edition = f.id !== null
 
-  async function ajouter(e) {
+  function modifier(x) {
+    setF({
+      id: x.id,
+      nom: x.nom,
+      montant: String(x.montant),
+      echeance: x.echeance ? String(x.echeance).slice(0, 10) : '',
+      classes: (x.classes || []).join(', '),
+      categorie: x.categorie || 'scolarite',
+      obligatoire: x.obligatoire,
+    })
+    setOk('')
+    setError('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function enregistrer(e) {
     e.preventDefault()
     setError('')
+    setOk('')
     setBusy(true)
+    const donnees = {
+      nom: f.nom,
+      montant: Number(String(f.montant).replace(/\s/g, '')),
+      echeance: f.echeance || null,
+      categorie: f.categorie,
+      obligatoire: f.obligatoire,
+      classes: f.classes
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean),
+    }
     try {
-      await api.post('/api/scolarite/frais', {
-        nom: f.nom,
-        montant: Number(String(f.montant).replace(/\s/g, '')),
-        echeance: f.echeance || null,
-        categorie: f.categorie,
-        obligatoire: f.obligatoire,
-        classes: f.classes
-          .split(',')
-          .map((x) => x.trim())
-          .filter(Boolean),
-      })
-      setF({ nom: '', montant: '', echeance: '', classes: '', categorie: f.categorie, obligatoire: true })
+      if (edition) await api.put(`/api/scolarite/frais/${f.id}`, donnees)
+      else await api.post('/api/scolarite/frais', donnees)
+      setOk(edition ? '✓ Frais modifié.' : '✓ Frais ajouté.')
+      setF({ ...FRAIS_VIDE, categorie: f.categorie })
       frais.reload()
     } catch (err) {
       setError(err.message)
@@ -266,9 +303,99 @@ function Frais() {
     }
   }
 
+  // Document contenant tous les frais : School le lit, compare avec les frais existants
+  async function choisirDocument(e) {
+    const fichier = [...(e.target.files || [])][0]
+    e.target.value = ''
+    if (!fichier) return
+    setError('')
+    setOk('')
+    setLus(null)
+    try {
+      setLecture('Envoi du document…')
+      let corps
+      if (/\.(xlsx|xls|csv)$/i.test(fichier.name)) corps = { texte: await texteDuTableur(fichier) }
+      else {
+        const env = await envoyer(fichier)
+        corps = { url: env.url, mime: env.mime }
+      }
+      setLecture('School lit le document… (jusqu’à une minute)')
+      const r = (await api.post('/api/scolarite/frais/lire', corps)).data
+      setLus(r.map((x, i) => ({ ...x, cle: i, choisi: x.statut !== 'identique' })))
+    } catch (err) {
+      setError(err.message)
+    }
+    setLecture('')
+  }
+  const zoneDepot = useDepotPage(choisirDocument, { texte: 'Déposez le document des frais', detail: 'PDF, photo, Excel ou CSV' })
+
+  async function appliquer() {
+    const choisis = lus.filter((x) => x.choisi && x.statut !== 'identique')
+    if (!choisis.length) return setLus(null)
+    setBusy(true)
+    setError('')
+    try {
+      const r = (await api.post('/api/scolarite/frais/appliquer', { frais: choisis.map(({ id, nom, montant, echeance, classes, categorie, obligatoire }) => ({ id, nom, montant, echeance, classes, categorie, obligatoire })) })).data
+      setOk(`✓ ${r.crees} frais ajouté(s), ${r.modifies} mis à jour. Les frais identiques n’ont pas été touchés.`)
+      setLus(null)
+      frais.reload()
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(false)
+  }
+  const majLu = (cle, champs) => setLus((l) => l.map((x) => (x.cle === cle ? { ...x, ...champs } : x)))
+
   return (
     <>
-      <form className="card" onSubmit={ajouter}>
+      {zoneDepot}
+      <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,image/*" onChange={choisirDocument} />
+      <button type="button" className="depot" onClick={() => champ.current?.click()} disabled={Boolean(lecture)}>
+        <span style={{ fontSize: 30 }}>📄</span>
+        <b>{lecture || 'Importer un document de frais'}</b>
+        <small>PDF, photo, Excel ou CSV : School remplit les frais automatiquement</small>
+        <small className="astuce-depot">ou glissez-déposez le fichier n’importe où sur cette page</small>
+      </button>
+      <Note kind="ok">{ok}</Note>
+      <Note>{error}</Note>
+
+      {lus && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <b>{lus.length} frais trouvé(s) dans le document</b>
+          <p className="muted" style={{ fontSize: 13, margin: '4px 0 10px' }}>
+            Vérifiez, décochez ce que vous ne voulez pas. Les frais <b>identiques</b> à ceux déjà enregistrés ne sont pas modifiés : seuls les nouveaux et les modifiés sont appliqués.
+          </p>
+          {lus.map((x) => (
+            <div key={x.cle} className="frais-lu">
+              <label className="check" style={{ margin: 0, alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={x.choisi && x.statut !== 'identique'} disabled={x.statut === 'identique'} onChange={(e) => majLu(x.cle, { choisi: e.target.checked })} />
+                <span style={{ flex: 1 }}>
+                  <b>{x.nom}</b> · {fcfa(x.montant)}
+                  <small className="muted" style={{ display: 'block' }}>
+                    {CATEGORIES[x.categorie]}
+                    {x.obligatoire ? '' : ' · facultatif'} · {x.classes?.length ? x.classes.join(', ') : 'toutes les classes'} · {x.echeance ? `avant le ${jour(x.echeance)}` : 'sans échéance'}
+                  </small>
+                  {x.changements?.length > 0 && <small style={{ display: 'block', color: '#e0a21a' }}>Change : {x.changements.join(' ; ')}</small>}
+                </span>
+                <span className="frais-lu-statut" style={{ color: STATUT_LU[x.statut][1] }}>
+                  {STATUT_LU[x.statut][0]}
+                </span>
+              </label>
+            </div>
+          ))}
+          <div className="actions" style={{ marginTop: 12 }}>
+            <button type="button" className="btn" onClick={appliquer} disabled={busy}>
+              {busy ? 'Application…' : `Appliquer (${lus.filter((x) => x.choisi && x.statut !== 'identique').length})`}
+            </button>
+            <button type="button" className="btn btn-quiet" onClick={() => setLus(null)}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
+      <form className="card" onSubmit={enregistrer} style={{ marginTop: 12 }}>
+        <b>{edition ? `Modifier le frais « ${f.nom} »` : 'Ajouter un frais'}</b>
         <Field label="Nom du frais">
           <input className="input" placeholder="ex. Pension – 1re tranche, Inscription, APEE" value={f.nom} onChange={maj('nom')} required />
         </Field>
@@ -276,10 +403,13 @@ function Frais() {
           <Field label="Montant (FCFA)">
             <input className="input" inputMode="numeric" placeholder="ex. 50000" value={f.montant} onChange={maj('montant')} required />
           </Field>
-          <Field label="Échéance">
+          <Field label="Échéance (facultative)">
             <input className="input" type="date" value={f.echeance} onChange={maj('echeance')} />
           </Field>
         </div>
+        <p className="muted" style={{ fontSize: 12.5, margin: '-4px 2px 10px' }}>
+          Sans échéance, le frais n’est jamais « en retard » : il reste simplement dû jusqu’au paiement.
+        </p>
         <Field label="Type de frais">
           <select className="input" value={f.categorie} onChange={maj('categorie')}>
             {Object.entries(CATEGORIES).map(([k, v]) => (
@@ -296,12 +426,19 @@ function Frais() {
         <Field label="Classes concernées (laisser vide = toutes)">
           <input className="input" placeholder="ex. 6e A, 6e B" value={f.classes} onChange={maj('classes')} />
         </Field>
-        <Note>{error}</Note>
-        <button className="btn" type="submit" disabled={busy}>
-          {busy ? 'Ajout…' : '+ Ajouter le frais'}
-        </button>
+        <div className="actions">
+          <button className="btn" type="submit" disabled={busy}>
+            {busy ? 'Enregistrement…' : edition ? 'Enregistrer les modifications' : '+ Ajouter le frais'}
+          </button>
+          {edition && (
+            <button type="button" className="btn btn-quiet" onClick={() => setF(FRAIS_VIDE)}>
+              Annuler
+            </button>
+          )}
+        </div>
       </form>
-      <h2 className="section-title">Frais {frais.data && frais.meta === null ? '' : ''}de l’année</h2>
+
+      <h2 className="section-title">Frais de l’année</h2>
       {frais.data?.length === 0 && <p className="muted">Aucun frais pour le moment.</p>}
       {frais.data?.length > 0 && (
         <ul className="rows">
@@ -316,13 +453,17 @@ function Frais() {
                   {x.obligatoire ? '' : ' · facultatif'}
                 </div>
                 <div className="row-sub">
-                  {x.classes?.length ? x.classes.join(', ') : 'Toutes les classes'}
-                  {x.echeance ? ` · avant le ${jour(x.echeance)}` : ''} · encaissé {fcfa(x.encaisse)}
+                  {x.classes?.length ? x.classes.join(', ') : 'Toutes les classes'} · {x.echeance ? `avant le ${jour(x.echeance)}` : 'sans échéance'} · encaissé {fcfa(x.encaisse)}
                 </div>
               </div>
-              <button type="button" className="btn btn-quiet btn-danger" style={{ padding: '8px 12px', fontSize: 14 }} onClick={() => supprimer(x.id)}>
-                Supprimer
-              </button>
+              <span style={{ display: 'flex', gap: 6 }}>
+                <button type="button" className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14 }} onClick={() => modifier(x)}>
+                  Modifier
+                </button>
+                <button type="button" className="btn btn-quiet btn-danger" style={{ padding: '8px 12px', fontSize: 14 }} onClick={() => supprimer(x.id)}>
+                  Supprimer
+                </button>
+              </span>
             </li>
           ))}
         </ul>
@@ -747,7 +888,7 @@ function Reglages() {
 export default function Scolarite() {
   const { user } = useAuth()
   const etablissement = user.role === 'principal'
-  const [onglet, setOnglet] = useState('paiements')
+  const [onglet, setOnglet] = useState(etablissement ? 'comptabilite' : 'paiements')
   return (
     <>
       <h1 className="page-title">Scolarité</h1>
@@ -755,6 +896,9 @@ export default function Scolarite() {
         <>
           <p className="lede">Fixez vos frais, suivez les paiements et enregistrez ceux reçus au guichet.</p>
           <div className="chips">
+            <button type="button" className="chip" aria-pressed={onglet === 'comptabilite'} onClick={() => setOnglet('comptabilite')}>
+              📈 Comptabilité
+            </button>
             <button type="button" className="chip" aria-pressed={onglet === 'paiements'} onClick={() => setOnglet('paiements')}>
               💳 Paiements
             </button>
@@ -771,6 +915,7 @@ export default function Scolarite() {
               ⚙️ Réglages
             </button>
           </div>
+          {onglet === 'comptabilite' && <Comptabilite />}
           {onglet === 'frais' && <Frais />}
           {onglet === 'recouvrement' && <Recouvrement />}
           {onglet === 'paiements' && <Paiements />}

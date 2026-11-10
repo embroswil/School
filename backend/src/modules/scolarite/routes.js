@@ -565,14 +565,228 @@ const SQL_DU = `
     FROM users u JOIN class_students cs ON cs.student_id = u.id AND cs.status = 'active'
     JOIN classes c ON c.id = cs.class_id JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
     WHERE u.school_id = $1 AND u.role = 'student'),
-  fr AS (SELECT id, nom, montant, classes, echeance FROM frais_scolaires
+  fr AS (SELECT id, nom, montant, classes, echeance, categorie FROM frais_scolaires
          WHERE school_id = $1 AND obligatoire AND (academic_year_id IS NULL OR academic_year_id = $2)),
-  du AS (SELECT el.*, fr.id AS frais_id, fr.nom AS frais, fr.montant, fr.echeance FROM el JOIN fr
+  du AS (SELECT el.*, fr.id AS frais_id, fr.nom AS frais, fr.montant, fr.echeance, fr.categorie FROM el JOIN fr
          ON (fr.classes IS NULL OR cardinality(fr.classes) = 0 OR lower(el.classe) = ANY (SELECT lower(x) FROM unnest(fr.classes) x))),
   pa AS (SELECT student_id, frais_id, SUM(montant) AS s FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi' GROUP BY 1, 2)
   SELECT du.*, LEAST(COALESCE(pa.s, 0), du.montant)::int AS paye, GREATEST(du.montant - COALESCE(pa.s, 0), 0)::int AS reste,
          (du.echeance < CURRENT_DATE AND COALESCE(pa.s, 0) < du.montant) AS en_retard
   FROM du LEFT JOIN pa ON pa.student_id = du.id AND pa.frais_id = du.frais_id`;
+
+
+// ---------------------------------------------------------------- frais : modification et import de document
+const lireChampsFrais = (b) => {
+  const nom = texte(b.nom, 120);
+  const montant = entier(b.montant);
+  if (!nom) throw new ApiError(400, "Nom du frais obligatoire (ex. Pension 1re tranche)");
+  if (!(montant > 0)) throw new ApiError(400, "Montant invalide");
+  const classes = Array.isArray(b.classes) ? b.classes.map((c) => texte(c, 50)).filter(Boolean) : [];
+  const echeance = /^\d{4}-\d{2}-\d{2}$/.test(String(b.echeance || "")) ? b.echeance : null; // null = sans echeance
+  return {
+    nom,
+    montant,
+    echeance,
+    classes: classes.length ? classes : null,
+    categorie: CATEGORIES.includes(b.categorie) ? b.categorie : "scolarite",
+    obligatoire: b.obligatoire !== false,
+  };
+};
+
+// PUT /frais/:id : modifier un frais deja ajoute
+router.put("/frais/:id", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const c = lireChampsFrais(req.body || {});
+    const { rows } = await db.query(
+      `UPDATE frais_scolaires SET nom = $3, montant = $4, echeance = $5, classes = $6, obligatoire = $7, categorie = $8
+       WHERE id = $1 AND school_id = $2 RETURNING *`,
+      [entier(req.params.id), ecole, c.nom, c.montant, c.echeance, c.classes, c.obligatoire, c.categorie]
+    );
+    if (!rows[0]) throw new ApiError(404, "Frais introuvable");
+    res.json({ success: true, data: rows[0] });
+  } catch (e) {
+    next(e);
+  }
+});
+
+const sansAccentFrais = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const memesClasses = (a, b) => [...(a || [])].map(sansAccentFrais).sort().join("|") === [...(b || [])].map(sansAccentFrais).sort().join("|");
+
+// POST /frais/lire { url, mime } ou { texte } : lit un document contenant les frais de l'etablissement
+// et les compare aux frais existants (nouveau, modifie, identique). N'ecrit rien.
+router.post("/frais/lire", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const { lireDocument } = require("../../utils/ia");
+    const { prefixePublic } = require("../medias/routes");
+    const b = req.body || {};
+    let images = [];
+    let pdfs = [];
+    let contenu = "";
+    if (b.texte) contenu = String(b.texte);
+    else {
+      const url = String(b.url || "");
+      if (!url.startsWith(prefixePublic())) throw new ApiError(400, "Document invalide");
+      const r = await fetch(url);
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (!r.ok || buf.length > 15 * 1024 * 1024) throw new ApiError(400, "Document trop lourd ou introuvable");
+      const mime = String(b.mime || "");
+      const b64 = buf.toString("base64");
+      if (mime.startsWith("image/")) images = [`data:${mime === "image/png" ? "image/png" : mime === "image/webp" ? "image/webp" : "image/jpeg"};base64,${b64}`];
+      else if (mime === "application/pdf") pdfs = [b64];
+      else throw new ApiError(400, "Format non lisible : utilisez un PDF, une photo, un fichier Excel ou CSV");
+    }
+    const j = await lireDocument({
+      images,
+      pdfs,
+      texte: contenu,
+      maxTokens: 6000,
+      consigne: `Ce document, fourni par un établissement scolaire camerounais, contient la liste de ses frais de scolarité (pension, tranches, inscription, APEE, examens, tenue, cantine, transport, activités…), parfois par classe ou par niveau.
+Extrais CHAQUE frais séparément. Renvoie : {"frais": [{"nom": "Pension – 1re tranche", "montant": 50000 (entier en FCFA, sans espaces), "echeance": "AAAA-MM-JJ" ou null si aucune date n'est indiquée,
+"categorie": une valeur parmi [${CATEGORIES.join(", ")}], "classes": ["6e", "5e"] (noms de classes ou de niveaux concernés ; tableau vide si tout l'établissement), "obligatoire": true ou false (false pour cantine, transport, sorties, options)}]}.
+Si un même frais a un montant différent selon le niveau, crée une ligne par niveau en l'indiquant dans "classes". N'invente rien : ignore ce qui n'est pas un frais.`,
+    });
+    const lus = (Array.isArray(j.frais) ? j.frais : []).slice(0, 80).map((x) => {
+      try {
+        return lireChampsFrais(x);
+      } catch (_) {
+        return null;
+      }
+    }).filter(Boolean);
+    if (!lus.length) throw new ApiError(422, "Aucun frais trouvé dans ce document");
+    const annee = await assurerAnneeScolaire(ecole);
+    const existants = (
+      await db.query("SELECT * FROM frais_scolaires WHERE school_id = $1 AND (academic_year_id IS NULL OR academic_year_id = $2)", [ecole, annee?.id || null])
+    ).rows;
+    const data = lus.map((c) => {
+      const ex = existants.find((e) => sansAccentFrais(e.nom) === sansAccentFrais(c.nom) && memesClasses(e.classes, c.classes))
+        || existants.find((e) => sansAccentFrais(e.nom) === sansAccentFrais(c.nom));
+      let statut = "nouveau";
+      let changements = [];
+      if (ex) {
+        if (ex.montant !== c.montant) changements.push(`montant ${ex.montant.toLocaleString("fr-FR")} → ${c.montant.toLocaleString("fr-FR")}`);
+        const ech = ex.echeance ? new Date(ex.echeance).toISOString().slice(0, 10) : null;
+        if (ech !== c.echeance) changements.push(`échéance ${ech || "aucune"} → ${c.echeance || "aucune"}`);
+        if (!memesClasses(ex.classes, c.classes)) changements.push("classes concernées");
+        if (ex.categorie !== c.categorie) changements.push("type de frais");
+        if (ex.obligatoire !== c.obligatoire) changements.push(c.obligatoire ? "devient obligatoire" : "devient facultatif");
+        statut = changements.length ? "modifie" : "identique";
+      }
+      return { ...c, id: ex?.id || null, statut, changements };
+    });
+    res.json({ success: true, data });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /frais/appliquer { frais: [{ id?, nom, montant, echeance, classes, categorie, obligatoire }] }
+// Cree les nouveaux frais et met a jour ceux qui ont change (les frais identiques ne sont pas envoyes)
+router.post("/frais/appliquer", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const liste = Array.isArray(req.body?.frais) ? req.body.frais.slice(0, 80) : [];
+    let crees = 0;
+    let modifies = 0;
+    for (const x of liste) {
+      const c = lireChampsFrais(x);
+      if (x.id) {
+        const r = await db.query(
+          `UPDATE frais_scolaires SET nom = $3, montant = $4, echeance = $5, classes = $6, obligatoire = $7, categorie = $8 WHERE id = $1 AND school_id = $2`,
+          [entier(x.id), ecole, c.nom, c.montant, c.echeance, c.classes, c.obligatoire, c.categorie]
+        );
+        modifies += r.rowCount;
+      } else {
+        await db.query(
+          `INSERT INTO frais_scolaires (school_id, academic_year_id, nom, montant, echeance, classes, obligatoire, categorie) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [ecole, annee?.id || null, c.nom, c.montant, c.echeance, c.classes, c.obligatoire, c.categorie]
+        );
+        crees += 1;
+      }
+    }
+    res.json({ success: true, data: { crees, modifies } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------------------------------------------------------------- comptabilite (tableau de bord de l'etablissement)
+// GET /comptabilite : synthese, par type de frais, par frais, par classe, par mode de paiement, par mois
+router.get("/comptabilite", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const p = [ecole, annee?.id || null];
+    const q = (sql) => db.query(sql, p).then((r) => r.rows);
+    const [globale, categories, frais, classes, modes, mois, facultatifs] = await Promise.all([
+      q(`SELECT COALESCE(SUM(montant),0)::bigint AS attendu, COALESCE(SUM(paye),0)::bigint AS encaisse, COUNT(DISTINCT id)::int AS eleves,
+                COUNT(DISTINCT id) FILTER (WHERE en_retard)::int AS en_retard,
+                COUNT(DISTINCT id) FILTER (WHERE reste = 0)::int AS soldes FROM (${SQL_DU}) x`),
+      q(`SELECT categorie, SUM(montant)::bigint AS attendu, SUM(paye)::bigint AS encaisse, SUM(reste)::bigint AS reste, COUNT(DISTINCT id)::int AS eleves
+         FROM (${SQL_DU}) x GROUP BY categorie ORDER BY SUM(montant) DESC`),
+      q(`SELECT frais_id AS id, frais AS nom, categorie, echeance, SUM(montant)::bigint AS attendu, SUM(paye)::bigint AS encaisse, SUM(reste)::bigint AS reste,
+                COUNT(DISTINCT id)::int AS eleves, COUNT(DISTINCT id) FILTER (WHERE en_retard)::int AS en_retard
+         FROM (${SQL_DU}) x GROUP BY frais_id, frais, categorie, echeance ORDER BY categorie, echeance NULLS LAST, frais`),
+      q(`SELECT classe, COUNT(DISTINCT id)::int AS effectif, SUM(montant)::bigint AS attendu, SUM(paye)::bigint AS encaisse, SUM(reste)::bigint AS reste,
+                COUNT(DISTINCT id) FILTER (WHERE en_retard)::int AS en_retard FROM (${SQL_DU}) x GROUP BY classe ORDER BY classe`),
+      db.query(
+        `SELECT mode, COUNT(*)::int AS nb, SUM(montant)::bigint AS total FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi' GROUP BY mode ORDER BY SUM(montant) DESC`,
+        [ecole]
+      ).then((r) => r.rows),
+      db.query(
+        `SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS mois, SUM(montant)::bigint AS total, COUNT(*)::int AS nb FROM paiements_scolaires
+         WHERE school_id = $1 AND statut = 'reussi' AND created_at > NOW() - INTERVAL '12 months' GROUP BY 1 ORDER BY 1`,
+        [ecole]
+      ).then((r) => r.rows),
+      db.query(
+        `SELECT f.id, f.nom, f.categorie, SUM(pa.montant)::bigint AS encaisse, COUNT(DISTINCT pa.student_id)::int AS eleves
+         FROM paiements_scolaires pa JOIN frais_scolaires f ON f.id = pa.frais_id
+         WHERE pa.school_id = $1 AND pa.statut = 'reussi' AND NOT f.obligatoire GROUP BY f.id, f.nom, f.categorie ORDER BY f.nom`,
+        [ecole]
+      ).then((r) => r.rows),
+    ]);
+    const g = globale[0] || { attendu: 0, encaisse: 0, eleves: 0, en_retard: 0, soldes: 0 };
+    res.json({
+      success: true,
+      data: {
+        annee: annee?.name || null,
+        totaux: { attendu: Number(g.attendu), encaisse: Number(g.encaisse), reste: Number(g.attendu) - Number(g.encaisse), eleves: g.eleves, enRetard: g.en_retard, soldes: g.soldes },
+        categories,
+        frais,
+        classes,
+        modes,
+        mois,
+        facultatifs,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /comptabilite/eleves[?classe=6e A] : le detail frais par frais de chaque eleve
+router.get("/comptabilite/eleves", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const classe = texte(req.query.classe, 60);
+    const { rows } = await db.query(
+      `SELECT id, first_name, last_name, classe, frais, categorie, montant, paye, reste, echeance, en_retard
+       FROM (${SQL_DU}) x ${classe ? "WHERE classe = $3" : ""} ORDER BY classe, last_name, first_name, categorie, echeance NULLS LAST`,
+      classe ? [ecole, annee?.id || null, classe] : [ecole, annee?.id || null]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
 
 // GET /api/scolarite/recouvrement[?classe=6e A] : par classe, ou les eleves d'une classe
 router.get("/recouvrement", async (req, res, next) => {

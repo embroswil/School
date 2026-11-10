@@ -859,3 +859,32 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 .retour-fleche.avec-texte { width: auto; padding: 0 14px 0 8px; display: inline-flex; align-items: center; gap: 2px; font: 700 14px/1 var(--font-body); }
 
 .lien-discret { display: block; margin: 18px auto 0; border: 0; background: none; color: var(--muted); font: 600 13px/1 var(--font-body); text-decoration: underline; cursor: pointer; }
+
+/* ---------- comptabilite ---------- */
+.compta-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 6px 0 4px; }
+.compta-kpi { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.compta-kpi span { color: var(--muted); font: 700 11.5px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; }
+.compta-kpi b { font: 800 19px/1.2 var(--font-display); color: #fff; word-break: break-word; }
+.compta-kpi small { color: var(--muted); font-size: 12.5px; }
+.compta-barre { display: inline-block; width: 70px; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.09); vertical-align: middle; overflow: hidden; margin-right: 6px; }
+.compta-barre i { display: block; height: 100%; border-radius: 4px; }
+.compta-sous td { background: rgba(255, 255, 255, 0.025); font-size: 13.5px; }
+.compta-sous td:first-child { padding-left: 32px; }
+.compta-deux { display: grid; gap: 10px; }
+.compta-ligne { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 0; border-top: 1px solid var(--line); }
+.compta-ligne span { min-width: 96px; }
+.compta-ligne b { margin-left: auto; }
+.compta-mois { display: flex; align-items: flex-end; gap: 8px; height: 150px; margin-top: 10px; overflow-x: auto; }
+.compta-mois div { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 38px; }
+.compta-mois i { display: block; width: 26px; border-radius: 6px 6px 2px 2px; background: #2f6bff; }
+.compta-mois small { font-size: 11px; }
+.compta-detail { padding: 4px 2px; }
+.compta-eleve { border-top: 1px solid var(--line); padding: 8px 4px; }
+.compta-eleve summary { display: flex; justify-content: space-between; gap: 10px; cursor: pointer; list-style: none; }
+.compta-eleve .rouge { color: #ff7a82; font-weight: 700; font-size: 13px; }
+.compta-eleve .ok-vert { color: #5fd0a0; font-weight: 700; font-size: 13px; }
+@media (min-width: 700px) { .compta-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } .compta-deux { grid-template-columns: 1fr 1fr; } }
+
+.frais-lu { padding: 10px 0; border-top: 1px solid var(--line); }
+.frais-lu:first-of-type { border-top: 0; }
+.frais-lu-statut { flex: none; font: 800 11.5px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.05em; padding-top: 3px; }
