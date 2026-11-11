@@ -411,3 +411,13 @@ ALTER TABLE enseignants_attendus ENABLE ROW LEVEL SECURITY;
 
 -- Photo de profil (image recadree, en data URL)
 ALTER TABLE users ALTER COLUMN profile_picture TYPE TEXT;
+
+-- Plafond mensuel de lectures automatiques (IA) par etablissement
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS quota_ia INTEGER;
+CREATE TABLE IF NOT EXISTS ia_usage (
+  id SERIAL PRIMARY KEY, school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, type VARCHAR(30) NOT NULL,
+  poids INTEGER NOT NULL DEFAULT 1, created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+ALTER TABLE ia_usage ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_ia_usage_school_date ON ia_usage (school_id, created_at);

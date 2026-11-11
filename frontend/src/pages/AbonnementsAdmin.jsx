@@ -142,6 +142,9 @@ export default function AbonnementsAdmin() {
   return (
     <>
       <h1 className="page-title">Abonnements {annee}</h1>
+      <a className="btn btn-quiet btn-block" href="#/quotas-ia" style={{ marginBottom: 12 }}>
+        🤖 Plafond de lectures automatiques (IA) par établissement
+      </a>
       <div className="kpis">
         <div className="kpi">
           <b>{fcfa(totaux.encaisse)}</b>

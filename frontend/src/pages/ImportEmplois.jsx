@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { Note } from '../ui.jsx'
 import { useDepotPage } from '../depot.jsx'
 import { lireDocumentEcole } from '../documents-ecole.js'
+import CompteurIA from '../CompteurIA.jsx'
 import { comparerClasses } from '../classes.js'
 
 const JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
@@ -54,6 +55,7 @@ export default function ImportEmplois() {
     <>
       {zoneDepot}
       <h1 className="page-title">Emplois du temps</h1>
+      <CompteurIA />
       <p className="lede">Importez l’emploi du temps d’une classe, ou de plusieurs classes à la fois. Il remplace l’emploi du temps actuel de chaque classe choisie ; l’appel, la présence des enseignants et le suivi des parents s’en servent.</p>
       <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,image/*" onChange={choisir} />
       <button type="button" className="depot" onClick={() => champ.current?.click()} disabled={Boolean(etat)}>

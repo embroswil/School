@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { Note } from '../ui.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
 import { useDepotPage } from '../depot.jsx'
+import CompteurIA from '../CompteurIA.jsx'
 import { TYPES_SANCTION } from './Discipline.jsx'
 
 // Discipline par document : photo ou fichier (PV de conseil de discipline,
@@ -69,6 +70,7 @@ export default function DisciplineImport() {
     <>
       {zoneDepot}
       <h1 className="page-title">Discipline par document</h1>
+      <CompteurIA />
       <p className="lede">
         Photographiez ou envoyez un document disciplinaire (procès-verbal du conseil de discipline, liste de sanctions, rapport…), imprimé
         ou écrit à la main. Les élèves sont reconnus automatiquement ; vous vérifiez avant d’enregistrer.

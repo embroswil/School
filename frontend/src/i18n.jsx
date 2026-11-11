@@ -21,6 +21,19 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Lectures automatiques (IA)": "Automatic readings (AI)",
+  "Lecture automatique non activée": "Automatic reading not enabled",
+  "Utilisez l’import Excel ou CSV, ou contactez School.": "Use the Excel or CSV import, or contact School.",
+  "Plafond atteint : utilisez l’import Excel ou CSV, ou contactez School pour l’augmenter.": "Limit reached: use the Excel or CSV import, or contact School to raise it.",
+  "Par établissement": "By school",
+  "Plafond mensuel": "Monthly limit",
+  "Ce mois": "This month",
+  "Total": "Total",
+  "Documents du fil": "Feed documents",
+  "Listes d’élèves": "Student lists",
+  "Cahiers d’appel": "Attendance registers",
+  "Ce mois, par type de document": "This month, by type of document",
+  "🤖 Plafond de lectures automatiques (IA) par établissement": "🤖 Automatic reading (AI) limit per school",
   "Recadrer la photo": "Crop the photo",
   "Faites glisser l’image pour la placer, puis zoomez si besoin.": "Drag the image to position it, then zoom if needed.",
   "Utiliser cette photo": "Use this photo",
@@ -1285,6 +1298,8 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Lectures automatiques ce mois : (\d+) sur (\d+)$/, 'Automatic readings this month: $1 of $2'],
+  [/^Plafond par défaut : (\d+) lectures par mois$/, 'Default limit: $1 readings per month'],
   [/^(\d+) pages? · Toucher pour ouvrir$/, '$1 page(s) · Tap to open'],
   [/^Année (\d{4}\/\d{4})$/, 'Year $1'],
   [/^(\d+) absence\(s\) reconnue\(s\)(.*)$/, '$1 absence(s) recognised$2'],

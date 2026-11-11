@@ -99,6 +99,7 @@ const TITRES = {
   '/discipline': 'Discipline',
   '/abonnement': 'Abonnement',
   '/abonnements': 'Abonnements',
+  '/quotas-ia': 'Lectures IA',
   '/recus': 'Reçu',
   '/ordres': 'Paiement',
   '/trouver-eleve': 'Trouver un élève',

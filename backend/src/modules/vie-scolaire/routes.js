@@ -239,7 +239,7 @@ router.post("/sanctions/lire", async (req, res, next) => {
   try {
     const u = req.user;
     if (!["principal", "admin", "teacher"].includes(u.role)) throw new ApiError(403, "Accès réservé");
-    const donnees = await lireDocument({
+    const donnees = await require("../../utils/quota-ia").lireAvecQuota(req, "discipline", {
       images: Array.isArray(req.body?.images) ? req.body.images : [],
       texte: req.body?.texte || "",
       consigne: `Ce document provient d'un établissement scolaire camerounais : procès-verbal de conseil de discipline, liste de sanctions, rapport du surveillant, billet d'avertissement, etc. (imprimé ou écrit à la main).

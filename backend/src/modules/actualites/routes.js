@@ -192,7 +192,7 @@ router.post("/documents/analyser", async (req, res, next) => {
     const b64 = buf.toString("base64");
     const { lireDocument } = require("../../utils/ia");
     const liste = CATEGORIES.map((c) => c[0]).join(", ");
-    const j = await lireDocument({
+    const j = await require("../../utils/quota-ia").lireAvecQuota(req, "document", {
       images: mime.startsWith("image/") ? [`data:${mime === "image/png" ? "image/png" : mime === "image/webp" ? "image/webp" : "image/jpeg"};base64,${b64}`] : [],
       pdfs: mime === "application/pdf" ? [b64] : [],
       maxTokens: 800,

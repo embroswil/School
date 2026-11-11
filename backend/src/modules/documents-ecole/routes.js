@@ -8,7 +8,7 @@ const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate, authorize } = require("../../middlewares/auth.middleware");
 const { assurerAnneeScolaire } = require("../../utils/annees");
-const { lireDocument } = require("../../utils/ia");
+const { lireAvecQuota } = require("../../utils/quota-ia");
 const { cle, matiereId, sansAccent } = require("../../utils/enseignants-attendus");
 
 router.use(authenticate, authorize("admin"));
@@ -59,7 +59,7 @@ router.post("/emplois/lire", async (req, res, next) => {
     const classes = await classesDe(ecole);
     const unique = req.body?.classId ? classes.find((c) => c.id === Number(req.body.classId)) : null;
     const doc = await charger(req.body || {});
-    const j = await lireDocument({
+    const j = await lireAvecQuota(req, "emploi", {
       ...doc,
       maxTokens: 8000,
       consigne: `Ce document est l'emploi du temps ${unique ? `de la classe « ${unique.name} »` : "d'une ou plusieurs classes"} d'un établissement scolaire camerounais.
@@ -118,7 +118,7 @@ router.post("/absences/lire", async (req, res, next) => {
     const classes = await classesDe(ecole);
     const unique = req.body?.classId ? classes.find((c) => c.id === Number(req.body.classId)) : null;
     const doc = await charger(req.body || {});
-    const j = await lireDocument({
+    const j = await lireAvecQuota(req, "absences", {
       ...doc,
       maxTokens: 8000,
       consigne: `Ce document est un cahier d'appel (ou un relevé d'absences) d'un établissement scolaire camerounais${unique ? `, pour la classe « ${unique.name} »` : ""}. Il liste les élèves absents, par jour et parfois par heure de cours.

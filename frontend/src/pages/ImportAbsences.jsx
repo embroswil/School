@@ -4,6 +4,7 @@ import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { useDepotPage } from '../depot.jsx'
 import { lireDocumentEcole } from '../documents-ecole.js'
+import CompteurIA from '../CompteurIA.jsx'
 import { trierClasses } from '../classes.js'
 
 // Cahiers d'appel : l'administration depose le cahier, School met a jour les absences
@@ -53,6 +54,7 @@ export default function ImportAbsences() {
     <>
       {zoneDepot}
       <h1 className="page-title">Cahier d’appel</h1>
+      <CompteurIA />
       <p className="lede">Les absences sont faites par les enseignants à l’appel. Déposez ici les cahiers d’appel (papier photographié, PDF ou Excel) pour compléter ou mettre à jour les absences : celles déjà saisies par un enseignant ne sont pas modifiées.</p>
       <Field label="Classe du cahier (si le document ne l’indique pas)">
         <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>

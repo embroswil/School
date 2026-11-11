@@ -927,3 +927,11 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 .abo-mode p { margin: 4px 0 10px; font-size: 13.5px; }
 .abo-mode-principal { border-color: rgba(47, 107, 255, 0.5); }
 @media (min-width: 700px) { .abo-modes { grid-template-columns: 1fr 1fr; } }
+
+/* ---------- plafond de lectures automatiques (IA) ---------- */
+.ia-compteur { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(47, 107, 255, 0.08); border: 1px solid rgba(47, 107, 255, 0.25); font-size: 13.5px; }
+.ia-compteur small { color: var(--muted); }
+.ia-rouge { background: rgba(229, 72, 77, 0.1); border-color: rgba(229, 72, 77, 0.4); }
+.ia-barre { display: block; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.ia-barre i { display: block; height: 100%; border-radius: 3px; background: #2f6bff; }
+.ia-rouge .ia-barre i { background: #e5484d; }

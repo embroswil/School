@@ -639,7 +639,7 @@ router.post("/frais/lire", async (req, res, next) => {
       else if (mime === "application/pdf") pdfs = [b64];
       else throw new ApiError(400, "Format non lisible : utilisez un PDF, une photo, un fichier Excel ou CSV");
     }
-    const j = await lireDocument({
+    const j = await require("../../utils/quota-ia").lireAvecQuota(req, "frais", {
       images,
       pdfs,
       texte: contenu,

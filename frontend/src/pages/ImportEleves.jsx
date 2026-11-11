@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { Field, Note } from '../ui.jsx'
 import { useDepotPage } from '../depot.jsx'
+import CompteurIA from '../CompteurIA.jsx'
 import { lireListeEleves, lirePhotos } from '../lecture-fichier.js'
 
 // Import des eleves depuis une liste (PDF, Excel, CSV), avec verification avant l'envoi
@@ -82,6 +83,7 @@ export default function ImportEleves() {
         ← Élèves
       </a>
       <h1 className="page-title">Importer une liste</h1>
+      <CompteurIA />
       <p className="lede">
         Photographiez une liste de classe (imprimée <b>ou écrite à la main</b>), ou envoyez un fichier <b>PDF</b> ou <b>Excel</b> :
         l’application lit les noms, prénoms, classes, dates de naissance et matricules, puis vous vérifiez avant l’import.

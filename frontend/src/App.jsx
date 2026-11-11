@@ -25,6 +25,7 @@ import ImportEleves from './pages/ImportEleves.jsx'
 import ImportEnseignants from './pages/ImportEnseignants.jsx'
 import Administrateurs from './pages/Administrateurs.jsx'
 import ImportEmplois from './pages/ImportEmplois.jsx'
+import QuotasIA from './pages/QuotasIA.jsx'
 import ImportAbsences from './pages/ImportAbsences.jsx'
 import ClassNotes from './pages/ClassNotes.jsx'
 import Evaluation from './pages/Evaluation.jsx'
@@ -124,6 +125,7 @@ function Pages({ path }) {
   if (path === '/emploi') return reserve(user.role === 'teacher', <MonEmploi />)
   if (path === '/abonnement') return reserve(user.role === 'principal', <Abonnement />)
   if (path === '/abonnements') return reserve(user.role === 'admin', <AbonnementsAdmin />)
+  if (path === '/quotas-ia') return reserve(user.role === 'admin', <QuotasIA />)
   if (path === '/confidentialite') return <Confidentialite />
   if (path === '/conditions') return <Conditions />
   if (path === '/guide') return <Guide />

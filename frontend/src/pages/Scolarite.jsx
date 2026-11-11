@@ -10,6 +10,7 @@ import Comptabilite from './Comptabilite.jsx'
 import { envoyer } from './Documents.jsx'
 import { useDepotPage } from '../depot.jsx'
 import ChoixEleve from '../ChoixEleve.jsx'
+import CompteurIA from '../CompteurIA.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
@@ -350,6 +351,7 @@ function Frais() {
   return (
     <>
       {zoneDepot}
+      <CompteurIA />
       <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,image/*" onChange={choisirDocument} />
       <button type="button" className="depot" onClick={() => champ.current?.click()} disabled={Boolean(lecture)}>
         <span style={{ fontSize: 30 }}>📄</span>

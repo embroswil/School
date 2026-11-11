@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { useDepotPage } from '../depot.jsx'
+import CompteurIA from '../CompteurIA.jsx'
 import { Field, Note } from '../ui.jsx'
 
 // Categories (memes cles que le serveur)
@@ -137,6 +138,7 @@ export default function Documents() {
     <>
       {zoneDepot}
       <h1 className="page-title">Documents</h1>
+      <CompteurIA />
       <p className="lede">Téléversez des communiqués, emplois du temps, calendriers, résultats… School lit chaque document, le classe et l’affiche aux familles.</p>
       <a className="btn btn-quiet btn-block" href="#/info" style={{ marginBottom: 12 }}>
         ✏️ Plutôt écrire une information (avec photos)
