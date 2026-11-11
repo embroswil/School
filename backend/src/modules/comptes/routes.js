@@ -21,6 +21,19 @@ const supprimer = async (id) => {
   await db.query("DELETE FROM users WHERE id = $1", [id]);
 };
 
+// PUT /api/comptes/photo { photo } : photo de profil (image recadree par l'application, en data URL)
+router.put("/photo", async (req, res, next) => {
+  try {
+    const photo = String(req.body?.photo || "");
+    if (photo !== "" && !/^data:image\/(jpeg|png|webp);base64,/.test(photo)) throw new ApiError(400, "Image invalide");
+    if (photo.length > 250000) throw new ApiError(400, "Image trop lourde");
+    await db.query("UPDATE users SET profile_picture = $2, updated_at = NOW() WHERE id = $1", [req.user.id, photo || null]);
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // DELETE /api/comptes/moi { password }
 router.delete("/moi", async (req, res, next) => {
   try {

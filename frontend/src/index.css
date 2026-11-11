@@ -888,3 +888,42 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 .frais-lu { padding: 10px 0; border-top: 1px solid var(--line); }
 .frais-lu:first-of-type { border-top: 0; }
 .frais-lu-statut { flex: none; font: 800 11.5px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.05em; padding-top: 3px; }
+
+/* ---------- recadrage de photo ---------- */
+.recadre-cadre { position: relative; margin: 0 auto; overflow: hidden; background: #000; touch-action: none; cursor: grab; border: 2px solid rgba(47, 107, 255, 0.6); }
+.recadre-cadre img { position: absolute; left: 0; top: 0; max-width: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.recadre-zoom { width: min(360px, 100%); margin: 14px auto 0; display: block; accent-color: #2f6bff; }
+
+/* ---------- photo de profil ---------- */
+.profil-avatar-btn { position: relative; border: 0; cursor: pointer; padding: 0; overflow: visible; }
+.profil-avatar-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 20px; display: block; }
+.profil-avatar-cam { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #1c2130; border: 2px solid #0d1220; font-size: 13px; }
+
+/* ---------- apercu des PDF dans le fil ---------- */
+.apercu-pdf { display: block; margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--card-2); color: var(--text); }
+.apercu-pdf-pages { display: block; max-height: 380px; overflow: hidden; position: relative; background: #fff; }
+.apercu-pdf-pages img { display: block; width: 100%; height: auto; }
+.apercu-pdf-pages::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.85)); }
+.info-complet .apercu-pdf-pages { max-height: none; }
+.info-complet .apercu-pdf-pages::after { display: none; }
+.apercu-pdf-pied { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.apercu-pdf-nom { min-width: 0; display: flex; flex-direction: column; }
+.apercu-pdf-nom b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apercu-pdf-nom small { color: var(--muted); font-size: 12px; }
+
+/* ---------- page Abonnement ---------- */
+.abo-hero { padding: 20px; border-radius: 20px; background: linear-gradient(150deg, #101a3a 0%, #0d1220 100%); border: 1px solid rgba(47, 107, 255, 0.28); }
+.abo-hero-tete { display: flex; justify-content: space-between; align-items: center; color: #9bb8ff; font: 700 14px/1 var(--font-body); }
+.abo-montant { display: block; margin: 14px 0 12px; font: 800 30px/1.1 var(--font-display); color: #fff; }
+.abo-montant small { font: 600 15px var(--font-body); color: var(--muted); }
+.abo-progres { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.abo-progres i { display: block; height: 100%; border-radius: 4px; background: #2f6bff; }
+.abo-ligne { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 14px; }
+.abo-ligne b { color: #fff; }
+.abo-echeance { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); color: var(--muted); font-size: 13.5px; }
+.abo-echeance b { color: #fff; }
+.abo-modes { display: grid; gap: 12px; }
+.abo-mode b { font-size: 16px; }
+.abo-mode p { margin: 4px 0 10px; font-size: 13.5px; }
+.abo-mode-principal { border-color: rgba(47, 107, 255, 0.5); }
+@media (min-width: 700px) { .abo-modes { grid-template-columns: 1fr 1fr; } }

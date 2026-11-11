@@ -6,6 +6,7 @@ import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
+import Recadreur from '../Recadreur.jsx'
 import { IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcMessages, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 
 const ROLES = {
@@ -161,31 +162,20 @@ function Action({ href, Icone, titre, texte, compteur, urgent }) {
   )
 }
 
-// Reduit une photo a 800 px de large (JPEG) avant l'envoi
-const reduirePhoto = (fichier) =>
-  new Promise((ok, ko) => {
-    const img = new Image()
-    img.onload = () => {
-      const echelle = Math.min(1, 800 / img.width)
-      const c = document.createElement('canvas')
-      c.width = Math.round(img.width * echelle)
-      c.height = Math.round(img.height * echelle)
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
-      ok(c.toDataURL('image/jpeg', 0.8))
-    }
-    img.onerror = () => ko(new Error('Image illisible'))
-    img.src = URL.createObjectURL(fichier)
-  })
-
 function EnteteEtablissement({ d, onChange }) {
   const champ = useRef(null)
   const [busy, setBusy] = useState(false)
-  async function choisir(e) {
+  const [aRecadrer, setARecadrer] = useState(null)
+  function choisir(e) {
     const f = e.target.files?.[0]
-    if (!f) return
+    e.target.value = ''
+    if (f) setARecadrer(f)
+  }
+  async function envoyerPhoto(photo) {
+    setARecadrer(null)
     setBusy(true)
     try {
-      await api.put('/api/etablissement/photo', { photo: await reduirePhoto(f) })
+      await api.put('/api/etablissement/photo', { photo })
       onChange()
     } catch {
       // l'erreur s'affiche au prochain essai
@@ -218,6 +208,7 @@ function EnteteEtablissement({ d, onChange }) {
         <IcPhoto />
       </button>
       <input ref={champ} type="file" accept="image/*" hidden onChange={choisir} />
+      {aRecadrer && <Recadreur fichier={aRecadrer} ratio={2} sortie={1000} onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
       <span className="badge" style={{ alignSelf: 'flex-start' }}>
         {d.annee?.name ? `Année ${d.annee.name}` : 'Établissement'}
       </span>

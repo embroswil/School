@@ -103,6 +103,30 @@ export default function Students() {
           </button>
         </div>
       )}
+      {tous.length > 0 && (
+        <div className="compta-kpis" style={{ marginBottom: 12 }}>
+          <div className="compta-kpi">
+            <span>Élèves</span>
+            <b>{tous.length.toLocaleString('fr-FR')}</b>
+            <small>{classes.length} classe(s)</small>
+          </div>
+          <div className="compta-kpi">
+            <span>Parents reliés</span>
+            <b>{tous.filter((e) => e.parents > 0).length.toLocaleString('fr-FR')}</b>
+            <small>{Math.round((tous.filter((e) => e.parents > 0).length / tous.length) * 100)} % des élèves</small>
+          </div>
+          <div className="compta-kpi">
+            <span>Comptes créés</span>
+            <b>{tous.filter((e) => e.a_un_compte).length.toLocaleString('fr-FR')}</b>
+            <small>élèves inscrits</small>
+          </div>
+          <div className="compta-kpi">
+            <span>Scolarité réglée</span>
+            <b style={{ color: '#5fd0a0' }}>{tous.filter((e) => statutDe(e) === 'regle').length.toLocaleString('fr-FR')}</b>
+            <small>{tous.filter((e) => ['partiel', 'non_paye'].includes(statutDe(e))).length.toLocaleString('fr-FR')} non réglée(s)</small>
+          </div>
+        </div>
+      )}
       <Note>{error}</Note>
       {liste.length > 0 && surOrdinateur() && (
         <TableauTriable

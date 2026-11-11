@@ -96,6 +96,22 @@ export default function EleveFiche({ id }) {
                   📞 Appeler
                 </a>
               )}
+              <button
+                type="button"
+                className="btn btn-quiet btn-danger"
+                style={{ padding: '8px 12px', fontSize: 14 }}
+                onClick={async () => {
+                  if (!window.confirm(`Retirer ${p.first_name} ${p.last_name} comme parent de cet élève ? Son compte n’est pas supprimé.`)) return
+                  try {
+                    await api.delete(`/api/etablissement/eleves/${id}/parents/${p.id}`)
+                    fiche.reload()
+                  } catch (err) {
+                    setError(err.message)
+                  }
+                }}
+              >
+                Retirer
+              </button>
             </li>
           ))}
         </ul>

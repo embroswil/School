@@ -408,3 +408,6 @@ CREATE TABLE IF NOT EXISTS enseignants_attendus (
   UNIQUE (school_id, nom_cle)
 );
 ALTER TABLE enseignants_attendus ENABLE ROW LEVEL SECURITY;
+
+-- Photo de profil (image recadree, en data URL)
+ALTER TABLE users ALTER COLUMN profile_picture TYPE TEXT;

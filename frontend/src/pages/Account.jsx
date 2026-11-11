@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { ReglagePush, installee } from '../push.jsx'
 import { ChoixLangue } from '../i18n.jsx'
 import { ChampMotDePasse, Field, Note } from '../ui.jsx'
+import Recadreur from '../Recadreur.jsx'
 import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
 
 const ROLES = {
@@ -174,6 +175,19 @@ export default function Account() {
   const { user, logout } = useAuth()
   const [moi, setMoi] = useState(user)
   const [ouvert, setOuvert] = useState(null)
+  const champPhoto = useRef(null)
+  const [aRecadrer, setARecadrer] = useState(null)
+  async function envoyerPhoto(photo) {
+    setARecadrer(null)
+    try {
+      await api.put('/api/comptes/photo', { photo })
+      setMoi((m) => ({ ...m, profilePicture: photo }))
+      const s2 = session.get()
+      if (s2?.user) session.set({ ...s2, user: { ...s2.user, profilePicture: photo } })
+    } catch (_) {
+      // l'image est peut-etre trop lourde : on reessaie avec une autre
+    }
+  }
   const bascule = (k) => setOuvert((o) => (o === k ? null : k))
   const initiales = `${(moi.firstName || '?')[0]}${(moi.lastName || '')[0] || ''}`.toUpperCase()
   const emailReel = moi.email && !/@(tel|inscrit)\.school$/.test(moi.email)
@@ -190,7 +204,16 @@ export default function Account() {
   return (
     <div className="profil">
       <section className="profil-carte">
-        <span className="profil-avatar">{initiales}</span>
+        <button type="button" className="profil-avatar profil-avatar-btn" onClick={() => champPhoto.current?.click()} aria-label="Changer ma photo" title="Changer ma photo">
+          {moi.profilePicture ? <img src={moi.profilePicture} alt="" /> : initiales}
+          <span className="profil-avatar-cam">📷</span>
+        </button>
+        <input ref={champPhoto} type="file" accept="image/*" hidden onChange={(e) => {
+          const f = e.target.files?.[0]
+          e.target.value = ''
+          if (f) setARecadrer(f)
+        }} />
+        {aRecadrer && <Recadreur fichier={aRecadrer} ratio={1} sortie={320} rond onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
         <div className="profil-identite">
           <h1>
             {moi.firstName} {moi.lastName}

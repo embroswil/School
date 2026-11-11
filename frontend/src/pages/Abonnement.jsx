@@ -100,106 +100,130 @@ export default function Abonnement() {
     }
   }
   const [libelle, couleur, fond] = STATUTS[e.statut]
-
-
+  const pct = e.montant > 0 ? Math.min(100, Math.round((e.paye / e.montant) * 100)) : 100
+  const doit = e.statut !== 'gratuit' && e.reste > 0
 
   return (
     <>
       <h1 className="page-title">Abonnement School</h1>
-      <section className="card" style={{ borderColor: couleur }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <b style={{ font: '700 18px/1.3 var(--font-display)' }}>Année {e.annee}</b>
+
+      <section className="abo-hero">
+        <div className="abo-hero-tete">
+          <span>Année {e.annee}</span>
           <span className="tag" style={{ background: fond, color: couleur }}>
             {libelle}
           </span>
         </div>
         {e.statut === 'gratuit' ? (
-          <p className="muted" style={{ marginTop: 8 }}>
-            Votre établissement bénéficie de School gratuitement cette année.
-          </p>
+          <>
+            <b className="abo-montant">Gratuit</b>
+            <p className="muted">Votre établissement bénéficie de School gratuitement cette année.</p>
+          </>
         ) : (
-          <div className="stats" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginTop: 12 }}>
-            <div className="stat">
-              <b style={{ fontSize: 18 }}>{fcfa(e.montant)}</b>
-              <span>montant annuel</span>
+          <>
+            <b className="abo-montant">
+              {fcfa(e.montant)} <small>/ an</small>
+            </b>
+            <div className="abo-progres" title={`${pct} % payé`}>
+              <i style={{ width: `${pct}%` }} />
             </div>
-            <div className="stat">
-              <b style={{ fontSize: 18, color: 'var(--ok)' }}>{fcfa(e.paye)}</b>
-              <span>payé</span>
+            <div className="abo-ligne">
+              <span>
+                Payé <b style={{ color: '#5fd0a0' }}>{fcfa(e.paye)}</b>
+              </span>
+              <span>
+                Reste <b style={{ color: e.reste ? '#ff7a82' : undefined }}>{fcfa(e.reste)}</b>
+              </span>
             </div>
-            <div className="stat">
-              <b style={{ fontSize: 18, color: e.reste ? 'var(--danger)' : undefined }}>{fcfa(e.reste)}</b>
-              <span>reste</span>
-            </div>
-          </div>
-        )}
-        {e.statut !== 'gratuit' && e.reste > 0 && (
-          <p className="muted" style={{ marginTop: 10, fontSize: 14 }}>
-            Échéance : <b>{jourLong(e.echeance)}</b>
-            {e.statut !== 'lecture_seule' && ` · sans paiement, School passera en lecture seule le ${jourLong(e.finGrace)}`}
-            {e.enAttente > 0 && ` · ${fcfa(e.enAttente)} déclarés, en cours de vérification`}
-          </p>
+            {doit && (
+              <p className="abo-echeance">
+                Échéance : <b>{jourLong(e.echeance)}</b>
+                {e.statut !== 'lecture_seule' && <> · sans paiement, School passera en lecture seule le {jourLong(e.finGrace)}</>}
+                {e.enAttente > 0 && <> · {fcfa(e.enAttente)} déclarés, en cours de vérification</>}
+              </p>
+            )}
+            {!doit && <p className="abo-echeance">✓ Abonnement entièrement réglé. Merci !</p>}
+          </>
         )}
       </section>
+      <Note kind="ok">{ok}</Note>
+      <Note>{error}</Note>
 
-      {e.statut !== 'gratuit' && e.reste > 0 && (
+      {doit && (
         <>
-          {e.enLigne && (
-            <div className="card" style={{ borderLeft: '4px solid var(--primary)' }}>
-              <b>Payer en ligne</b>
-              <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>
-                Orange Money, MTN MoMo ou carte bancaire, via NotchPay. Le reçu est émis automatiquement.
-              </p>
-              <Field label="Montant (FCFA)">
-                <input className="input" inputMode="numeric" placeholder={String(e.reste)} value={montantEnLigne} onChange={(x) => setMontantEnLigne(x.target.value.replace(/\D/g, ''))} />
-              </Field>
-              <button type="button" className="btn btn-block" disabled={busy} onClick={payerEnLigne}>
-                {busy ? 'Un instant…' : `Payer ${fcfa(Number(montantEnLigne || e.reste))} en ligne`}
-              </button>
-            </div>
-          )}
-          <div className="card" style={{ borderLeft: '4px solid var(--line)' }}>
-            <b>Payer en espèces</b>
-            <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>
-              Remettez le montant à un représentant de {e.paiement.beneficiaire || 'School'} contre un reçu. Le paiement apparaîtra ici, avec son
-              reçu, dès son enregistrement.
-            </p>
-            {e.paiement.telephone && (
-              <a className="btn btn-quiet" href={`tel:${e.paiement.telephone.replace(/\s/g, '')}`} style={{ marginTop: 10, padding: '10px 14px', fontSize: 14 }}>
-                📞 Prendre rendez-vous · {e.paiement.telephone}
-              </a>
+          <h2 className="section-title">Régler l’abonnement</h2>
+          <div className="abo-modes">
+            {e.enLigne && (
+              <div className="card abo-mode abo-mode-principal">
+                <b>En ligne</b>
+                <p className="muted">Orange Money, MTN MoMo ou carte bancaire. Reçu émis automatiquement.</p>
+                <Field label="Montant (FCFA)">
+                  <input className="input" inputMode="numeric" placeholder={String(e.reste)} value={montantEnLigne} onChange={(x) => setMontantEnLigne(x.target.value.replace(/\D/g, ''))} />
+                </Field>
+                <button type="button" className="btn btn-block" disabled={busy} onClick={payerEnLigne}>
+                  {busy ? 'Un instant…' : `Payer ${fcfa(Number(montantEnLigne || e.reste))}`}
+                </button>
+              </div>
             )}
+            <div className="card abo-mode">
+              <b>En espèces</b>
+              <p className="muted">
+                Remettez le montant à un représentant de {e.paiement.beneficiaire || 'School'} contre un reçu. Le paiement apparaît ici dès son enregistrement.
+              </p>
+              {e.paiement.telephone && (
+                <a className="btn btn-quiet btn-block" href={`tel:${e.paiement.telephone.replace(/\s/g, '')}`}>
+                  📞 Prendre rendez-vous · {e.paiement.telephone}
+                </a>
+              )}
+            </div>
           </div>
         </>
       )}
 
-      <h2 className="section-title">Historique</h2>
+      <h2 className="section-title">Historique des paiements</h2>
       {e.historique.length === 0 && <p className="muted">Aucun paiement pour le moment.</p>}
       {e.historique.length > 0 && (
-        <ul className="rows">
-          {e.historique.map((p) => (
-            <li className="row" key={p.id}>
-              <div className="row-main">
-                <div className="row-title">
-                  {fcfa(p.montant)} · {MOYENS[p.moyen]}
-                </div>
-                <div className="row-sub">
-                  {jourLong(p.created_at)} · {p.annee}
-                  {p.reference ? ` · réf. ${p.reference}` : ''}
-                  {p.statut === 'rejete' && p.motif_rejet ? ` · ${p.motif_rejet}` : ''}
-                </div>
-              </div>
-              {p.statut === 'confirme' ? (
-                <a className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14 }} href={`#/abonnement/recus/${p.id}`}>
-                  Reçu
-                </a>
-              ) : (
-                <span className={`tag ${p.statut === 'rejete' ? 'tag-off' : ''}`}>{p.statut === 'rejete' ? 'Non retrouvé' : 'En vérification'}</span>
-              )}
-            </li>
-          ))}
-        </ul>
+        <div className="tableau-ordi-cadre">
+          <table className="tableau-ordi">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Montant</th>
+                <th>Moyen</th>
+                <th>Référence</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {e.historique.map((p) => (
+                <tr key={p.id}>
+                  <td>{jourLong(p.created_at)}</td>
+                  <td>
+                    <b>{fcfa(p.montant)}</b>
+                  </td>
+                  <td>{MOYENS[p.moyen]}</td>
+                  <td className="muted">
+                    {p.reference || '—'}
+                    {p.statut === 'rejete' && p.motif_rejet ? ` · ${p.motif_rejet}` : ''}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    {p.statut === 'confirme' ? (
+                      <a className="btn btn-quiet" style={{ padding: '6px 12px', fontSize: 13 }} href={`#/abonnement/recus/${p.id}`}>
+                        Reçu
+                      </a>
+                    ) : (
+                      <span className={`tag ${p.statut === 'rejete' ? 'tag-off' : ''}`}>{p.statut === 'rejete' ? 'Non retrouvé' : 'En vérification'}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+      <p className="muted" style={{ fontSize: 12.5, margin: '14px 2px 0' }}>
+        L’abonnement comprend toutes les fonctions de School pour tous vos élèves et enseignants : appel, notes et bulletins, scolarité, informations aux familles et assistance.
+      </p>
     </>
   )
 }

@@ -147,6 +147,23 @@ router.get("/enseignants", async (req, res, next) => {
   }
 });
 
+// DELETE /eleves/:id/parents/:parentId : retire le lien entre un parent et un eleve de l'etablissement
+// (le compte du parent n'est pas supprime : il peut avoir d'autres enfants)
+router.delete("/eleves/:id/parents/:parentId", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const r = await db.query(
+      `DELETE FROM parent_student_links l USING users e
+       WHERE l.student_id = e.id AND e.school_id = $1 AND e.id = $2 AND l.parent_id = $3`,
+      [ecole, parseInt(req.params.id, 10), parseInt(req.params.parentId, 10)]
+    );
+    if (!r.rowCount) throw new ApiError(404, "Lien introuvable");
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ---- Liste des enseignants fournie par l'etablissement (Excel, CSV)
 // POST /enseignants/import { enseignants: [{ nom, prenom, matieres, classes, principalDe, telephone, email }] }
 router.post("/enseignants/import", async (req, res, next) => {

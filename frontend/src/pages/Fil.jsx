@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { TYPES } from './Actualites.jsx'
+import ApercuPdf, { estPdf } from '../ApercuPdf.jsx'
+
+const etiquetteFichier = (nom) => ({ doc: 'DOC', docx: 'DOC', xls: 'XLS', xlsx: 'XLS', ppt: 'PPT', pptx: 'PPT', csv: 'CSV', txt: 'TXT' }[(String(nom || '').split('.').pop() || '').toLowerCase()] || 'FICHIER')
 import { LogoEcole } from './OrdrePaiement.jsx'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
@@ -42,7 +45,7 @@ export function Info({ p, complet = false }) {
     window.location.hash = `/infos/${p.id}`
   }
   return (
-    <article className={`info ${complet ? '' : 'cliquable'}`} style={{ '--couleur': COULEURS[p.type] || COULEURS.autre }} onClick={ouvrir}>
+    <article className={`info ${complet ? 'info-complet' : 'cliquable'}`} style={{ '--couleur': COULEURS[p.type] || COULEURS.autre }} onClick={ouvrir}>
       <div className="info-date">
         <b>{d.getDate()}</b>
         <span>{MOIS[d.getMonth()]}</span>
@@ -77,15 +80,19 @@ export function Info({ p, complet = false }) {
             {!complet && eleves.length > 3 && <li className="muted">+ {eleves.length - 3} autre(s)…</li>}
           </ul>
         )}
-        {documents.map((m, k) => (
-          <a key={k} className="info-doc" href={m.url} target="_blank" rel="noreferrer">
-            <span className="info-doc-ico">PDF</span>
-            <span style={{ minWidth: 0 }}>
-              <b>{m.nom || 'Document'}</b>
-              <small>Toucher pour ouvrir</small>
-            </span>
-          </a>
-        ))}
+        {documents.map((m, k) =>
+          estPdf(m) ? (
+            <ApercuPdf key={k} media={m} complet={complet} />
+          ) : (
+            <a key={k} className="info-doc" href={m.url} target="_blank" rel="noreferrer">
+              <span className="info-doc-ico">{etiquetteFichier(m.nom)}</span>
+              <span style={{ minWidth: 0 }}>
+                <b>{m.nom || 'Document'}</b>
+                <small>Toucher pour ouvrir</small>
+              </span>
+            </a>
+          )
+        )}
         {tronque && <span className="info-voir">Voir tout ›</span>}
       </div>
       {medias.length > 0 && <Medias medias={medias} />}

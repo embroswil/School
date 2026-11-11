@@ -21,6 +21,20 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Recadrer la photo": "Crop the photo",
+  "Faites glisser l’image pour la placer, puis zoomez si besoin.": "Drag the image to position it, then zoom if needed.",
+  "Utiliser cette photo": "Use this photo",
+  "Aperçu en cours…": "Preview loading…",
+  "Régler l’abonnement": "Pay the subscription",
+  "En ligne": "Online",
+  "En espèces": "In cash",
+  "Historique des paiements": "Payment history",
+  "Moyen": "Method",
+  "Parents reliés": "Linked parents",
+  "Comptes créés": "Accounts created",
+  "élèves inscrits": "registered students",
+  "Changer ma photo": "Change my photo",
+  "Orange Money, MTN MoMo ou carte bancaire. Reçu émis automatiquement.": "Orange Money, MTN MoMo or bank card. Receipt issued automatically.",
   "Emplois du temps": "Timetables",
   "Déposez l’emploi du temps": "Drop the timetable",
   "Choisir l’emploi du temps": "Choose the timetable",
@@ -1271,6 +1285,8 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) pages? · Toucher pour ouvrir$/, '$1 page(s) · Tap to open'],
+  [/^Année (\d{4}\/\d{4})$/, 'Year $1'],
   [/^(\d+) absence\(s\) reconnue\(s\)(.*)$/, '$1 absence(s) recognised$2'],
   [/^Modifier « (.+) »$/, 'Edit “$1”'],
   [/^Comptabilité · (.+)$/, 'Accounting · $1'],
