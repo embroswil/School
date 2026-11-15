@@ -1,4 +1,4 @@
-# School Management System - Backend Dockerfile
+# Sukul Management System - Backend Dockerfile
 
 # Use Node.js LTS version
 FROM node:18-alpine

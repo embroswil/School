@@ -89,7 +89,7 @@ export default function Signup() {
       <div className="auth">
         <header className="auth-haut">
           <span className="brand" style={{ color: '#fff' }}>
-            School<span>.</span>
+            Sukul<span>.</span>
           </span>
         </header>
         <main className="auth-main">
@@ -140,7 +140,7 @@ export default function Signup() {
     <div className="auth">
       <header className="auth-haut">
         <a className="brand" href="#/" style={{ color: '#fff' }}>
-          School<span>.</span>
+          Sukul<span>.</span>
         </a>
         <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <ChoixLangue />
@@ -197,7 +197,7 @@ export default function Signup() {
             </div>
             {ecoles === null && <p className="muted">Chargement…</p>}
             {ecoles && filtrees.length === 0 && (
-              <p className="muted">Aucun établissement trouvé. Il doit d’abord être ajouté par l’administration de School.</p>
+              <p className="muted">Aucun établissement trouvé. Il doit d’abord être ajouté par l’administration de Sukul.</p>
             )}
             <div className="choices">
               {filtrees.map((e) => (
@@ -345,7 +345,7 @@ export default function Signup() {
         </div>
         <p className="auth-securite">🔒 Connexion chiffrée · vos données restent privées</p>
       </main>
-      <footer className="auth-pied">School by Embroswil · © {new Date().getFullYear()}</footer>
+      <footer className="auth-pied">Sukul by Embroswil · © {new Date().getFullYear()}</footer>
     </div>
   )
 }

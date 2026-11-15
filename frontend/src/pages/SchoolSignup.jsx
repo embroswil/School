@@ -8,7 +8,7 @@ const vide = {
   contactFirstName: '', contactLastName: '', contactFunction: '', contactEmail: '', contactPhone: '', password: '', message: '',
 }
 
-// « Inscrire mon etablissement » : demande examinee par l'equipe School
+// « Inscrire mon etablissement » : demande examinee par l'equipe Sukul
 export default function SchoolSignup() {
   const [f, setF] = useState(vide)
   const [error, setError] = useState('')
@@ -48,7 +48,7 @@ export default function SchoolSignup() {
     <div className="public">
       <header className="public-top">
         <a className="brand" href="#/">
-          School<span>.</span>
+          Sukul<span>.</span>
         </a>
         <a href="#/connexion" className="muted" style={{ fontWeight: 700 }}>
           Se connecter
@@ -57,7 +57,7 @@ export default function SchoolSignup() {
       <main className="public-main">
         <h1 className="page-title">Inscrire mon établissement</h1>
         <p className="lede">
-          Rejoignez School gratuitement. Une fois votre demande validée, vous gérez votre établissement depuis votre espace.
+          Rejoignez Sukul gratuitement. Une fois votre demande validée, vous gérez votre établissement depuis votre espace.
         </p>
         <form onSubmit={envoyer}>
           <h2 className="section-title">L’établissement</h2>
@@ -89,7 +89,7 @@ export default function SchoolSignup() {
 
           <h2 className="section-title">Le responsable du compte</h2>
           <p className="muted" style={{ marginTop: -6, marginBottom: 10, fontSize: 14 }}>
-            La personne de votre personnel qui administrera l’établissement sur School.
+            La personne de votre personnel qui administrera l’établissement sur Sukul.
           </p>
           <div className="card">
             <div className="grid2">

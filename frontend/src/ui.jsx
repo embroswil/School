@@ -87,7 +87,7 @@ export function PageAuth({ titre, sousTitre, retour, children, pied }) {
         <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BoutonRetour libelle="Retour" />
           <a className="brand" href="#/" style={{ color: '#fff' }}>
-            School<span>.</span>
+            Sukul<span>.</span>
           </a>
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -110,7 +110,7 @@ export function PageAuth({ titre, sousTitre, retour, children, pied }) {
           Connexion chiffrée · vos données restent privées
         </p>
       </main>
-      <footer className="auth-pied">School by Embroswil · © {new Date().getFullYear()}</footer>
+      <footer className="auth-pied">Sukul by Embroswil · © {new Date().getFullYear()}</footer>
     </div>
   )
 }

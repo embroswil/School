@@ -25,7 +25,7 @@ export default function Login() {
   return (
     <PageAuth
       titre="Connexion"
-      sousTitre="Accédez à votre espace School."
+      sousTitre="Accédez à votre espace Sukul."
       retour={<a href="#/inscription">Créer un compte</a>}
       pied={
         <>

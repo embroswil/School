@@ -4,9 +4,9 @@
 const logger = require("./logger");
 
 const expediteur = () => {
-  const brut = process.env.EMAIL_FROM || "School <school@1hemall.site>";
+  const brut = process.env.EMAIL_FROM || "Sukul <school@1hemall.site>";
   const m = brut.match(/^\s*(.*?)\s*<\s*([^>]+)\s*>\s*$/);
-  return m ? { name: m[1] || "School", email: m[2] } : { name: "School", email: brut.trim() };
+  return m ? { name: m[1] || "Sukul", email: m[2] } : { name: "Sukul", email: brut.trim() };
 };
 
 const envoyerEmail = async ({ a, nom, sujet, html, texte }) => {
@@ -40,7 +40,7 @@ const emailCode = ({ prenom, code, titre, intro, minutes, langue = "fr" }) => (l
   html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e3e8f4">
-    <tr><td style="background:#2446d8;padding:20px 24px;color:#ffffff;font-size:22px;font-weight:bold">School<span style="color:#ffb020">.</span></td></tr>
+    <tr><td style="background:#2446d8;padding:20px 24px;color:#ffffff;font-size:22px;font-weight:bold">Sukul<span style="color:#ffb020">.</span></td></tr>
     <tr><td style="padding:24px">
       <h1 style="margin:0 0 12px;font-size:20px">${titre}</h1>
       <p style="margin:0 0 6px;font-size:15px;line-height:1.5">Bonjour ${prenom || ""},</p>
@@ -50,7 +50,7 @@ const emailCode = ({ prenom, code, titre, intro, minutes, langue = "fr" }) => (l
       </div>
       <p style="margin:0;font-size:13px;color:#5d6789;line-height:1.5">Ce code est valable ${minutes} minutes. Si vous n’êtes pas à l’origine de cette demande, ignorez simplement ce message.</p>
     </td></tr>
-    <tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">School by Embroswil · la vie scolaire, simplement</td></tr>
+    <tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">Sukul by Embroswil · la vie scolaire, simplement</td></tr>
   </table></td></tr></table></body></html>`,
 });
 
@@ -60,7 +60,7 @@ const emailCodeEn = ({ prenom, code, titre, intro, minutes }) => ({
   html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e3e8f4">
-    <tr><td style="background:#2446d8;padding:20px 24px;color:#ffffff;font-size:22px;font-weight:bold">School<span style="color:#ffb020">.</span></td></tr>
+    <tr><td style="background:#2446d8;padding:20px 24px;color:#ffffff;font-size:22px;font-weight:bold">Sukul<span style="color:#ffb020">.</span></td></tr>
     <tr><td style="padding:24px">
       <h1 style="margin:0 0 12px;font-size:20px">${titre}</h1>
       <p style="margin:0 0 6px;font-size:15px;line-height:1.5">Hello ${prenom || ""},</p>
@@ -70,7 +70,7 @@ const emailCodeEn = ({ prenom, code, titre, intro, minutes }) => ({
       </div>
       <p style="margin:0;font-size:13px;color:#5d6789;line-height:1.5">This code is valid for ${minutes} minutes. If you did not make this request, simply ignore this message.</p>
     </td></tr>
-    <tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">School by Embroswil · school life, made simple</td></tr>
+    <tr><td style="padding:14px 24px;border-top:1px solid #e3e8f4;font-size:12px;color:#5d6789">Sukul by Embroswil · school life, made simple</td></tr>
   </table></td></tr></table></body></html>`,
 });
 

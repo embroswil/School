@@ -54,7 +54,7 @@ function EspaceAdmin() {
   return (
     <>
       <section className="hero-card" style={{ marginTop: 4 }}>
-        <span className="badge">Plateforme School</span>
+        <span className="badge">Plateforme Sukul</span>
         <h2 style={{ marginTop: 10 }}>Bonjour, {user.firstName}</h2>
         <p style={{ textTransform: 'capitalize' }}>{aujourdhui}</p>
         <div className="hero-ligne">
@@ -296,7 +296,7 @@ function EspaceEtablissement() {
         <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
         <Tuile href="#/document" Icone={IcMegaphone} titre="Informer" texte="Documents et informations" />
         <Tuile href="#/messages" Icone={IcMessages} titre="Messages" texte="Parents et enseignants" />
-        <Tuile href="#/abonnement" Icone={IcGraphique} titre="Abonnement" texte="School, paiement, reçus" />
+        <Tuile href="#/abonnement" Icone={IcGraphique} titre="Abonnement" texte="Sukul, paiement, reçus" />
       </div>
     </>
   )

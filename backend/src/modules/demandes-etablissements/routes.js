@@ -1,5 +1,5 @@
 // modules/demandes-etablissements/routes.js
-// « Inscrire mon etablissement » : un etablissement demande a rejoindre School ;
+// « Inscrire mon etablissement » : un etablissement demande a rejoindre Sukul ;
 // l'administrateur de la plateforme valide (etablissement + compte administrateur crees).
 const express = require("express");
 const router = express.Router();

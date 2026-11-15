@@ -79,7 +79,7 @@ const TITRES = {
   '/mon-absence': 'Mon absence',
   '/infos': 'Information',
   '/guide': 'Guide',
-  '/installer': 'Installer School',
+  '/installer': 'Installer Sukul',
   '/absences': 'Absences du jour',
   '/confidentialite': 'Confidentialité',
   '/conditions': 'Conditions',
@@ -142,7 +142,7 @@ export default function Shell({ path, children }) {
       <header className="topbar">
         {accueil ? (
           <span className="brand">
-            School<span>.</span>
+            Sukul<span>.</span>
           </span>
         ) : (
           <div className="topbar-titre">
@@ -163,7 +163,7 @@ export default function Shell({ path, children }) {
 
       <nav className="nav" aria-label="Navigation principale">
         <a href="#/" className="nav-marque">
-          School<span>.</span>
+          Sukul<span>.</span>
         </a>
         {items.map(([to, Icone, label]) =>
           to === '+' ? (

@@ -1,6 +1,6 @@
-// Service worker de School : l'application s'ouvre vite et reste affichable
+// Service worker de Sukul : l'application s'ouvre vite et reste affichable
 // hors connexion (les pages deja vues). Les donnees (API) ne sont jamais mises en cache.
-const CACHE = 'school-v3'
+const CACHE = 'sukul-v1'
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((cles) => Promise.all(cles.filter((c) => c !== CACHE).map((c) => caches.delete(c)))))
@@ -22,16 +22,16 @@ self.addEventListener('fetch', (e) => {
   )
 })
 
-// Notifications « push » : affichage sur l'ecran du telephone, meme School ferme
+// Notifications « push » : affichage sur l'ecran du telephone, meme Sukul ferme
 self.addEventListener('push', (e) => {
   let m = {}
   try {
     m = e.data ? e.data.json() : {}
   } catch (_) {
-    m = { title: 'School', body: e.data ? e.data.text() : '' }
+    m = { title: 'Sukul', body: e.data ? e.data.text() : '' }
   }
   e.waitUntil(
-    self.registration.showNotification(m.title || 'School', {
+    self.registration.showNotification(m.title || 'Sukul', {
       body: m.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
@@ -41,7 +41,7 @@ self.addEventListener('push', (e) => {
   )
 })
 
-// Toucher la notification ouvre School a la bonne page
+// Toucher la notification ouvre Sukul a la bonne page
 self.addEventListener('notificationclick', (e) => {
   e.notification.close()
   const url = `/#${e.notification.data?.lien || '/'}`

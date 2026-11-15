@@ -285,7 +285,7 @@ export default function Account() {
             <Reglage Icone={IcEcole} titre="Cahier d’appel" valeur="Importer" href="#/import-absences" />
             <Reglage Icone={IcCle} titre="Administrateurs" valeur="3 max." href="#/administrateurs" />
             <Reglage Icone={IcCarte} titre="Moyens de paiement" valeur="Orange, MTN…" href="#/scolarite" />
-            <Reglage Icone={IcCarte} titre="Abonnement School" href="#/abonnement" />
+            <Reglage Icone={IcCarte} titre="Abonnement Sukul" href="#/abonnement" />
           </div>
         </>
       )}
@@ -304,7 +304,7 @@ export default function Account() {
       </button>
       {moi.role !== 'admin' && <SuppressionCompte logout={logout} />}
       <p className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 14 }}>
-        School by Embroswil
+        Sukul by Embroswil
       </p>
     </div>
   )

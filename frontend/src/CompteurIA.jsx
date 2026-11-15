@@ -9,7 +9,7 @@ export default function CompteurIA() {
     return (
       <div className="ia-compteur ia-rouge">
         <b>Lecture automatique non activée</b>
-        <small>Utilisez l’import Excel ou CSV, ou contactez School.</small>
+        <small>Utilisez l’import Excel ou CSV, ou contactez Sukul.</small>
       </div>
     )
   }
@@ -21,7 +21,7 @@ export default function CompteurIA() {
       <span className="ia-barre">
         <i style={{ width: `${pct}%` }} />
       </span>
-      {d.restant === 0 && <small>Plafond atteint : utilisez l’import Excel ou CSV, ou contactez School pour l’augmenter.</small>}
+      {d.restant === 0 && <small>Plafond atteint : utilisez l’import Excel ou CSV, ou contactez Sukul pour l’augmenter.</small>}
     </div>
   )
 }

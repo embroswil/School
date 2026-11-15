@@ -1,5 +1,5 @@
 // taches/push.js
-// Toute notification creee dans School (absence, note, paiement, message…) part aussi
+// Toute notification creee dans Sukul (absence, note, paiement, message…) part aussi
 // en notification « push » sur les telephones abonnes. Verification toutes les 15 s.
 const db = require("../config/db");
 const logger = require("../utils/logger");

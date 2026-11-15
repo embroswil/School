@@ -139,7 +139,7 @@ export default function Documents() {
       {zoneDepot}
       <h1 className="page-title">Documents</h1>
       <CompteurIA />
-      <p className="lede">Téléversez des communiqués, emplois du temps, calendriers, résultats… School lit chaque document, le classe et l’affiche aux familles.</p>
+      <p className="lede">Téléversez des communiqués, emplois du temps, calendriers, résultats… Sukul lit chaque document, le classe et l’affiche aux familles.</p>
       <a className="btn btn-quiet btn-block" href="#/info" style={{ marginBottom: 12 }}>
         ✏️ Plutôt écrire une information (avec photos)
       </a>
@@ -164,7 +164,7 @@ export default function Documents() {
                 ×
               </button>
             </div>
-            {(x.etape === 'envoi' || x.etape === 'lecture') && <p className="muted" style={{ marginTop: 8 }}>{x.etape === 'envoi' ? 'Envoi…' : 'School lit le document…'}</p>}
+            {(x.etape === 'envoi' || x.etape === 'lecture') && <p className="muted" style={{ marginTop: 8 }}>{x.etape === 'envoi' ? 'Envoi…' : 'Sukul lit le document…'}</p>}
             {x.etape === 'erreur' && <Note>{x.message}</Note>}
             {x.etape === 'pret' && refus && (
               <div style={{ marginTop: 10 }}>

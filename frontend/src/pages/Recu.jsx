@@ -19,7 +19,7 @@ export default function Recu({ id }) {
         <header className="bulletin-tete">
           <div>
             <div className="bulletin-ecole" style={{ fontSize: 22 }}>
-              School<span style={{ color: '#ffb020' }}>.</span>
+              Sukul<span style={{ color: '#ffb020' }}>.</span>
             </div>
             <div className="bulletin-petit">{r.beneficiaire || 'Embroswil'} · la vie scolaire, simplement</div>
           </div>
@@ -32,7 +32,7 @@ export default function Recu({ id }) {
           <tbody>
             {[
               ['Établissement', `${r.ecole}${r.city ? ` · ${r.city}` : ''}`],
-              ['Objet', `Abonnement School · année scolaire ${r.annee}`],
+              ['Objet', `Abonnement Sukul · année scolaire ${r.annee}`],
               ['Montant reçu', fcfa(r.montant)],
               ['Moyen de paiement', MOYENS[r.moyen] || r.moyen],
               ['Référence', r.reference || '—'],
@@ -49,7 +49,7 @@ export default function Recu({ id }) {
           </tbody>
         </table>
         <p className="bulletin-petit" style={{ marginTop: 14 }}>
-          Montant annuel de l’abonnement : {fcfa(r.montant_annuel)}. Ce reçu est établi électroniquement par School.
+          Montant annuel de l’abonnement : {fcfa(r.montant_annuel)}. Ce reçu est établi électroniquement par Sukul.
         </p>
       </article>
     </>

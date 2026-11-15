@@ -1,12 +1,12 @@
 // modules/scolarite/ordres.js
 // Paiement « P2P » des frais de scolarite, comme sur les plateformes d'echange :
-// 1. le parent cree un ordre (frais, montant, Orange Money ou MTN MoMo) : School
+// 1. le parent cree un ordre (frais, montant, Orange Money ou MTN MoMo) : Sukul
 //    affiche le numero de l'etablissement, le montant exact et un code a mettre en motif ;
 // 2. il a 30 minutes pour payer depuis son telephone, puis touche « J'ai paye »
 //    (ID de transaction, capture facultative) ;
 // 3. l'etablissement verifie son compte et confirme la reception (recu automatique),
 //    ou ouvre un litige ; l'administrateur de la plateforme arbitre les litiges.
-// L'argent va directement de l'un a l'autre : School ne le touche jamais.
+// L'argent va directement de l'un a l'autre : Sukul ne le touche jamais.
 const express = require("express");
 const crypto = require("crypto");
 const router = express.Router();
@@ -303,12 +303,12 @@ router.post("/:id/arbitrer", async (req, res, next) => {
   try {
     const o = await exiger(req.user, entier(req.params.id), ["arbitre"]);
     if (o.statut !== "litige") throw new ApiError(400, "Cet ordre n’est pas en litige");
-    const motif = texte(req.body?.motif, 500) || "Décision de l’arbitrage School";
+    const motif = texte(req.body?.motif, 500) || "Décision de l’arbitrage Sukul";
     if (req.body?.decision === "confirmer") {
-      await confirmerOrdre(o, req.user.id, `Arbitrage School : paiement validé. ${motif}`);
+      await confirmerOrdre(o, req.user.id, `Arbitrage Sukul : paiement validé. ${motif}`);
     } else {
       await db.query("UPDATE ordres_paiement SET statut = 'annule', motif = $2 WHERE id = $1", [o.id, motif]);
-      await ajouterMessage(o.id, req.user.id, "systeme", `Arbitrage School : ordre annulé. ${motif}`);
+      await ajouterMessage(o.id, req.user.id, "systeme", `Arbitrage Sukul : ordre annulé. ${motif}`);
     }
     for (const dest of [o.cree_par]) {
       if (dest) await notifierUtilisateur(dest, { title: "Décision sur votre paiement", message: motif, type: "payment", data: lien(o) }).catch(() => {});
