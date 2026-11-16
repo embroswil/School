@@ -77,15 +77,15 @@ const envoyerCode = async (u, type) => {
   const contenu =
     type === "verification"
       ? u.langue === "en"
-        ? emailCode({ langue: "en", prenom: u.first_name, code, minutes: DUREE[type], titre: "Confirm your email address", intro: "Here is your code to confirm your email address on Sukul." })
-        : emailCode({ prenom: u.first_name, code, minutes: DUREE[type], titre: "Confirmez votre adresse email", intro: "Voici votre code pour confirmer votre adresse email sur Sukul." })
+        ? emailCode({ langue: "en", prenom: u.first_name, code, minutes: DUREE[type], titre: "Confirm your email address", intro: "Here is your code to confirm your email address on Sùkûl." })
+        : emailCode({ prenom: u.first_name, code, minutes: DUREE[type], titre: "Confirmez votre adresse email", intro: "Voici votre code pour confirmer votre adresse email sur Sùkûl." })
       : u.langue === "en"
-        ? emailCode({ langue: "en", prenom: u.first_name, code, minutes: DUREE[type], titre: "Password reset", intro: "You asked to change your Sukul password. Here is your code." })
-        : emailCode({ prenom: u.first_name, code, minutes: DUREE[type], titre: "Réinitialisation du mot de passe", intro: "Vous avez demandé à changer votre mot de passe Sukul. Voici votre code." });
+        ? emailCode({ langue: "en", prenom: u.first_name, code, minutes: DUREE[type], titre: "Password reset", intro: "You asked to change your Sùkûl password. Here is your code." })
+        : emailCode({ prenom: u.first_name, code, minutes: DUREE[type], titre: "Réinitialisation du mot de passe", intro: "Vous avez demandé à changer votre mot de passe Sùkûl. Voici votre code." });
   await envoyerEmail({
     a: u.email,
     nom: u.first_name,
-    sujet: type === "verification" ? `${code} est votre code Sukul` : `Code de réinitialisation Sukul : ${code}`,
+    sujet: type === "verification" ? `${code} est votre code Sùkûl` : `Code de réinitialisation Sùkûl : ${code}`,
     ...contenu,
   });
   return { canal: "email", destination: u.email };

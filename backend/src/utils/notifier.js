@@ -22,17 +22,17 @@ const emailNotification = async (userId, { title, message, data }) => {
     const en = u.langue === "en";
     if (en) ({ title, message } = require("./langue").traduireNotification({ title, message }, "en"));
     const T = en
-      ? { bonjour: "Hello", ouvrir: "Open Sukul", stop: "To stop these emails: Profile › Email notifications." }
-      : { bonjour: "Bonjour", ouvrir: "Ouvrir Sukul", stop: "Pour ne plus recevoir ces emails : Profil › Notifications par email." };
+      ? { bonjour: "Hello", ouvrir: "Open Sùkûl", stop: "To stop these emails: Profile › Email notifications." }
+      : { bonjour: "Bonjour", ouvrir: "Ouvrir Sùkûl", stop: "Pour ne plus recevoir ces emails : Profil › Notifications par email." };
     await envoyerEmail({
       a: u.email,
       nom: u.first_name,
-      sujet: `Sukul · ${title}`,
+      sujet: `Sùkûl · ${title}`,
       texte: `${T.bonjour} ${u.first_name},\n\n${title}\n${message}\n\n${T.ouvrir} : ${lien}\n\n${T.stop}`,
       html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#fff;border-radius:18px;border:1px solid #e3e8f4;overflow:hidden">
-<tr><td style="background:#2446d8;padding:18px 24px;color:#fff;font-size:20px;font-weight:bold">Sukul<span style="color:#ffb020">.</span></td></tr>
+<tr><td style="background:#2446d8;padding:18px 24px;color:#fff;font-size:20px;font-weight:bold">Sùkûl<span style="color:#ffb020">.</span></td></tr>
 <tr><td style="padding:24px"><p style="margin:0 0 6px;font-size:15px">${T.bonjour} ${u.first_name},</p>
 <h1 style="margin:0 0 8px;font-size:19px">${title}</h1><p style="margin:0 0 20px;font-size:15px;line-height:1.5">${message}</p>
 <a href="${lien}" style="display:inline-block;background:#2446d8;color:#fff;text-decoration:none;font-weight:bold;padding:12px 18px;border-radius:12px">${T.ouvrir}</a></td></tr>

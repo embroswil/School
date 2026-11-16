@@ -193,7 +193,7 @@ function Situation() {
           <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>
             {paiement.moyen === 'enligne'
               ? 'Paiement sécurisé par NotchPay : vous validez sur votre téléphone, le reçu est émis automatiquement.'
-              : 'Transfert direct à l’établissement : Sukul vous indique le numéro, le montant et un code à mettre en motif.'}
+              : 'Transfert direct à l’établissement : Sùkûl vous indique le numéro, le montant et un code à mettre en motif.'}
           </p>
           <div className="chips">
             {paiement.moyens.enLigne && (
@@ -305,7 +305,7 @@ function Frais() {
     }
   }
 
-  // Document contenant tous les frais : Sukul le lit, compare avec les frais existants
+  // Document contenant tous les frais : Sùkûl le lit, compare avec les frais existants
   async function choisirDocument(e) {
     const fichier = [...(e.target.files || [])][0]
     e.target.value = ''
@@ -321,7 +321,7 @@ function Frais() {
         const env = await envoyer(fichier)
         corps = { url: env.url, mime: env.mime }
       }
-      setLecture('Sukul lit le document… (jusqu’à une minute)')
+      setLecture('Sùkûl lit le document… (jusqu’à une minute)')
       const r = (await api.post('/api/scolarite/frais/lire', corps)).data
       setLus(r.map((x, i) => ({ ...x, cle: i, choisi: x.statut !== 'identique' })))
     } catch (err) {
@@ -356,7 +356,7 @@ function Frais() {
       <button type="button" className="depot" onClick={() => champ.current?.click()} disabled={Boolean(lecture)}>
         <span style={{ fontSize: 30 }}>📄</span>
         <b>{lecture || 'Importer un document de frais'}</b>
-        <small>PDF, photo, Excel ou CSV : Sukul remplit les frais automatiquement</small>
+        <small>PDF, photo, Excel ou CSV : Sùkûl remplit les frais automatiquement</small>
         <small className="astuce-depot">ou glissez-déposez le fichier n’importe où sur cette page</small>
       </button>
       <Note kind="ok">{ok}</Note>

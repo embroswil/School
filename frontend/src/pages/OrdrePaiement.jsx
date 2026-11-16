@@ -329,7 +329,7 @@ export default function OrdrePaiement({ id }) {
       {o.monRole === 'payeur' && o.statut === 'paye' && Date.now() + decalage - new Date(o.paye_le).getTime() > 24 * 3600 * 1000 && (
         <div className="card">
           <b>Toujours pas confirmé ?</b>
-          <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>Écrivez d’abord à l’établissement ci-dessous. Sans réponse, ouvrez un litige : Sukul tranchera.</p>
+          <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>Écrivez d’abord à l’établissement ci-dessous. Sans réponse, ouvrez un litige : Sùkûl tranchera.</p>
           <button type="button" className="btn btn-quiet btn-danger btn-block" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/litige`, { motif: 'Paiement non confirmé après 24 heures' }), 'Ouvrir un litige ?')}>
             Ouvrir un litige
           </button>
@@ -358,7 +358,7 @@ export default function OrdrePaiement({ id }) {
           titre="Joindre l’établissement"
           nom={o.ecole}
           telephone={o.telephone_ecole}
-          message={`Bonjour, je vous contacte au sujet du paiement Sukul ${o.code} de ${fcfa(o.montant)} (${o.frais}, ${o.first_name} ${o.last_name}).`}
+          message={`Bonjour, je vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(o.montant)} (${o.frais}, ${o.first_name} ${o.last_name}).`}
         />
       )}
       {['etablissement', 'arbitre'].includes(o.monRole) && o.parent_tel && (
@@ -366,7 +366,7 @@ export default function OrdrePaiement({ id }) {
           titre="Joindre le payeur"
           nom={`${o.parent_prenom || ''} ${o.parent_nom || ''}`.trim()}
           telephone={o.parent_tel}
-          message={`Bonjour, ${o.ecole} vous contacte au sujet du paiement Sukul ${o.code} de ${fcfa(o.montant)}.`}
+          message={`Bonjour, ${o.ecole} vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(o.montant)}.`}
         />
       )}
 
@@ -377,7 +377,7 @@ export default function OrdrePaiement({ id }) {
           <li key={m.id} className="row" style={{ alignItems: 'flex-start' }}>
             <div className="row-main">
               <div className="row-sub" style={{ fontSize: 12 }}>
-                {m.role === 'systeme' ? 'Sukul' : m.role === 'etablissement' ? 'Établissement' : m.role === 'arbitre' ? 'Arbitrage Sukul' : `${m.first_name || ''} ${m.last_name || ''}`.trim() || 'Parent'} ·{' '}
+                {m.role === 'systeme' ? 'Sùkûl' : m.role === 'etablissement' ? 'Établissement' : m.role === 'arbitre' ? 'Arbitrage Sùkûl' : `${m.first_name || ''} ${m.last_name || ''}`.trim() || 'Parent'} ·{' '}
                 {heure(m.created_at)}
               </div>
               <div style={{ whiteSpace: 'pre-wrap', fontStyle: m.role === 'systeme' ? 'italic' : 'normal', color: m.role === 'systeme' ? 'var(--muted)' : undefined }}>{m.texte}</div>

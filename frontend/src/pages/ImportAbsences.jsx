@@ -7,7 +7,7 @@ import { lireDocumentEcole } from '../documents-ecole.js'
 import CompteurIA from '../CompteurIA.jsx'
 import { trierClasses } from '../classes.js'
 
-// Cahiers d'appel : l'administration depose le cahier, Sukul met a jour les absences
+// Cahiers d'appel : l'administration depose le cahier, Sùkûl met a jour les absences
 export default function ImportAbsences() {
   const champ = useRef(null)
   const classes = trierClasses(useApi('/api/etablissement/classes').data || [])

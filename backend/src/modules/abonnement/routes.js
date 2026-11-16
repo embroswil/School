@@ -112,7 +112,7 @@ router.post("/payer", async (req, res, next) => {
         email: req.user.email,
         reference,
         callback: `${(process.env.FRONTEND_URL || "").split(",")[0].trim()}/#/abonnement`,
-        description: `Abonnement Sukul ${e.annee} – ${ecole}`,
+        description: `Abonnement Sùkûl ${e.annee} – ${ecole}`,
       }),
     });
     const j = await r.json().catch(() => ({}));
@@ -330,7 +330,7 @@ router.put("/admin/reglages", isPlatformAdmin, async (req, res, next) => {
 });
 
 // ---------------------------------------------------------------- reversements aux etablissements
-// Paiements de scolarite encaisses en ligne par Sukul (compte NotchPay de la plateforme) a reverser.
+// Paiements de scolarite encaisses en ligne par Sùkûl (compte NotchPay de la plateforme) a reverser.
 
 // GET /api/abonnement/admin/reversements
 router.get("/admin/reversements", isPlatformAdmin, async (req, res, next) => {

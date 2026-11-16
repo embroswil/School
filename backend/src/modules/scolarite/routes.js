@@ -861,7 +861,7 @@ router.post("/relancer", async (req, res, next) => {
   }
 });
 
-// GET /api/scolarite/reversements : paiements en ligne encaisses par Sukul pour l'etablissement
+// GET /api/scolarite/reversements : paiements en ligne encaisses par Sùkûl pour l'etablissement
 router.get("/reversements", async (req, res, next) => {
   try {
     reserve(req);

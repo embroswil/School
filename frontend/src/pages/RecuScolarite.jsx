@@ -55,7 +55,7 @@ export default function RecuScolarite({ id }) {
           </tbody>
         </table>
         <p className="bulletin-petit" style={{ marginTop: 14 }}>
-          Reçu établi électroniquement par Sukul pour le compte de l’établissement. Il fait foi du paiement enregistré.
+          Reçu établi électroniquement par Sùkûl pour le compte de l’établissement. Il fait foi du paiement enregistré.
         </p>
       </article>
     </>

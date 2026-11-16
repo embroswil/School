@@ -287,7 +287,7 @@ CREATE TABLE IF NOT EXISTS appels (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_appels_unique ON appels (class_id, date, COALESCE(period_number, -1));
 CREATE INDEX IF NOT EXISTS idx_notifications_menage ON notifications (created_at);
 
--- Abonnements des etablissements a School
+-- Abonnements des etablissements a Sùkûl
 CREATE TABLE IF NOT EXISTS plateforme_reglages (cle VARCHAR(60) PRIMARY KEY, valeur JSONB NOT NULL);
 INSERT INTO plateforme_reglages (cle, valeur) VALUES
   ('prix_defaut', '150000'), ('echeance', '"10-31"'), ('delai_grace_jours', '30'), ('beneficiaire', '"EMBROSWIL"'),
@@ -367,7 +367,7 @@ ALTER TABLE paiements_abonnement ADD CONSTRAINT paiements_abonnement_statut_chec
 -- Statut « scolarite reglee » : acces rapide aux paiements d'un eleve
 CREATE INDEX IF NOT EXISTS idx_paiements_eleve_frais ON paiements_scolaires (student_id, frais_id) WHERE statut = 'reussi';
 
--- Fil automatique : documents televerses et informations generees par School
+-- Fil automatique : documents televerses et informations generees par Sùkûl
 ALTER TABLE publications ADD COLUMN IF NOT EXISTS categorie VARCHAR(60);
 ALTER TABLE publications ADD COLUMN IF NOT EXISTS source VARCHAR(20);
 ALTER TABLE publications ADD COLUMN IF NOT EXISTS cle_auto VARCHAR(120);

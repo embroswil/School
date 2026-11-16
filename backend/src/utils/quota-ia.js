@@ -31,11 +31,11 @@ const etat = async (ecole) => {
 // Reserve des lectures ; refuse si le plafond du mois serait depasse
 const reserver = async (ecole, userId, type, poids) => {
   const e = await etat(ecole);
-  if (e.limite === 0) throw new ApiError(403, "La lecture automatique des documents n’est pas activée pour votre établissement. Utilisez l’import Excel ou CSV, ou contactez Sukul.");
+  if (e.limite === 0) throw new ApiError(403, "La lecture automatique des documents n’est pas activée pour votre établissement. Utilisez l’import Excel ou CSV, ou contactez Sùkûl.");
   if (e.utilise + poids > e.limite) {
     throw new ApiError(
       429,
-      `Plafond de lectures automatiques atteint pour ce mois (${e.utilise} sur ${e.limite}). Utilisez l’import Excel ou CSV, ou la saisie à la main, ou contactez Sukul pour augmenter le plafond.`
+      `Plafond de lectures automatiques atteint pour ce mois (${e.utilise} sur ${e.limite}). Utilisez l’import Excel ou CSV, ou la saisie à la main, ou contactez Sùkûl pour augmenter le plafond.`
     );
   }
   const { rows } = await db.query("INSERT INTO ia_usage (school_id, user_id, type, poids) VALUES ($1, $2, $3, $4) RETURNING id", [ecole, userId || null, type, poids]);

@@ -20,7 +20,7 @@ const petitEcran = () => Math.min(window.screen?.width || 0, window.screen?.heig
 export function appliquerVersionOrdi() {
   const mq = window.matchMedia?.(requete)
   const maj = () => {
-    // Sur iPhone, « Version pour ordinateur » du navigateur affiche la version ordinateur de Sukul
+    // Sur iPhone, « Version pour ordinateur » du navigateur affiche la version ordinateur de Sùkûl
     const force = ordiForce() || (versionOrdiDuNavigateur() && petitEcran())
     document.documentElement.classList.toggle('ordi', force || Boolean(mq?.matches))
     // Apercu sur telephone : la page est dessinee comme sur un ecran d'ordinateur, puis reduite

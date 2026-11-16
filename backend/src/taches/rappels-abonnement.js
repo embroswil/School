@@ -10,11 +10,11 @@ const fcfa = (n) => `${Number(n || 0).toLocaleString("fr-FR")} FCFA`;
 const date = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
 const PALIERS = [
-  { cle: "j-30", si: (j) => j <= 30 && j > 15, titre: "Abonnement Sukul : échéance dans un mois" },
-  { cle: "j-15", si: (j) => j <= 15 && j > 7, titre: "Abonnement Sukul : échéance dans 15 jours" },
-  { cle: "j-7", si: (j) => j <= 7 && j > 0, titre: "Abonnement Sukul : échéance dans 7 jours" },
-  { cle: "j0", si: (j) => j === 0, titre: "Abonnement Sukul : échéance aujourd’hui" },
-  { cle: "j+7", si: (j) => j < -6, titre: "Abonnement Sukul en retard" },
+  { cle: "j-30", si: (j) => j <= 30 && j > 15, titre: "Abonnement Sùkûl : échéance dans un mois" },
+  { cle: "j-15", si: (j) => j <= 15 && j > 7, titre: "Abonnement Sùkûl : échéance dans 15 jours" },
+  { cle: "j-7", si: (j) => j <= 7 && j > 0, titre: "Abonnement Sùkûl : échéance dans 7 jours" },
+  { cle: "j0", si: (j) => j === 0, titre: "Abonnement Sùkûl : échéance aujourd’hui" },
+  { cle: "j+7", si: (j) => j < -6, titre: "Abonnement Sùkûl en retard" },
 ];
 
 const rappeler = async () => {
@@ -27,9 +27,9 @@ const rappeler = async () => {
     if (!palier && !lectureSeule) continue;
     const titre = lectureSeule ? "Établissement en lecture seule" : palier.titre;
     const message = lectureSeule
-      ? `L’abonnement ${e.annee} n’est pas réglé (reste ${fcfa(e.reste)}). Sukul est en lecture seule jusqu’au paiement.`
+      ? `L’abonnement ${e.annee} n’est pas réglé (reste ${fcfa(e.reste)}). Sùkûl est en lecture seule jusqu’au paiement.`
       : `Reste à payer : ${fcfa(e.reste)} pour l’année ${e.annee}, échéance le ${date(e.echeance)}.` +
-        (e.joursRestants < 0 ? ` Sans paiement, Sukul passera en lecture seule le ${date(e.finGrace)}.` : "");
+        (e.joursRestants < 0 ? ` Sans paiement, Sùkûl passera en lecture seule le ${date(e.finGrace)}.` : "");
     const chefs = await db.query("SELECT id FROM users WHERE school_id = $1 AND role = 'principal' AND is_active", [id]);
     for (const c of chefs.rows) {
       await notifierUtilisateur(c.id, { title: titre, message, type: "payment", priority: "high", data: { lien: "/abonnement" } }).catch(() => {});

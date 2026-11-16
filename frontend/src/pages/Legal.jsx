@@ -1,4 +1,4 @@
-// Pages legales de Sukul : politique de confidentialite et conditions d'utilisation.
+// Pages legales de Sùkûl : politique de confidentialite et conditions d'utilisation.
 // Version du 4 novembre 2026. A faire relire par un juriste avant le lancement commercial.
 const MAJ = '4 novembre 2026'
 const CONTACT = 'la messagerie de l’application (onglet Messages)'
@@ -12,7 +12,7 @@ function Page({ titre, children }) {
       <h1 className="page-title">{titre}</h1>
       <p className="muted" style={{ fontSize: 13 }}>Dernière mise à jour : {MAJ}</p>
       {children}
-      <p className="muted" style={{ fontSize: 13, marginTop: 24 }}>Sukul est un service édité par Embroswil.</p>
+      <p className="muted" style={{ fontSize: 13, marginTop: 24 }}>Sùkûl est un service édité par Embroswil.</p>
     </div>
   )
 }
@@ -22,13 +22,13 @@ export function Confidentialite() {
     <Page titre="Politique de confidentialité">
       <h2>1. Qui sommes-nous ?</h2>
       <p>
-        Sukul est une application de vie scolaire éditée par Embroswil. Elle relie les établissements scolaires, les enseignants, les élèves, les parents
+        Sùkûl est une application de vie scolaire éditée par Embroswil. Elle relie les établissements scolaires, les enseignants, les élèves, les parents
         et les tuteurs. Pour toute question sur vos données : {CONTACT}.
       </p>
       <h2>2. Qui est responsable de vos données ?</h2>
       <p>
         <b>L’établissement scolaire</b> est responsable des données de ses élèves (identité, classe, notes, absences, discipline, scolarité) : c’est lui
-        qui les saisit ou les importe. <b>Embroswil</b> héberge et traite ces données pour son compte, uniquement pour faire fonctionner Sukul. Pour les
+        qui les saisit ou les importe. <b>Embroswil</b> héberge et traite ces données pour son compte, uniquement pour faire fonctionner Sùkûl. Pour les
         comptes que vous créez vous-même (parent, tuteur, donateur, enseignant), Embroswil est responsable de vos données de compte.
       </p>
       <h2>3. Quelles données ?</h2>
@@ -72,7 +72,7 @@ export function Confidentialite() {
       <h2>9. Mineurs</h2>
       <p>
         Les données des élèves sont des données d’enfants : elles font l’objet d’une protection renforcée (accès limités, vérification des parents, aucun
-        usage commercial). Un élève mineur utilise Sukul sous la responsabilité de ses parents et de son établissement.
+        usage commercial). Un élève mineur utilise Sùkûl sous la responsabilité de ses parents et de son établissement.
       </p>
     </Page>
   )
@@ -83,7 +83,7 @@ export function Conditions() {
     <Page titre="Conditions d’utilisation">
       <h2>1. Objet</h2>
       <p>
-        Les présentes conditions encadrent l’utilisation de Sukul, application de vie scolaire éditée par Embroswil. Créer un compte ou utiliser Sukul
+        Les présentes conditions encadrent l’utilisation de Sùkûl, application de vie scolaire éditée par Embroswil. Créer un compte ou utiliser Sùkûl
         vaut acceptation de ces conditions et de la politique de confidentialité.
       </p>
       <h2>2. Comptes</h2>
@@ -95,15 +95,15 @@ export function Conditions() {
       <h2>3. Établissements</h2>
       <p>
         L’établissement est responsable des contenus qu’il publie (notes, actualités, sanctions, photos) et de l’exactitude des données de ses élèves. Il
-        s’engage à n’y publier que des informations utiles à la vie scolaire, dans le respect des élèves et de leur image. L’usage de Sukul par un
+        s’engage à n’y publier que des informations utiles à la vie scolaire, dans le respect des élèves et de leur image. L’usage de Sùkûl par un
         établissement fait l’objet d’un abonnement annuel ; à défaut de paiement à l’échéance (après rappels), l’établissement passe en lecture seule, ses
         données étant conservées.
       </p>
       <h2>4. Paiements de la scolarité</h2>
       <p>
-        Les frais de scolarité sont payés directement à l’établissement (transfert Mobile Money ou guichet). Sukul met en relation, délivre les reçus et
+        Les frais de scolarité sont payés directement à l’établissement (transfert Mobile Money ou guichet). Sùkûl met en relation, délivre les reçus et
         aide à résoudre les litiges, mais ne détient jamais ces fonds. Le parent s’engage à ne signaler un paiement qu’après l’avoir réellement effectué.
-        L’établissement s’engage à confirmer rapidement les paiements reçus. En cas de litige, Sukul peut arbitrer sur la base des éléments fournis.
+        L’établissement s’engage à confirmer rapidement les paiements reçus. En cas de litige, Sùkûl peut arbitrer sur la base des éléments fournis.
       </p>
       <h2>5. Comportement</h2>
       <p>

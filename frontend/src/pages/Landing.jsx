@@ -16,7 +16,7 @@ export default function Landing() {
       <ChoixLangue style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', right: 16 }} />
       <div className="vitrine-bloc">
         <div className="brand">
-          Sukul<span>.</span>
+          Sùkûl<span>.</span>
         </div>
         <p className="vitrine-texte">Les notes, les absences, les actualités et la scolarité de votre enfant, au même endroit.</p>
         <div className="vitrine-mosaique" aria-hidden="true">
@@ -37,7 +37,7 @@ export default function Landing() {
           Vous dirigez un établissement ? Inscrivez-le
         </a>
         <p className="vitrine-pied">
-          Sukul by Embroswil · © {new Date().getFullYear()}
+          Sùkûl by Embroswil · © {new Date().getFullYear()}
           <br />
           <a href="#/confidentialite">Confidentialité</a> · <a href="#/conditions">Conditions d’utilisation</a>
         </p>

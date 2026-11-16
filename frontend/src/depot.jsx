@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 // Glisser-deposer des fichiers depuis l'ordinateur.
 // - Sur une page d'envoi (liste d'eleves, document, discipline, photos) : on depose, la page traite.
-// - Ailleurs (accueil…) : on depose, Sukul demande quoi en faire, puis ouvre la bonne page.
+// - Ailleurs (accueil…) : on depose, Sùkûl demande quoi en faire, puis ouvre la bonne page.
 let enAttente = null
 let pagesActives = 0
 
@@ -121,7 +121,7 @@ export function DepotGlobal({ role }) {
   const images = fichiers?.every((f) => f.type.startsWith('image/'))
   return (
     <>
-      {survol && pagesActives === 0 && <Voile texte="Déposez vos fichiers" detail="Sukul vous demandera quoi en faire" />}
+      {survol && pagesActives === 0 && <Voile texte="Déposez vos fichiers" detail="Sùkûl vous demandera quoi en faire" />}
       {fichiers && (
         <div className="voile" onClick={() => setFichiers(null)}>
           <div className="feuille" onClick={(e) => e.stopPropagation()}>

@@ -1,5 +1,5 @@
 // modules/abonnement/service.js
-// Abonnement annuel des etablissements a Sukul (une ligne par annee scolaire).
+// Abonnement annuel des etablissements a Sùkûl (une ligne par annee scolaire).
 const db = require("../../config/db");
 
 const reglages = async () => {

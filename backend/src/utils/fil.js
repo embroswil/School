@@ -1,5 +1,5 @@
 // utils/fil.js
-// Fil d'informations automatique : Sukul y publie lui-meme les faits utiles aux
+// Fil d'informations automatique : Sùkûl y publie lui-meme les faits utiles aux
 // familles (documents televerses, notes publiees, emplois du temps, decisions de fin
 // d'annee). Les listes d'eleves, la discipline et les paiements n'y vont jamais.
 const db = require("../config/db");

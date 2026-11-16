@@ -16,7 +16,7 @@ async function synchroniser(cle) {
   await api.post('/api/push/abonnement', { ...abo.toJSON(), appareil: navigator.userAgent.slice(0, 120) })
 }
 
-// A l'ouverture de Sukul : si les alertes sont autorisees, ce telephone est (re)inscrit
+// A l'ouverture de Sùkûl : si les alertes sont autorisees, ce telephone est (re)inscrit
 export function SynchroPush() {
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
@@ -29,7 +29,7 @@ export function SynchroPush() {
   return null
 }
 
-// etat : 'chargement' | 'indisponible' | 'installer' (iPhone : installer Sukul d'abord) | 'refuse' | 'actif' | 'inactif'
+// etat : 'chargement' | 'indisponible' | 'installer' (iPhone : installer Sùkûl d'abord) | 'refuse' | 'actif' | 'inactif'
 export function usePush() {
   const [etat, setEtat] = useState('chargement')
   const [cle, setCle] = useState(null)
@@ -101,8 +101,8 @@ export function EncartPush() {
         <b>Recevoir les alertes sur votre téléphone</b>
         <small>
           {etat === 'installer'
-            ? 'Installez d’abord Sukul sur l’écran d’accueil, puis activez les alertes.'
-            : erreur || 'Absences, notes, paiements et messages, même Sukul fermé.'}
+            ? 'Installez d’abord Sùkûl sur l’écran d’accueil, puis activez les alertes.'
+            : erreur || 'Absences, notes, paiements et messages, même Sùkûl fermé.'}
         </small>
       </div>
       {etat === 'installer' ? (
@@ -132,8 +132,8 @@ export function ReglagePush() {
   const textes = {
     chargement: 'Vérification…',
     indisponible: 'Non disponible sur ce navigateur',
-    installer: 'Installez Sukul sur l’écran d’accueil pour les activer (iPhone)',
-    refuse: 'Bloquées : autorisez les notifications de Sukul dans les réglages du téléphone',
+    installer: 'Installez Sùkûl sur l’écran d’accueil pour les activer (iPhone)',
+    refuse: 'Bloquées : autorisez les notifications de Sùkûl dans les réglages du téléphone',
     actif: 'Activées sur ce téléphone',
     inactif: 'Désactivées sur ce téléphone',
   }

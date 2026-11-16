@@ -1,4 +1,4 @@
-/* Sukul : interface claire et moderne, pensée d'abord pour le téléphone. */
+/* Sùkûl : interface claire et moderne, pensée d'abord pour le téléphone. */
 :root {
   --primary: #2446d8;
   --primary-dark: #1a33a6;
@@ -507,7 +507,7 @@ a.choice { color: var(--text); }
 
 
 /* =====================================================================
-   Theme « Nuit » de Sukul : noir profond, bleu electrique, blanc.
+   Theme « Nuit » de Sùkûl : noir profond, bleu electrique, blanc.
    Le rouge est reserve aux nouveautes (notifications, messages non lus, alertes).
    ===================================================================== */
 :root {

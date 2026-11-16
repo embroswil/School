@@ -78,7 +78,7 @@ const authenticateJeton = (req, res, next) => {
       .estEnLectureSeule(req.user.schoolId)
       .then((bloque) =>
         bloque
-          ? next(new ApiError(402, "L’abonnement de l’établissement n’est pas réglé : Sukul est en lecture seule jusqu’au paiement."))
+          ? next(new ApiError(402, "L’abonnement de l’établissement n’est pas réglé : Sùkûl est en lecture seule jusqu’au paiement."))
           : suite()
       )
       .catch(() => suite());

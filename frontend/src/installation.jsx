@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-// Installation de Sukul sur l'ecran d'accueil du telephone.
+// Installation de Sùkûl sur l'ecran d'accueil du telephone.
 // Android / Chrome / Edge : vraie fenetre d'installation (evenement beforeinstallprompt,
 // capture des le chargement de la page dans index.html). iPhone / iPad : Apple n'autorise
 // pas de bouton d'installation ; on montre les 3 gestes a faire dans Safari.
@@ -59,7 +59,7 @@ export function EtapesInstallation({ mode }) {
         <li>
           <span className="num">1</span>
           <span>
-            Ouvrez Sukul dans <b>Safari</b>, puis touchez <b className="pictos"><Partager /></b> <b>Partager</b>, en bas de l’écran.
+            Ouvrez Sùkûl dans <b>Safari</b>, puis touchez <b className="pictos"><Partager /></b> <b>Partager</b>, en bas de l’écran.
           </span>
         </li>
         <li>
@@ -71,7 +71,7 @@ export function EtapesInstallation({ mode }) {
         <li>
           <span className="num">3</span>
           <span>
-            Touchez <b>Ajouter</b>, en haut à droite. L’icône <b>Sukul</b> apparaît avec vos applications.
+            Touchez <b>Ajouter</b>, en haut à droite. L’icône <b>Sùkûl</b> apparaît avec vos applications.
           </span>
         </li>
       </ol>
@@ -82,7 +82,7 @@ export function EtapesInstallation({ mode }) {
       <li>
         <span className="num">1</span>
         <span>
-          Ouvrez Sukul dans <b>Chrome</b>, puis touchez le menu <b>⋮</b>, en haut à droite.
+          Ouvrez Sùkûl dans <b>Chrome</b>, puis touchez le menu <b>⋮</b>, en haut à droite.
         </span>
       </li>
       <li>
@@ -94,7 +94,7 @@ export function EtapesInstallation({ mode }) {
       <li>
         <span className="num">3</span>
         <span>
-          Confirmez avec <b>Installer</b>. L’icône <b>Sukul</b> apparaît avec vos applications.
+          Confirmez avec <b>Installer</b>. L’icône <b>Sùkûl</b> apparaît avec vos applications.
         </span>
       </li>
     </ol>
@@ -133,7 +133,7 @@ export function BandeauInstallation() {
     <div className="bandeau-install">
       <img src="/icons/icon-192.png" alt="" />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <b>Installez Sukul</b>
+        <b>Installez Sùkûl</b>
         <small>Sur votre écran d’accueil, comme une application.</small>
       </div>
       <button type="button" className="btn" style={{ padding: '8px 12px', fontSize: 13 }} onClick={async () => (await installer()) || (window.location.hash = '/installer')}>
@@ -146,7 +146,7 @@ export function BandeauInstallation() {
   )
 }
 
-// Page complete « Installer Sukul »
+// Page complete « Installer Sùkûl »
 export default function PageInstallation() {
   const { mode, installer } = useInstallation()
   const [vue, setVue] = useState(mode === 'ios' ? 'ios' : 'android')
@@ -154,11 +154,11 @@ export default function PageInstallation() {
     <div className="page-install">
       <img src="/icons/icon-512.png" alt="" className="logo-install" />
       <h1 className="page-title" style={{ textAlign: 'center' }}>
-        Installer Sukul
+        Installer Sùkûl
       </h1>
       {mode === 'installee' ? (
         <p className="lede" style={{ textAlign: 'center' }}>
-          ✓ Sukul est déjà installé sur cet appareil. Ouvrez-le depuis son icône.
+          ✓ Sùkûl est déjà installé sur cet appareil. Ouvrez-le depuis son icône.
         </p>
       ) : (
         <>

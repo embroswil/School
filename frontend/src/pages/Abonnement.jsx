@@ -25,7 +25,7 @@ export function BandeauAbonnement({ role }) {
   const texte =
     e.statut === 'lecture_seule'
       ? role === 'principal'
-        ? 'Abonnement non réglé : Sukul est en lecture seule. Réglez-le pour reprendre les saisies.'
+        ? 'Abonnement non réglé : Sùkûl est en lecture seule. Réglez-le pour reprendre les saisies.'
         : 'L’établissement est temporairement en lecture seule : les saisies reprendront prochainement.'
       : e.statut === 'en_retard'
         ? `Abonnement en retard : ${fcfa(e.reste)} à régler avant le ${jourLong(e.finGrace)}.`
@@ -56,7 +56,7 @@ export function BandeauAbonnement({ role }) {
   )
 }
 
-// Page « Abonnement Sukul » de l'etablissement
+// Page « Abonnement Sùkûl » de l'etablissement
 export default function Abonnement() {
   const d = useApi('/api/abonnement')
   const [error, setError] = useState('')
@@ -105,7 +105,7 @@ export default function Abonnement() {
 
   return (
     <>
-      <h1 className="page-title">Abonnement Sukul</h1>
+      <h1 className="page-title">Abonnement Sùkûl</h1>
 
       <section className="abo-hero">
         <div className="abo-hero-tete">
@@ -117,7 +117,7 @@ export default function Abonnement() {
         {e.statut === 'gratuit' ? (
           <>
             <b className="abo-montant">Gratuit</b>
-            <p className="muted">Votre établissement bénéficie de Sukul gratuitement cette année.</p>
+            <p className="muted">Votre établissement bénéficie de Sùkûl gratuitement cette année.</p>
           </>
         ) : (
           <>
@@ -138,7 +138,7 @@ export default function Abonnement() {
             {doit && (
               <p className="abo-echeance">
                 Échéance : <b>{jourLong(e.echeance)}</b>
-                {e.statut !== 'lecture_seule' && <> · sans paiement, Sukul passera en lecture seule le {jourLong(e.finGrace)}</>}
+                {e.statut !== 'lecture_seule' && <> · sans paiement, Sùkûl passera en lecture seule le {jourLong(e.finGrace)}</>}
                 {e.enAttente > 0 && <> · {fcfa(e.enAttente)} déclarés, en cours de vérification</>}
               </p>
             )}
@@ -168,7 +168,7 @@ export default function Abonnement() {
             <div className="card abo-mode">
               <b>En espèces</b>
               <p className="muted">
-                Remettez le montant à un représentant de {e.paiement.beneficiaire || 'Sukul'} contre un reçu. Le paiement apparaît ici dès son enregistrement.
+                Remettez le montant à un représentant de {e.paiement.beneficiaire || 'Sùkûl'} contre un reçu. Le paiement apparaît ici dès son enregistrement.
               </p>
               {e.paiement.telephone && (
                 <a className="btn btn-quiet btn-block" href={`tel:${e.paiement.telephone.replace(/\s/g, '')}`}>
@@ -222,7 +222,7 @@ export default function Abonnement() {
         </div>
       )}
       <p className="muted" style={{ fontSize: 12.5, margin: '14px 2px 0' }}>
-        L’abonnement comprend toutes les fonctions de Sukul pour tous vos élèves et enseignants : appel, notes et bulletins, scolarité, informations aux familles et assistance.
+        L’abonnement comprend toutes les fonctions de Sùkûl pour tous vos élèves et enseignants : appel, notes et bulletins, scolarité, informations aux familles et assistance.
       </p>
     </>
   )
