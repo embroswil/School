@@ -21,6 +21,25 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Rechercher un élève (nom ou prénom)": "Search for a student (surname or first name)",
+  "Placez-les dans leur classe": "Place them in their class",
+  "Gérer les classes": "Manage classes",
+  "← Toutes les classes": "← All classes",
+  "Élèves sans classe": "Students without a class",
+  "Aucun élève dans cette classe.": "No students in this class.",
+  "Aucun élève pour l’instant. Importez vos listes de classe pour commencer.": "No students yet. Import your class lists to get started.",
+  "Placer dans une classe": "Place in a class",
+  "Envoyez vos listes de classe telles qu’elles sont : l’application reconnaît le type de fichier, lit les noms, prénoms, classes, dates de naissance et matricules, puis vous vérifiez avant l’import.": "Send your class lists as they are: the app recognises the file type, reads surnames, first names, classes, dates of birth and registration numbers, then you check before importing.",
+  "Choisir un fichier ou une photo": "Choose a file or a photo",
+  "Lecture en cours…": "Reading…",
+  "Jusqu’à une minute pour une liste manuscrite": "Up to a minute for a handwritten list",
+  "Excel, CSV, PDF, Word ou photo (liste imprimée ou écrite à la main)": "Excel, CSV, PDF, Word or photo (printed or handwritten list)",
+  "Excel, PDF, Word ou photo": "Excel, PDF, Word or photo",
+  "Format non pris en charge : Excel, CSV, PDF, Word ou photo.": "Unsupported format: Excel, CSV, PDF, Word or photo.",
+  "Ancien format Word (.doc) : enregistrez le fichier en .docx ou en PDF, puis réessayez.": "Old Word format (.doc): save the file as .docx or PDF, then try again.",
+  "Fichier Word illisible.": "Unreadable Word file.",
+  "Ce document Word ne contient pas de texte lisible.": "This Word document contains no readable text.",
+  "• Un fichier Excel avec une feuille par classe fonctionne aussi. Vous pouvez envoyer plusieurs fichiers d’un coup.": "• An Excel file with one sheet per class also works. You can send several files at once.",
   "Saisissez le code": "Enter the code",
   "Indiquez votre adresse e-mail ou votre numéro : vous recevrez un code à 6 chiffres.": "Enter your email address or phone number: you will receive a 6-digit code.",
   "Un code à 6 chiffres vient d’être envoyé sur WhatsApp.": "A 6-digit code has just been sent on WhatsApp.",
@@ -1311,6 +1330,10 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d[\d\s\u202f\u00a0.,]*) élève\(s\) · (\d+) classe\(s\)$/, '$1 student(s) · $2 class(es)'],
+  [/^(\d[\d\s\u202f\u00a0.,]*) élève\(s\) sans classe$/, '$1 student(s) without a class'],
+  [/^Résultats pour « (.+) »$/, 'Results for “$1”'],
+  [/^(\d+) fichiers$/, '$1 files'],
   [/^Renvoyer dans (\d+) s$/, 'Resend in $1 s'],
   [/^Lectures automatiques ce mois : (\d+) sur (\d+)$/, 'Automatic readings this month: $1 of $2'],
   [/^Plafond par défaut : (\d+) lectures par mois$/, 'Default limit: $1 readings per month'],

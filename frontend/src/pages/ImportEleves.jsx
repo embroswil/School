@@ -4,11 +4,11 @@ import { Field, Note } from '../ui.jsx'
 import { useDepotPage } from '../depot.jsx'
 import CompteurIA from '../CompteurIA.jsx'
 import { lireListeEleves, lirePhotos } from '../lecture-fichier.js'
+import { IcImport } from '../icones.jsx'
 
-// Import des eleves depuis une liste (PDF, Excel, CSV), avec verification avant l'envoi
+// Import des eleves depuis une liste (Excel, CSV, PDF, Word ou photo), avec verification avant l'envoi
 export default function ImportEleves() {
   const champ = useRef(null)
-  const appareil = useRef(null)
   const [eleves, setEleves] = useState(null)
   const [fichier, setFichier] = useState('')
   const [classeDefaut, setClasseDefaut] = useState('')
@@ -26,10 +26,13 @@ export default function ImportEleves() {
     setBusy(true)
     try {
       // Plusieurs photos (pages d'une meme liste) : lues ensemble
-      const liste = fichiers.length > 1 || f.type.startsWith('image/') ? await lirePhotos(fichiers) : await lireListeEleves(f)
+      const photo = (x) => x.type.startsWith('image/') || /\.(jpe?g|png|webp|heic)$/i.test(x.name)
+      let liste = []
+      if (fichiers.every(photo)) liste = await lirePhotos(fichiers)
+      else for (const x of fichiers) liste = liste.concat(photo(x) ? await lirePhotos([x]) : await lireListeEleves(x))
       if (!liste.length) throw new Error('Aucun élève trouvé dans ce fichier. Vérifiez qu’il contient une colonne « Nom » ou « Noms et prénoms ».')
       setEleves(liste.map((x) => ({ ...x, garder: true })))
-      setFichier(fichiers.length > 1 ? `${fichiers.length} photos` : f.name)
+      setFichier(fichiers.length > 1 ? `${fichiers.length} fichiers` : f.name)
     } catch (err) {
       setError(err.message)
       setEleves(null)
@@ -37,7 +40,7 @@ export default function ImportEleves() {
     setBusy(false)
     e.target.value = ''
   }
-  const zoneDepot = useDepotPage(choisir, { texte: 'Déposez la liste d’élèves', detail: 'PDF, Excel ou photo' })
+  const zoneDepot = useDepotPage(choisir, { texte: 'Déposez la liste d’élèves', detail: 'Excel, PDF, Word ou photo' })
 
 
   const maj = (i, k) => (e) =>
@@ -85,21 +88,16 @@ export default function ImportEleves() {
       <h1 className="page-title">Importer une liste</h1>
       <CompteurIA />
       <p className="lede">
-        Photographiez une liste de classe (imprimée <b>ou écrite à la main</b>), ou envoyez un fichier <b>PDF</b> ou <b>Excel</b> :
-        l’application lit les noms, prénoms, classes, dates de naissance et matricules, puis vous vérifiez avant l’import.
+        Envoyez vos listes de classe telles qu’elles sont : l’application reconnaît le type de fichier, lit les noms, prénoms, classes, dates de
+        naissance et matricules, puis vous vérifiez avant l’import.
       </p>
 
-      <div className="grid2">
-        <button type="button" className="btn" disabled={busy} onClick={() => appareil.current?.click()}>
-          📷 Photographier
-        </button>
-        <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => champ.current?.click()}>
-          📄 Fichier
-        </button>
-      </div>
-      {busy && !eleves && <p className="muted" style={{ marginTop: 10 }}>Lecture en cours… (jusqu’à une minute pour une liste manuscrite)</p>}
-      <input ref={appareil} type="file" hidden accept="image/*" capture="environment" multiple onChange={choisir} />
-      <input ref={champ} type="file" hidden multiple accept=".pdf,.xlsx,.xls,.csv,.ods,image/*" onChange={choisir} />
+      <button type="button" className="import-zone" disabled={busy} onClick={() => champ.current?.click()}>
+        <IcImport size={26} />
+        <b>{busy && !eleves ? 'Lecture en cours…' : 'Choisir un fichier ou une photo'}</b>
+        <small>{busy && !eleves ? 'Jusqu’à une minute pour une liste manuscrite' : 'Excel, CSV, PDF, Word ou photo (liste imprimée ou écrite à la main)'}</small>
+      </button>
+      <input ref={champ} type="file" hidden multiple accept=".xlsx,.xls,.csv,.ods,.pdf,.docx,.doc,image/*" onChange={choisir} />
       <Note>{error}</Note>
 
       {resultat && (
@@ -167,7 +165,7 @@ export default function ImportEleves() {
         <ul className="muted" style={{ marginTop: 6, fontSize: 14, display: 'grid', gap: 4 }}>
           <li>• Une colonne « Noms et prénoms » (ou « Nom » et « Prénom ») suffit.</li>
           <li>• Colonnes reconnues : Classe, Date de naissance, Sexe, Matricule.</li>
-          <li>• Un fichier Excel avec une feuille par classe fonctionne aussi.</li>
+          <li>• Un fichier Excel avec une feuille par classe fonctionne aussi. Vous pouvez envoyer plusieurs fichiers d’un coup.</li>
           <li>• Photos : prenez la liste bien à plat, de face, à la lumière. Plusieurs pages ? Sélectionnez toutes les photos d’un coup.</li>
           <li>• Pour une liste manuscrite, relisez bien les noms avant d’importer.</li>
           <li>• Quand un élève importé crée son compte avec les mêmes prénom et nom, il retrouve automatiquement sa fiche.</li>

@@ -92,6 +92,26 @@ router.get("/eleves", async (req, res, next) => {
   }
 });
 
+// Chiffres de la page « Eleves » : comptes sur TOUS les eleves de l'etablissement (aucune limite)
+router.get("/eleves/resume", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await anneeCourante(ecole);
+    const { rows } = await db.query(
+      `SELECT COUNT(*)::int AS eleves,
+              COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM class_students cs WHERE cs.student_id = u.id AND cs.status = 'active'
+                AND ($2::int IS NULL OR cs.academic_year_id = $2)))::int AS sans_classe,
+              COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM parent_student_links p WHERE p.student_id = u.id))::int AS parents_relies,
+              COUNT(*) FILTER (WHERE u.email NOT LIKE '%@inscrit.school')::int AS comptes
+       FROM users u WHERE u.school_id = $1 AND u.role = 'student'`,
+      [ecole, annee?.id || null]
+    );
+    res.json({ success: true, data: rows[0] });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Placer un eleve dans une classe (de l'annee courante de l'etablissement)
 router.post("/eleves/:id/classe", async (req, res, next) => {
   try {
@@ -628,17 +648,19 @@ router.get("/eleves/:id", async (req, res, next) => {
   }
 });
 
-// POST /api/etablissement/lire-images { images: [dataUrl, ...] }
+// POST /api/etablissement/lire-images { images: [dataUrl, ...] } ou { texte }
 // Photos ou scans de listes d'eleves (imprimees ou ecrites a la main), lus par l'IA.
 router.post("/lire-images", async (req, res, next) => {
   try {
     ecoleDe(req);
     const images = Array.isArray(req.body?.images) ? req.body.images.slice(0, 8) : [];
-    if (!images.length) throw new ApiError(400, "Aucune image");
+    const texte = String(req.body?.texte || "").slice(0, 60000);
+    if (!images.length && texte.trim().length < 20) throw new ApiError(400, "Aucun document à lire");
     const { lireDocument } = require("../../utils/ia");
     const donnees = await require("../../utils/quota-ia").lireAvecQuota(req, "liste-eleves", {
       images,
-      consigne: `Ces images sont une liste d'élèves d'un établissement scolaire camerounais (imprimée ou écrite à la main, éventuellement sur plusieurs pages).
+      texte: images.length ? undefined : texte,
+      consigne: `Ce document (images ou texte) est une liste d'élèves d'un établissement scolaire camerounais (imprimée ou écrite à la main, éventuellement sur plusieurs pages).
 Extrais TOUS les élèves, dans l'ordre. Pour chacun : nom (nom de famille, souvent en MAJUSCULES), prenom, classe (si indiquée sur la ligne ou en titre de la liste, ex. "6e A", "Tle C"), dateNaissance (JJ/MM/AAAA si présente), sexe ("M" ou "F" si présent), matricule (si présent).
 Ignore les en-têtes, signatures, totaux et cachets. Si un champ est absent ou illisible, mets une chaîne vide.
 Format : {"classe": "classe du titre ou vide", "eleves": [{"nom":"","prenom":"","classe":"","dateNaissance":"","sexe":"","matricule":""}]}`,

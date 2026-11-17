@@ -1,4 +1,4 @@
-// Lecture d'une liste d'eleves depuis un fichier Excel, CSV, PDF, ou depuis
+// Lecture d'une liste d'eleves depuis un fichier Excel, CSV, PDF, Word, ou depuis
 // des photos / scans (imprimes ou ecrits a la main : lus par l'IA du serveur).
 import { api } from './api.js'
 // Retourne des lignes { nom, prenom, classe, dateNaissance, sexe, matricule }.
@@ -70,6 +70,8 @@ const versEleves = (lignes) => {
     const cellules = l.map((c) => String(c ?? '').trim()).filter(Boolean)
     const texte = cellules.find((c) => /[A-Za-zÀ-ÿ]{2,}\s+[A-Za-zÀ-ÿ]{2,}/.test(c))
     if (!texte) continue
+    // Titres et mentions du document : ce ne sont pas des eleves
+    if (/^(classe|liste|ann[ée]e|lyc[ée]e|coll[èe]ge|[ée]cole|r[ée]publique|minist|effectif|total|page)\b/i.test(texte)) continue
     const { nom, prenom } = separerNomPrenom(texte)
     const date = cellules.find((c) => /\d{1,2}[/.-]\d{1,2}[/.-]\d{4}/.test(c)) || ''
     const sexe = cellules.find((c) => /^(m|f)$/i.test(c)) || ''
@@ -159,12 +161,89 @@ const lirePdf = async (fichier) => {
   return eleves
 }
 
+// ---------- Word (.docx) ----------
+// Un fichier .docx est une archive ZIP : on y lit « word/document.xml » avec les outils du navigateur.
+const lireEntreeZip = async (tampon, chemin) => {
+  const o = new Uint8Array(tampon)
+  const v = new DataView(tampon)
+  // Fin du repertoire central (signature PK 05 06), cherchee depuis la fin du fichier
+  let fin = -1
+  for (let i = o.length - 22; i >= Math.max(0, o.length - 70000); i--) {
+    if (v.getUint32(i, true) === 0x06054b50) {
+      fin = i
+      break
+    }
+  }
+  if (fin < 0) throw new Error('Fichier Word illisible.')
+  const nombre = v.getUint16(fin + 10, true)
+  let p = v.getUint32(fin + 16, true)
+  const decodeur = new TextDecoder()
+  for (let n = 0; n < nombre && v.getUint32(p, true) === 0x02014b50; n++) {
+    const methode = v.getUint16(p + 10, true)
+    const taille = v.getUint32(p + 20, true)
+    const lNom = v.getUint16(p + 28, true)
+    const lExtra = v.getUint16(p + 30, true)
+    const lCom = v.getUint16(p + 32, true)
+    const local = v.getUint32(p + 42, true)
+    const nom = decodeur.decode(o.subarray(p + 46, p + 46 + lNom))
+    if (nom === chemin) {
+      const debut = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true)
+      const brut = o.subarray(debut, debut + taille)
+      if (methode === 0) return decodeur.decode(brut)
+      if (methode !== 8 || typeof DecompressionStream === 'undefined') throw new Error('Ce fichier Word ne peut pas être lu ici : enregistrez-le en PDF, puis réessayez.')
+      const flux = new Blob([brut]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
+      return new Response(flux).text()
+    }
+    p += 46 + lNom + lExtra + lCom
+  }
+  throw new Error('Fichier Word illisible.')
+}
+
+const texteXml = (xml) =>
+  [...xml.matchAll(/<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>|<w:tab\/>|<w:br\/>/g)]
+    .map((m) => (m[0].startsWith('<w:t') && !m[0].startsWith('<w:tab') ? m[1] : m[0] === '<w:tab/>' ? '\t' : ' '))
+    .join('')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+
+// Tableaux -> une ligne par rangee ; paragraphes -> une ligne (colonnes separees par des tabulations)
+export const lignesDocx = (xml) => {
+  const lignes = []
+  for (const bloc of xml.matchAll(/<w:tbl>[\s\S]*?<\/w:tbl>|<w:p[ >][\s\S]*?<\/w:p>/g)) {
+    if (bloc[0].startsWith('<w:tbl>')) {
+      for (const rangee of bloc[0].matchAll(/<w:tr[ >][\s\S]*?<\/w:tr>/g)) {
+        lignes.push([...rangee[0].matchAll(/<w:tc>[\s\S]*?<\/w:tc>/g)].map((c) => texteXml(c[0]).replace(/\s+/g, ' ').trim()))
+      }
+    } else {
+      const t = texteXml(bloc[0])
+      if (t.trim()) lignes.push(t.split(/\t+|\s{3,}/).map((c) => c.trim()).filter(Boolean))
+    }
+  }
+  return lignes
+}
+
+const lireWord = async (fichier) => {
+  if (/\.doc$/i.test(fichier.name)) throw new Error('Ancien format Word (.doc) : enregistrez le fichier en .docx ou en PDF, puis réessayez.')
+  const lignes = lignesDocx(await lireEntreeZip(await fichier.arrayBuffer(), 'word/document.xml'))
+  const eleves = versEleves(lignes)
+  if (eleves.length) return eleves
+  // Mise en page non reconnue : lecture du texte par l'IA
+  const texte = lignes.map((l) => l.join(' | ')).join('\n')
+  if (texte.trim().length < 20) throw new Error('Ce document Word ne contient pas de texte lisible.')
+  return (await api.post('/api/etablissement/lire-images', { texte })).data || []
+}
+
+// Le type du fichier est reconnu automatiquement : Excel/CSV, PDF, Word ou photo
 export async function lireListeEleves(fichier) {
   const nom = fichier.name.toLowerCase()
   if (nom.endsWith('.pdf')) return lirePdf(fichier)
   if (/\.(xlsx|xls|csv|ods)$/.test(nom)) return lireTableur(fichier)
+  if (/\.docx?$/.test(nom)) return lireWord(fichier)
   if (/^image\//.test(fichier.type) || /\.(jpe?g|png|webp|heic)$/.test(nom)) return lirePhotos([fichier])
-  throw new Error('Format non pris en charge : PDF, Excel, CSV ou photo.')
+  throw new Error('Format non pris en charge : Excel, CSV, PDF, Word ou photo.')
 }
 
 // Prepare un document quelconque pour la lecture par l'IA :
