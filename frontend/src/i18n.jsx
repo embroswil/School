@@ -21,6 +21,18 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Comptes actifs": "Active accounts",
+  "Classes": "Classes",
+  "Rechercher un enseignant ou une matière": "Search for a teacher or a subject",
+  "Aucun enseignant trouvé.": "No teacher found.",
+  "Leurs classes seront affectées à l’import ou par eux-mêmes": "Their classes will be assigned on import or by themselves",
+  "Prof. principal": "Class teacher",
+  "Sans compte": "No account",
+  "Reconnus automatiquement · ne seront pas publiés": "Recognised automatically · will not be published",
+  "Voir les fichiers": "Show the files",
+  "Vérifier avant d’ajouter": "Check before adding",
+  "Retirer ce fichier": "Remove this file",
+  "Ne pas ajouter ces documents": "Do not add these documents",
   "Ajouter à l’équipe enseignante": "Add to the teaching staff",
   "Ajouter aux emplois du temps": "Add to the timetables",
   "Frais de scolarité": "School fees",
@@ -1601,6 +1613,13 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) enseignant\(s\) · (\d+) compte\(s\) actif\(s\)$/, '$1 teacher(s) · $2 active account(s)'],
+  [/^(\d+) enseignant\(s\) sans classe$/, '$1 teacher(s) without a class'],
+  [/^(\d+) enseignant\(s\)$/, '$1 teacher(s)'],
+  [/^À ajouter · (\d+)$/, 'To add · $1'],
+  [/^(\d+) (liste d’enseignants|listes d’enseignants|liste d’élèves|listes d’élèves|cahier d’appel|cahiers d’appel|emploi du temps|emplois du temps|document de frais|documents de frais|document de discipline|documents de discipline|relevé de notes|relevés de notes)$/, (_, n, t) => `${n} ${{ 'liste d’enseignants': 'teacher list', 'listes d’enseignants': 'teacher lists', 'liste d’élèves': 'student list', 'listes d’élèves': 'student lists', 'cahier d’appel': 'attendance register', 'cahiers d’appel': 'attendance registers', 'emploi du temps': 'timetable', 'emplois du temps': 'timetables', 'document de frais': 'fee document', 'documents de frais': 'fee documents', 'document de discipline': 'discipline document', 'documents de discipline': 'discipline documents', 'relevé de notes': 'mark sheet', 'relevés de notes': 'mark sheets' }[t]}`],
+  [/^(Ajouter à l’équipe enseignante|Importer les élèves|Mettre à jour les absences|Ajouter aux emplois du temps|Mettre à jour les frais|Enregistrer les sanctions) \((\d+)\)$/, (_, a, n) => `${traduire(a)} (${n})`],
+  [/^Classes non reconnues : (.+)$/, 'Classes not recognised: $1'],
   [/^(.+) · ne sera pas publié$/, (_, t) => `${traduire(t)} · will not be published`],
   [/^✓ (\d+) documents enregistrés\.$/, '✓ $1 documents saved.'],
   [/^Enregistrer les (\d+) documents$/, 'Save the $1 documents'],

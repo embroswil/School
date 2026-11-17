@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { confierFichiers, useDepotPage } from '../depot.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
+import { lireDocumentEcole } from '../documents-ecole.js'
 import CompteurIA from '../CompteurIA.jsx'
 import { Field, Note } from '../ui.jsx'
 import { IcChevron, IcImport } from '../icones.jsx'
@@ -37,6 +38,17 @@ const DESTINATIONS = {
   notes_nominatives: [null, 'Notes d’élèves', null, false],
 }
 const CATEGORIE_DE = { emploi_du_temps: 'emploi', frais: 'scolarite' }
+// Libelles d'un groupe de documents reconnus (singulier, pluriel)
+const NOMBRE = {
+  liste_enseignants: ['liste d’enseignants', 'listes d’enseignants'],
+  liste_eleves: ['liste d’élèves', 'listes d’élèves'],
+  cahier_appel: ['cahier d’appel', 'cahiers d’appel'],
+  emploi_du_temps: ['emploi du temps', 'emplois du temps'],
+  frais: ['document de frais', 'documents de frais'],
+  discipline: ['document de discipline', 'documents de discipline'],
+  notes_nominatives: ['relevé de notes', 'relevés de notes'],
+}
+const quantite = (nature, n) => `${n} ${NOMBRE[nature][n > 1 ? 1 : 0]}`
 
 // Reconnaissance du document d'apres son contenu (Excel, Word, PDF avec texte) et son nom
 const sansAccents = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -229,26 +241,97 @@ export default function Documents() {
     }
     setEtat('')
   }
-  // Document qui alimente une autre page : il y est ouvert et lu directement
-  function transmettre(x) {
-    const d = DESTINATIONS[x.analyse.nature]
-    confierFichiers([x.source])
-    retirerItem(x.id)
+  // Documents qui alimentent une autre page : ouverts et lus directement dans cette page
+  function transmettre(groupe) {
+    const d = DESTINATIONS[groupe[0].analyse.nature]
+    confierFichiers(groupe.map((x) => x.source))
+    setItems((l) => l.filter((x) => !groupe.includes(x)))
     window.location.hash = d[0]
   }
-  // « Publier quand meme » (emploi du temps, frais) : le document devient publiable
-  async function publierAussi(x) {
-    maj(x.id, { etape: 'lecture' })
+  // Emplois du temps et cahiers d'appel : tous lus et enregistres d'un seul geste, sans changer de page
+  async function toutAjouter(groupe) {
+    const nature = groupe[0].analyse.nature
+    setError('')
+    setOk('')
+    const classes = new Map()
+    const absences = []
+    const nonReconnues = new Set()
+    const echecs = []
+    for (const [k, x] of groupe.entries()) {
+      setEtat(`Lecture ${k + 1} / ${groupe.length}…`)
+      maj(x.id, { etape: 'lecture' })
+      try {
+        if (nature === 'emploi_du_temps') {
+          const r = await lireDocumentEcole(x.source, '/api/documents-ecole/emplois/lire')
+          for (const c of r?.classes || []) {
+            if (c.classId) classes.set(c.classId, c.creneaux)
+            else nonReconnues.add(c.nomLu || x.nom)
+          }
+        } else {
+          const r = await lireDocumentEcole(x.source, '/api/documents-ecole/absences/lire')
+          absences.push(...(r || []).filter((l) => l.trouve))
+        }
+        maj(x.id, { etape: 'fait' })
+      } catch (err) {
+        echecs.push(`${x.nom} : ${err.message}`)
+        maj(x.id, { etape: 'pret' })
+      }
+    }
+    setEtat('Enregistrement…')
     try {
-      const envoye = x.fichier || (await envoyer(x.source))
-      maj(x.id, { fichier: envoye, type: envoye.type, etape: 'pret', analyse: { nature: 'information' } })
+      if (nature === 'emploi_du_temps' && classes.size) {
+        const liste = [...classes].map(([classId, creneaux]) => ({ classId, creneaux }))
+        let nbC = 0
+        let nbCours = 0
+        for (let i = 0; i < liste.length; i += 40) {
+          const r = (await api.post('/api/documents-ecole/emplois/appliquer', { classes: liste.slice(i, i + 40) })).data
+          nbC += r?.classes || 0
+          nbCours += r?.cours || 0
+        }
+        setOk(`Emploi du temps enregistré pour ${nbC} classe(s) : ${nbCours} cours.`)
+      }
+      if (nature === 'cahier_appel' && absences.length) {
+        let ajoutees = 0
+        let dejaLa = 0
+        for (let i = 0; i < absences.length; i += 2500) {
+          const r = (await api.post('/api/documents-ecole/absences/appliquer', { absences: absences.slice(i, i + 2500) })).data
+          ajoutees += r?.ajoutees || 0
+          dejaLa += r?.dejaLa || 0
+        }
+        setOk(`✓ ${ajoutees} absence(s) ajoutée(s)${dejaLa ? `, ${dejaLa} déjà enregistrée(s) par l’appel des enseignants (non modifiées)` : ''}.`)
+      }
     } catch (err) {
-      maj(x.id, { etape: 'erreur', message: err.message })
+      echecs.push(err.message)
+    }
+    setItems((l) => l.filter((x) => x.etape !== 'fait'))
+    const alertes = [...(nonReconnues.size ? [`Classes non reconnues : ${[...nonReconnues].join(', ')}`] : []), ...echecs]
+    if (alertes.length) setError(alertes.join(' · '))
+    setEtat('')
+  }
+  // « Publier aussi pour les familles » (emplois du temps, frais) : les documents deviennent publiables
+  async function publierAussi(groupe) {
+    for (const x of groupe) {
+      maj(x.id, { etape: 'lecture' })
+      try {
+        const envoye = x.fichier || (await envoyer(x.source))
+        maj(x.id, { fichier: envoye, type: envoye.type, etape: 'pret', analyse: { nature: 'information' } })
+      } catch (err) {
+        maj(x.id, { etape: 'erreur', message: err.message })
+      }
     }
   }
   const zoneDepot = useDepotPage(choisir, { texte: 'Déposez vos documents', detail: 'PDF, Word, Excel, PowerPoint, photos, vidéos' })
 
   const publiables = items.filter((x) => x.etape === 'pret' && !DESTINATIONS[x.analyse?.nature])
+  const reconnus = new Map()
+  for (const x of items) {
+    const n = x.analyse?.nature
+    if (DESTINATIONS[n] && (x.etape === 'pret' || x.etape === 'lecture' || x.etape === 'fait')) {
+      if (!reconnus.has(n)) reconnus.set(n, [])
+      reconnus.get(n).push(x)
+    }
+  }
+  const ENLIGNE = ['emploi_du_temps', 'cahier_appel']
   async function publier() {
     setError('')
     setOk('')
@@ -323,9 +406,63 @@ export default function Documents() {
       {/* ---------- documents en cours d'ajout ---------- */}
       {items.length > 0 && (
         <section className="docs-ajout">
-          <p className="niveau-titre">{etat || `À publier · ${items.length}`}</p>
-          {items.map((x) => {
-            const dest = x.analyse && DESTINATIONS[x.analyse.nature]
+          <p className="niveau-titre">{etat || `À ajouter · ${items.length}`}</p>
+          {[...reconnus].map(([nature, groupe]) => {
+            const d = DESTINATIONS[nature]
+            const enCours = groupe.some((x) => x.etape !== 'pret')
+            return (
+              <div key={nature} className="doc-carte doc-groupe">
+                <div className="doc-entete">
+                  <span className="doc-badge">{groupe.length > 1 ? groupe.length : ETIQUETTE(groupe[0].nom, groupe[0].type)}</span>
+                  <span className="doc-nom">
+                    <b>{quantite(nature, groupe.length)}</b>
+                    <small>{groupe.length === 1 ? groupe[0].nom : 'Reconnus automatiquement · ne seront pas publiés'}</small>
+                  </span>
+                  <button type="button" className="doc-croix" aria-label="Ne pas ajouter ces documents" title="Ne pas ajouter ces documents" disabled={enCours} onClick={() => setItems((l) => l.filter((x) => !groupe.includes(x)))}>
+                    ×
+                  </button>
+                </div>
+                {groupe.length > 1 && (
+                  <details className="doc-fichiers">
+                    <summary>Voir les fichiers</summary>
+                    <ul>
+                      {groupe.map((x) => (
+                        <li key={x.id}>
+                          <span>{x.nom}</span>
+                          {!enCours && (
+                            <button type="button" aria-label="Retirer ce fichier" onClick={() => retirerItem(x.id)}>
+                              ×
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                <div className="doc-destination">
+                  {d[0] ? (
+                    <button type="button" className="btn btn-block" disabled={Boolean(etat)} onClick={() => (ENLIGNE.includes(nature) ? toutAjouter(groupe) : transmettre(groupe))}>
+                      {enCours ? etat || 'Lecture…' : groupe.length > 1 ? `${d[2]} (${groupe.length})` : d[2]}
+                    </button>
+                  ) : (
+                    <p>Les notes se saisissent dans Notes : ce document n’est pas affiché aux familles.</p>
+                  )}
+                  {!enCours && ENLIGNE.includes(nature) && groupe.length === 1 && (
+                    <button type="button" className="lien-action discret" onClick={() => transmettre(groupe)}>
+                      Vérifier avant d’ajouter
+                    </button>
+                  )}
+                  {!enCours && d[3] && (
+                    <button type="button" className="lien-action discret" onClick={() => publierAussi(groupe)}>
+                      Publier aussi pour les familles
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {items.filter((x) => !DESTINATIONS[x.analyse?.nature]).map((x) => {
+            const dest = null
             const libelleType = (CATEGORIES.find((c) => c[0] === x.categorie) || CATEGORIES[CATEGORIES.length - 1])[1]
             return (
               <div key={x.id} className="doc-carte">
@@ -335,7 +472,6 @@ export default function Documents() {
                     <b>{x.etape === 'pret' && !dest ? x.titre || x.nom : x.nom}</b>
                     <small>
                       {x.etape === 'lecture' && 'Lecture…'}
-                      {x.etape === 'pret' && dest && `${dest[1]} · ne sera pas publié`}
                       {x.etape === 'pret' && !dest && `${libelleType} · ${PUBLICS[x.audience]}`}
                     </small>
                   </span>
@@ -349,22 +485,6 @@ export default function Documents() {
                   </button>
                 </div>
                 {x.etape === 'erreur' && <Note>{x.message}</Note>}
-                {x.etape === 'pret' && dest && (
-                  <div className="doc-destination">
-                    {dest[0] ? (
-                      <button type="button" className="btn btn-block" onClick={() => transmettre(x)}>
-                        {dest[2]}
-                      </button>
-                    ) : (
-                      <p>Les notes se saisissent dans Notes : ce document n’est pas affiché aux familles.</p>
-                    )}
-                    {dest[3] && (
-                      <button type="button" className="lien-action discret" onClick={() => publierAussi(x)}>
-                        Publier aussi pour les familles
-                      </button>
-                    )}
-                  </div>
-                )}
                 {x.etape === 'pret' && !dest && x.ouvert && (
                   <div className="doc-champs">
                     <Field label="Titre">

@@ -4,6 +4,7 @@ import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { IcChevron, IcImport } from '../icones.jsx'
 import { demandeAppel } from './Appel.jsx'
+import { comparerClasses, niveauClasse } from '../classes.js'
 
 const enChaine = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const aujourdhui = () => enChaine(new Date())
@@ -25,10 +26,12 @@ export default function PresenceEnseignants() {
   const [onglet, setOnglet] = useState('jour')
   const [date, setDate] = useState(aujourdhui())
   const d = useApi(onglet === 'equipe' ? null : `/api/presence-enseignants?date=${date}`)
-  const equipe = useApi(onglet === 'equipe' ? '/api/etablissement/enseignants/attendus' : null)
-  const actifs = useApi(onglet === 'equipe' ? '/api/etablissement/enseignants' : null)
+  const equipe = useApi('/api/etablissement/enseignants/attendus')
+  const actifs = useApi('/api/etablissement/enseignants')
   const tableau = useApi('/api/etablissement/tableau')
   const [error, setError] = useState('')
+  const [classeEq, setClasseEq] = useState('')
+  const [qEq, setQEq] = useState('')
   const v = d.data
   const attente = tableau.data?.enseignants_attente || 0
 
@@ -60,6 +63,7 @@ export default function PresenceEnseignants() {
       nom: `${a.last_name} ${a.first_name || ''}`.trim(),
       matiere: a.matieres,
       classes: a.classes,
+      pp: a.principal_de || '',
       etat: !a.a_un_compte ? 'sans' : a.status === 'active' ? 'actif' : 'attente',
       userId: a.user_id,
     }))
@@ -69,7 +73,41 @@ export default function PresenceEnseignants() {
     }
     return liste.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
   })()
-  const ETAT_COMPTE = { actif: ['Compte actif', 'ok'], attente: ['À valider', 'alerte'], sans: ['Compte non créé', 'neutre'] }
+  const ETAT_COMPTE = { actif: ['Compte actif', 'ok'], attente: ['À valider', 'alerte'], sans: ['Sans compte', 'neutre'] }
+  // Equipe rangee par classe : chaque classe et ses enseignants
+  const listeDe = (t) => String(t || '').split(',').map((c) => c.trim()).filter(Boolean)
+  const parClasse = new Map()
+  for (const m of membres) for (const c of listeDe(m.classes)) (parClasse.get(c) || parClasse.set(c, []).get(c)).push(m)
+  const sansClasse = membres.filter((m) => !listeDe(m.classes).length)
+  const niveauxEq = []
+  for (const c of [...parClasse.keys()].sort(comparerClasses)) {
+    const n = niveauClasse(c)
+    const dernier = niveauxEq[niveauxEq.length - 1]
+    if (dernier && dernier.nom === n) dernier.classes.push(c)
+    else niveauxEq.push({ nom: n, classes: [c] })
+  }
+  const sansAcc = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const trouves = qEq.trim().length >= 2 ? membres.filter((m) => sansAcc(`${m.nom} ${m.matiere}`).includes(sansAcc(qEq.trim()))) : null
+  const equipeClasse = classeEq === '__sans' ? sansClasse : [...(parClasse.get(classeEq) || [])].sort((a, b) => String(a.matiere).localeCompare(String(b.matiere), 'fr') || a.nom.localeCompare(b.nom, 'fr'))
+  const ligneMembre = (m, { retirer, classe } = {}) => (
+    <li key={m.cle}>
+      <span className="ls-texte">
+        <b data-brut>{m.nom}</b>
+        <small>{classe ? m.matiere || '—' : [m.matiere, m.classes].filter(Boolean).join(' · ') || '—'}</small>
+        {retirer && m.idListe && (
+          <span className="ls-actions">
+            <button type="button" className="lien-action discret" onClick={() => retirerDeLaListe(m.idListe)}>
+              Retirer de la liste
+            </button>
+          </span>
+        )}
+      </span>
+      <span className="eq-etiquettes">
+        {classe && m.pp === classe && <span className="etiquette ok">Prof. principal</span>}
+        {m.etat !== 'actif' && !(classe && m.etat === 'sans') && <span className={`etiquette ${(ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans)[1]}`}>{(ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans)[0]}</span>}
+      </span>
+    </li>
+  )
   const sansAppel = v?.cours.filter((c) => c.etat === 'sans_appel').length || 0
 
   return (
@@ -77,7 +115,7 @@ export default function PresenceEnseignants() {
       <div className="page-tete">
         <div>
           <h1 className="page-title">Enseignants</h1>
-          {tableau.data && <p className="muted">{tableau.data.enseignants} enseignant(s) actif(s)</p>}
+          {tableau.data && <p className="muted">{membres.length ? `${membres.length} enseignant(s) · ${membres.filter((m) => m.etat === 'actif').length} compte(s) actif(s)` : `${tableau.data.enseignants} enseignant(s) actif(s)`}</p>}
         </div>
         <a className="btn bouton-icone" href="#/import-enseignants">
           <IcImport size={18} /> Importer
@@ -100,7 +138,16 @@ export default function PresenceEnseignants() {
           ['equipe', 'Équipe'],
           ['bilan', 'Bilan 30 jours'],
         ].map(([k, t]) => (
-          <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}>
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={onglet === k}
+            onClick={() => {
+              setOnglet(k)
+              setClasseEq('')
+            }}
+          >
             {t}
           </button>
         ))}
@@ -221,27 +268,76 @@ export default function PresenceEnseignants() {
               <a href="#/import-enseignants">Importer la liste</a>
             </div>
           )}
-          {membres.length > 0 && (
-            <ul className="liste-simple">
-              {membres.map((m) => (
-                <li key={m.cle}>
-                  <span className="ls-texte">
-                    <b data-brut>{m.nom}</b>
-                    <small>
-                      {[m.matiere, m.classes].filter(Boolean).join(' · ') || '—'}
-                    </small>
-                    {m.idListe && (
-                      <span className="ls-actions">
-                        <button type="button" className="lien-action discret" onClick={() => retirerDeLaListe(m.idListe)}>
-                          Retirer de la liste
-                        </button>
-                      </span>
-                    )}
-                  </span>
-                  <span className={`etiquette ${(ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans)[1]}`}>{(ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans)[0]}</span>
-                </li>
+          {membres.length > 0 && !classeEq && (
+            <>
+              <div className="eleves-chiffres">
+                <div>
+                  <b>{membres.length}</b>
+                  <span>Enseignants</span>
+                </div>
+                <div>
+                  <b>{membres.filter((m) => m.etat === 'actif').length}</b>
+                  <span>Comptes actifs</span>
+                </div>
+                <div>
+                  <b>{parClasse.size}</b>
+                  <span>Classes</span>
+                </div>
+              </div>
+              <input className="input eleves-recherche" type="search" placeholder="Rechercher un enseignant ou une matière" value={qEq} onChange={(e) => setQEq(e.target.value)} />
+            </>
+          )}
+
+          {/* resultats de la recherche */}
+          {trouves && !classeEq && (
+            <>
+              <p className="niveau-titre">{`${trouves.length} enseignant(s)`}</p>
+              {trouves.length > 0 ? <ul className="liste-simple">{trouves.map((m) => ligneMembre(m, { retirer: true }))}</ul> : <p className="muted">Aucun enseignant trouvé.</p>}
+            </>
+          )}
+
+          {/* classes par niveau */}
+          {!trouves && !classeEq && membres.length > 0 && (
+            <>
+              {niveauxEq.map((n) => (
+                <section className="eleves-niveau" key={n.nom}>
+                  <h2>{n.nom}</h2>
+                  <div className="eleves-classes">
+                    {n.classes.map((c) => (
+                      <button type="button" key={c} onClick={() => setClasseEq(c)}>
+                        <b>{c}</b>
+                        <small>{`${parClasse.get(c).length} enseignant(s)`}</small>
+                      </button>
+                    ))}
+                  </div>
+                </section>
               ))}
-            </ul>
+              {sansClasse.length > 0 && (
+                <button type="button" className="eleves-alerte" onClick={() => setClasseEq('__sans')}>
+                  <span>
+                    <b>{`${sansClasse.length} enseignant(s) sans classe`}</b>
+                    <small>Leurs classes seront affectées à l’import ou par eux-mêmes</small>
+                  </span>
+                  <IcChevron size={18} />
+                </button>
+              )}
+            </>
+          )}
+
+          {/* enseignants d'une classe */}
+          {classeEq && (
+            <>
+              <div className="eleves-barre">
+                <button type="button" className="back" onClick={() => setClasseEq('')}>
+                  ← Toutes les classes
+                </button>
+              </div>
+              <h2 className="eleves-titre">
+                {classeEq === '__sans' ? 'Sans classe' : classeEq}
+                <small>{`${equipeClasse.length} enseignant(s)`}</small>
+              </h2>
+              <ul className="liste-simple">{equipeClasse.map((m) => ligneMembre(m, { classe: classeEq, retirer: classeEq === '__sans' }))}</ul>
+            </>
           )}
         </>
       )}

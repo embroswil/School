@@ -1293,3 +1293,11 @@ html.ordi .docs-dossiers { grid-template-columns: repeat(4, minmax(0, 1fr)); gap
 .doc-dossier { padding: 10px; column-gap: 10px; }
 .doc-dossier b { font-size: 13.5px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .doc-type-ico { border-radius: 11px; }
+.doc-groupe .doc-badge { min-width: 44px; }
+.doc-fichiers { margin-top: 10px; }
+.doc-fichiers summary { cursor: pointer; color: var(--lien); font: 700 13px/1.4 var(--font-body); }
+.doc-fichiers ul { margin-top: 8px; border-top: 1px solid var(--line); max-height: 220px; overflow-y: auto; }
+.doc-fichiers li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 2px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.doc-fichiers li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-fichiers li button { flex: none; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
+.eq-etiquettes { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
