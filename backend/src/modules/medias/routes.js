@@ -18,8 +18,18 @@ const TYPES = {
   "video/mp4": ["video", "mp4", 50],
   "video/quicktime": ["video", "mov", 50],
   "video/webm": ["video", "webm", 50],
+  "video/x-m4v": ["video", "m4v", 50],
   "application/pdf": ["document", "pdf", 20],
+  "application/msword": ["document", "doc", 20],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ["document", "docx", 20],
+  "application/vnd.ms-excel": ["document", "xls", 20],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ["document", "xlsx", 20],
+  "application/vnd.ms-powerpoint": ["document", "ppt", 30],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": ["document", "pptx", 30],
+  "text/csv": ["document", "csv", 10],
+  "text/plain": ["document", "txt", 5],
 };
+// Le bucket « medias » de Supabase doit autoriser les memes types (allowed_mime_types).
 const base = () => String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const prefixePublic = () => `${base()}/storage/v1/object/public/${BUCKET}/`;
 
@@ -30,9 +40,9 @@ router.post("/signer", async (req, res, next) => {
     const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!base() || !cle) throw new ApiError(503, "L’envoi de photos et de vidéos n’est pas encore activé (stockage à configurer)");
     const t = TYPES[req.body?.mime];
-    if (!t) throw new ApiError(400, "Format non pris en charge : JPEG, PNG, WebP, MP4, MOV ou WebM");
+    if (!t) throw new ApiError(400, "Format non pris en charge : PDF, Word, Excel, PowerPoint, CSV, photo (JPEG, PNG, WebP) ou vidéo (MP4, MOV, WebM)");
     const taille = Number(req.body?.taille || 0);
-    if (!(taille > 0) || taille > t[2] * 1024 * 1024) throw new ApiError(400, `Fichier trop lourd : ${t[2]} Mo maximum pour une ${t[0] === "video" ? "vidéo" : "photo"}`);
+    if (!(taille > 0) || taille > t[2] * 1024 * 1024) throw new ApiError(400, `Fichier trop lourd : ${t[2]} Mo maximum pour ${t[0] === "video" ? "une vidéo" : t[0] === "image" ? "une photo" : "un document"}`);
     const chemin = `${req.user.schoolId || "plateforme"}/${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.${t[1]}`;
     const r = await fetch(`${base()}/storage/v1/object/upload/sign/${BUCKET}/${chemin}`, {
       method: "POST",

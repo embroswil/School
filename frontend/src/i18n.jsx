@@ -21,6 +21,10 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "← Tous les documents": "← All documents",
+  "Aucun document trouvé.": "No documents found.",
+  "Format non pris en charge : PDF, Word, Excel, PowerPoint, CSV, photo (JPEG, PNG, WebP) ou vidéo (MP4, MOV, WebM)": "Unsupported format: PDF, Word, Excel, PowerPoint, CSV, photo (JPEG, PNG, WebP) or video (MP4, MOV, WebM)",
+  "Ajoutez au moins un fichier": "Add at least one file",
   "Type de document": "Document type",
   "Résumé pour les familles (facultatif)": "Summary for families (optional)",
   "Ajouter aussi aux emplois du temps des classes": "Also add to the class timetables",
@@ -1585,6 +1589,8 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) résultat\(s\)$/, '$1 result(s)'],
+  [/^Fichier trop lourd : (\d+) Mo maximum pour (une vidéo|une photo|un document)$/, (_, n, t) => `File too large: ${n} MB maximum for ${{ 'une vidéo': 'a video', 'une photo': 'a photo', 'un document': 'a document' }[t]}`],
   [/^(\d+) document\(s\) publié\(s\)$/, '$1 published document(s)'],
   [/^À publier · (\d+)$/, 'To publish · $1'],
   [/^Lecture (\d+) \/ (\d+)…$/, 'Reading $1 / $2…'],

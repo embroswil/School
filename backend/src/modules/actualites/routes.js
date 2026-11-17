@@ -154,7 +154,7 @@ router.post("/documents", async (req, res, next) => {
     const { categorieDe, devinerCategorie } = require("../../utils/fil");
     const b = req.body || {};
     const medias = lireMedias(b.fichiers);
-    if (!medias.length) throw new ApiError(400, "Ajoutez au moins un fichier (PDF ou photo)");
+    if (!medias.length) throw new ApiError(400, "Ajoutez au moins un fichier");
     const titre = texte(b.titre, 200) || texte(medias[0].nom, 200) || "Document";
     const [cle, libelle, type] = categorieDe(b.categorie || devinerCategorie(`${titre} ${medias[0].nom || ""}`));
     const audience = PUBLICS.includes(b.audience) ? b.audience : "tous";
@@ -185,7 +185,9 @@ router.post("/documents/analyser", async (req, res, next) => {
     const url = String(req.body?.url || "");
     const nom = texte(req.body?.nom, 120);
     const repli = { categorie: devinerCategorie(nom), titre: nom.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim(), resume: "", ia: false };
-    if (!process.env.ANTHROPIC_API_KEY || !url.startsWith(prefixePublic())) return res.json({ success: true, data: repli });
+    const mimeLu = String(req.body?.mime || "");
+    // Seuls les PDF et les photos sont lus ; Word, Excel, PowerPoint : classes d'apres leur nom
+    if (!process.env.ANTHROPIC_API_KEY || !url.startsWith(prefixePublic()) || !(mimeLu === "application/pdf" || mimeLu.startsWith("image/"))) return res.json({ success: true, data: repli });
     const r = await fetch(url);
     const buf = Buffer.from(await r.arrayBuffer());
     if (!r.ok || buf.length > 15 * 1024 * 1024) return res.json({ success: true, data: repli });
