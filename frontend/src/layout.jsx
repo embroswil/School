@@ -3,7 +3,7 @@ import { api } from './api.js'
 import { useAuth } from './auth.jsx'
 import { BandeauInstallation } from './installation.jsx'
 import { EncartPush, SynchroPush } from './push.jsx'
-import { DrapeauLangue } from './i18n.jsx'
+import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcListe, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
 
@@ -138,6 +138,10 @@ export default function Shell({ path, children }) {
   const chemin = path.split('?')[0]
   const titre = TITRES[chemin] || TITRES[`/${chemin.split('/')[1]}`] || ''
   const isCurrent = (to) => (to === '/' ? path === '/' : path === to || path.startsWith(`${to}/`))
+  // Sur ordinateur, la barre laterale est rangee par ordre alphabetique (dans la langue affichee)
+  const libelles = [...items.filter(([to]) => to !== '+'), ...(NAV_ORDI[user.role] || [])].map(([to, , label]) => [to, traduire(label)])
+  libelles.sort((a, b) => a[1].localeCompare(b[1], langue, { sensitivity: 'base' }))
+  const rang = (to) => ({ '--rang': 2 + libelles.findIndex(([t]) => t === to) })
 
   return (
     <div className="app">
@@ -174,7 +178,7 @@ export default function Shell({ path, children }) {
               <span className="nav-plus-texte">Actions rapides</span>
             </button>
           ) : (
-            <a key={to} href={`#${to}`} aria-current={isCurrent(to) ? 'page' : undefined}>
+            <a key={to} href={`#${to}`} style={rang(to)} aria-current={isCurrent(to) ? 'page' : undefined}>
               <span className="ico" style={{ position: 'relative' }}>
                 <Icone size={23} />
                 {to === '/messages' && compteurs.messages > 0 && <span className="pastille">{compteurs.messages}</span>}
@@ -184,7 +188,7 @@ export default function Shell({ path, children }) {
           ),
         )}
         {(NAV_ORDI[user.role] || []).map(([to, Icone, label]) => (
-          <a key={`o${to}`} href={`#${to}`} className="nav-ordi" aria-current={isCurrent(to) ? 'page' : undefined}>
+          <a key={`o${to}`} href={`#${to}`} className="nav-ordi" style={rang(to)} aria-current={isCurrent(to) ? 'page' : undefined}>
             <span className="ico">
               <Icone size={21} />
             </span>
