@@ -8,7 +8,7 @@ import { LogoEcole } from './OrdrePaiement.jsx'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 // Couleur de chaque type d'information (liseré et etiquette)
-const COULEURS = { annonce: '#2f6bff', evenement: '#7aa5ff', resultats: '#ffffff', conseil_discipline: '#ff4d4d', autre: '#98a2b3' }
+const COULEURS = { annonce: '#2f6bff', evenement: '#7aa5ff', resultats: 'var(--text)', conseil_discipline: '#ff4d4d', autre: '#98a2b3' }
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 const heureEvt = (d) => new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
@@ -121,9 +121,10 @@ export default function Fil({ enfants, actions }) {
       if (avant) qs.set('avant', avant)
       const r = await api.get(`/api/actualites/fil?${qs}`)
       if (n !== req.current) return
-      if (!choisie && !avant) setEcoles(r.data.ecoles || [])
-      setPosts((l) => (avant ? [...l, ...r.data.publications] : r.data.publications))
-      setFin(r.data.publications.length < 20)
+      const pubs = r.data?.publications || []
+      if (!choisie && !avant) setEcoles(r.data?.ecoles || [])
+      setPosts((l) => (avant ? [...(l || []), ...pubs] : pubs))
+      setFin(pubs.length < 20)
     } catch (err) {
       if (n === req.current) setErreur(err.message)
       setFin(true)

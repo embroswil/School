@@ -5,7 +5,8 @@ import { useAuth } from '../auth.jsx'
 import { ReglagePush, installee } from '../push.jsx'
 import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcAide, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcPhoto, IcProfil, IcSortie } from '../icones.jsx'
+import { IcAide, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcPhoto, IcProfil, IcSortie, IcTheme } from '../icones.jsx'
+import { changerTheme, lireTheme } from '../theme.js'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -41,6 +42,28 @@ function Reglage({ Icone, titre, valeur, onClick, href, danger, droite }) {
     <button type="button" className={`reglage ${danger ? 'danger' : ''}`} onClick={onClick}>
       {contenu}
     </button>
+  )
+}
+
+// Theme de l'application : sombre, clair ou automatique (comme le telephone)
+function ChoixTheme() {
+  const [t, setT] = useState(lireTheme)
+  const choisir = (v) => {
+    changerTheme(v)
+    setT(v)
+  }
+  return (
+    <span className="choix-theme" role="group" aria-label="Thème">
+      {[
+        ['sombre', 'Sombre'],
+        ['clair', 'Clair'],
+        ['auto', 'Auto'],
+      ].map(([v, l]) => (
+        <button key={v} type="button" aria-pressed={t === v} onClick={() => choisir(v)}>
+          {l}
+        </button>
+      ))}
+    </span>
   )
 }
 
@@ -266,6 +289,11 @@ export default function Account() {
         )}
       </div>
       <ReglagePush />
+
+      <p className="groupe-titre">Affichage</p>
+      <div className="liste-reglages">
+        <Reglage Icone={IcTheme} titre="Thème" droite={<ChoixTheme />} />
+      </div>
 
       {moi.role === 'principal' && (
         <>

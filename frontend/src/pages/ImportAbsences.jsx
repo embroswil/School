@@ -98,7 +98,7 @@ export default function ImportAbsences() {
                     <td>{l.nom}</td>
                     <td>{l.classe}</td>
                     <td>{l.heure || 'Journée'}</td>
-                    <td>{l.trouve ? <span style={{ color: '#5fd0a0' }}>✓</span> : <span style={{ color: '#ff7a82' }}>Non reconnu</span>}</td>
+                    <td>{l.trouve ? <span style={{ color: 'var(--vert)' }}>✓</span> : <span style={{ color: 'var(--rouge-texte)' }}>Non reconnu</span>}</td>
                   </tr>
                 ))}
               </tbody>

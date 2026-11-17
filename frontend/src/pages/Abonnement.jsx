@@ -127,7 +127,7 @@ export default function Abonnement() {
             </div>
             <div className="abo-ligne">
               <span>
-                Payé <b style={{ color: '#5fd0a0' }}>{fcfa(e.paye)}</b>
+                Payé <b style={{ color: 'var(--vert)' }}>{fcfa(e.paye)}</b>
               </span>
               <span>
                 Reste <b style={{ color: e.reste ? '#ff7a82' : undefined }}>{fcfa(e.reste)}</b>

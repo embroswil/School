@@ -4,10 +4,14 @@ import './index.css'
 import App from './App.jsx'
 import { demarrerTraduction } from './i18n.jsx'
 import { appliquerVersionOrdi } from './ordinateur.jsx'
+import { appliquerTheme, suivreSysteme } from './theme.js'
 
 // Francais ou anglais (avant le premier affichage)
 demarrerTraduction()
 appliquerVersionOrdi()
+// Theme sombre ou clair
+appliquerTheme()
+suivreSysteme()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

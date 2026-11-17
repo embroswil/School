@@ -78,7 +78,7 @@ export default function PayerEleve({ id }) {
       )}
       {aPayer.filter((f) => f.obligatoire).length === 0 && d.data.frais.some((f) => f.obligatoire) && (
         <p style={{ margin: '4px 0 12px' }}>
-          <span style={{ display: 'inline-block', padding: '8px 14px', borderRadius: 999, background: 'rgba(47, 107, 255, 0.16)', color: '#7aa5ff', fontWeight: 700 }}>
+          <span style={{ display: 'inline-block', padding: '8px 14px', borderRadius: 999, background: 'rgba(47, 107, 255, 0.16)', color: 'var(--lien)', fontWeight: 700 }}>
             ✓ Scolarité réglée
           </span>
         </p>

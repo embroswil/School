@@ -21,6 +21,11 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Affichage": "Display",
+  "Thème": "Theme",
+  "Sombre": "Dark",
+  "Clair": "Light",
+  "Auto": "Auto",
   "ex. Compte au nom de LYCÉE DE YINGUI. Indiquez le nom de l’élève en motif.": "e.g. Account in the name of YINGUI HIGH SCHOOL. Put the student’s name as the payment reference.",
   "élève(s)": "student(s)",
   "ou rechercher un nom…": "or search for a name…",
