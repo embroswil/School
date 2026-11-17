@@ -101,9 +101,9 @@ const mesEcoles = async (u) => {
   return u.schoolId ? [u.schoolId] : [];
 };
 
-// GET /api/actualites/fil?ecoles=1,2&avant=ISO : fil de tous les etablissements (comme un reseau social)
-// Public : les documents destines a tous. Les informations automatiques (notes publiees, emplois du
-// temps…) et les conseils de discipline ne sont visibles que dans les etablissements de l'utilisateur.
+// GET /api/actualites/fil?ecoles=1,2&avant=ISO : fil des etablissements DE L'UTILISATEUR seulement
+// (ceux de ses enfants pour un parent, le sien pour le personnel et les eleves).
+// Un etablissement ne voit jamais les documents d'un autre etablissement.
 router.get("/fil", async (req, res, next) => {
   try {
     const miennes = await mesEcoles(req.user);
@@ -121,17 +121,18 @@ router.get("/fil", async (req, res, next) => {
        FROM publications p JOIN schools s ON s.id = p.school_id AND s.is_active LEFT JOIN users a ON a.id = p.author_id
        WHERE (cardinality($1::int[]) = 0 OR p.school_id = ANY($1))
          AND ($3::timestamp IS NULL OR p.created_at < $3)
-         AND (
-           (p.school_id = ANY($2) AND p.audience IN ('tous', $4))
-           OR (p.type <> 'conseil_discipline' AND COALESCE(p.source, '') NOT IN ('auto', 'prive') AND p.audience IN ('tous', $4))
-         )
+         AND p.school_id = ANY($2) AND p.audience IN ('tous', $4)
        ORDER BY p.created_at DESC LIMIT 20`,
       [choisies, miennes, avant, publicRole]
     );
+    const noms = miennes.length
+      ? (await db.query("SELECT id, name FROM schools WHERE id = ANY($1) AND is_active ORDER BY name", [miennes])).rows
+      : [];
     res.json({
       success: true,
       data: {
         mesEcoles: miennes,
+        ecoles: noms,
         publications: rows.map(({ a_image, a_photo, ...p }) => ({
           ...p,
           image: a_image ? `/api/actualites/${p.id}/image` : null,
@@ -303,14 +304,11 @@ router.get("/:id/detail", async (req, res, next) => {
               p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, p.medias, p.categorie, p.source,
               CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant
        FROM publications p JOIN schools s ON s.id = p.school_id LEFT JOIN users a ON a.id = p.author_id
-       WHERE p.id = $1 AND (
-         $4::boolean
-         OR (p.school_id = ANY($2) AND p.audience IN ('tous', $3))
-         OR (p.type <> 'conseil_discipline' AND COALESCE(p.source, '') NOT IN ('auto', 'prive') AND p.audience IN ('tous', $3)))`,
-      [parseInt(req.params.id, 10) || 0, miennes, publicRole, ["admin"].includes(req.user.role) || (req.user.role === "principal" || req.user.role === "teacher")]
+       WHERE p.id = $1 AND ($4::boolean OR (p.school_id = ANY($2) AND p.audience IN ('tous', $3)))`,
+      [parseInt(req.params.id, 10) || 0, miennes, publicRole, req.user.role === "admin"]
     );
     const p = rows[0];
-    if (!p || (["principal", "teacher"].includes(req.user.role) && p.school_id !== req.user.schoolId && p.type === "conseil_discipline")) {
+    if (!p) {
       throw new ApiError(404, "Information introuvable");
     }
     const { a_image, ...reste } = p;

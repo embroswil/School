@@ -7,7 +7,6 @@ import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import Recadreur from '../Recadreur.jsx'
 import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
 
-import { ChoixEspace } from '../espace.jsx'
 const ROLES = {
   admin: 'Administrateur de la plateforme',
   principal: 'Administrateur de l’établissement',
@@ -230,7 +229,6 @@ export default function Account() {
           Modifier
         </button>
       </section>
-      <ChoixEspace />
       {ouvert === 'infos' && (
         <div style={{ margin: '12px 0' }}>
           <Informations

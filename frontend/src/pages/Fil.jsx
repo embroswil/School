@@ -100,7 +100,8 @@ export function Info({ p, complet = false }) {
   )
 }
 
-// Fil d'informations de tous les etablissements, filtrable par etablissement
+// Fil d'informations des etablissements de l'utilisateur (ceux de ses enfants pour un parent).
+// Le filtre par etablissement n'apparait que s'il y en a plusieurs.
 export default function Fil({ enfants, actions }) {
   const [ecoles, setEcoles] = useState([])
   const [choisie, setChoisie] = useState(null)
@@ -110,9 +111,6 @@ export default function Fil({ enfants, actions }) {
   const [erreur, setErreur] = useState('')
   const req = useRef(0)
 
-  useEffect(() => {
-    api.get('/api/familles/ecoles?q=').then((r) => setEcoles(r.data.slice(0, 30)), () => {})
-  }, [])
   const charger = async (avant) => {
     const n = ++req.current
     setBusy(true)
@@ -123,6 +121,7 @@ export default function Fil({ enfants, actions }) {
       if (avant) qs.set('avant', avant)
       const r = await api.get(`/api/actualites/fil?${qs}`)
       if (n !== req.current) return
+      if (!choisie && !avant) setEcoles(r.data.ecoles || [])
       setPosts((l) => (avant ? [...l, ...r.data.publications] : r.data.publications))
       setFin(r.data.publications.length < 20)
     } catch (err) {
@@ -158,6 +157,7 @@ export default function Fil({ enfants, actions }) {
           {actions}
         </div>
       )}
+      {ecoles.length > 1 && (
       <div className="filtres-ecoles">
         <button type="button" className="filtre-ecole" aria-pressed={!choisie} onClick={() => setChoisie(null)} style={{ paddingLeft: 12 }}>
           Toutes les infos
@@ -169,6 +169,7 @@ export default function Fil({ enfants, actions }) {
           </button>
         ))}
       </div>
+      )}
       {erreur && (
         <div className="note note-error" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <span>{erreur}</span>
@@ -177,7 +178,11 @@ export default function Fil({ enfants, actions }) {
           </button>
         </div>
       )}
-      {posts.length === 0 && !busy && !erreur && <p className="muted" style={{ textAlign: 'center', padding: 30 }}>Aucune information pour le moment.</p>}
+      {posts.length === 0 && !busy && !erreur && (
+        <p className="muted" style={{ textAlign: 'center', padding: 30 }}>
+          {actions && !enfants?.length ? 'Ajoutez votre enfant pour suivre les informations de son établissement.' : 'Aucune information pour le moment.'}
+        </p>
+      )}
       {posts.map((p) => (
         <Info key={p.id} p={p} />
       ))}
