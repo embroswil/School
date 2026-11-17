@@ -421,3 +421,6 @@ CREATE TABLE IF NOT EXISTS ia_usage (
 );
 ALTER TABLE ia_usage ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_ia_usage_school_date ON ia_usage (school_id, created_at);
+
+-- Espace ouvert par la session (administrateur d'etablissement aussi parent : « parent », sinon vide)
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS espace VARCHAR(20);

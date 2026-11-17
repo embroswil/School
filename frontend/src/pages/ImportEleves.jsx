@@ -86,16 +86,11 @@ export default function ImportEleves() {
         ← Élèves
       </a>
       <h1 className="page-title">Importer une liste</h1>
-      <CompteurIA />
-      <p className="lede">
-        Envoyez vos listes de classe telles qu’elles sont : l’application reconnaît le type de fichier, lit les noms, prénoms, classes, dates de
-        naissance et matricules, puis vous vérifiez avant l’import.
-      </p>
-
+      <CompteurIA discret />
       <button type="button" className="import-zone" disabled={busy} onClick={() => champ.current?.click()}>
-        <IcImport size={26} />
+        <IcImport size={22} />
         <b>{busy && !eleves ? 'Lecture en cours…' : 'Choisir un fichier ou une photo'}</b>
-        <small>{busy && !eleves ? 'Jusqu’à une minute pour une liste manuscrite' : 'Excel, CSV, PDF, Word ou photo (liste imprimée ou écrite à la main)'}</small>
+        <small>{busy && !eleves ? 'Jusqu’à une minute pour une liste manuscrite' : 'Excel, PDF, Word ou photo'}</small>
       </button>
       <input ref={champ} type="file" hidden multiple accept=".xlsx,.xls,.csv,.ods,.pdf,.docx,.doc,image/*" onChange={choisir} />
       <Note>{error}</Note>
@@ -160,17 +155,6 @@ export default function ImportEleves() {
         </>
       )}
 
-      <div className="card" style={{ marginTop: 18 }}>
-        <b>Conseils</b>
-        <ul className="muted" style={{ marginTop: 6, fontSize: 14, display: 'grid', gap: 4 }}>
-          <li>• Une colonne « Noms et prénoms » (ou « Nom » et « Prénom ») suffit.</li>
-          <li>• Colonnes reconnues : Classe, Date de naissance, Sexe, Matricule.</li>
-          <li>• Un fichier Excel avec une feuille par classe fonctionne aussi. Vous pouvez envoyer plusieurs fichiers d’un coup.</li>
-          <li>• Photos : prenez la liste bien à plat, de face, à la lumière. Plusieurs pages ? Sélectionnez toutes les photos d’un coup.</li>
-          <li>• Pour une liste manuscrite, relisez bien les noms avant d’importer.</li>
-          <li>• Quand un élève importé crée son compte avec les mêmes prénom et nom, il retrouve automatiquement sa fiche.</li>
-        </ul>
-      </div>
     </>
   )
 }

@@ -63,6 +63,8 @@ const authenticateJeton = (req, res, next) => {
     role: payload.role,
     email: payload.email,
     schoolId: payload.schoolId ? Number(payload.schoolId) : null,
+    // Espace ouvert par un administrateur d'etablissement aussi parent (« parent » ou rien)
+    espace: payload.espace === "parent" ? "parent" : null,
   };
   const suite = () => executerAvec({ role: req.user.role, schoolId: req.user.schoolId }, () => next());
   // Abonnement impaye au-dela du delai : l'etablissement passe en lecture seule

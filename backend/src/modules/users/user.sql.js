@@ -143,17 +143,17 @@ const countRecentFailures = async (userId, minutes) => {
 
 // --- sessions (refresh tokens hachés) ---------------------------------------
 
-const createSession = async ({ userId, tokenHash, days, ip, userAgent }) => {
+const createSession = async ({ userId, tokenHash, days, ip, userAgent, espace }) => {
   await db.query(
-    `INSERT INTO sessions (user_id, refresh_token, ip_address, user_agent, expires_at)
-     VALUES ($1, $2, $3, $4, NOW() + make_interval(days => $5::int))`,
-    [userId, tokenHash, ip ? String(ip).slice(0, 45) : null, userAgent || null, days]
+    `INSERT INTO sessions (user_id, refresh_token, ip_address, user_agent, expires_at, espace)
+     VALUES ($1, $2, $3, $4, NOW() + make_interval(days => $5::int), $6)`,
+    [userId, tokenHash, ip ? String(ip).slice(0, 45) : null, userAgent || null, days, espace || null]
   );
 };
 
 const findActiveSession = async (tokenHash) => {
   const { rows } = await db.query(
-    `SELECT s.id AS session_id, u.id, u.email, u.role, u.first_name, u.last_name, u.phone,
+    `SELECT s.id AS session_id, s.espace, u.id, u.email, u.role, u.first_name, u.last_name, u.phone,
             u.address, u.profile_picture, u.is_active, u.last_login, u.created_at, u.updated_at,
             u.school_id, u.status, u.email_verifie, u.notif_email, u.telephone_verifie, (SELECT name FROM schools sc WHERE sc.id = u.school_id) AS school_name
      FROM sessions s JOIN users u ON u.id = s.user_id

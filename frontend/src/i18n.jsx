@@ -21,6 +21,9 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Changer d’espace": "Switch space",
+  "Mes enfants": "My children",
+  "Ce compte n’a qu’un seul espace": "This account has only one space",
   "Rechercher un élève (nom ou prénom)": "Search for a student (surname or first name)",
   "Placez-les dans leur classe": "Place them in their class",
   "Gérer les classes": "Manage classes",

@@ -7,6 +7,7 @@ import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import Recadreur from '../Recadreur.jsx'
 import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
 
+import { ChoixEspace } from '../espace.jsx'
 const ROLES = {
   admin: 'Administrateur de la plateforme',
   principal: 'Administrateur de l’établissement',
@@ -229,6 +230,7 @@ export default function Account() {
           Modifier
         </button>
       </section>
+      <ChoixEspace />
       {ouvert === 'infos' && (
         <div style={{ margin: '12px 0' }}>
           <Informations
@@ -302,7 +304,7 @@ export default function Account() {
       <button type="button" className="btn btn-quiet btn-danger btn-block profil-sortie" onClick={logout}>
         <IcSortie size={18} /> Se déconnecter
       </button>
-      {moi.role !== 'admin' && <SuppressionCompte logout={logout} />}
+      {moi.role !== 'admin' && !moi.espace && <SuppressionCompte logout={logout} />}
       <p className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 14 }}>
         Sùkûl by Embroswil
       </p>

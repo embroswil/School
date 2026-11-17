@@ -26,7 +26,23 @@ const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex"
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
-const toPublicUser = (u) => ({
+// Espace « parent » : un administrateur d'etablissement qui est aussi parent ou tuteur passe,
+// avec le meme compte, de l'espace de son etablissement a son espace parent (et inversement).
+// Dans l'espace parent, il a exactement les droits d'un parent : rien de plus.
+const ROLES_AVEC_ESPACE_PARENT = ["principal"];
+const espaceValide = (user, espace) => (espace === "parent" && ROLES_AVEC_ESPACE_PARENT.includes(user.role) ? "parent" : null);
+
+const toPublicUser = (u, espace = null) => ({
+  ...toPublicUserReel(u),
+  ...(espaceValide(u, espace) ? { role: "parent", schoolId: null, schoolName: null } : {}),
+  // Role du compte, espace ouvert, et possibilite de changer d'espace
+  roleReel: u.role,
+  espace: espaceValide(u, espace),
+  peutChangerEspace: ROLES_AVEC_ESPACE_PARENT.includes(u.role),
+  etablissement: u.school_name || null,
+});
+
+const toPublicUserReel = (u) => ({
   id: u.id,
   email: u.email,
   role: u.role,
@@ -56,8 +72,12 @@ const assertPassword = (password, label = "Password") => {
   }
 };
 
-const issueTokens = async (user, { ip, userAgent }) => {
-  const accessToken = jwt.sign({ role: user.role, email: user.email, schoolId: user.school_id || null }, env.jwt.secret, {
+const issueTokens = async (user, { ip, userAgent, espace = null }) => {
+  const parent = espaceValide(user, espace) === "parent";
+  const contenu = parent
+    ? { role: "parent", email: user.email, schoolId: null, espace: "parent" }
+    : { role: user.role, email: user.email, schoolId: user.school_id || null };
+  const accessToken = jwt.sign(contenu, env.jwt.secret, {
     subject: String(user.id),
     expiresIn: env.jwt.expiresIn,
     algorithm: "HS256",
@@ -70,6 +90,7 @@ const issueTokens = async (user, { ip, userAgent }) => {
     days: env.jwt.refreshDays,
     ip,
     userAgent,
+    espace: parent ? "parent" : null,
   });
 
   return { accessToken, refreshToken, expiresIn: env.jwt.expiresIn };
@@ -153,8 +174,20 @@ const refresh = async ({ refreshToken, ip, userAgent }) => {
   if (!session.is_active) throw new ApiError(403, "Account is deactivated");
   if (session.status && session.status !== "active") throw new ApiError(403, "Compte non validé");
 
-  const tokens = await issueTokens(session, { ip, userAgent });
-  return { ...tokens, user: toPublicUser(session) };
+  // La session garde l'espace ouvert (etablissement ou parent)
+  const tokens = await issueTokens(session, { ip, userAgent, espace: session.espace });
+  return { ...tokens, user: toPublicUser(session, session.espace) };
+};
+
+// Passer de l'espace de l'etablissement a l'espace parent, ou revenir
+const changerEspace = async ({ userId, espace, refreshToken, ip, userAgent }) => {
+  const user = await userSql.findById(userId);
+  if (!user || !user.is_active) throw new ApiError(401, "Ce compte n’existe plus ou a été désactivé. Reconnectez-vous.");
+  if (!ROLES_AVEC_ESPACE_PARENT.includes(user.role)) throw new ApiError(403, "Ce compte n’a qu’un seul espace");
+  const cible = espace === "parent" ? "parent" : null;
+  if (typeof refreshToken === "string" && refreshToken) await userSql.deleteSession(sha256(refreshToken));
+  const tokens = await issueTokens(user, { ip, userAgent, espace: cible });
+  return { ...tokens, user: toPublicUser(user, cible) };
 };
 
 const logout = async ({ userId, refreshToken }) => {
@@ -165,10 +198,10 @@ const logout = async ({ userId, refreshToken }) => {
   }
 };
 
-const getProfile = async (userId) => {
+const getProfile = async (userId, espace = null) => {
   const user = await userSql.findById(userId);
   if (!user) throw new ApiError(404, "User not found");
-  return toPublicUser(user);
+  return toPublicUser(user, espace);
 };
 
 const changePassword = async ({ userId, currentPassword, newPassword, ip, userAgent }) => {
@@ -344,6 +377,7 @@ module.exports = {
   refresh,
   logout,
   getProfile,
+  changerEspace,
   changePassword,
   createUser,
   listUsers,

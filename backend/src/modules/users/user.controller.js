@@ -43,7 +43,18 @@ const logout = async (req, res, next) => {
 
 const me = async (req, res, next) => {
   try {
-    const data = await userService.getProfile(req.user.id);
+    const data = await userService.getProfile(req.user.id, req.user.espace);
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/auth/espace { espace: "parent" | "etablissement", refreshToken }
+const changerEspace = async (req, res, next) => {
+  try {
+    const { espace, refreshToken } = req.body || {};
+    const data = await userService.changerEspace({ userId: req.user.id, espace, refreshToken, ...clientInfo(req) });
     res.json({ success: true, data });
   } catch (error) {
     next(error);
@@ -119,6 +130,7 @@ module.exports = {
   refresh,
   logout,
   me,
+  changerEspace,
   changePassword,
   createUser,
   listUsers,

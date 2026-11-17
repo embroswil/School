@@ -8,6 +8,8 @@ router.post("/refresh", userController.refresh);
 
 router.post("/logout", authMiddleware.authenticate, userController.logout);
 router.get("/me", authMiddleware.authenticate, userController.me);
+// Administrateur d'etablissement aussi parent : passer d'un espace a l'autre
+router.post("/espace", authMiddleware.authenticate, userController.changerEspace);
 router.post("/change-password", authMiddleware.authenticate, userController.changePassword);
 
 // Mise a jour de son propre profil (prenom, nom, telephone)

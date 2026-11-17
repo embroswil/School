@@ -1,10 +1,12 @@
 import { useApi } from './hooks.js'
 
 // Lectures automatiques (IA) utilisees ce mois, par rapport au plafond de l'etablissement
-export default function CompteurIA() {
+// discret : le compteur ne s'affiche que s'il y a quelque chose a signaler (plafond presque atteint, ou lecture non activee)
+export default function CompteurIA({ discret = false }) {
   const q = useApi('/api/ia/quota')
   const d = q.data
   if (!d) return null
+  if (discret && d.limite > 0 && d.utilise / d.limite < 0.8) return null
   if (d.limite === 0) {
     return (
       <div className="ia-compteur ia-rouge">

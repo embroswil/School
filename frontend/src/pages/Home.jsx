@@ -6,8 +6,9 @@ import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
+import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcMessages, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -236,7 +237,8 @@ const aujourdhuiLocal = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// Accueil de l'etablissement : la journee en 3 chiffres, ce qui attend, puis 6 grandes portes d'entree
+// Accueil de l'etablissement : la journee en 3 chiffres, ce qui attend, puis 3 portes d'entree.
+// Messages, Informer et Abonnement ne sont pas repetes ici : ils sont dans la barre du bas, le bouton « + » et le Profil.
 function EspaceEtablissement() {
   const t = useApi('/api/etablissement/tableau')
   const abs = useApi(`/api/notes/absences?date=${aujourdhuiLocal()}`)
@@ -294,9 +296,6 @@ function EspaceEtablissement() {
         <Tuile href="#/eleves" Icone={IcEleves} titre="Élèves" texte="Listes, classes, fiches" chiffre={d.eleves ?? '…'} />
         <Tuile href="#/presence-enseignants" Icone={IcProf} titre="Enseignants" texte="Présence, cours assurés" chiffre={d.enseignants ?? '…'} />
         <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
-        <Tuile href="#/document" Icone={IcMegaphone} titre="Informer" texte="Documents et informations" />
-        <Tuile href="#/messages" Icone={IcMessages} titre="Messages" texte="Parents et enseignants" />
-        <Tuile href="#/abonnement" Icone={IcGraphique} titre="Abonnement" texte="Sùkûl, paiement, reçus" />
       </div>
     </>
   )
@@ -442,6 +441,7 @@ export default function Home() {
           ✉️ Confirmez votre adresse email pour sécuriser votre compte (mot de passe oublié…). <u>Confirmer</u>
         </a>
       )}
+      <ChoixEspace />
       {user.role !== 'admin' && user.schoolId && <BandeauAbonnement role={user.role} />}
       {user.role === 'teacher' && (
       <section className="hero-card" style={{ marginTop: 8 }}>

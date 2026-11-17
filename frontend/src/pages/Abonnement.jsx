@@ -14,22 +14,20 @@ export const STATUTS = {
 }
 export const MOYENS = { orange_money: 'Orange Money', mtn_momo: 'MTN MoMo', virement: 'Virement', especes: 'Espèces', notchpay: 'Paiement en ligne', autre: 'Autre' }
 
-// Bandeau d'alerte (accueil) : echeance proche, retard ou lecture seule
+// Bandeau d'alerte (accueil) : seulement en cas de retard ou de lecture seule.
+// Une echeance a venir ne s'affiche pas ici : elle se consulte dans Profil › Abonnement.
 export function BandeauAbonnement({ role }) {
   const d = useApi('/api/abonnement')
   const e = d.data
   if (!e) return null
-  const proche = e.statut === 'a_payer' && e.joursRestants <= 30
   if (role !== 'principal' && e.statut !== 'lecture_seule') return null
-  if (role === 'principal' && !(proche || ['en_retard', 'lecture_seule'].includes(e.statut))) return null
+  if (role === 'principal' && !['en_retard', 'lecture_seule'].includes(e.statut)) return null
   const texte =
     e.statut === 'lecture_seule'
       ? role === 'principal'
         ? 'Abonnement non réglé : Sùkûl est en lecture seule. Réglez-le pour reprendre les saisies.'
         : 'L’établissement est temporairement en lecture seule : les saisies reprendront prochainement.'
-      : e.statut === 'en_retard'
-        ? `Abonnement en retard : ${fcfa(e.reste)} à régler avant le ${jourLong(e.finGrace)}.`
-        : `Abonnement ${e.annee} : ${fcfa(e.reste)} à régler avant le ${jourLong(e.echeance)}.`
+      : `Abonnement en retard : ${fcfa(e.reste)} à régler avant le ${jourLong(e.finGrace)}.`
   // Calcule AVANT d'etre utilise (sinon erreur au rendu et page noire)
   const urgent = ['en_retard', 'lecture_seule'].includes(e.statut)
   const contenu = (
