@@ -103,7 +103,7 @@ function Pages({ path }) {
   if (path === '/mes-classes') return reserve(user.role === 'teacher', <MesAffectations />)
   const suiviMatch = path.match(/^\/suivi\/(\d+)$/)
   if (suiviMatch) return reserve(['parent', 'student'].includes(user.role), <Suivi key={suiviMatch[1]} id={Number(suiviMatch[1])} />)
-  if (path.split('?')[0] === '/scolarite') return reserve(user.role !== 'teacher', <Scolarite />)
+  if (path.split('?')[0] === '/scolarite') return reserve(user.role !== 'teacher', <Scolarite key={path} />)
   if (path === '/import-eleves') return reserve(gestion, <ImportEleves />)
   if (path === '/import-enseignants') return reserve(user.role === 'principal', <ImportEnseignants />)
   if (path === '/import-emplois') return reserve(user.role === 'principal', <ImportEmplois />)

@@ -276,7 +276,7 @@ function EspaceEtablissement() {
           <b className={sansAppel ? 'rouge' : ''}>{sansAppel ?? '…'}</b>
           <span>cours non assuré(s)</span>
         </a>
-        <a href="#/scolarite">
+        <a href="#/scolarite?onglet=confirmer">
           <b className={aConfirmer ? 'rouge' : ''}>{aConfirmer ?? '…'}</b>
           <span>paiement(s) à confirmer</span>
         </a>

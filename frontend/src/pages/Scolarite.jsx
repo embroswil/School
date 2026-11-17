@@ -5,7 +5,8 @@ import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { ListeOrdres } from './OrdrePaiement.jsx'
 import StatutScolarite from './StatutScolarite.jsx'
-import { BoutonExcel, exporterExcel } from '../export.jsx'
+import { IcImport, IcPlus } from '../icones.jsx'
+import { preparerDocument } from '../lecture-fichier.js'
 import Comptabilite from './Comptabilite.jsx'
 import { envoyer } from './Documents.jsx'
 import { useDepotPage } from '../depot.jsx'
@@ -252,6 +253,7 @@ function Frais() {
   const [lecture, setLecture] = useState('')
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
   const edition = f.id !== null
+  const [ajout, setAjout] = useState(false)
 
   function modifier(x) {
     setF({
@@ -287,8 +289,9 @@ function Frais() {
     try {
       if (edition) await api.put(`/api/scolarite/frais/${f.id}`, donnees)
       else await api.post('/api/scolarite/frais', donnees)
-      setOk(edition ? '✓ Frais modifié.' : '✓ Frais ajouté.')
+      setOk(edition ? 'Frais modifié.' : 'Frais ajouté.')
       setF({ ...FRAIS_VIDE, categorie: f.categorie })
+      setAjout(false)
       frais.reload()
     } catch (err) {
       setError(err.message)
@@ -315,8 +318,10 @@ function Frais() {
     setLus(null)
     try {
       setLecture('Envoi du document…')
+      setAjout(false)
       let corps
       if (/\.(xlsx|xls|csv)$/i.test(fichier.name)) corps = { texte: await texteDuTableur(fichier) }
+      else if (/\.docx$/i.test(fichier.name)) corps = { texte: (await preparerDocument([fichier])).texte }
       else {
         const env = await envoyer(fichier)
         corps = { url: env.url, mime: env.mime }
@@ -329,7 +334,7 @@ function Frais() {
     }
     setLecture('')
   }
-  const zoneDepot = useDepotPage(choisirDocument, { texte: 'Déposez le document des frais', detail: 'PDF, photo, Excel ou CSV' })
+  const zoneDepot = useDepotPage(choisirDocument, { texte: 'Déposez le document des frais', detail: 'PDF, Excel, Word ou photo' })
 
   async function appliquer() {
     const choisis = lus.filter((x) => x.choisi && x.statut !== 'identique')
@@ -338,7 +343,7 @@ function Frais() {
     setError('')
     try {
       const r = (await api.post('/api/scolarite/frais/appliquer', { frais: choisis.map(({ id, nom, montant, echeance, classes, categorie, obligatoire }) => ({ id, nom, montant, echeance, classes, categorie, obligatoire })) })).data
-      setOk(`✓ ${r.crees} frais ajouté(s), ${r.modifies} mis à jour. Les frais identiques n’ont pas été touchés.`)
+      setOk(`${r.crees} frais ajouté(s), ${r.modifies} mis à jour.`)
       setLus(null)
       frais.reload()
     } catch (err) {
@@ -348,25 +353,29 @@ function Frais() {
   }
   const majLu = (cle, champs) => setLus((l) => l.map((x) => (x.cle === cle ? { ...x, ...champs } : x)))
 
+  const formulaireOuvert = edition || ajout
   return (
     <>
       {zoneDepot}
-      <CompteurIA />
-      <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,image/*" onChange={choisirDocument} />
-      <button type="button" className="depot" onClick={() => champ.current?.click()} disabled={Boolean(lecture)}>
-        <span style={{ fontSize: 30 }}>📄</span>
-        <b>{lecture || 'Importer un document de frais'}</b>
-        <small>PDF, photo, Excel ou CSV : Sùkûl remplit les frais automatiquement</small>
-        <small className="astuce-depot">ou glissez-déposez le fichier n’importe où sur cette page</small>
-      </button>
+      <div className="barre-actions">
+        <button type="button" className="btn bouton-icone" onClick={() => { setF(FRAIS_VIDE); setAjout(true); setOk('') }}>
+          <IcPlus size={18} /> Ajouter
+        </button>
+        <button type="button" className="btn btn-quiet bouton-icone" onClick={() => champ.current?.click()} disabled={Boolean(lecture)}>
+          <IcImport size={18} /> {lecture ? 'Lecture…' : 'Importer'}
+        </button>
+      </div>
+      <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,.docx,image/*" onChange={choisirDocument} />
+      <CompteurIA discret />
+      {lecture && <p className="muted" style={{ fontSize: 13 }}>{lecture}</p>}
       <Note kind="ok">{ok}</Note>
       <Note>{error}</Note>
 
       {lus && (
-        <div className="card" style={{ marginTop: 12 }}>
+        <div className="card" style={{ marginBottom: 14 }}>
           <b>{lus.length} frais trouvé(s) dans le document</b>
           <p className="muted" style={{ fontSize: 13, margin: '4px 0 10px' }}>
-            Vérifiez, décochez ce que vous ne voulez pas. Les frais <b>identiques</b> à ceux déjà enregistrés ne sont pas modifiés : seuls les nouveaux et les modifiés sont appliqués.
+            Les frais identiques à ceux déjà enregistrés ne sont pas modifiés.
           </p>
           {lus.map((x) => (
             <div key={x.cle} className="frais-lu">
@@ -397,80 +406,79 @@ function Frais() {
         </div>
       )}
 
-      <form className="card" onSubmit={enregistrer} style={{ marginTop: 12 }}>
-        <b>{edition ? `Modifier le frais « ${f.nom} »` : 'Ajouter un frais'}</b>
-        <Field label="Nom du frais">
-          <input className="input" placeholder="ex. Pension – 1re tranche, Inscription, APEE" value={f.nom} onChange={maj('nom')} required />
-        </Field>
-        <div className="grid2">
-          <Field label="Montant (FCFA)">
-            <input className="input" inputMode="numeric" placeholder="ex. 50000" value={f.montant} onChange={maj('montant')} required />
+      {formulaireOuvert && (
+        <form className="card" onSubmit={enregistrer} style={{ marginBottom: 14 }}>
+          <b>{edition ? `Modifier le frais « ${f.nom} »` : 'Nouveau frais'}</b>
+          <Field label="Nom du frais">
+            <input className="input" placeholder="ex. Pension – 1re tranche" value={f.nom} onChange={maj('nom')} required />
           </Field>
-          <Field label="Échéance (facultative)">
-            <input className="input" type="date" value={f.echeance} onChange={maj('echeance')} />
+          <div className="grid2">
+            <Field label="Montant (FCFA)">
+              <input className="input" inputMode="numeric" placeholder="ex. 50000" value={f.montant} onChange={maj('montant')} required />
+            </Field>
+            <Field label="Échéance (facultative)">
+              <input className="input" type="date" value={f.echeance} onChange={maj('echeance')} />
+            </Field>
+          </div>
+          <Field label="Type de frais">
+            <select className="input" value={f.categorie} onChange={maj('categorie')}>
+              {Object.entries(CATEGORIES).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
           </Field>
-        </div>
-        <p className="muted" style={{ fontSize: 12.5, margin: '-4px 2px 10px' }}>
-          Sans échéance, le frais n’est jamais « en retard » : il reste simplement dû jusqu’au paiement.
-        </p>
-        <Field label="Type de frais">
-          <select className="input" value={f.categorie} onChange={maj('categorie')}>
-            {Object.entries(CATEGORIES).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <label className="check">
-          <input type="checkbox" checked={!f.obligatoire} onChange={(e) => setF((x) => ({ ...x, obligatoire: !e.target.checked }))} />
-          <span>Facultatif (cantine, transport, sortie…) : non compté dans les retards</span>
-        </label>
-        <Field label="Classes concernées (laisser vide = toutes)">
-          <input className="input" placeholder="ex. 6e A, 6e B" value={f.classes} onChange={maj('classes')} />
-        </Field>
-        <div className="actions">
-          <button className="btn" type="submit" disabled={busy}>
-            {busy ? 'Enregistrement…' : edition ? 'Enregistrer les modifications' : '+ Ajouter le frais'}
-          </button>
-          {edition && (
-            <button type="button" className="btn btn-quiet" onClick={() => setF(FRAIS_VIDE)}>
+          <Field label="Classes concernées (vide = toutes)">
+            <input className="input" placeholder="ex. 6e A, 6e B" value={f.classes} onChange={maj('classes')} />
+          </Field>
+          <label className="check">
+            <input type="checkbox" checked={!f.obligatoire} onChange={(e) => setF((x) => ({ ...x, obligatoire: !e.target.checked }))} />
+            <span>Facultatif (cantine, transport, sortie…)</span>
+          </label>
+          <div className="actions">
+            <button className="btn" type="submit" disabled={busy}>
+              {busy ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+            <button type="button" className="btn btn-quiet" onClick={() => { setF(FRAIS_VIDE); setAjout(false) }}>
               Annuler
             </button>
-          )}
-        </div>
-      </form>
+          </div>
+        </form>
+      )}
 
-      <h2 className="section-title">Frais de l’année</h2>
-      {frais.data?.length === 0 && <p className="muted">Aucun frais pour le moment.</p>}
+      {frais.data?.length === 0 && !formulaireOuvert && (
+        <div className="vide">
+          <b>Aucun frais pour l’instant</b>
+          <small>Ajoutez vos frais un par un, ou importez le document de vos frais (PDF, Excel, Word ou photo).</small>
+        </div>
+      )}
       {frais.data?.length > 0 && (
-        <ul className="rows">
+        <ul className="liste-simple">
           {frais.data.map((x) => (
-            <li className="row" key={x.id} style={{ flexWrap: 'wrap' }}>
-              <div className="row-main">
-                <div className="row-title">
-                  {x.nom} · {fcfa(x.montant)}
-                </div>
-                <div className="row-sub">
-                  {CATEGORIES[x.categorie] || 'Scolarité'}
+            <li key={x.id}>
+              <span className="ls-texte">
+                <b>{x.nom}</b>
+                <small>
+                  {fcfa(x.montant)} · {x.classes?.length ? x.classes.join(', ') : 'toutes les classes'} · {x.echeance ? `avant le ${jour(x.echeance)}` : 'sans échéance'}
                   {x.obligatoire ? '' : ' · facultatif'}
-                </div>
-                <div className="row-sub">
-                  {x.classes?.length ? x.classes.join(', ') : 'Toutes les classes'} · {x.echeance ? `avant le ${jour(x.echeance)}` : 'sans échéance'} · encaissé {fcfa(x.encaisse)}
-                </div>
-              </div>
-              <span style={{ display: 'flex', gap: 6 }}>
-                <button type="button" className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14 }} onClick={() => modifier(x)}>
-                  Modifier
-                </button>
-                <button type="button" className="btn btn-quiet btn-danger" style={{ padding: '8px 12px', fontSize: 14 }} onClick={() => supprimer(x.id)}>
-                  Supprimer
-                </button>
+                </small>
+                <span className="ls-actions">
+                  <button type="button" className="lien-action" onClick={() => modifier(x)}>
+                    Modifier
+                  </button>
+                  <button type="button" className="lien-action discret" onClick={() => supprimer(x.id)}>
+                    Supprimer
+                  </button>
+                </span>
               </span>
             </li>
           ))}
         </ul>
       )}
+
+      <p className="niveau-titre" style={{ marginTop: 22 }}>Où les parents paient</p>
+      <Reglages />
     </>
   )
 }
@@ -529,7 +537,7 @@ function Paiements() {
         obligatoire: fraisChoisi.obligatoire,
       })
       setEd(null)
-      setOk('✓ Frais modifié. Le reste à payer est mis à jour.')
+      setOk('Frais modifié. Le reste à payer est mis à jour.')
       setF((y) => ({ ...y, montant: '' }))
       tousFrais.reload()
       situation.reload()
@@ -541,7 +549,6 @@ function Paiements() {
   return (
     <>
       <form className="card" onSubmit={enregistrer}>
-        <b>Enregistrer un paiement reçu au guichet</b>
         <Field label="Élève">
           <ChoixEleve valeur={eleveId} onChange={setEleveId} />
         </Field>
@@ -572,7 +579,7 @@ function Paiements() {
             </Field>
             {fraisChoisi && !ed && (
               <button type="button" className="lien-discret" style={{ margin: '-4px 0 10px', textAlign: 'left' }} onClick={ouvrirModif}>
-                ✏️ Modifier ce frais
+                Modifier ce frais
               </button>
             )}
             {ed && (
@@ -628,50 +635,28 @@ function Paiements() {
         </button>
       </form>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <h2 className="section-title" style={{ flex: 1 }}>
-          Paiements reçus {liste.data ? `· ${fcfa((liste.data || []).reduce((s, p) => s + p.montant, 0))}` : ''}
-        </h2>
-        {liste.data?.length > 0 && (
-          <BoutonExcel
-            onClick={() =>
-              exporterExcel('paiements', [
-                {
-                  nom: 'Paiements reçus',
-                  lignes: liste.data.map((p) => ({
-                    Date: new Date(p.created_at).toLocaleDateString('fr-FR'),
-                    'Reçu n°': p.numero_recu || '',
-                    Nom: p.last_name,
-                    'Prénom(s)': p.first_name,
-                    Classe: p.classe || '',
-                    Frais: p.frais,
-                    'Montant (FCFA)': p.montant,
-                    Mode: MODES[p.mode] || p.mode,
-                    Référence: p.reference || '',
-                  })),
-                },
-              ])
-            }
-          />
-        )}
-      </div>
+      <p className="niveau-titre" style={{ marginTop: 22 }}>
+        Derniers paiements reçus
+      </p>
       {liste.data?.length === 0 && <p className="muted">Aucun paiement pour le moment.</p>}
       {liste.data?.length > 0 && (
-        <ul className="rows">
-          {liste.data.map((p) => (
-            <li className="row" key={p.id}>
-              <span style={{ fontSize: 22 }}>{p.mode === 'mobile_money' ? '📱' : '💵'}</span>
-              <div className="row-main">
-                <div className="row-title">
-                  {fcfa(p.montant)} · {p.first_name} {p.last_name}
-                </div>
-                <div className="row-sub">
+        <ul className="liste-simple">
+          {liste.data.slice(0, 30).map((p) => (
+            <li key={p.id}>
+              <span className="ls-texte">
+                <b data-brut>
+                  {p.first_name} {p.last_name}
+                </b>
+                <small>
                   {p.frais} · {p.classe || '—'} · {MODES[p.mode]} · {jour(p.created_at)}
-                </div>
-              </div>
-              <a className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14 }} href={`#/recus/${p.id}`}>
-                Reçu
-              </a>
+                </small>
+              </span>
+              <span className="ls-montant">
+                <b>{fcfa(p.montant)}</b>
+                <a className="lien-action" href={`#/recus/${p.id}`}>
+                  Reçu
+                </a>
+              </span>
             </li>
           ))}
         </ul>
@@ -683,14 +668,14 @@ function Paiements() {
 function AConfirmer() {
   return (
     <>
-      <p className="muted" style={{ fontSize: 14, margin: '0 2px 10px' }}>
-        Les parents paient directement sur vos numéros, puis signalent leur paiement. Vérifiez votre compte Mobile Money avant de confirmer.
+      <p className="muted" style={{ fontSize: 13, margin: '0 2px 10px' }}>
+        Vérifiez la réception sur votre compte Mobile Money avant de confirmer.
       </p>
-      <ListeOrdres statut="paye,litige" vide="Aucun paiement à confirmer. 👍" />
-      <h2 className="section-title">En attente du paiement des parents</h2>
-      <ListeOrdres statut="a_payer" vide="Aucun ordre en cours." />
-      <h2 className="section-title">Derniers paiements confirmés</h2>
-      <ListeOrdres statut="confirme" vide="Aucun pour le moment." />
+      <ListeOrdres statut="paye,litige" vide="Aucun paiement à confirmer." />
+      <p className="niveau-titre" style={{ marginTop: 22 }}>
+        En attente du paiement des parents
+      </p>
+      <ListeOrdres statut="a_payer" vide="Aucun." />
       <AConfirmerAncien />
     </>
   )
@@ -716,11 +701,10 @@ function AConfirmerAncien() {
   if (!liste.data?.length) return null // anciennes declarations (avant les ordres)
   return (
     <>
-      <p className="muted" style={{ marginBottom: 12 }}>
-        Paiements Mobile Money déclarés par les parents : vérifiez la transaction sur votre compte, puis confirmez.
-      </p>
       <Note>{error}</Note>
-      <h2 className="section-title">Anciennes déclarations à confirmer</h2>
+      <p className="niveau-titre" style={{ marginTop: 22 }}>
+        Anciennes déclarations à confirmer
+      </p>
 
       {liste.data?.map((p) => (
         <div className="card" key={p.id}>
@@ -737,7 +721,7 @@ function AConfirmerAncien() {
           </p>
           <div className="actions">
             <button type="button" className="btn btn-ok" disabled={busy === p.id} onClick={() => decider(p.id, 'confirmer')}>
-              ✓ Confirmer
+              Confirmer
             </button>
             <button type="button" className="btn btn-quiet btn-danger" disabled={busy === p.id} onClick={() => decider(p.id, 'rejeter')}>
               Non reçu
@@ -745,135 +729,6 @@ function AConfirmerAncien() {
           </div>
         </div>
       ))}
-    </>
-  )
-}
-
-function Recouvrement() {
-  const d = useApi('/api/scolarite/recouvrement')
-  const [classe, setClasse] = useState(null)
-  const eleves = useApi(classe ? `/api/scolarite/recouvrement?classe=${encodeURIComponent(classe)}` : null)
-  const [info, setInfo] = useState('')
-  const [error, setError] = useState('')
-  async function relancer(c) {
-    setInfo('')
-    setError('')
-    if (!window.confirm(c ? `Envoyer un rappel aux parents des élèves en retard de ${c} ?` : 'Envoyer un rappel aux parents de tous les élèves en retard ?')) return
-    try {
-      const r = await api.post('/api/scolarite/relancer', c ? { classe: c } : {})
-      setInfo(`Rappel envoyé à ${r.data.parents} parent(s).`)
-      d.reload()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-  if (!d.data) return <p className="muted">Calcul…</p>
-  const t = d.data.totaux
-  const taux = t.attendu ? Math.round((t.encaisse / t.attendu) * 100) : 0
-  return (
-    <>
-      <div className="kpis">
-        <div className="kpi">
-          <b>{taux} %</b>
-          <span>recouvré</span>
-          <small>
-            {fcfa(t.encaisse)} sur {fcfa(t.attendu)}
-          </small>
-        </div>
-        <div className="kpi">
-          <b style={{ color: t.reste ? 'var(--danger)' : undefined }}>{fcfa(t.reste)}</b>
-          <span>reste à encaisser</span>
-          <small>{t.enRetard} élève(s) en retard</small>
-        </div>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-        <BoutonExcel
-          texte="Exporter le recouvrement"
-          onClick={async () => {
-            const tous = (await api.get('/api/scolarite/recouvrement?tous=1')).data
-            await exporterExcel('recouvrement', [
-              {
-                nom: 'Par classe',
-                lignes: d.data.classes.map((c) => ({
-                  Classe: c.classe,
-                  Effectif: c.effectif,
-                  'Attendu (FCFA)': Number(c.attendu),
-                  'Encaissé (FCFA)': Number(c.encaisse),
-                  'Reste (FCFA)': Number(c.reste),
-                  'Taux (%)': Number(c.attendu) ? Math.round((Number(c.encaisse) / Number(c.attendu)) * 100) : 0,
-                  'Élèves en retard': c.en_retard,
-                })),
-              },
-              {
-                nom: 'Élèves',
-                lignes: tous.map((e) => ({
-                  Classe: e.classe,
-                  Nom: e.last_name,
-                  'Prénom(s)': e.first_name,
-                  'Dû (FCFA)': e.du,
-                  'Payé (FCFA)': e.paye,
-                  'Reste (FCFA)': e.reste,
-                  'En retard': e.en_retard ? 'Oui' : '',
-                })),
-              },
-            ])
-          }}
-        />
-      </div>
-      <p className="muted" style={{ fontSize: 13, margin: '8px 2px' }}>
-        Frais obligatoires uniquement. {d.data.derniereRelance ? `Dernier rappel : ${jour(d.data.derniereRelance)}.` : ''}
-      </p>
-      <Note kind="ok">{info}</Note>
-      <Note>{error}</Note>
-      {t.enRetard > 0 && (
-        <button type="button" className="btn btn-block" style={{ marginBottom: 12 }} onClick={() => relancer(null)}>
-          🔔 Rappeler tous les parents en retard
-        </button>
-      )}
-      {d.data.classes.length === 0 && <p className="muted">Aucun élève ou aucun frais obligatoire pour le moment.</p>}
-      <ul className="rows">
-        {d.data.classes.map((c) => {
-          const tx = Number(c.attendu) ? Math.round((Number(c.encaisse) / Number(c.attendu)) * 100) : 0
-          return (
-            <li key={c.classe} style={{ padding: '12px 14px', borderTop: '1px solid var(--line)' }}>
-              <button type="button" onClick={() => setClasse(classe === c.classe ? null : c.classe)} style={{ display: 'flex', width: '100%', gap: 10, alignItems: 'center', border: 0, background: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
-                <div className="row-main">
-                  <div className="row-title">{c.classe}</div>
-                  <div className="row-sub">
-                    {c.effectif} élèves · reste {fcfa(c.reste)}
-                    {c.en_retard ? ` · ${c.en_retard} en retard` : ''}
-                  </div>
-                </div>
-                <b style={{ color: tx >= 80 ? 'var(--ok)' : tx >= 50 ? '#a35d00' : 'var(--danger)' }}>{tx} %</b>
-              </button>
-              {classe === c.classe && (
-                <div style={{ marginTop: 10 }}>
-                  {c.en_retard > 0 && (
-                    <button type="button" className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14, marginBottom: 8 }} onClick={() => relancer(c.classe)}>
-                      🔔 Rappeler les parents de {c.classe}
-                    </button>
-                  )}
-                  {!eleves.data && <p className="muted">Chargement…</p>}
-                  {eleves.data
-                    ?.filter((e) => e.reste > 0)
-                    .map((e) => (
-                      <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '5px 0', borderTop: '1px dashed var(--line)' }}>
-                        <a href={`#/eleves/${e.id}`}>
-                          {e.last_name} {e.first_name}
-                        </a>
-                        <span style={{ color: e.en_retard ? 'var(--danger)' : 'var(--muted)' }}>
-                          {fcfa(e.reste)}
-                          {e.en_retard ? ' · en retard' : ''}
-                        </span>
-                      </div>
-                    ))}
-                  {eleves.data && eleves.data.every((e) => e.reste === 0) && <p className="muted">Tous les élèves sont à jour. 👏</p>}
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
     </>
   )
 }
@@ -913,22 +768,18 @@ function Reglages() {
   }
   return (
     <form className="card" onSubmit={enregistrer}>
-      <b>Où les parents paient</b>
-      <p className="muted" style={{ fontSize: 14, margin: '4px 0 12px' }}>
-        Les parents paient directement sur ces numéros, puis signalent leur paiement : vous confirmez la réception dans « À confirmer ».
-      </p>
       <div className="grid2">
-        <Field label="Orange Money (numéro)">
+        <Field label="Orange Money">
           <input className="input" type="tel" placeholder="6 9X XX XX XX" value={v.orange} onChange={maj('orange')} />
         </Field>
-        <Field label="MTN MoMo (numéro)">
+        <Field label="MTN MoMo">
           <input className="input" type="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
         </Field>
       </div>
-      <Field label="Téléphone à appeler pour les paiements (affiché aux parents)">
+      <Field label="Téléphone pour les questions de paiement">
         <input className="input" type="tel" placeholder="6 XX XX XX XX" value={v.telephone} onChange={maj('telephone')} />
       </Field>
-      <Field label="Nom du titulaire et consignes (affichés aux parents)">
+      <Field label="Titulaire du compte et consignes aux parents">
         <textarea className="input" placeholder="ex. Compte au nom de LYCÉE DE YINGUI. Indiquez le nom de l’élève en motif." value={v.instructions} onChange={maj('instructions')} />
       </Field>
       <Note>{error}</Note>
@@ -943,46 +794,40 @@ function Reglages() {
 export default function Scolarite() {
   const { user } = useAuth()
   const etablissement = user.role === 'principal'
-  const [onglet, setOnglet] = useState(etablissement ? 'comptabilite' : 'paiements')
+  // Onglet demande dans l'adresse (#/scolarite?onglet=encaisser), par ex. depuis le bouton « + » ou l'accueil
+  const [onglet, setOnglet] = useState(() => {
+    const o = new URLSearchParams(window.location.hash.split('?')[1] || '').get('onglet')
+    return ['suivi', 'encaisser', 'confirmer', 'frais'].includes(o) ? o : 'suivi'
+  })
+  const aConfirmer = useApi(etablissement ? '/api/scolarite/ordres?statut=paye,litige' : null)
+  const nb = aConfirmer.data?.length || 0
+  if (!etablissement)
+    return (
+      <>
+        <h1 className="page-title">Scolarité</h1>
+        <Situation />
+      </>
+    )
   return (
     <>
       <h1 className="page-title">Scolarité</h1>
-      {etablissement ? (
-        <>
-          <p className="lede">Fixez vos frais, suivez les paiements et enregistrez ceux reçus au guichet.</p>
-          <div className="chips">
-            <button type="button" className="chip" aria-pressed={onglet === 'comptabilite'} onClick={() => setOnglet('comptabilite')}>
-              📈 Comptabilité
-            </button>
-            <button type="button" className="chip" aria-pressed={onglet === 'paiements'} onClick={() => setOnglet('paiements')}>
-              💳 Paiements
-            </button>
-            <button type="button" className="chip" aria-pressed={onglet === 'confirmer'} onClick={() => setOnglet('confirmer')}>
-              ⏳ À confirmer
-            </button>
-            <button type="button" className="chip" aria-pressed={onglet === 'recouvrement'} onClick={() => setOnglet('recouvrement')}>
-              📊 Recouvrement
-            </button>
-            <button type="button" className="chip" aria-pressed={onglet === 'frais'} onClick={() => setOnglet('frais')}>
-              📋 Frais
-            </button>
-            <button type="button" className="chip" aria-pressed={onglet === 'reglages'} onClick={() => setOnglet('reglages')}>
-              ⚙️ Réglages
-            </button>
-          </div>
-          {onglet === 'comptabilite' && <Comptabilite />}
-          {onglet === 'frais' && <Frais />}
-          {onglet === 'recouvrement' && <Recouvrement />}
-          {onglet === 'paiements' && <Paiements />}
-          {onglet === 'confirmer' && <AConfirmer />}
-          {onglet === 'reglages' && <Reglages />}
-        </>
-      ) : (
-        <>
-          <p className="lede">Ce qui est payé, ce qui reste, et le paiement par Mobile Money.</p>
-          <Situation />
-        </>
-      )}
+      <div className="segments" role="tablist">
+        {[
+          ['suivi', 'Suivi'],
+          ['encaisser', 'Encaisser'],
+          ['confirmer', 'À confirmer'],
+          ['frais', 'Frais'],
+        ].map(([k, t]) => (
+          <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}>
+            {t}
+            {k === 'confirmer' && nb > 0 && <span className="segment-nb">{nb}</span>}
+          </button>
+        ))}
+      </div>
+      {onglet === 'suivi' && <Comptabilite />}
+      {onglet === 'encaisser' && <Paiements />}
+      {onglet === 'confirmer' && <AConfirmer />}
+      {onglet === 'frais' && <Frais />}
     </>
   )
 }

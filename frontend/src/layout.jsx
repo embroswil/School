@@ -114,7 +114,7 @@ const TITRES = {
 const ACTIONS = [
   ['/info', IcMegaphone, 'Informer', 'Info, cours, photos'],
   ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
-  ['/scolarite', IcBillets, 'Encaisser', 'Paiement au guichet'],
+  ['/scolarite?onglet=encaisser', IcBillets, 'Encaisser', 'Paiement au guichet'],
   ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
   ['/presence-enseignants', IcProf, 'Enseignants', 'Cours assurés'],
   ['/import-eleves', IcListe, 'Élèves', 'Importer une liste'],
@@ -134,7 +134,8 @@ export default function Shell({ path, children }) {
   }, [path])
 
   const accueil = path === '/'
-  const titre = TITRES[path] || TITRES[`/${path.split('/')[1]}`] || ''
+  const chemin = path.split('?')[0]
+  const titre = TITRES[chemin] || TITRES[`/${chemin.split('/')[1]}`] || ''
   const isCurrent = (to) => (to === '/' ? path === '/' : path === to || path.startsWith(`${to}/`))
 
   return (
