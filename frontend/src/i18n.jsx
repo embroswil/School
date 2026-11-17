@@ -21,6 +21,26 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Type de document": "Document type",
+  "Résumé pour les familles (facultatif)": "Summary for families (optional)",
+  "Ajouter aussi aux emplois du temps des classes": "Also add to the class timetables",
+  "Mettre à jour les frais de scolarité": "Update the school fees",
+  "Ce document est un cahier d’appel : il sert à mettre à jour les absences, pas à être affiché aux familles.": "This document is an attendance register: it is used to update absences, not to be shown to families.",
+  "Mettre à jour les absences": "Update absences",
+  "Lecture et classement…": "Reading and sorting…",
+  "Ajouter vos premiers documents": "Add your first documents",
+  "Communiqués, calendriers, emplois du temps, frais, résultats… en PDF, Word, Excel, photo ou vidéo. Chaque document est lu et classé automatiquement.": "Notices, calendars, timetables, fees, results… as PDF, Word, Excel, photo or video. Each document is read and sorted automatically.",
+  "Rechercher un document": "Search for a document",
+  "Aucun document.": "No documents.",
+  "Ouvrir": "Open",
+  "Aucun document publié": "No published documents",
+  "Communiqués": "Notices",
+  "Réunions": "Meetings",
+  "Calendriers": "Calendars",
+  "Événements": "Events",
+  "Document": "Document",
+  "Autres documents": "Other documents",
+  "Date": "Date",
   "Choisissez votre affichage": "Choose your display",
   "Vous pourrez le changer à tout moment dans votre profil.": "You can change it at any time in your profile.",
   "Affichage": "Display",
@@ -1565,6 +1585,13 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) document\(s\) publié\(s\)$/, '$1 published document(s)'],
+  [/^À publier · (\d+)$/, 'To publish · $1'],
+  [/^Lecture (\d+) \/ (\d+)…$/, 'Reading $1 / $2…'],
+  [/^Publication (\d+) \/ (\d+)…$/, 'Publishing $1 / $2…'],
+  [/^(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre) (\d{4})$/, (_, m, a) => `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'].indexOf(m)]} ${a}`],
+  [/^(Tous|Communiqués|Réunions|Scolarité|Emplois du temps|Calendriers|Examens|Résultats|Absences|Fournitures|Cantine|Événements|Autres documents) · (\d+)$/, (_, g, n) => `${g === 'Tous' ? 'All' : traduire(g)} · ${n}`],
+  [/^· (Parents|Élèves|Enseignants)$/, (_, g) => `· ${{ Parents: 'Parents', Élèves: 'Students', Enseignants: 'Teachers' }[g]}`],
   [/^Jusqu’à (\d+) personnes de votre personnel peuvent administrer l’établissement \(proviseur, censeur, économe…\)\. (\d+) sur (\d+)\.$/, 'Up to $1 staff members can administer the school (principal, vice-principal, bursar…). $2 of $3.'],
   [/^Un établissement peut avoir (\d+) administrateurs au maximum$/, 'A school can have at most $1 administrators'],
   [/^Fichier trop lourd : (\d+) Mo maximum pour une (vidéo|photo)$/, (_, n, t) => `File too large: ${n} MB maximum for a ${t === 'vidéo' ? 'video' : 'photo'}`],

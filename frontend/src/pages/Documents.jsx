@@ -5,21 +5,26 @@ import { useApi } from '../hooks.js'
 import { useDepotPage } from '../depot.jsx'
 import CompteurIA from '../CompteurIA.jsx'
 import { Field, Note } from '../ui.jsx'
+import { IcImport } from '../icones.jsx'
 
 // Categories (memes cles que le serveur)
+// [cle, libelle enregistre, nom du groupe dans la liste]
 export const CATEGORIES = [
-  ['communique', 'Communiqué'],
-  ['reunion', 'Réunion'],
-  ['emploi', 'Emploi du temps'],
-  ['calendrier', 'Calendrier'],
-  ['examen', 'Examens'],
-  ['resultats', 'Résultats'],
-  ['fournitures', 'Fournitures'],
-  ['cantine', 'Cantine'],
-  ['evenement', 'Événement'],
-  ['autre', 'Document'],
+  ['communique', 'Communiqué', 'Communiqués'],
+  ['reunion', 'Réunion', 'Réunions'],
+  ['scolarite', 'Scolarité', 'Scolarité'],
+  ['emploi', 'Emploi du temps', 'Emplois du temps'],
+  ['calendrier', 'Calendrier', 'Calendriers'],
+  ['examen', 'Examens', 'Examens'],
+  ['resultats', 'Résultats', 'Résultats'],
+  ['absences', 'Récapitulatif des absences', 'Absences'],
+  ['fournitures', 'Fournitures', 'Fournitures'],
+  ['cantine', 'Cantine', 'Cantine'],
+  ['evenement', 'Événement', 'Événements'],
+  ['autre', 'Document', 'Autres documents'],
 ]
 const REFUS = {
+  cahier_appel: ['Ce document est un cahier d’appel : il sert à mettre à jour les absences, pas à être affiché aux familles.', '#/import-absences', 'Mettre à jour les absences'],
   liste_eleves: ['Ce document est une liste d’élèves : il ne sera pas affiché aux familles.', '#/import-eleves', 'Importer cette liste d’élèves'],
   discipline: ['Ce document concerne la discipline : il ne sera pas affiché dans le fil.', '#/discipline', 'Enregistrer les sanctions'],
   notes_nominatives: ['Ce document contient des notes d’élèves nommés : il ne sera pas affiché dans le fil. Les notes se saisissent dans Notes.', null, null],
@@ -67,9 +72,21 @@ export async function envoyer(fichier) {
   return { type: s.data.type, url: s.data.url, nom: fichier.name, mime }
 }
 
-// Televerser des documents : chacun est lu, classe et publie separement dans le fil des familles
+// Un document lu peut aussi alimenter une autre page (en plus d'etre publie)
+const AUSSI = {
+  emploi: ['#/import-emplois', 'Ajouter aussi aux emplois du temps des classes'],
+  scolarite: ['#/scolarite?onglet=frais', 'Mettre à jour les frais de scolarité'],
+}
+const PUBLICS = { tous: 'Tout le monde', parents: 'Parents', eleves: 'Élèves', enseignants: 'Enseignants' }
+const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+const groupeDe = (libelle) => (CATEGORIES.find((c) => c[1] === libelle) || CATEGORIES[CATEGORIES.length - 1])[2]
+const jour = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+const sansAccent = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
 const VIDE = { titre: '', categorie: 'autre', description: '', audience: 'tous', dateEvenement: '', lieu: '' }
 
+// Documents de l'etablissement : ajout (lecture et classement automatiques), puis liste publiee
+// rangee par type de document et par mois.
 export default function Documents() {
   const { user } = useAuth()
   const champ = useRef(null)
@@ -78,6 +95,8 @@ export default function Documents() {
   const [etat, setEtat] = useState('')
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
+  const [type, setType] = useState('')
+  const [q, setQ] = useState('')
 
   const maj = (id, champs) => setItems((l) => l.map((x) => (x.id === id ? { ...x, ...champs } : x)))
   const retirerItem = (id) => setItems((l) => l.filter((x) => x.id !== id))
@@ -130,125 +149,196 @@ export default function Documents() {
 
   async function retirer(id) {
     if (!window.confirm('Retirer ce document du fil ?')) return
-    await api.delete(`/api/actualites/${id}`)
-    liste.reload()
+    try {
+      await api.delete(`/api/actualites/${id}`)
+      liste.reload()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  // Liste publiee : types presents (dans l'ordre des categories), filtre, recherche, puis groupes par mois
+  const docs = [...(liste.data || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  const parType = new Map()
+  for (const d of docs) parType.set(groupeDe(d.categorie), (parType.get(groupeDe(d.categorie)) || 0) + 1)
+  const types = [...new Set(CATEGORIES.map((c) => c[2]))].filter((g) => parType.has(g))
+  const filtres = docs.filter((d) => (!type || groupeDe(d.categorie) === type) && (!q.trim() || sansAccent(d.title).includes(sansAccent(q.trim()))))
+  const mois = []
+  for (const d of filtres) {
+    const dt = new Date(d.created_at)
+    const cle = `${MOIS[dt.getMonth()]} ${dt.getFullYear()}`
+    if (!mois.length || mois[mois.length - 1].cle !== cle) mois.push({ cle, docs: [] })
+    mois[mois.length - 1].docs.push(d)
   }
 
   return (
     <>
       {zoneDepot}
-      <h1 className="page-title">Documents</h1>
-      <CompteurIA />
-      <p className="lede">Téléversez des communiqués, emplois du temps, calendriers, résultats… Sùkûl lit chaque document, le classe et l’affiche aux familles.</p>
-      <a className="btn btn-quiet btn-block" href="#/info" style={{ marginBottom: 12 }}>
-        ✏️ Plutôt écrire une information (avec photos)
-      </a>
+      <div className="page-tete">
+        <div>
+          <h1 className="page-title">Documents</h1>
+          {liste.data && <p className="muted">{docs.length ? `${docs.length} document(s) publié(s)` : 'Aucun document publié'}</p>}
+        </div>
+        <button type="button" className="btn bouton-icone" onClick={() => champ.current?.click()} disabled={Boolean(etat)}>
+          <IcImport size={18} /> Ajouter
+        </button>
+      </div>
       <input ref={champ} type="file" hidden multiple accept={ACCEPT} onChange={choisir} />
-      <button type="button" className="depot" onClick={() => champ.current?.click()} disabled={Boolean(etat)}>
-        <span style={{ fontSize: 34 }}>📄</span>
-        <b>{etat || (items.length ? 'Ajouter d’autres documents' : 'Choisir des documents')}</b>
-        <small>PDF, Word, Excel, PowerPoint, photos, vidéos · jusqu’à 10 fichiers</small>
-        <small className="astuce-depot">ou glissez-déposez vos fichiers n’importe où sur cette page</small>
-      </button>
+      <CompteurIA discret />
       <Note kind="ok">{ok}</Note>
       <Note>{error}</Note>
 
-      {items.map((x) => {
-        const refus = x.analyse && REFUS[x.analyse.nature]
-        return (
-          <div key={x.id} className="card doc-carte">
-            <div className="doc-entete">
-              <span className="doc-badge">{ETIQUETTE(x.nom, x.type)}</span>
-              <b className="doc-nom">{x.nom}</b>
-              <button type="button" className="doc-croix" aria-label="Ne pas ajouter ce document" title="Ne pas ajouter ce document" onClick={() => retirerItem(x.id)}>
-                ×
-              </button>
-            </div>
-            {(x.etape === 'envoi' || x.etape === 'lecture') && <p className="muted" style={{ marginTop: 8 }}>{x.etape === 'envoi' ? 'Envoi…' : 'Sùkûl lit le document…'}</p>}
-            {x.etape === 'erreur' && <Note>{x.message}</Note>}
-            {x.etape === 'pret' && refus && (
-              <div style={{ marginTop: 10 }}>
-                <Note>{refus[0]}</Note>
-                {refus[1] && (
-                  <a className="btn btn-block" href={refus[1]}>
-                    {refus[2]}
-                  </a>
-                )}
-              </div>
-            )}
-            {x.etape === 'pret' && !refus && (
-              <div style={{ marginTop: 10 }}>
-                <Field label="Titre">
-                  <input className="input" value={x.titre} onChange={(e) => maj(x.id, { titre: e.target.value })} />
-                </Field>
-                <p className="doc-libelle">Catégorie</p>
-                <div className="chips" style={{ marginBottom: 10 }}>
-                  {CATEGORIES.map(([k, v]) => (
-                    <button key={k} type="button" className="chip" aria-pressed={x.categorie === k} onClick={() => maj(x.id, { categorie: k })}>
-                      {v}
-                    </button>
-                  ))}
+      {/* ---------- documents en cours d'ajout ---------- */}
+      {items.length > 0 && (
+        <section className="docs-ajout">
+          <p className="niveau-titre">{etat || `À publier · ${items.length}`}</p>
+          {items.map((x) => {
+            const refus = x.analyse && REFUS[x.analyse.nature]
+            const aussi = !refus && AUSSI[x.categorie]
+            return (
+              <div key={x.id} className="doc-carte">
+                <div className="doc-entete">
+                  <span className="doc-badge">{ETIQUETTE(x.nom, x.type)}</span>
+                  <span className="doc-nom">
+                    <b data-brut>{x.nom}</b>
+                    {(x.etape === 'envoi' || x.etape === 'lecture') && <small>{x.etape === 'envoi' ? 'Envoi…' : 'Lecture et classement…'}</small>}
+                  </span>
+                  <button type="button" className="doc-croix" aria-label="Ne pas ajouter ce document" title="Ne pas ajouter ce document" onClick={() => retirerItem(x.id)}>
+                    ×
+                  </button>
                 </div>
-                <Field label="En bref (facultatif)">
-                  <textarea className="input" value={x.description} onChange={(e) => maj(x.id, { description: e.target.value })} style={{ minHeight: 60 }} />
-                </Field>
-                {['reunion', 'evenement', 'examen', 'calendrier'].includes(x.categorie) && (
-                  <div className="grid2">
-                    <Field label="Date">
-                      <input className="input" type="date" value={x.dateEvenement} onChange={(e) => maj(x.id, { dateEvenement: e.target.value })} />
-                    </Field>
-                    <Field label="Lieu">
-                      <input className="input" value={x.lieu} onChange={(e) => maj(x.id, { lieu: e.target.value })} />
-                    </Field>
+                {x.etape === 'erreur' && <Note>{x.message}</Note>}
+                {x.etape === 'pret' && refus && (
+                  <div className="doc-refus">
+                    <p>{refus[0]}</p>
+                    {refus[1] && (
+                      <a className="btn btn-block" href={refus[1]}>
+                        {refus[2]}
+                      </a>
+                    )}
                   </div>
                 )}
-                <Field label="Visible par">
-                  <select className="input" value={x.audience} onChange={(e) => maj(x.id, { audience: e.target.value })}>
-                    <option value="tous">Tout le monde</option>
-                    <option value="parents">Les parents</option>
-                    <option value="eleves">Les élèves</option>
-                    {user.role === 'principal' && <option value="enseignants">Les enseignants</option>}
-                  </select>
-                </Field>
+                {x.etape === 'pret' && !refus && (
+                  <div className="doc-champs">
+                    <Field label="Titre">
+                      <input className="input" value={x.titre} onChange={(e) => maj(x.id, { titre: e.target.value })} />
+                    </Field>
+                    <div className="grid2">
+                      <Field label="Type de document">
+                        <select className="input" value={x.categorie} onChange={(e) => maj(x.id, { categorie: e.target.value })}>
+                          {CATEGORIES.filter((c) => c[0] !== 'absences' || user.role === 'principal').map(([k, v]) => (
+                            <option key={k} value={k}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Visible par">
+                        <select className="input" value={x.audience} onChange={(e) => maj(x.id, { audience: e.target.value })}>
+                          <option value="tous">Tout le monde</option>
+                          <option value="parents">Les parents</option>
+                          <option value="eleves">Les élèves</option>
+                          {user.role === 'principal' && <option value="enseignants">Les enseignants</option>}
+                        </select>
+                      </Field>
+                    </div>
+                    {['reunion', 'evenement', 'examen', 'calendrier'].includes(x.categorie) && (
+                      <div className="grid2">
+                        <Field label="Date">
+                          <input className="input" type="date" value={x.dateEvenement} onChange={(e) => maj(x.id, { dateEvenement: e.target.value })} />
+                        </Field>
+                        <Field label="Lieu">
+                          <input className="input" value={x.lieu} onChange={(e) => maj(x.id, { lieu: e.target.value })} />
+                        </Field>
+                      </div>
+                    )}
+                    <Field label="Résumé pour les familles (facultatif)">
+                      <textarea className="input" value={x.description} onChange={(e) => maj(x.id, { description: e.target.value })} style={{ minHeight: 56 }} />
+                    </Field>
+                    {aussi && (
+                      <a className="lien-action" href={aussi[0]}>
+                        {aussi[1]}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )
-      })}
-      {publiables.length > 0 && (
-        <div className="actions" style={{ marginTop: 12 }}>
-          <button type="button" className="btn" onClick={publier} disabled={Boolean(etat)}>
-            {publiables.length === 1 ? 'Publier dans le fil' : `Publier les ${publiables.length} documents`}
-          </button>
-          <button type="button" className="btn btn-quiet" onClick={() => setItems([])}>
-            Tout annuler
-          </button>
-        </div>
+            )
+          })}
+          {publiables.length > 0 && (
+            <div className="actions">
+              <button type="button" className="btn" onClick={publier} disabled={Boolean(etat)}>
+                {publiables.length === 1 ? 'Publier' : `Publier les ${publiables.length} documents`}
+              </button>
+              <button type="button" className="btn btn-quiet" onClick={() => setItems([])} disabled={Boolean(etat)}>
+                Annuler
+              </button>
+            </div>
+          )}
+        </section>
       )}
 
-      <h2 className="section-title">Documents publiés</h2>
-      {liste.data?.length === 0 && <p className="muted">Aucun document pour le moment.</p>}
-      {liste.data?.length > 0 && (
-        <div className="docs-publies">
-          {liste.data.map((d) => (
-            <div key={d.id} className="doc-ligne">
-              <span className="doc-badge">{ETIQUETTE(d.title || '', 'document')}</span>
-              <span className="doc-texte">
-                <b>{d.title}</b>
-                <small>
-                  <span className="doc-cat">{d.categorie || 'Document'}</span>
-                  {new Date(d.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  {d.last_name ? ` · ${d.first_name} ${d.last_name}` : ''}
-                </small>
-              </span>
-              {(user.role === 'principal' || d.mien) && (
-                <button type="button" className="btn btn-quiet btn-danger" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => retirer(d.id)}>
-                  Retirer
+      {/* ---------- documents publies : par type, puis par mois ---------- */}
+      {liste.loading && !liste.data && <p className="muted">Chargement…</p>}
+      {liste.data && docs.length === 0 && items.length === 0 && (
+        <button type="button" className="import-zone" onClick={() => champ.current?.click()}>
+          <IcImport size={26} />
+          <b>Ajouter vos premiers documents</b>
+          <small>Communiqués, calendriers, emplois du temps, frais, résultats… en PDF, Word, Excel, photo ou vidéo. Chaque document est lu et classé automatiquement.</small>
+        </button>
+      )}
+      {docs.length > 0 && (
+        <>
+          {types.length > 1 && (
+            <div className="chips docs-types">
+              <button type="button" className="chip" aria-pressed={!type} onClick={() => setType('')}>
+                Tous · {docs.length}
+              </button>
+              {types.map((g) => (
+                <button key={g} type="button" className="chip" aria-pressed={type === g} onClick={() => setType(type === g ? '' : g)}>
+                  {g} · {parType.get(g)}
                 </button>
-              )}
+              ))}
             </div>
+          )}
+          {docs.length > 8 && <input className="input docs-recherche" type="search" placeholder="Rechercher un document" value={q} onChange={(e) => setQ(e.target.value)} />}
+          {filtres.length === 0 && <p className="muted">Aucun document.</p>}
+          {mois.map((m) => (
+            <section key={m.cle}>
+              <p className="niveau-titre">{m.cle}</p>
+              <ul className="liste-simple">
+                {m.docs.map((d) => {
+                  const f = Array.isArray(d.medias) ? d.medias[0] : null
+                  return (
+                    <li key={d.id}>
+                      <span className="doc-badge">{ETIQUETTE(f?.nom || d.title || '', f?.type || 'document')}</span>
+                      <span className="ls-texte">
+                        <b>{d.title}</b>
+                        <small>
+                          {groupeDe(d.categorie) === 'Autres documents' ? 'Document' : d.categorie} · {jour(d.created_at)}
+                          {d.audience && d.audience !== 'tous' ? ` · ${PUBLICS[d.audience] || ''}` : ''}
+                          {d.last_name && !d.mien ? ` · ${d.first_name} ${d.last_name}` : ''}
+                        </small>
+                        <span className="ls-actions">
+                          {f?.url && (
+                            <a className="lien-action" href={f.url} target="_blank" rel="noreferrer">
+                              Ouvrir
+                            </a>
+                          )}
+                          {(user.role === 'principal' || d.mien) && (
+                            <button type="button" className="lien-action discret" onClick={() => retirer(d.id)}>
+                              Retirer
+                            </button>
+                          )}
+                        </span>
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
           ))}
-        </div>
+        </>
       )}
     </>
   )

@@ -29,6 +29,7 @@ const CATEGORIES = [
   ["communique", "Communiqué", "annonce", /communiqu|note de service|note-de-service|avis|information/i],
   ["reunion", "Réunion", "evenement", /r[ée]union|assembl[ée]e|apee|parents/i],
   ["emploi", "Emploi du temps", "autre", /emploi|edt|horaire|planning/i],
+  ["scolarite", "Scolarité", "annonce", /frais|scolarit|pension|tranche|paiement|apee?\b/i],
   ["calendrier", "Calendrier", "evenement", /calendrier|vacances|rentr[ée]e|cong[ée]/i],
   ["examen", "Examens", "evenement", /examen|composition|s[ée]quence|bac|bepc|probatoire|devoir surveill/i],
   ["resultats", "Résultats", "resultats", /r[ée]sultat|tableau d.honneur|admis|classement|palmar/i],

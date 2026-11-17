@@ -1245,3 +1245,21 @@ html.ordi[data-theme='light'] .nav a[aria-current='page'] { background: #e8efff;
 .apercu-theme.sombre .at-barre { background: #fff; }
 .apercu-theme.sombre .at-vedette { background: linear-gradient(135deg, #12204a, #0a0f22); border: 1px solid rgba(47, 107, 255, 0.4); }
 .apercu-theme.sombre .at-ligne i, .apercu-theme.sombre .at-carte { background: #111318; border: 1px solid rgba(255, 255, 255, 0.08); }
+
+/* ---------- page Documents : ajout, puis documents classes par type et par mois ---------- */
+.doc-carte { margin: 0 0 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); }
+.doc-nom { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.doc-nom b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.doc-nom small { color: var(--muted); font-size: 12.5px; }
+.doc-champs { margin-top: 12px; }
+.doc-champs .field:last-of-type { margin-bottom: 8px; }
+.doc-refus { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--card-2); }
+.doc-refus p { margin-bottom: 10px; font-size: 14px; color: var(--text); }
+.docs-ajout { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.docs-ajout .actions { margin: 4px 0 6px; }
+.docs-types { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin-bottom: 10px; }
+.docs-types::-webkit-scrollbar { display: none; }
+.docs-types .chip { flex: none; }
+.docs-recherche { margin-bottom: 4px; }
+.liste-simple .doc-badge { align-self: flex-start; margin-top: 2px; }
+html.ordi .docs-types { flex-wrap: wrap; }
