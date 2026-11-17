@@ -1725,6 +1725,19 @@ const EN = {
   "Aucun budget ni journal de dépenses reconnu : le tableau doit avoir des colonnes « Poste » et « Montant », ou « Date », « Libellé » et « Montant ».": "No budget or expense ledger recognised: the table must have « Item » and « Amount » columns, or « Date », « Description » and « Amount ».",
   "Voir les cours où l’appel n’a pas été fait": "See the lessons with no roll call",
   "Cours sans appel": "Lessons with no roll call",
+  "Commencez la comptabilité de l’année": "Start this year’s accounting",
+  "Importez votre budget, le journal des dépenses ou le journal des paiements de scolarité (Excel ou CSV). Vous pouvez aussi saisir les opérations une à une.": "Import your budget, expense ledger or school-fee payment ledger (Excel or CSV). You can also enter transactions one by one.",
+  "Importer un fichier": "Import a file",
+  "Saisir une opération": "Enter a transaction",
+  "Vue d’ensemble": "Overview",
+  "Solde": "Balance",
+  "Vérifier l’import": "Check the import",
+  "Paiements de scolarité": "School-fee payments",
+  "Importer un fichier ": "Import a file",
+  "Aucun tableau de montants trouvé. Utilisez un fichier Excel ou CSV : budget, journal des dépenses ou journal des paiements de scolarité.": "No table of amounts found. Use an Excel or CSV file: budget, expense ledger or school-fee payment ledger.",
+  "Fichier trop volumineux : découpez-le ou gardez seulement les feuilles utiles, puis réessayez.": "File too large: split it or keep only the useful sheets, then try again.",
+  "Données envoyées illisibles": "Unreadable data sent",
+  "Aucun tableau reconnu : il faut des colonnes « Poste » et « Montant » (budget), « Date », « Libellé » et « Montant » (dépenses), ou « Date », « Matricule », « Frais » et « Montant » (paiements de scolarité).": "No table recognised: it needs « Item » and « Amount » columns (budget), « Date », « Description » and « Amount » (expenses), or « Date », « Registration no. », « Fee » and « Amount » (school-fee payments)."
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
@@ -1767,6 +1780,13 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^dont scolarité (.+)$/, 'of which school fees $1'],
+  [/^([\d  ,.]+) paiement\(s\) à enregistrer$/, '$1 payment(s) to record'],
+  [/^Total (.+ FCFA) · un reçu vérifiable par paiement, visible par les parents$/, 'Total $1 · one verifiable receipt per payment, visible to parents'],
+  [/^([\d  ,.]+) déjà enregistré\(s\), ignoré\(s\)$/, '$1 already recorded, skipped'],
+  [/^(\d+) matricule\(s\) introuvable\(s\) dans la liste des élèves : (.+)$/, '$1 registration no.(s) not found in the student list: $2'],
+  [/^Frais à créer d’abord dans Scolarité › Frais : (.+)$/, 'Fees to create first in School fees › Fees: $1'],
+  [/^([\d  ,.]+) paiement\(s\) de scolarité enregistré\(s\)$/, '$1 school-fee payment(s) recorded'],
   [/^À payer (.+)$/, 'To pay $1'],
   [/^Recettes (.+ FCFA)$/, 'Income $1'],
   [/^(\d+) opération\(s\) et (\d+) poste\(s\) importés$/, '$1 transaction(s) and $2 item(s) imported'],

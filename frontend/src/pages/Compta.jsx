@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Field, Note, annoncer } from '../ui.jsx'
-import { IcImport, IcPlus } from '../icones.jsx'
+import { IcGraphique, IcImport, IcPlus } from '../icones.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
 import { useDepotPage } from '../depot.jsx'
 import { exporterExcel } from '../export.jsx'
@@ -279,9 +279,14 @@ export default function Compta() {
     setBusy('Lecture du classeur…')
     try {
       const doc = await preparerDocument(fichiers)
-      if (!doc.texte.trim()) throw new Error('Utilisez un fichier Excel ou CSV : le budget et le journal des dépenses sont lus directement dans le tableau.')
-      const r = await api.post('/api/comptabilite/importer', { texte: doc.texte, apercu: true })
-      setImport({ texte: doc.texte, nom: fichiers[0].name, ...r.data })
+      // seules les feuilles avec des montants sont envoyees (listes d'eleves, resumes : ignores)
+      const texte = doc.texte
+        .split(/\n(?=\[[^\]\n]+\]\n)/)
+        .filter((f) => /montant|prévu|prevu|budget/i.test(f.split('\n').slice(0, 16).join(' ')))
+        .join('\n')
+      if (!texte.trim()) throw new Error('Aucun tableau de montants trouvé. Utilisez un fichier Excel ou CSV : budget, journal des dépenses ou journal des paiements de scolarité.')
+      const r = await api.post('/api/comptabilite/importer', { texte, apercu: true })
+      setImport({ texte, nom: fichiers[0].name, ...r.data })
     } catch (err) {
       setError(err.message)
     }
@@ -293,7 +298,7 @@ export default function Compta() {
     setBusy('Import…')
     try {
       const r = await api.post('/api/comptabilite/importer', { texte: import_.texte })
-      annoncer(`${r.data.operations} opération(s) et ${r.data.postesNouveaux + r.data.postesMaj} poste(s) importés`)
+      annoncer(r.data.paiements ? `${r.data.paiements.toLocaleString('fr-FR')} paiement(s) de scolarité enregistré(s)` : `${r.data.operations} opération(s) et ${r.data.postesNouveaux + r.data.postesMaj} poste(s) importés`)
       setImport(null)
       recharger()
     } catch (err) {
@@ -313,7 +318,7 @@ export default function Compta() {
   if (resume.error) return <Note>{resume.error}</Note>
   if (!d) return <p className="muted">Chargement…</p>
   const postes = budget.data || []
-  const vide = !postes.length && !(ops.data || []).length
+  const vide = Boolean(budget.data && ops.data) && !postes.length && !ops.data.length && !d.recettes.scolarite
 
   // ---------- apercu d'un import ----------
   if (import_) {
@@ -321,7 +326,7 @@ export default function Compta() {
       <>
         <div className="page-tete">
           <div>
-            <h1 className="page-title">Importer</h1>
+            <h1 className="page-title">Vérifier l’import</h1>
             <p className="muted" data-brut>
               {import_.nom}
             </p>
@@ -336,6 +341,16 @@ export default function Compta() {
               {import_.postesMaj > 0 && <small>{`${import_.postesMaj} poste(s) déjà présent(s) seront mis à jour`}</small>}
             </div>
           )}
+          {import_.paiementsLus > 0 && (
+            <div>
+              <span>Paiements de scolarité</span>
+              <b>{`${import_.paiements.toLocaleString('fr-FR')} paiement(s) à enregistrer`}</b>
+              {import_.paiements > 0 && <small>{`Total ${fcfa(import_.paiementsTotal)} · un reçu vérifiable par paiement, visible par les parents`}</small>}
+              {import_.paiementsDeja > 0 && <small>{`${import_.paiementsDeja.toLocaleString('fr-FR')} déjà enregistré(s), ignoré(s)`}</small>}
+              {import_.elevesInconnus > 0 && <small className="rouge">{`${import_.elevesInconnus} matricule(s) introuvable(s) dans la liste des élèves : ${import_.exemplesInconnus.join(', ')}`}</small>}
+              {import_.fraisInconnus.length > 0 && <small className="rouge">{`Frais à créer d’abord dans Scolarité › Frais : ${import_.fraisInconnus.join(', ')}`}</small>}
+            </div>
+          )}
           {import_.operations + import_.dejaImportees > 0 && (
             <div>
               <span>Journal</span>
@@ -347,7 +362,7 @@ export default function Compta() {
         </div>
         <Note>{error}</Note>
         <div className="disc-barre">
-          <button type="button" className="btn" disabled={Boolean(busy)} onClick={confirmerImport}>
+          <button type="button" className="btn" disabled={Boolean(busy) || !(import_.paiements || import_.operations || import_.postesNouveaux || import_.postesMaj)} onClick={confirmerImport}>
             {busy || 'Importer'}
           </button>
           <button type="button" className="btn btn-quiet" disabled={Boolean(busy)} onClick={() => setImport(null)}>
@@ -424,48 +439,59 @@ export default function Compta() {
   return (
     <>
       {zoneDepot}
-      <div className="page-tete">
-        <div>
-          <h1 className="page-title">Comptabilité</h1>
-          <p className="muted">{`Année scolaire ${d.annee}`}</p>
-        </div>
-      </div>
-      <div className="cpt-boutons">
-          <button type="button" className="btn btn-quiet bouton-icone" disabled={Boolean(busy)} onClick={() => champ.current?.click()}>
-            <IcImport size={18} /> Importer
-          </button>
-          <button type="button" className="btn bouton-icone" onClick={() => setForm({ type: 'op' })}>
-            <IcPlus size={18} /> Opération
-          </button>
-      </div>
       <input ref={champ} type="file" hidden accept=".xlsx,.xls,.csv,.ods" onChange={lire} />
+      <div className="cpt-haut">
+        <span className="muted">{`Année ${d.annee}`}</span>
+        {!vide && (
+          <span className="cpt-actions">
+            <button type="button" className="btn btn-quiet" disabled={Boolean(busy)} onClick={() => champ.current?.click()} aria-label="Importer un fichier">
+              <IcImport size={17} /> Importer
+            </button>
+            <button type="button" className="btn" onClick={() => setForm({ type: 'op' })}>
+              <IcPlus size={17} /> Opération
+            </button>
+          </span>
+        )}
+      </div>
       {busy && <p className="muted">{busy}</p>}
       <Note>{error}</Note>
 
-      <div className="suivi-total">
-        <div className="suivi-total-tete">
-          <span>Solde de l’année</span>
+      {vide ? (
+        <div className="cpt-vide">
+          <span className="cpt-vide-ico" aria-hidden="true">
+            <IcGraphique size={26} />
+          </span>
+          <b>Commencez la comptabilité de l’année</b>
+          <small>Importez votre budget, le journal des dépenses ou le journal des paiements de scolarité (Excel ou CSV). Vous pouvez aussi saisir les opérations une à une.</small>
+          <button type="button" className="btn btn-block" disabled={Boolean(busy)} onClick={() => champ.current?.click()}>
+            <IcImport size={18} /> Importer un fichier
+          </button>
+          <button type="button" className="btn btn-quiet btn-block" onClick={() => setForm({ type: 'op' })}>
+            Saisir une opération
+          </button>
         </div>
-        <strong className={d.solde < 0 ? 'rouge' : ''}>{fcfa(d.solde)}</strong>
-        <small>{`Recettes encaissées moins dépenses payées depuis septembre`}</small>
-        <div className="suivi-total-pied">
-          <span>
-            Recettes <b>{fcfa(d.recettes.total)}</b>
-          </span>
-          <span>
-            Dépenses <b>{fcfa(d.depenses.payees)}</b>
-          </span>
-          {d.depenses.engagees > 0 && (
-            <span>
-              À payer <b>{fcfa(d.depenses.engagees)}</b>
-            </span>
-          )}
+      ) : (
+        <>
+      <div className="cpt-resume">
+        <div className="cpt-solde">
+          <span>Solde de l’année</span>
+          <b className={d.solde < 0 ? 'rouge' : ''}>{fcfa(d.solde)}</b>
+        </div>
+        <div>
+          <span>Recettes</span>
+          <b>{fcfa(d.recettes.total)}</b>
+          {d.recettes.scolarite > 0 && <small>{`dont scolarité ${fcfa(d.recettes.scolarite)}`}</small>}
+        </div>
+        <div>
+          <span>Dépenses</span>
+          <b>{fcfa(d.depenses.payees)}</b>
+          {d.depenses.engagees > 0 && <small>{`À payer ${fcfa(d.depenses.engagees)}`}</small>}
         </div>
       </div>
 
-      <div className="segments" role="tablist">
+      <div className="segments petit" role="tablist">
         <button type="button" role="tab" aria-selected={vue === 'bord'} onClick={() => setVue('bord')}>
-          Tableau de bord
+          Vue d’ensemble
         </button>
         <button type="button" role="tab" aria-selected={vue === 'ops'} onClick={() => setVue('ops')}>
           Opérations
@@ -475,43 +501,8 @@ export default function Compta() {
         </button>
       </div>
 
-      {vide && vue !== 'budget' && (
-        <button type="button" className="import-zone" onClick={() => champ.current?.click()}>
-          <IcImport size={26} />
-          <b>Importer le budget et le journal des dépenses</b>
-          <small>Classeur Excel ou CSV avec les colonnes Poste, Nature, Montant (budget) et Date, Libellé, Montant (dépenses). Les paiements de scolarité sont déjà comptés automatiquement.</small>
-        </button>
-      )}
-
       {vue === 'bord' && (
         <>
-          <div className="compta-kpis">
-            <div className="compta-kpi">
-              <span>Scolarité encaissée</span>
-              <b>{fcfa(d.recettes.scolarite)}</b>
-              <small>Paiements enregistrés dans Sùkûl</small>
-            </div>
-            <div className="compta-kpi">
-              <span>Autres recettes</span>
-              <b>{fcfa(d.recettes.autres)}</b>
-              <small>Subventions, locations, dons…</small>
-            </div>
-            {d.budget.postes > 0 && (
-              <>
-                <div className="compta-kpi">
-                  <span>Recettes prévues</span>
-                  <b>{`${taux(d.recettes.total, d.budget.recettesPrevues)} %`}</b>
-                  <small>{`de ${fcfa(d.budget.recettesPrevues)}`}</small>
-                </div>
-                <div className="compta-kpi">
-                  <span>Budget dépensé</span>
-                  <b>{`${taux(d.depenses.payees, d.budget.depensesPrevues)} %`}</b>
-                  <small>{`de ${fcfa(d.budget.depensesPrevues)}`}</small>
-                </div>
-              </>
-            )}
-          </div>
-
           <p className="niveau-titre">Par mois</p>
           <div className="cpt-mois card">
             <div className="cpt-legende">
@@ -554,7 +545,7 @@ export default function Compta() {
           {d.dernieres.length > 0 && (
             <>
               <p className="niveau-titre">Dernières opérations</p>
-              <ul className="liste-simple">{d.dernieres.map(ligneOp)}</ul>
+              <ul className="liste-simple">{d.dernieres.slice(0, 4).map(ligneOp)}</ul>
               <button type="button" className="lien-action cpt-ajout" onClick={() => setVue('ops')}>
                 Tout le journal
               </button>
@@ -563,7 +554,7 @@ export default function Compta() {
         </>
       )}
 
-      {vue === 'ops' && !vide && (
+      {vue === 'ops' && (
         <>
           <div className="cpt-filtres">
             <div className="chips">
@@ -597,6 +588,9 @@ export default function Compta() {
         <>
           {sectionPostes('recette')}
           {sectionPostes('depense')}
+        </>
+      )}
+
         </>
       )}
 

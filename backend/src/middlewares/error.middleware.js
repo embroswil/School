@@ -9,8 +9,8 @@ const notFound = (req, res, next) => {
 // Traduit les erreurs PostgreSQL / body-parser courantes en réponses propres.
 const normalize = (err) => {
   if (err instanceof ApiError) return err;
-  if (err.type === "entity.parse.failed") return new ApiError(400, "Invalid JSON body");
-  if (err.type === "entity.too.large") return new ApiError(413, "Request body too large");
+  if (err.type === "entity.parse.failed") return new ApiError(400, "Données envoyées illisibles");
+  if (err.type === "entity.too.large") return new ApiError(413, "Fichier trop volumineux : découpez-le ou gardez seulement les feuilles utiles, puis réessayez.");
 
   switch (err.code) {
     case "23505": return new ApiError(409, "Cet élément existe déjà");

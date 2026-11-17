@@ -1403,9 +1403,30 @@ html.ordi .annonce { bottom: 32px; }
 .verif-form { margin-top: 14px; }
 
 /* ---------- module comptabilite ---------- */
-.cpt-boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: -4px 0 14px; }
-.cpt-boutons .btn { padding: 11px 14px; font-size: 14px; justify-content: center; }
-html.ordi .cpt-boutons { display: flex; justify-content: flex-end; margin-top: -58px; }
+.cpt-haut { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 12px; min-height: 38px; }
+.cpt-haut > .muted { font-size: 13.5px; }
+.cpt-actions { display: flex; gap: 8px; }
+.cpt-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 13.5px; border-radius: 11px; }
+.cpt-resume { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.cpt-resume > div { padding: 13px 14px; min-width: 0; }
+.cpt-resume > div:last-child { border-left: 1px solid var(--line); }
+.cpt-resume > .cpt-solde { grid-column: 1 / -1; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.cpt-resume .cpt-solde b { font-size: 24px; }
+html.ordi .cpt-resume { grid-template-columns: 1.4fr 1fr 1fr; }
+html.ordi .cpt-resume > .cpt-solde { grid-column: auto; border-bottom: 0; }
+html.ordi .cpt-resume > div + div { border-left: 1px solid var(--line); }
+.cpt-resume span { display: block; color: var(--muted); font: 700 11px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; }
+.cpt-resume b { display: block; margin-top: 7px; font: 800 16px/1.2 var(--font-display); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cpt-resume small { display: block; margin-top: 4px; color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+.cpt-resume .cpt-solde b { color: var(--text); }
+html.ordi .cpt-resume b { font-size: 20px; }
+html.ordi .cpt-resume > div { padding: 16px 18px; }
+.cpt-vide { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 20px 20px; text-align: center; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+.cpt-vide-ico { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); margin-bottom: 4px; }
+.cpt-vide b { font: 800 17px/1.3 var(--font-display); }
+.cpt-vide small { color: var(--muted); font-size: 13.5px; line-height: 1.5; max-width: 360px; margin-bottom: 8px; }
+.cpt-vide .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; max-width: 360px; }
+.cpt-apercu small.rouge { font-weight: 600; }
 .cpt-mois { padding: 14px; }
 .cpt-legende { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
 .cpt-legende span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }

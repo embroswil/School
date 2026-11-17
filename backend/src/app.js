@@ -19,6 +19,7 @@ app.use(cors(allowedOrigins ? { origin: allowedOrigins } : {}));
 app.use("/api/etablissement/lire-images", express.json({ limit: "15mb" }));
 app.use("/api/etablissement/enseignants/lire", express.json({ limit: "15mb" }));
 app.use("/api/vie-scolaire/sanctions/lire", express.json({ limit: "15mb" }));
+app.use("/api/comptabilite/importer", express.json({ limit: "15mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 // --- santé ------------------------------------------------------------------

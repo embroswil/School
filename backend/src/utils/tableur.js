@@ -247,8 +247,33 @@ function comptabilite(texte) {
   const postes = [];
   const operations = [];
   const montantDe = (v) => parseInt(String(v || "").replace(/[^\d]/g, ""), 10);
+  const paiements = [];
   for (const f of feuilles(texte)) {
     const nomFeuille = sansAccent(f.nom);
+    // journal des paiements de scolarite : un recu par ligne (matricule de l'eleve, frais, montant)
+    const p = entete(f.lignes, {
+      date: /^date/,
+      montant: /^montant/,
+      matricule: /^matricule/,
+      frais: /^(frais|objet|motif)/,
+      "recu?": /recu/,
+      "mode?": /^(moyen|mode)/,
+      "ref?": /^ref/,
+      "nom?": /^nom$/,
+      "prenom?": /^prenom/,
+    });
+    if (p) {
+      const val = (l, k) => (p.pos[k] !== undefined ? String(l[p.pos[k]] || "").trim() : "");
+      for (const l of f.lignes.slice(p.ligne + 1)) {
+        const montant = montantDe(l[p.pos.montant]);
+        const date = dateIso(l[p.pos.date]);
+        const matricule = val(l, "matricule");
+        const fraisNom = val(l, "frais");
+        if (!(montant > 0) || !date || !matricule || !fraisNom) continue;
+        paiements.push({ date, montant, matricule, frais: fraisNom, recu: val(l, "recu?") || null, mode: val(l, "mode?"), reference: val(l, "ref?") || null, nom: `${val(l, "nom?")} ${val(l, "prenom?")}`.trim() });
+      }
+      continue;
+    }
     const j = entete(f.lignes, {
       date: /^date/,
       libelle: /^(libelle|designation|objet|intitule|operation)/,
@@ -301,7 +326,7 @@ function comptabilite(texte) {
       });
     }
   }
-  return postes.length || operations.length ? { postes, operations } : null;
+  return postes.length || operations.length || paiements.length ? { postes, operations, paiements } : null;
 }
 
 module.exports = { feuilles, emplois, absences, frais, sanctions, comptabilite, dateIso };

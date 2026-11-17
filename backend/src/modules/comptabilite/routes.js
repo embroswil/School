@@ -258,17 +258,67 @@ router.delete("/operations/:id", async (req, res, next) => {
   }
 });
 
+// Paiements de scolarite lus dans un journal : eleve retrouve par son matricule, frais par son nom.
+const cle = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[’']/g, "'").replace(/[–—]/g, "-").replace(/\s+/g, " ").toLowerCase().trim();
+const MODE = (m) => {
+  const t = cle(m);
+  if (/orange|mtn|momo|mobile/.test(t)) return "mobile_money";
+  if (/espece|guichet|caisse|cash/.test(t)) return "especes";
+  if (/banque|virement|cheque|bancaire/.test(t)) return "banque";
+  return "autre";
+};
+async function preparerPaiements(ecole, annee, lus) {
+  if (!lus.length) return { lignes: [], elevesInconnus: 0, exemples: [], fraisInconnus: [], deja: 0 };
+  const eleves = new Map();
+  for (const e of (await db.query("SELECT u.id, r.admission_number FROM users u JOIN student_records r ON r.student_id = u.id WHERE u.school_id = $1 AND u.role = 'student' AND r.admission_number IS NOT NULL", [ecole])).rows) {
+    const m = cle(e.admission_number);
+    eleves.set(m, e.id);
+    eleves.set(m.replace(/^\d+-/, ""), e.id); // matricules enregistres avec le numero de l'etablissement (12-LAV00001)
+  }
+  const frais = new Map((await db.query("SELECT id, nom FROM frais_scolaires WHERE school_id = $1 AND (academic_year_id IS NULL OR academic_year_id = $2)", [ecole, annee?.id || null])).rows.map((f) => [cle(f.nom), f.id]));
+  const recus = lus.map((p) => p.recu).filter(Boolean);
+  const existants = new Set(recus.length ? (await db.query("SELECT numero_recu FROM paiements_scolaires WHERE numero_recu = ANY($1)", [recus])).rows.map((r) => r.numero_recu) : []);
+  const lignes = [];
+  const inconnus = new Set();
+  const exemples = [];
+  const fraisInconnus = new Set();
+  let deja = 0;
+  for (const p of lus) {
+    if (p.recu && existants.has(p.recu)) {
+      deja++;
+      continue;
+    }
+    const eleve = eleves.get(cle(p.matricule));
+    const f = frais.get(cle(p.frais));
+    if (!f) fraisInconnus.add(p.frais);
+    if (!eleve) {
+      if (!inconnus.has(p.matricule) && exemples.length < 5) exemples.push(`${p.nom || ""} (${p.matricule})`.trim());
+      inconnus.add(p.matricule);
+    }
+    if (eleve && f) lignes.push({ ...p, eleve, fraisId: f, modeDb: MODE(p.mode) });
+  }
+  return { lignes, elevesInconnus: inconnus.size, exemples, fraisInconnus: [...fraisInconnus], deja };
+}
+
 // POST /api/comptabilite/importer { texte, apercu } : budget et journal depuis un classeur (Excel, CSV).
 // Les postes existants sont mis a jour, les operations deja importees (meme piece) sont ignorees.
 router.post("/importer", async (req, res, next) => {
   try {
     const { ecole, annee } = await contexte(req);
     const lu = require("../../utils/tableur").comptabilite(String(req.body?.texte || ""));
-    if (!lu) throw new ApiError(400, "Aucun budget ni journal de dépenses reconnu : le tableau doit avoir des colonnes « Poste » et « Montant », ou « Date », « Libellé » et « Montant ».");
+    if (!lu) throw new ApiError(400, "Aucun tableau reconnu : il faut des colonnes « Poste » et « Montant » (budget), « Date », « Libellé » et « Montant » (dépenses), ou « Date », « Matricule », « Frais » et « Montant » (paiements de scolarité).");
     const existants = new Map((await db.query("SELECT id, lower(nom) AS cle FROM compta_postes WHERE school_id = $1 AND (academic_year_id IS NULL OR academic_year_id = $2)", [ecole, annee?.id || null])).rows.map((p) => [p.cle, p.id]));
     const pieces = new Set((await db.query("SELECT piece FROM compta_operations WHERE school_id = $1 AND piece IS NOT NULL", [ecole])).rows.map((r) => r.piece));
     const nouvellesOps = lu.operations.filter((o) => !o.piece || !pieces.has(o.piece));
+    const paie = await preparerPaiements(ecole, annee, lu.paiements || []);
     const resume = {
+      paiements: paie.lignes.length,
+      paiementsTotal: paie.lignes.reduce((t, p) => t + p.montant, 0),
+      paiementsLus: (lu.paiements || []).length,
+      paiementsDeja: paie.deja,
+      elevesInconnus: paie.elevesInconnus,
+      exemplesInconnus: paie.exemples,
+      fraisInconnus: paie.fraisInconnus,
       postesNouveaux: lu.postes.filter((p) => !existants.has(p.nom.toLowerCase())).length,
       postesMaj: lu.postes.filter((p) => existants.has(p.nom.toLowerCase())).length,
       operations: nouvellesOps.length,
@@ -298,6 +348,19 @@ router.post("/importer", async (req, res, next) => {
           [ecole, annee?.id || null, o.date, o.sens, o.libelle.slice(0, 200), existants.get(o.libelle.toLowerCase()) || null, o.categorie, o.montant, o.tiers, o.mode, o.piece, o.etat, req.user.id]
         );
       }
+      // paiements de scolarite : par lots, sans notification (historique)
+      for (let i = 0; i < paie.lignes.length; i += 1000) {
+        const lot = paie.lignes.slice(i, i + 1000);
+        await client.query(
+          `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, enregistre_par, created_at, confirme_le, numero_recu)
+           SELECT $1, f, e, m, mo, 'reussi', NULLIF(r, ''), $2, d, d, NULLIF(n, '')
+           FROM unnest($3::int[], $4::int[], $5::int[], $6::text[], $7::text[], $8::timestamp[], $9::text[]) AS t(f, e, m, mo, r, d, n)
+           ON CONFLICT DO NOTHING`,
+          [ecole, req.user.id, lot.map((p) => p.fraisId), lot.map((p) => p.eleve), lot.map((p) => p.montant), lot.map((p) => p.modeDb), lot.map((p) => p.reference || ""), lot.map((p) => `${p.date} 12:00:00`), lot.map((p) => p.recu || "")]
+        );
+      }
+      // numero de recu pour les paiements importes sans numero
+      await client.query("UPDATE paiements_scolaires SET numero_recu = 'REC-' || to_char(created_at, 'YYYY') || '-' || lpad(id::text, 6, '0') WHERE school_id = $1 AND numero_recu IS NULL AND statut = 'reussi'", [ecole]);
       await client.query("COMMIT");
     } catch (e) {
       await client.query("ROLLBACK");
