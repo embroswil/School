@@ -1,4 +1,4 @@
-import { useState as useStateUi } from 'react'
+import { useEffect, useState, useState as useStateUi } from 'react'
 import { ChoixLangue } from './i18n.jsx'
 
 export function Field({ label, children }) {
@@ -11,7 +11,12 @@ export function Field({ label, children }) {
 }
 
 export function Note({ kind = 'error', children }) {
-  if (!children) return null
+  // Une confirmation (texte simple) s'affiche brievement en bas de l'ecran, puis disparait
+  const breve = kind === 'ok' && typeof children === 'string'
+  useEffect(() => {
+    if (breve && children) annoncer(children.replace(/^✓\s*/, ''))
+  }, [breve, children])
+  if (!children || breve) return null
   return (
     <p className={`note note-${kind}`} role={kind === 'error' ? 'alert' : 'status'}>
       {children}
@@ -111,6 +116,32 @@ export function PageAuth({ titre, sousTitre, retour, children, pied }) {
         </p>
       </main>
       <footer className="auth-pied">Sùkûl by Embroswil · © {new Date().getFullYear()}</footer>
+    </div>
+  )
+}
+
+// Confirmation breve (« Enregistré ») affichee en bas de l'ecran, puis effacee toute seule
+export const annoncer = (texte) => window.dispatchEvent(new CustomEvent('sukul-annonce', { detail: texte }))
+export function Annonces() {
+  const [texte, setTexte] = useState('')
+  useEffect(() => {
+    let minuterie
+    const recu = (e) => {
+      setTexte(e.detail)
+      clearTimeout(minuterie)
+      minuterie = setTimeout(() => setTexte(''), Math.min(9000, 3200 + String(e.detail).length * 35))
+    }
+    window.addEventListener('sukul-annonce', recu)
+    return () => {
+      window.removeEventListener('sukul-annonce', recu)
+      clearTimeout(minuterie)
+    }
+  }, [])
+  if (!texte) return null
+  return (
+    <div className="annonce" role="status" onClick={() => setTexte('')}>
+      <span className="annonce-ico" aria-hidden="true">✓</span>
+      {texte}
     </div>
   )
 }

@@ -1303,3 +1303,25 @@ html.ordi .docs-dossiers { grid-template-columns: repeat(4, minmax(0, 1fr)); gap
 .eq-etiquettes { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .doc-remplace { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-top: 3px; color: var(--lien); font-size: 12.5px; font-weight: 600; }
 .doc-remplace .lien-action { font-size: 12.5px; }
+
+/* ---------- confirmation breve en bas de l'ecran ---------- */
+.annonce { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 90; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; width: max-content; max-width: min(92vw, 460px); padding: 12px 16px; border-radius: 14px; background: #0d1424; color: #fff; font: 600 14.5px/1.35 var(--font-body); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35); animation: annonce-entree 0.22s ease; cursor: pointer; }
+[data-theme='dark'] .annonce, :root:not([data-theme]) .annonce { background: #f3f5fa; color: #0d1424; }
+.annonce-ico { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #12b76a; color: #fff; font-size: 13px; font-weight: 800; }
+html.ordi .annonce { bottom: 32px; }
+@keyframes annonce-entree { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ---------- discipline ---------- */
+.disc-barre { display: flex; gap: 10px; margin: 2px 0 8px; }
+.disc-barre .btn { flex: none; }
+.disc-info { font-size: 13px; margin-bottom: 6px; }
+.disc-lu { margin-bottom: 8px; font-size: 14px; }
+.disc-liste li > input[type='checkbox'] { flex: none; width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary); }
+.disc-liste li.disc-ignore { opacity: 0.45; }
+.disc-edition { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.disc-edition input:last-child { grid-column: 1 / -1; }
+.doc-aussi { margin: 2px 0 0; font-size: 13.5px; color: var(--muted); }
+.doc-aussi input { accent-color: var(--primary); }
+.suivi-niveau { display: flex; justify-content: space-between; gap: 10px; }
+.suivi-niveau span:last-child { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.suivi-liens { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; }

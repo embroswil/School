@@ -5,6 +5,7 @@ import { usePath } from './router.js'
 import Shell from './layout.jsx'
 import Secours from './Secours.jsx'
 import PremierTheme from './PremierTheme.jsx'
+import { Annonces } from './ui.jsx'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
@@ -220,6 +221,7 @@ export default function App() {
         <Root />
       </AuthProvider>
       <PremierTheme />
+      <Annonces />
     </Secours>
   )
 }

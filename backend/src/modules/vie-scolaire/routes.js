@@ -157,6 +157,26 @@ router.get("/sanctions/eleves/:id", async (req, res, next) => {
 
 // POST /api/vie-scolaire/sanctions { studentId, type, motif, date, dureeJours }
 // Administration, ou professeur principal de la classe de l'eleve. Les parents sont prevenus.
+// GET /api/vie-scolaire/sanctions : sanctions de l'etablissement (les plus recentes d'abord)
+router.get("/sanctions", async (req, res, next) => {
+  try {
+    const u = req.user;
+    if (!["principal", "admin"].includes(u.role) || !u.schoolId) throw new ApiError(403, "Accès réservé à l’administration");
+    const { rows } = await db.query(
+      `SELECT s.id, s.type, s.motif, s.date_faits, s.duree_jours, s.created_at, u.id AS student_id, u.first_name, u.last_name,
+              (SELECT c.name FROM class_students cs JOIN classes c ON c.id = cs.class_id
+               WHERE cs.student_id = u.id AND cs.status = 'active' ORDER BY cs.enrolled_at DESC LIMIT 1) AS classe,
+              (SELECT COUNT(*)::int FROM parent_student_links l WHERE l.student_id = u.id) AS parents
+       FROM sanctions s JOIN users u ON u.id = s.student_id
+       WHERE s.school_id = $1 ORDER BY s.date_faits DESC, s.id DESC LIMIT 500`,
+      [u.schoolId]
+    );
+    res.json({ success: true, data: rows.map((r) => ({ ...r, libelle: TYPES[r.type] || r.type })) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/sanctions", async (req, res, next) => {
   try {
     const u = req.user;
@@ -181,7 +201,33 @@ router.post("/sanctions", async (req, res, next) => {
       [e.school_id, studentId, type, motif, date, duree, u.id]
     );
     const parents = await db.query("SELECT parent_id FROM parent_student_links WHERE student_id = $1", [studentId]);
+    // Message detaille dans la messagerie de chaque parent (il peut y repondre a l'etablissement)
+    const classe = await classeDeLEleve(studentId);
+    const ecoleNom = (await db.query("SELECT name FROM schools WHERE id = $1", [e.school_id])).rows[0]?.name || "L’établissement";
+    const jour = new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const corps = [
+      "Madame, Monsieur,",
+      "",
+      `Nous vous informons que ${e.first_name} ${e.last_name}${classe ? ` (${classe.name})` : ""} a fait l’objet de la mesure suivante :`,
+      "",
+      `• Mesure : ${TYPES[type]}${duree ? ` (${duree} jour${duree > 1 ? "s" : ""})` : ""}`,
+      `• Date des faits : ${jour}`,
+      `• Motif : ${motif}`,
+      "",
+      "Pour toute question, vous pouvez répondre directement à ce message.",
+      "",
+      `${ecoleNom} – Administration`,
+    ].join("\n");
     for (const p of parents.rows) {
+      try {
+        const c = await db.query(
+          "INSERT INTO conversations (school_id, user_id, subject, unread_school, unread_user) VALUES ($1, $2, $3, false, true) RETURNING id",
+          [e.school_id, p.parent_id, `Discipline : ${TYPES[type]} – ${e.first_name} ${e.last_name}`.slice(0, 200)]
+        );
+        await db.query("INSERT INTO conversation_messages (conversation_id, sender_id, from_school, body) VALUES ($1, $2, true, $3)", [c.rows[0].id, u.id, corps]);
+      } catch (_) {
+        // la notification ci-dessous previent quand meme le parent
+      }
       await notifierUtilisateur(p.parent_id, {
         title: `${TYPES[type]} : ${e.first_name} ${e.last_name}`,
         message: `${motif}${duree ? ` (${duree} jour(s))` : ""}`,

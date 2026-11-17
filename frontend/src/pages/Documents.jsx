@@ -6,7 +6,7 @@ import { confierFichiers, useDepotPage } from '../depot.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
 import { lireDocumentEcole } from '../documents-ecole.js'
 import CompteurIA from '../CompteurIA.jsx'
-import { Field, Note } from '../ui.jsx'
+import { Field, Note, annoncer } from '../ui.jsx'
 import { IcChevron, IcImport } from '../icones.jsx'
 
 // Categories (memes cles que le serveur)
@@ -54,7 +54,8 @@ const quantite = (nature, n) => `${n} ${NOMBRE[nature][n > 1 ? 1 : 0]}`
 const sansAccents = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 function reconnaitre(nom, texte) {
   const t = sansAccents(`${nom}\n${String(texte || '').slice(0, 8000)}`)
-  if (/service des enseignants|heures \/ semaine|heures supplementaires|budget|comptabilite|journal des (encaissements|depenses)|tresorerie|etat de recouvrement|absences des enseignants|bilan par enseignant/.test(t))
+  if (/journal des encaissements|etat de recouvrement|situation (de la )?scolarite|situation par eleve|encaissements et situation/.test(t)) return { nature: 'interne', categorie: 'scolarite' }
+  if (/service des enseignants|heures \/ semaine|heures supplementaires|budget|comptabilite|journal des depenses|tresorerie|absences des enseignants|bilan par enseignant/.test(t))
     return { nature: 'interne', categorie: 'administration' }
   if (/cahier d.appel|feuille d.appel|feuille de presence/.test(t)) return { nature: 'cahier_appel' }
   if (/recapitulatif.{0,20}absences|absences des eleves/.test(t)) return { nature: 'interne', categorie: 'absences' }
@@ -109,6 +110,7 @@ export async function envoyer(fichier) {
 }
 
 const PUBLICS = { tous: 'Tout le monde', parents: 'Parents', eleves: 'Élèves', enseignants: 'Enseignants', interne: 'Établissement seulement' }
+const VISIBILITE = { tous: 'Publié pour tous', parents: 'Publié pour les parents', eleves: 'Publié pour les élèves', enseignants: 'Enseignants seulement', interne: 'Établissement seulement' }
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 const groupeDe = (libelle) => (CATEGORIES.find((c) => c[1] === libelle) || CATEGORIES[CATEGORIES.length - 1])[2]
 const jour = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
@@ -177,6 +179,7 @@ export default function Documents() {
   })
   const [q, setQ] = useState('')
   const [ouverts, setOuverts] = useState({})
+  const [publierAussi, setPublierAussi] = useState({}) // par type reconnu : copie publiee pour les familles
   useEffect(() => {
     try {
       sessionStorage.setItem(CLE_DOSSIER, type)
@@ -245,8 +248,28 @@ export default function Documents() {
     setEtat('')
   }
   // Documents qui alimentent une autre page : ouverts et lus directement dans cette page
-  function transmettre(groupe) {
+  // Copie gardee dans Documents (emplois du temps, frais) : publiee pour les familles, ou reservee a l'etablissement
+  async function archiver(groupe, publier) {
+    const nature = groupe[0].analyse.nature
+    for (const x of groupe) {
+      try {
+        const envoye = x.fichier || (await envoyer(x.source))
+        const ancien = versionPubliee({ ...x, categorie: CATEGORIE_DE[nature] })
+        await api.post('/api/actualites/documents', { titre: x.titre, categorie: CATEGORIE_DE[nature], audience: publier ? 'tous' : 'interne', fichiers: [{ type: envoye.type, url: envoye.url, nom: envoye.nom }] })
+        if (ancien) await api.delete(`/api/actualites/${ancien.id}`).catch(() => {})
+      } catch (_) {
+        // la copie dans Documents est un plus : l'import principal continue
+      }
+    }
+    liste.reload()
+  }
+  async function transmettre(groupe) {
     const d = DESTINATIONS[groupe[0].analyse.nature]
+    if (d[3]) {
+      setEtat('Enregistrement…')
+      await archiver(groupe, publierAussi[groupe[0].analyse.nature] !== false)
+      setEtat('')
+    }
     confierFichiers(groupe.map((x) => x.source))
     setItems((l) => l.filter((x) => !groupe.includes(x)))
     window.location.hash = d[0]
@@ -291,7 +314,7 @@ export default function Documents() {
           nbC += r?.classes || 0
           nbCours += r?.cours || 0
         }
-        setOk(`Emploi du temps enregistré pour ${nbC} classe(s) : ${nbCours} cours.`)
+        annoncer(`Emploi du temps enregistré pour ${nbC} classe(s) : ${nbCours} cours.`)
       }
       if (nature === 'cahier_appel' && absences.length) {
         let ajoutees = 0
@@ -301,27 +324,16 @@ export default function Documents() {
           ajoutees += r?.ajoutees || 0
           dejaLa += r?.dejaLa || 0
         }
-        setOk(`✓ ${ajoutees} absence(s) ajoutée(s)${dejaLa ? `, ${dejaLa} déjà enregistrée(s) par l’appel des enseignants (non modifiées)` : ''}.`)
+        annoncer(`${ajoutees} absence(s) ajoutée(s)${dejaLa ? `, ${dejaLa} déjà enregistrée(s) par l’appel des enseignants (non modifiées)` : ''}.`)
       }
     } catch (err) {
       echecs.push(err.message)
     }
+    if (nature === 'emploi_du_temps' && classes.size) await archiver(groupe.filter((x) => !echecs.some((e) => e.startsWith(`${x.nom} :`))), publierAussi.emploi_du_temps !== false)
     setItems((l) => l.filter((x) => x.etape !== 'fait'))
     const alertes = [...(nonReconnues.size ? [`Classes non reconnues : ${[...nonReconnues].join(', ')}`] : []), ...echecs]
     if (alertes.length) setError(alertes.join(' · '))
     setEtat('')
-  }
-  // « Publier aussi pour les familles » (emplois du temps, frais) : les documents deviennent publiables
-  async function publierAussi(groupe) {
-    for (const x of groupe) {
-      maj(x.id, { etape: 'lecture' })
-      try {
-        const envoye = x.fichier || (await envoyer(x.source))
-        maj(x.id, { fichier: envoye, type: envoye.type, etape: 'pret', analyse: { nature: 'information' } })
-      } catch (err) {
-        maj(x.id, { etape: 'erreur', message: err.message })
-      }
-    }
   }
   const zoneDepot = useDepotPage(choisir, { texte: 'Déposez vos documents', detail: 'PDF, Word, Excel, PowerPoint, photos, vidéos' })
 
@@ -346,6 +358,7 @@ export default function Documents() {
     setError('')
     setOk('')
     let n = 0
+    const faits = []
     for (const x of publiables) {
       setEtat(`Publication ${n + 1} / ${publiables.length}…`)
       try {
@@ -354,6 +367,7 @@ export default function Documents() {
         const ancien = x.garderLesDeux ? null : versionPubliee(x)
         if (ancien) await api.delete(`/api/actualites/${ancien.id}`).catch(() => {})
         retirerItem(x.id)
+        faits.push(x)
         n += 1
       } catch (err) {
         maj(x.id, { etape: 'erreur', message: err.message })
@@ -361,7 +375,15 @@ export default function Documents() {
     }
     setEtat('')
     if (n) {
-      setOk(n === 1 ? '✓ Document enregistré.' : `✓ ${n} documents enregistrés.`)
+      const pub = faits.filter((x) => x.audience !== 'interne').length
+      const int = faits.length - pub
+      annoncer(
+        [pub ? (pub === 1 ? '1 document publié dans le fil des familles' : `${pub} documents publiés dans le fil des familles`) : '', int ? (int === 1 ? '1 document gardé pour l’établissement' : `${int} documents gardés pour l’établissement`) : '']
+          .filter(Boolean)
+          .join(' · '),
+      )
+      const groupes = [...new Set(faits.map((x) => (CATEGORIES.find((c) => c[0] === x.categorie) || CATEGORIES[CATEGORIES.length - 1])[2]))]
+      if (groupes.length === 1) ouvrirDossier(groupes[0])
       liste.reload()
     }
   }
@@ -465,9 +487,10 @@ export default function Documents() {
                     </button>
                   )}
                   {!enCours && d[3] && (
-                    <button type="button" className="lien-action discret" onClick={() => publierAussi(groupe)}>
-                      Publier aussi pour les familles
-                    </button>
+                    <label className="check doc-aussi">
+                      <input type="checkbox" checked={publierAussi[nature] !== false} onChange={(e) => setPublierAussi((p) => ({ ...p, [nature]: e.target.checked }))} />
+                      <span>Publier aussi dans le fil des familles</span>
+                    </label>
                   )}
                 </div>
               </div>
@@ -631,7 +654,7 @@ export default function Documents() {
                                 <small>
                                   {recherche ? `${d.categorie} · ` : ''}
                                   {jour(d.created_at)}
-                                  {d.audience && d.audience !== 'tous' ? ` · ${PUBLICS[d.audience] || ''}` : ''}
+                                  {` · ${VISIBILITE[d.audience] || VISIBILITE.tous}`}
                                   {d.last_name && !d.mien ? ` · ${d.first_name} ${d.last_name}` : ''}
                                 </small>
                               </span>

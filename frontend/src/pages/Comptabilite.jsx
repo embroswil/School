@@ -4,7 +4,7 @@ import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { IcChevron } from '../icones.jsx'
 import { exporterExcel } from '../export.jsx'
-import { comparerClasses } from '../classes.js'
+import { comparerClasses, niveauClasse } from '../classes.js'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const taux = (e, a) => (Number(a) > 0 ? Math.round((Number(e) / Number(a)) * 100) : 0)
@@ -69,6 +69,21 @@ function DetailClasse({ classe, enRetard, onRappel }) {
       ))}
     </div>
   )
+}
+
+// Classes regroupees par niveau (6e, 5e… Tle), avec les totaux du niveau
+function niveauxDe(classes) {
+  const niveaux = []
+  for (const c of classes) {
+    const nom = niveauClasse(c.classe)
+    let n = niveaux[niveaux.length - 1]
+    if (!n || n.nom !== nom) niveaux.push((n = { nom, classes: [], attendu: 0, encaisse: 0, reste: 0 }))
+    n.classes.push(c)
+    n.attendu += Number(c.attendu)
+    n.encaisse += Number(c.encaisse)
+    n.reste += Number(c.reste)
+  }
+  return niveaux
 }
 
 // Suivi de la scolarite : ce qui est encaisse, ce qui reste, par classe et par type de frais
@@ -152,9 +167,15 @@ export default function Comptabilite() {
         </button>
       </div>
 
-      {vue === 'classes' && (
+      {vue === 'classes' &&
+        niveauxDe(classes).map((n) => (
+          <section key={n.nom}>
+            <p className="niveau-titre suivi-niveau">
+              <span>{n.nom}</span>
+              <span>{`${taux(n.encaisse, n.attendu)} % · reste ${fcfa(n.reste)}`}</span>
+            </p>
         <ul className="liste-simple">
-          {classes.map((x) => {
+          {n.classes.map((x) => {
             const ouvert = ouverte === x.classe
             const tc = taux(x.encaisse, x.attendu)
             return (
@@ -178,7 +199,8 @@ export default function Comptabilite() {
             )
           })}
         </ul>
-      )}
+          </section>
+        ))}
 
       {vue === 'frais' && (
         <ul className="liste-simple">
@@ -204,9 +226,25 @@ export default function Comptabilite() {
         </ul>
       )}
 
-      <button type="button" className="lien-discret" onClick={exporter}>
-        Exporter en Excel
-      </button>
+      <p className="suivi-liens">
+        <button
+          type="button"
+          className="lien-discret"
+          onClick={() => {
+            try {
+              sessionStorage.setItem('sukul-documents-dossier', 'Administration')
+            } catch (_) {
+              /* stockage indisponible */
+            }
+            window.location.hash = '/document'
+          }}
+        >
+          Budget et documents comptables
+        </button>
+        <button type="button" className="lien-discret" onClick={exporter}>
+          Exporter en Excel
+        </button>
+      </p>
     </>
   )
 }

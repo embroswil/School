@@ -3,7 +3,7 @@ import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { IcChevron, IcImport } from '../icones.jsx'
 import { exporterExcel } from '../export.jsx'
-import { comparerClasses } from '../classes.js'
+import { comparerClasses, niveauClasse } from '../classes.js'
 
 const enChaine = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const aujourdhui = () => enChaine(new Date())
@@ -23,11 +23,19 @@ const jourLisible = (jour) => {
 export default function AbsencesJour() {
   const [date, setDate] = useState(aujourdhui())
   const [filtre, setFiltre] = useState('')
+  const [classe, setClasse] = useState('')
   const d = useApi(`/api/notes/absences?date=${date}`)
 
   const lignes = (d.data?.lignes || []).filter((l) => !filtre || `${l.last_name} ${l.first_name} ${l.classe}`.toLowerCase().includes(filtre.trim().toLowerCase()))
   const parClasse = {}
   for (const l of lignes) (parClasse[l.classe] ||= []).push(l)
+  const niveaux = []
+  for (const c of Object.keys(parClasse).sort(comparerClasses)) {
+    const n = niveauClasse(c)
+    const dernier = niveaux[niveaux.length - 1]
+    if (dernier && dernier.nom === n) dernier.classes.push(c)
+    else niveaux.push({ nom: n, classes: [c] })
+  }
 
   return (
     <>
@@ -41,14 +49,14 @@ export default function AbsencesJour() {
       </div>
 
       <div className="jour-nav">
-        <button type="button" aria-label="Jour précédent" onClick={() => setDate(decaler(date, -1))}>
+        <button type="button" aria-label="Jour précédent" onClick={() => { setClasse(''); setDate(decaler(date, -1)) }}>
           <IcChevron size={18} style={{ transform: 'rotate(180deg)' }} />
         </button>
         <label>
           <span>{jourLisible(date)}</span>
           <input type="date" value={date} max={aujourdhui()} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="Choisir une date" />
         </label>
-        <button type="button" aria-label="Jour suivant" disabled={date >= aujourdhui()} onClick={() => setDate(decaler(date, 1))}>
+        <button type="button" aria-label="Jour suivant" disabled={date >= aujourdhui()} onClick={() => { setClasse(''); setDate(decaler(date, 1)) }}>
           <IcChevron size={18} />
         </button>
       </div>
@@ -70,7 +78,7 @@ export default function AbsencesJour() {
       <Note>{d.error}</Note>
       {!d.data && !d.error && <p className="muted">Chargement…</p>}
 
-      {d.data?.lignes?.length > 0 && (
+      {d.data?.lignes?.length > 0 && !classe && (
         <input className="input" type="search" placeholder="Rechercher un élève ou une classe" value={filtre} onChange={(e) => setFiltre(e.target.value)} style={{ marginBottom: 12 }} />
       )}
       {d.data && d.data.lignes.length === 0 && (
@@ -80,13 +88,45 @@ export default function AbsencesJour() {
         </div>
       )}
       {d.data && d.data.lignes.length > 0 && lignes.length === 0 && <p className="muted">Aucun résultat.</p>}
-      {Object.entries(parClasse)
-        .sort(([a], [b]) => comparerClasses(a, b))
-        .map(([classe, ls]) => (
-          <section key={classe}>
-            <p className="niveau-titre">
-              {classe} · {ls.length}
-            </p>
+
+      {/* classes par niveau, avec le nombre d'absents */}
+      {!classe &&
+        !filtre.trim() &&
+        niveaux.map((n) => (
+          <section className="eleves-niveau" key={n.nom}>
+            <h2>{n.nom}</h2>
+            <div className="eleves-classes">
+              {n.classes.map((c) => (
+                <button type="button" key={c} onClick={() => setClasse(c)}>
+                  <b>{c}</b>
+                  <small className="rouge">{`${parClasse[c].length} absent(s)`}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
+
+      {/* une classe, ou les resultats de la recherche */}
+      {(classe || filtre.trim()) &&
+        (classe ? [[classe, parClasse[classe] || []]] : Object.entries(parClasse).sort(([a], [b]) => comparerClasses(a, b))).map(([c, ls]) => (
+          <section key={c}>
+            {classe ? (
+              <>
+                <div className="eleves-barre">
+                  <button type="button" className="back" onClick={() => setClasse('')}>
+                    ← Toutes les classes
+                  </button>
+                </div>
+                <h2 className="eleves-titre">
+                  {c}
+                  <small>{`${ls.length} absent(s)`}</small>
+                </h2>
+              </>
+            ) : (
+              <p className="niveau-titre">
+                {c} · {ls.length}
+              </p>
+            )}
             <ul className="liste-simple">
               {ls.map((l, i) => (
                 <li key={i}>

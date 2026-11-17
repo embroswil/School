@@ -21,6 +21,20 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Publier aussi dans le fil des familles": "Also publish in the families’ feed",
+  "Budget et documents comptables": "Budget and accounting documents",
+  "Publié pour tous": "Published for everyone",
+  "Publié pour les parents": "Published for parents",
+  "Publié pour les élèves": "Published for students",
+  "Enseignants seulement": "Teachers only",
+  "Chaque parent concerné reçoit un message détaillé dans sa messagerie Sùkûl.": "Each parent concerned receives a detailed message in their Sùkûl inbox.",
+  "Importer un document de discipline": "Import a discipline document",
+  "Procès-verbal du conseil de discipline, liste de sanctions ou rapport : Excel, Word, PDF ou photo. Les élèves sont reconnus et chaque parent reçoit un message.": "Disciplinary board minutes, list of sanctions or report: Excel, Word, PDF or photo. Students are recognised and each parent receives a message.",
+  "Aucune sanction enregistrée": "No sanctions recorded",
+  "Par date": "By date",
+  "Lecture du document…": "Reading the document…",
+  "Enregistrer cette sanction": "Save this sanction",
+  "Autres": "Others",
   "Ajouté en plus de la version déjà publiée": "Added alongside the version already published",
   "Garder les deux": "Keep both",
   "Remplacer": "Replace",
@@ -1622,6 +1636,19 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) sanction\(s\) lue\(s\) · (\d+) élève\(s\) reconnu\(s\)$/, '$1 sanction(s) read · $2 student(s) recognised'],
+  [/^Enregistrer (\d+) sanction\(s\)$/, 'Save $1 sanction(s)'],
+  [/^À vérifier · (\d+)$/, 'To check · $1'],
+  [/^Élèves reconnus · (\d+)$/, 'Recognised students · $1'],
+  [/^(\d+) sanction\(s\) · (\d+) ce mois$/, '$1 sanction(s) · $2 this month'],
+  [/^(\d+) sanction\(s\)$/, '$1 sanction(s)'],
+  [/^(\d+) sanction\(s\) enregistrée\(s\) · les parents ont reçu un message$/, '$1 sanction(s) saved · parents have received a message'],
+  [/^Enregistrement (\d+) \/ (\d+)…$/, 'Saving $1 / $2…'],
+  [/^(\d+) absent\(s\)$/, '$1 absent'],
+  [/^(\d+) % · reste (.+)$/, '$1% · $2 left'],
+  [/^(\d+) documents? publiés? dans le fil des familles(?: · (\d+) documents? gardés? pour l’établissement)?$/, (_, a, b) => `${a} document(s) published in the families’ feed${b ? ` · ${b} kept for the school` : ''}`],
+  [/^(\d+) documents? gardés? pour l’établissement$/, '$1 document(s) kept for the school'],
+  [/^Lu : $/, 'Read: '],
   [/^Remplace la version du (.+)$/, 'Replaces the version of $1'],
   [/^(\d+) enseignant\(s\) · (\d+) compte\(s\) actif\(s\)$/, '$1 teacher(s) · $2 active account(s)'],
   [/^(\d+) enseignant\(s\) sans classe$/, '$1 teacher(s) without a class'],
