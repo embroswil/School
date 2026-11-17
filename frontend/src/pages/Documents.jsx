@@ -200,7 +200,10 @@ export default function Documents() {
     if (!choix.length) return
     setError('')
     setOk('')
+    const dejaChoisis = new Set(items.map((x) => `${x.nom}|${x.source?.size}`))
     for (const [k, x] of choix.entries()) {
+      if (dejaChoisis.has(`${x.name}|${x.size}`)) continue
+      dejaChoisis.add(`${x.name}|${x.size}`)
       const id = `${Date.now()}-${k}`
       const titre = x.name.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim()
       setItems((l) => [...l, { id, nom: x.name, source: x, etape: 'lecture', ...VIDE, titre }])
@@ -322,6 +325,13 @@ export default function Documents() {
   }
   const zoneDepot = useDepotPage(choisir, { texte: 'Déposez vos documents', detail: 'PDF, Word, Excel, PowerPoint, photos, vidéos' })
 
+  // Version deja publiee d'un document (meme nom de fichier, ou meme titre dans le meme type)
+  const versionPubliee = (x) =>
+    (liste.data || []).find((d) => {
+      const f = Array.isArray(d.medias) ? d.medias[0] : null
+      const libelle = (CATEGORIES.find((c) => c[0] === x.categorie) || [])[1]
+      return (f?.nom && f.nom === x.nom) || (sansAccent(d.title) === sansAccent(x.titre) && d.categorie === libelle)
+    }) || null
   const publiables = items.filter((x) => x.etape === 'pret' && !DESTINATIONS[x.analyse?.nature])
   const reconnus = new Map()
   for (const x of items) {
@@ -341,6 +351,8 @@ export default function Documents() {
       try {
         const { titre, categorie, description, audience, dateEvenement, lieu } = x
         await api.post('/api/actualites/documents', { titre, categorie, description, audience, dateEvenement, lieu, fichiers: [{ type: x.fichier.type, url: x.fichier.url, nom: x.fichier.nom }] })
+        const ancien = x.garderLesDeux ? null : versionPubliee(x)
+        if (ancien) await api.delete(`/api/actualites/${ancien.id}`).catch(() => {})
         retirerItem(x.id)
         n += 1
       } catch (err) {
@@ -473,6 +485,14 @@ export default function Documents() {
                     <small>
                       {x.etape === 'lecture' && 'Lecture…'}
                       {x.etape === 'pret' && !dest && `${libelleType} · ${PUBLICS[x.audience]}`}
+                      {x.etape === 'pret' && versionPubliee(x) && (
+                        <span className="doc-remplace">
+                          {x.garderLesDeux ? 'Ajouté en plus de la version déjà publiée' : `Remplace la version du ${jour(versionPubliee(x).created_at)}`}
+                          <button type="button" className="lien-action discret" onClick={() => maj(x.id, { garderLesDeux: !x.garderLesDeux })}>
+                            {x.garderLesDeux ? 'Remplacer' : 'Garder les deux'}
+                          </button>
+                        </span>
+                      )}
                     </small>
                   </span>
                   {x.etape === 'pret' && !dest && (

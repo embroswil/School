@@ -1301,3 +1301,5 @@ html.ordi .docs-dossiers { grid-template-columns: repeat(4, minmax(0, 1fr)); gap
 .doc-fichiers li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-fichiers li button { flex: none; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
 .eq-etiquettes { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.doc-remplace { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-top: 3px; color: var(--lien); font-size: 12.5px; font-weight: 600; }
+.doc-remplace .lien-action { font-size: 12.5px; }

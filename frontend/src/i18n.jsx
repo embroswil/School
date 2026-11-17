@@ -21,6 +21,9 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Ajouté en plus de la version déjà publiée": "Added alongside the version already published",
+  "Garder les deux": "Keep both",
+  "Remplacer": "Replace",
   "Cet élément existe déjà": "This item already exists",
   "Opération impossible : des données liées existent": "Not possible: related data exists",
   "Un champ obligatoire est manquant": "A required field is missing",
@@ -1619,6 +1622,7 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Remplace la version du (.+)$/, 'Replaces the version of $1'],
   [/^(\d+) enseignant\(s\) · (\d+) compte\(s\) actif\(s\)$/, '$1 teacher(s) · $2 active account(s)'],
   [/^(\d+) enseignant\(s\) sans classe$/, '$1 teacher(s) without a class'],
   [/^(\d+) enseignant\(s\)$/, '$1 teacher(s)'],
