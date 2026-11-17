@@ -1745,7 +1745,10 @@ const EN = {
   "partiellement": "partly paid",
   "rien payé": "nothing paid",
   "Facultatif": "Optional",
-  "soldé": "settled"
+  "soldé": "settled",
+  "Résumé": "Summary",
+  "partiel": "partial",
+  "Détail par classe et par élève": "Detail by class and student"
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
@@ -1788,6 +1791,7 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Reste (.+ FCFA) à encaisser$/, '$1 still to collect'],
   [/^(.+ FCFA) encaissés$/, '$1 collected'],
   [/^sur (.+ FCFA) · reste (.+ FCFA)$/, 'of $1 · $2 left'],
   [/^([\d  ,.]+) élèves$/, '$1 students'],

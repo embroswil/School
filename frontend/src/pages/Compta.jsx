@@ -257,6 +257,7 @@ export default function Compta() {
   const encaissements = useApi('/api/scolarite/paiements')
   const champ = useRef(null)
   const [vue, setVue] = useState('bord')
+  const [detail, setDetail] = useState('frais')
   const [filtre, setFiltre] = useState('tout')
   const [cherche, setCherche] = useState('')
   const [form, setForm] = useState(null)
@@ -506,120 +507,42 @@ export default function Compta() {
       </div>
 
       <div className="segments petit" role="tablist">
-        <button type="button" role="tab" aria-selected={vue === 'bord'} onClick={() => setVue('bord')}>
-          Vue d’ensemble
-        </button>
-        <button type="button" role="tab" aria-selected={vue === 'ops'} onClick={() => setVue('ops')}>
-          Opérations
-        </button>
-        <button type="button" role="tab" aria-selected={vue === 'budget'} onClick={() => setVue('budget')}>
-          Budget
-        </button>
+        {[
+          ['bord', 'Résumé'],
+          ...(sc && sc.totaux.attendu > 0 ? [['scol', 'Scolarité']] : []),
+          ['ops', 'Opérations'],
+          ['budget', 'Budget'],
+        ].map(([k, v]) => (
+          <button key={k} type="button" role="tab" aria-selected={vue === k} onClick={() => setVue(k)}>
+            {v}
+          </button>
+        ))}
       </div>
 
       {vue === 'bord' && (
         <>
           {sc && sc.totaux.attendu > 0 && (
-            <>
-              <p className="niveau-titre">Recouvrement de la scolarité</p>
-              <div className="cpt-recouvrement">
-                <div className="cpt-rec-tete">
-                  <b>{`${taux(sc.totaux.encaisse, sc.totaux.attendu)} %`}</b>
+            <button type="button" className="cpt-recouvrement" onClick={() => setVue('scol')}>
+              <span className="cpt-rec-tete">
+                <span>Scolarité encaissée</span>
+                <b>{`${taux(sc.totaux.encaisse, sc.totaux.attendu)} %`}</b>
+              </span>
+              <Barre valeur={taux(sc.totaux.encaisse, sc.totaux.attendu)} />
+              <small>{`Reste ${fcfa(sc.totaux.reste)} à encaisser`}</small>
+              {sc.statuts && (
+                <span className="cpt-statuts">
                   <span>
-                    {`${fcfa(sc.totaux.encaisse)} encaissés`}
-                    <small>{`sur ${fcfa(sc.totaux.attendu)} · reste ${fcfa(sc.totaux.reste)}`}</small>
+                    <b className="vert">{sc.statuts.a_jour.toLocaleString('fr-FR')}</b> à jour
                   </span>
-                </div>
-                <Barre valeur={taux(sc.totaux.encaisse, sc.totaux.attendu)} />
-                {sc.statuts && (
-                  <div className="cpt-statuts">
-                    <a href="#/scolarite?onglet=suivi">
-                      <b className="vert">{sc.statuts.a_jour.toLocaleString('fr-FR')}</b>
-                      <span>à jour</span>
-                    </a>
-                    <a href="#/scolarite?onglet=suivi">
-                      <b className="orange">{sc.statuts.partiels.toLocaleString('fr-FR')}</b>
-                      <span>partiellement</span>
-                    </a>
-                    <a href="#/scolarite?onglet=suivi">
-                      <b className="rouge">{sc.statuts.non_payes.toLocaleString('fr-FR')}</b>
-                      <span>rien payé</span>
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              <p className="niveau-titre">Par type de frais</p>
-              <ul className="liste-simple cpt-frais">
-                {sc.frais.map((f) => {
-                  const t = taux(f.encaisse, f.attendu)
-                  return (
-                    <li key={f.id}>
-                      <span className="ls-texte">
-                        <b>{f.nom}</b>
-                        <small>{points([`${Number(f.eleves).toLocaleString('fr-FR')} élèves`, `${fcfa(f.encaisse)} / ${fcfa(f.attendu)}`, Number(f.reste) ? `reste ${fcfa(f.reste)}` : 'soldé'])}</small>
-                      </span>
-                      <span className="suivi-taux">
-                        <b>{t} %</b>
-                        <Barre valeur={t} />
-                      </span>
-                    </li>
-                  )
-                })}
-                {(sc.facultatifs || []).map((f) => (
-                  <li key={`o${f.id}`}>
-                    <span className="ls-texte">
-                      <b>{f.nom}</b>
-                      <small>{points(['Facultatif', `${Number(f.eleves).toLocaleString('fr-FR')} élèves`])}</small>
-                    </span>
-                    <span className="suivi-taux">
-                      <b>{fcfa(f.encaisse)}</b>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              {parNiveau.length > 1 && (
-                <>
-                  <p className="niveau-titre">Par niveau</p>
-                  <ul className="liste-simple cpt-niveaux">
-                    {parNiveau.map((n) => {
-                      const t = taux(n.encaisse, n.attendu)
-                      return (
-                        <li key={n.nom}>
-                          <span className="ls-texte">
-                            <b>{n.nom}</b>
-                            <small>{points([`${n.effectif.toLocaleString('fr-FR')} élèves`, `reste ${fcfa(n.reste)}`])}</small>
-                          </span>
-                          <span className="suivi-taux">
-                            <b>{t} %</b>
-                            <Barre valeur={t} />
-                          </span>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </>
+                  <span>
+                    <b className="orange">{sc.statuts.partiels.toLocaleString('fr-FR')}</b> partiel
+                  </span>
+                  <span>
+                    <b className="rouge">{sc.statuts.non_payes.toLocaleString('fr-FR')}</b> rien payé
+                  </span>
+                </span>
               )}
-            </>
-          )}
-
-          {sc?.modes?.length > 0 && (
-            <>
-              <p className="niveau-titre">Moyens de paiement</p>
-              <div className="cpt-modes">
-                {sc.modes.map((m) => {
-                  const total = sc.modes.reduce((t, x) => t + Number(x.total), 0)
-                  return (
-                    <div key={m.mode}>
-                      <span>{MODES_PAIEMENT[m.mode] || m.mode}</span>
-                      <b>{fcfa(m.total)}</b>
-                      <small>{`${taux(Number(m.total), total)} % · ${Number(m.nb).toLocaleString('fr-FR')} reçus`}</small>
-                    </div>
-                  )
-                })}
-              </div>
-            </>
+            </button>
           )}
 
           <p className="niveau-titre">Par mois</p>
@@ -641,62 +564,126 @@ export default function Compta() {
             </div>
           </div>
 
-          {d.categories.length > 0 && (
+          {d.dernieres.length > 0 && (
             <>
-              <p className="niveau-titre">Dépenses par catégorie</p>
-              <ul className="liste-simple cpt-cats">
-                {d.categories.map((c) => (
-                  <li key={c.nom}>
-                    <span className="ls-texte">
-                      <b>{c.nom}</b>
-                      <small>{`${taux(c.total, totalCat)} % des dépenses`}</small>
-                    </span>
-                    <span className="suivi-taux">
-                      <b>{fcfa(c.total)}</b>
-                      <Barre valeur={taux(c.total, totalCat)} sens="part" />
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <p className="niveau-titre">Dernières opérations</p>
+              <ul className="liste-simple">{d.dernieres.slice(0, 3).map(ligneOp)}</ul>
             </>
           )}
-
           {encaissements.data?.length > 0 && (
             <>
               <p className="niveau-titre">Derniers encaissements</p>
               <ul className="liste-simple">
-                {encaissements.data.slice(0, 5).map((p) => (
+                {encaissements.data.slice(0, 3).map((p) => (
                   <li key={p.id}>
                     <a className="cpt-op" href={`#/recus/${p.id}`}>
                       <span className="ls-texte">
                         <b data-brut>{`${p.last_name} ${p.first_name}`}</b>
-                        <small>{points([p.classe, p.frais, jour(p.created_at)])}</small>
+                        <small>{points([p.frais, jour(p.created_at)])}</small>
                       </span>
-                      <span className="cpt-montant recette">
-                        {`+ ${fcfa(p.montant)}`}
-                        <small className="cpt-recu">Reçu</small>
-                      </span>
+                      <span className="cpt-montant recette">{`+ ${fcfa(p.montant)}`}</span>
                     </a>
                   </li>
                 ))}
               </ul>
             </>
           )}
+        </>
+      )}
 
-          {d.dernieres.length > 0 && (
-            <>
-              <p className="niveau-titre">Dernières opérations</p>
-              <ul className="liste-simple">{d.dernieres.slice(0, 4).map(ligneOp)}</ul>
-              <button type="button" className="lien-action cpt-ajout" onClick={() => setVue('ops')}>
-                Tout le journal
+      {vue === 'scol' && sc && (
+        <>
+          <div className="chips cpt-sous">
+            {[
+              ['frais', 'Par frais'],
+              ['niveaux', 'Par niveau'],
+              ['modes', 'Moyens de paiement'],
+            ].map(([k, v]) => (
+              <button key={k} type="button" className="chip" aria-pressed={detail === k} onClick={() => setDetail(k)}>
+                {v}
               </button>
-            </>
-          )}
+            ))}
+          </div>
+          <ul className="liste-simple cpt-lignes">
+            {detail === 'frais' &&
+              sc.frais.map((f) => {
+                const t = taux(f.encaisse, f.attendu)
+                return (
+                  <li key={f.id}>
+                    <span className="ls-texte">
+                      <b>{f.nom}</b>
+                      <small>{Number(f.reste) ? `Reste ${fcfa(f.reste)}` : 'Soldé'}</small>
+                    </span>
+                    <span className="suivi-taux">
+                      <b>{t} %</b>
+                      <Barre valeur={t} />
+                    </span>
+                  </li>
+                )
+              })}
+            {detail === 'frais' &&
+              (sc.facultatifs || []).map((f) => (
+                <li key={`o${f.id}`}>
+                  <span className="ls-texte">
+                    <b>{f.nom}</b>
+                    <small>Facultatif</small>
+                  </span>
+                  <span className="suivi-taux">
+                    <b>{fcfa(f.encaisse)}</b>
+                  </span>
+                </li>
+              ))}
+            {detail === 'niveaux' &&
+              parNiveau.map((n) => {
+                const t = taux(n.encaisse, n.attendu)
+                return (
+                  <li key={n.nom}>
+                    <span className="ls-texte">
+                      <b>{n.nom}</b>
+                      <small>{`Reste ${fcfa(n.reste)}`}</small>
+                    </span>
+                    <span className="suivi-taux">
+                      <b>{t} %</b>
+                      <Barre valeur={t} />
+                    </span>
+                  </li>
+                )
+              })}
+            {detail === 'modes' &&
+              sc.modes.map((m) => {
+                const total = sc.modes.reduce((t, x) => t + Number(x.total), 0)
+                const t = taux(Number(m.total), total)
+                return (
+                  <li key={m.mode}>
+                    <span className="ls-texte">
+                      <b>{MODES_PAIEMENT[m.mode] || m.mode}</b>
+                      <small>{fcfa(m.total)}</small>
+                    </span>
+                    <span className="suivi-taux">
+                      <b>{t} %</b>
+                      <Barre valeur={t} sens="part" />
+                    </span>
+                  </li>
+                )
+              })}
+          </ul>
+          <a className="lien-action cpt-ajout" href="#/scolarite?onglet=suivi">
+            Détail par classe et par élève
+          </a>
         </>
       )}
 
       {vue === 'ops' && (
         <>
+          {d.categories.length > 0 && filtre !== 'recette' && !cherche && (
+            <div className="cpt-cats-ligne">
+              {d.categories.map((c) => (
+                <span key={c.nom}>
+                  <b>{`${taux(c.total, totalCat)} %`}</b> {c.nom}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="cpt-filtres">
             <div className="chips">
               {[
