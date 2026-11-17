@@ -21,6 +21,8 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Choisissez votre affichage": "Choose your display",
+  "Vous pourrez le changer à tout moment dans votre profil.": "You can change it at any time in your profile.",
   "Affichage": "Display",
   "Thème": "Theme",
   "Sombre": "Dark",

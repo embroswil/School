@@ -1201,3 +1201,33 @@ html.ordi[data-theme='light'] .nav a[aria-current='page'] { background: #e8efff;
 .choix-theme { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--line); }
 .choix-theme button { border: 0; background: none; color: var(--muted); font: 600 12.5px/1 var(--font-body); padding: 7px 10px; border-radius: 999px; cursor: pointer; }
 .choix-theme button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+
+/* ---------- premiere ouverture : choix du theme ---------- */
+.premier-theme { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; padding: calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom)); background: var(--bg); overflow-y: auto; animation: pt-entree 0.25s ease; }
+@keyframes pt-entree { from { opacity: 0; } to { opacity: 1; } }
+.pt-boite { width: 100%; max-width: 420px; text-align: center; }
+.pt-boite .brand { font-size: 30px; margin-bottom: 18px; }
+.pt-boite h1 { font: 800 24px/1.2 var(--font-display); margin-bottom: 6px; }
+.pt-boite > .muted { font-size: 14.5px; margin-bottom: 22px; }
+.pt-choix { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+.pt-choix button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 12px 14px; border-radius: 20px; border: 2px solid var(--line); background: var(--card); color: var(--text); font: inherit; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+.pt-choix button:active { transform: scale(0.98); }
+.pt-choix button[aria-pressed='true'] { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+.pt-choix b { font: 700 15px/1 var(--font-body); }
+.pt-rond { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); }
+.pt-choix button[aria-pressed='true'] .pt-rond { border: 6px solid var(--primary); }
+.apercu-theme { display: flex; flex-direction: column; gap: 6px; width: 100%; aspect-ratio: 3 / 4; padding: 10px; border-radius: 14px; overflow: hidden; }
+.apercu-theme i { display: block; border-radius: 6px; }
+.apercu-theme .at-barre { height: 10px; width: 45%; }
+.apercu-theme .at-vedette { height: 34%; border-radius: 10px; background: linear-gradient(135deg, #3d78ff, #1d47d6); }
+.apercu-theme .at-ligne { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+.apercu-theme .at-ligne i { height: 26px; }
+.apercu-theme .at-carte { flex: 1; }
+.apercu-theme .at-carte.court { flex: 0 0 14%; }
+.apercu-theme.clair { background: #f3f5fa; border: 1px solid #e2e6ee; }
+.apercu-theme.clair .at-barre { background: #0d1424; }
+.apercu-theme.clair .at-ligne i, .apercu-theme.clair .at-carte { background: #fff; box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08); }
+.apercu-theme.sombre { background: #07080b; border: 1px solid #1d2028; }
+.apercu-theme.sombre .at-barre { background: #fff; }
+.apercu-theme.sombre .at-vedette { background: linear-gradient(135deg, #12204a, #0a0f22); border: 1px solid rgba(47, 107, 255, 0.4); }
+.apercu-theme.sombre .at-ligne i, .apercu-theme.sombre .at-carte { background: #111318; border: 1px solid rgba(255, 255, 255, 0.08); }

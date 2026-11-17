@@ -24,11 +24,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#07080b" />
     <script>
-      // Theme clair ou sombre, pose avant l'affichage (choix fait dans le Profil)
+      // Theme clair (par defaut) ou sombre, pose avant l'affichage
       ;(function () {
         try {
           var t = localStorage.getItem('sukul-theme')
-          var clair = t === 'clair' || (t === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)
+          var clair = t === 'auto' ? !(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) : t !== 'sombre'
           document.documentElement.setAttribute('data-theme', clair ? 'light' : 'dark')
           if (clair) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f3f5fa')
         } catch (e) {}
