@@ -102,14 +102,46 @@ const groupeDe = (libelle) => (CATEGORIES.find((c) => c[1] === libelle) || CATEG
 const jour = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 const sansAccent = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-// Dossier (une couleur par type de document)
-const COULEURS = { Communiqués: '#2f6bff', Réunions: '#7c4dff', Scolarité: '#12b76a', 'Emplois du temps': '#0ba5ec', Calendriers: '#f79009', Examens: '#ef6820', Résultats: '#ee46bc', Absences: '#f04438', Fournitures: '#875bf7', Cantine: '#eaaa08', Événements: '#06aed4', Administration: '#344054', 'Autres documents': '#667085' }
-const Dossier = ({ couleur }) => (
-  <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l2 2h8.8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" fill={couleur} />
-    <path d="M3 9.5h18v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z" fill="#fff" fillOpacity="0.22" />
-  </svg>
-)
+// Icone de chaque type de document (dessin adapte, sur fond de sa couleur)
+const COULEURS = { Communiqués: '#2f6bff', Réunions: '#7c4dff', Scolarité: '#12b76a', 'Emplois du temps': '#0ba5ec', Calendriers: '#f79009', Examens: '#ef6820', Résultats: '#dd2590', Absences: '#f04438', Fournitures: '#875bf7', Cantine: '#ca8504', Événements: '#06aed4', Administration: '#7a8699', 'Autres documents': '#8a94a6' }
+const DESSINS = {
+  // porte-voix
+  Communiqués: <><path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1z" /><path d="M16 9a4 4 0 0 1 0 6" /><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11" /></>,
+  // groupe de personnes autour d'une table
+  Réunions: <><circle cx="8" cy="8" r="2.6" /><circle cx="16" cy="8" r="2.6" /><path d="M3.5 18a4.5 4.5 0 0 1 9 0" /><path d="M11.5 18a4.5 4.5 0 0 1 9 0" /></>,
+  // billets
+  Scolarité: <><rect x="3" y="6.5" width="18" height="11" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6.5 9.5v.01M17.5 14.5v.01" /></>,
+  // grille horaire avec horloge
+  'Emplois du temps': <><rect x="3" y="4" width="13" height="13" rx="2" /><path d="M3 8.5h13M7.5 4v13M11.5 4v13" /><circle cx="17.5" cy="17.5" r="3.5" fill="var(--fond-ico)" /><path d="M17.5 16v1.6l1 .8" /></>,
+  // calendrier
+  Calendriers: <><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /><path d="M8 13h.01M12 13h.01M16 13h.01M8 16.5h.01M12 16.5h.01" /></>,
+  // copie d'examen et crayon
+  Examens: <><path d="M6 3h8l4 4v6" /><path d="M6 3v17a1 1 0 0 0 1 1h5" /><path d="M9 9h5M9 12.5h4" /><path d="m14.5 20.5 5.5-5.5 1.5 1.5-5.5 5.5H14.5z" /></>,
+  // coupe
+  Résultats: <><path d="M8 4h8v5a4 4 0 0 1-8 0z" /><path d="M8 6H5a2.5 2.5 0 0 0 3 4M16 6h3a2.5 2.5 0 0 1-3 4" /><path d="M12 13v4M8.5 20h7M10 17h4" /></>,
+  // personne absente
+  Absences: <><circle cx="10" cy="8" r="3.5" /><path d="M3.5 20a6.5 6.5 0 0 1 11.5-4" /><path d="m16.5 15.5 4 4M20.5 15.5l-4 4" /></>,
+  // cartable
+  Fournitures: <><path d="M7 8V6a5 5 0 0 1 10 0v2" /><rect x="4" y="8" width="16" height="12" rx="3" /><path d="M4 13h16M10 13v2h4v-2" /></>,
+  // couverts
+  Cantine: <><path d="M7 3v6a2 2 0 0 0 4 0V3M9 3v18" /><path d="M17 21V3c-2 1-3 4-3 7h3" /></>,
+  // drapeau d'evenement
+  Événements: <><path d="M5 21V4" /><path d="M5 4h11l-2 4 2 4H5" /><path d="M9 16.5l1 1.5 2-3" /></>,
+  // porte-documents ferme
+  Administration: <><rect x="3.5" y="7" width="17" height="12" rx="2" /><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7" /><rect x="10" y="11" width="4" height="4" rx="1" /><path d="M3.5 13h6.5M14 13h6.5" /></>,
+  // document
+  'Autres documents': <><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M14 3v5h5M9 13h6M9 16.5h6" /></>,
+}
+const Dossier = ({ groupe, taille = 36 }) => {
+  const c = COULEURS[groupe] || '#667085'
+  return (
+    <span className="doc-type-ico" style={{ width: taille, height: taille, color: c, background: `${c}1f`, '--fond-ico': 'var(--card)' }} aria-hidden="true">
+      <svg width={Math.round(taille * 0.56)} height={Math.round(taille * 0.56)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        {DESSINS[groupe] || DESSINS['Autres documents']}
+      </svg>
+    </span>
+  )
+}
 const CLE_DOSSIER = 'sukul-documents-dossier'
 
 const VIDE = { titre: '', categorie: 'autre', description: '', audience: 'tous', dateEvenement: '', lieu: '' }
@@ -411,7 +443,7 @@ export default function Documents() {
                 const ds = dossiers.get(g)
                 return (
                   <button key={g} type="button" className="doc-dossier" onClick={() => ouvrirDossier(g)}>
-                    <Dossier couleur={COULEURS[g] || '#667085'} />
+                    <Dossier groupe={g} />
                     <b>{g}</b>
                     <small>
                       {ds.length} {ds.length > 1 ? 'documents' : 'document'}
@@ -431,7 +463,7 @@ export default function Documents() {
                     ← Tous les documents
                   </button>
                   <h2>
-                    <Dossier couleur={COULEURS[type] || '#667085'} />
+                    <Dossier groupe={type} taille={34} />
                     {type}
                     <small>{dossiers.get(type).length}</small>
                   </h2>

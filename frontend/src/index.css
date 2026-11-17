@@ -1276,7 +1276,7 @@ html.ordi .docs-dossiers { grid-template-columns: repeat(4, minmax(0, 1fr)); gap
 .doc-actions { flex: none; display: flex; gap: 14px; align-items: center; align-self: center; }
 .doc-dossier-tete .back { border: 0; background: none; padding: 0; color: var(--lien); font: inherit; font-weight: 700; cursor: pointer; }
 .doc-dossier { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
-.doc-dossier svg { grid-row: 1 / 3; }
+.doc-dossier .doc-type-ico { grid-row: 1 / 3; }
 .doc-dossier b { font: 700 14px/1.25 var(--font-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-dossier small { color: var(--muted); font-size: 12px; line-height: 1.3; }
 .docs-dossiers { gap: 8px; }
@@ -1288,3 +1288,8 @@ html.ordi .docs-dossiers { grid-template-columns: repeat(4, minmax(0, 1fr)); gap
 .doc-nom small { white-space: normal; }
 .docs-ajout .actions { display: flex; flex-wrap: nowrap; gap: 10px; }
 .docs-ajout .actions .btn { flex: none; }
+.doc-type-ico { flex: none; display: grid; place-items: center; border-radius: 12px; }
+.doc-dossier { column-gap: 12px; }
+.doc-dossier { padding: 10px; column-gap: 10px; }
+.doc-dossier b { font-size: 13.5px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.doc-type-ico { border-radius: 11px; }
