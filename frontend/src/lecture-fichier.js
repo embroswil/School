@@ -247,7 +247,7 @@ export async function lireListeEleves(fichier) {
 }
 
 // Prepare un document quelconque pour la lecture par l'IA :
-// photos -> images ; PDF -> texte (ou images des pages si c'est un scan) ; Excel/CSV -> texte.
+// photos -> images ; PDF -> texte (ou images des pages si c'est un scan) ; Excel/CSV et Word -> texte.
 export async function preparerDocument(fichiers) {
   const liste = [...fichiers]
   const images = []
@@ -269,10 +269,15 @@ export async function preparerDocument(fichiers) {
       const XLSX = await import('xlsx')
       const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' })
       for (const n of wb.SheetNames) texte += `\n[${n}]\n${XLSX.utils.sheet_to_csv(wb.Sheets[n])}`
+    } else if (/\.docx$/.test(nom)) {
+      const lignes = lignesDocx(await lireEntreeZip(await f.arrayBuffer(), 'word/document.xml'))
+      texte += `\n${lignes.map((l) => l.join(' | ')).join('\n')}`
+    } else if (/\.doc$/.test(nom)) {
+      throw new Error('Ancien format Word (.doc) : enregistrez le fichier en .docx ou en PDF, puis réessayez.')
     } else if (/^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/.test(nom)) {
       images.push(await imageVersJpeg(f))
     } else {
-      throw new Error('Format non pris en charge : photo, PDF, Excel ou CSV.')
+      throw new Error('Format non pris en charge : Excel, CSV, PDF, Word ou photo.')
     }
   }
   return { images: images.slice(0, 8), texte }

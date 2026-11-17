@@ -2,22 +2,35 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { BoutonExcel, exporterExcel } from '../export.jsx'
+import { IcChevron, IcImport } from '../icones.jsx'
 import { demandeAppel } from './Appel.jsx'
 
-const aujourdhui = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const enChaine = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const aujourdhui = () => enChaine(new Date())
+const decaler = (jour, n) => {
+  const d = new Date(`${jour}T12:00:00`)
+  d.setDate(d.getDate() + n)
+  return enChaine(d)
 }
-const ETAT = { assure: ['✓ Appel fait', '#7aa5ff'], sans_appel: ['Pas d’appel', 'var(--danger)'], a_venir: ['À venir', 'var(--muted)'] }
+const jourLisible = (jour) => {
+  if (jour === aujourdhui()) return 'Aujourd’hui'
+  if (jour === decaler(aujourdhui(), -1)) return 'Hier'
+  return new Date(`${jour}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+const ETAT = { assure: ['Appel fait', 'ok'], sans_appel: ['Pas d’appel', 'alerte'], a_venir: ['À venir', 'neutre'] }
 
-// Presence des enseignants : cours du jour, appels faits, absences signalees, bilan sur 30 jours
+// Enseignants : la journee (cours, appels, absences), l'equipe, et le bilan sur 30 jours.
+// Un seul bouton « Importer » pour la liste des enseignants (Excel, PDF, Word ou photo).
 export default function PresenceEnseignants() {
-  const [date, setDate] = useState(aujourdhui())
   const [onglet, setOnglet] = useState('jour')
-  const d = useApi(`/api/presence-enseignants?date=${date}`)
+  const [date, setDate] = useState(aujourdhui())
+  const d = useApi(onglet === 'equipe' ? null : `/api/presence-enseignants?date=${date}`)
+  const equipe = useApi(onglet === 'equipe' ? '/api/etablissement/enseignants/attendus' : null)
+  const actifs = useApi(onglet === 'equipe' ? '/api/etablissement/enseignants' : null)
+  const tableau = useApi('/api/etablissement/tableau')
   const [error, setError] = useState('')
   const v = d.data
+  const attente = tableau.data?.enseignants_attente || 0
 
   async function marquer(teacherId, nom) {
     const motif = window.prompt(`Marquer ${nom} absent(e) ce jour. Motif (facultatif) :`, '')
@@ -29,167 +42,243 @@ export default function PresenceEnseignants() {
       setError(err.message)
     }
   }
-  async function retirer(id) {
+  async function retirerAbsence(id) {
     await api.delete(`/api/presence-enseignants/${id}`)
     d.reload()
   }
+  async function retirerDeLaListe(id) {
+    if (!window.confirm('Retirer cet enseignant de la liste ? Son compte, s’il existe, n’est pas supprimé.')) return
+    await api.delete(`/api/etablissement/enseignants/attendus/${id}`)
+    equipe.reload()
+  }
 
+  // Equipe : la liste importee, completee des comptes actifs qui n'y figurent pas
+  const membres = (() => {
+    const liste = (equipe.data || []).map((a) => ({
+      cle: `l${a.id}`,
+      idListe: a.id,
+      nom: `${a.last_name} ${a.first_name || ''}`.trim(),
+      matiere: a.matieres,
+      classes: a.classes,
+      etat: !a.a_un_compte ? 'sans' : a.status === 'active' ? 'actif' : 'attente',
+      userId: a.user_id,
+    }))
+    const deja = new Set(liste.map((m) => m.userId).filter(Boolean))
+    for (const u of actifs.data || []) {
+      if (!deja.has(u.id)) liste.push({ cle: `u${u.id}`, nom: `${u.last_name} ${u.first_name || ''}`.trim(), matiere: u.matieres, classes: u.classes, etat: 'actif' })
+    }
+    return liste.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  })()
+  const ETAT_COMPTE = { actif: ['Compte actif', 'ok'], attente: ['À valider', 'alerte'], sans: ['Compte non créé', 'neutre'] }
   const sansAppel = v?.cours.filter((c) => c.etat === 'sans_appel').length || 0
+
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <h1 className="page-title" style={{ flex: 1 }}>
-          Présence des enseignants
-        </h1>
-        <a className="btn btn-quiet bouton-icone" href="#/import-enseignants">
-          Liste
+      <div className="page-tete">
+        <div>
+          <h1 className="page-title">Enseignants</h1>
+          {tableau.data && <p className="muted">{tableau.data.enseignants} enseignant(s) actif(s)</p>}
+        </div>
+        <a className="btn bouton-icone" href="#/import-enseignants">
+          <IcImport size={18} /> Importer
         </a>
-        {v && (
-          <BoutonExcel
-            onClick={() =>
-              exporterExcel(`presence-enseignants-${date}`, [
-                {
-                  nom: `Cours du ${date}`,
-                  lignes: v.cours.map((c) => ({
-                    Heure: `${c.debut}–${c.fin}`,
-                    Classe: c.classe,
-                    Matière: c.matiere || '',
-                    Enseignant: c.last_name ? `${c.last_name} ${c.first_name}` : '',
-                    État: c.etat === 'assure' ? 'Appel fait' : c.etat === 'sans_appel' ? 'Pas d’appel' : 'À venir',
-                    Absent: c.absent ? 'Oui' : '',
-                  })),
-                },
-                {
-                  nom: 'Bilan 30 jours',
-                  lignes: v.bilan.map((b) => ({
-                    Enseignant: `${b.last_name} ${b.first_name}`,
-                    'Cours prévus': b.prevus,
-                    'Sans appel': b.sans_appel,
-                    'Absences signalées': b.absences,
-                    'Taux de cours assurés (%)': b.prevus ? Math.round(((b.prevus - b.sans_appel) / b.prevus) * 100) : 100,
-                  })),
-                },
-              ])
-            }
-          />
-        )}
       </div>
-      <div className="chips" style={{ marginBottom: 10 }}>
-        <button type="button" className="chip" aria-pressed={onglet === 'jour'} onClick={() => setOnglet('jour')}>
-          Jour par jour
-        </button>
-        <button type="button" className="chip" aria-pressed={onglet === 'bilan'} onClick={() => setOnglet('bilan')}>
-          Bilan sur 30 jours
-        </button>
+
+      {attente > 0 && (
+        <a className="encart-alerte" href="#/enseignants">
+          <span>
+            <b>{attente} compte(s) enseignant à valider</b>
+            <small>Vérifiez et validez les nouveaux comptes</small>
+          </span>
+          <IcChevron size={18} />
+        </a>
+      )}
+
+      <div className="segments" role="tablist">
+        {[
+          ['jour', 'Journée'],
+          ['equipe', 'Équipe'],
+          ['bilan', 'Bilan 30 jours'],
+        ].map(([k, t]) => (
+          <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}>
+            {t}
+          </button>
+        ))}
       </div>
-      <Note>{error || d.error}</Note>
-      {!v && !d.error && <p className="muted">Chargement…</p>}
-      {v && onglet === 'jour' && (
+      <Note>{error || d.error || equipe.error}</Note>
+
+      {onglet === 'jour' && (
         <>
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ marginBottom: 12 }} />
-          <div className="kpis" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-            <div className="kpi">
-              <b>{v.cours.length}</b>
-              <span>cours prévus</span>
-            </div>
-            <div className="kpi">
-              <b style={{ color: sansAppel ? 'var(--danger)' : undefined }}>{sansAppel}</b>
-              <span>sans appel</span>
-            </div>
-            <div className="kpi">
-              <b style={{ color: v.absences.length ? 'var(--danger)' : undefined }}>{v.absences.length}</b>
-              <span>absence(s) signalée(s)</span>
-            </div>
+          <div className="jour-nav">
+            <button type="button" aria-label="Jour précédent" onClick={() => setDate(decaler(date, -1))}>
+              <IcChevron size={18} style={{ transform: 'rotate(180deg)' }} />
+            </button>
+            <label>
+              <span>{jourLisible(date)}</span>
+              <input type="date" value={date} max={aujourdhui()} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="Choisir une date" />
+            </label>
+            <button type="button" aria-label="Jour suivant" disabled={date >= aujourdhui()} onClick={() => setDate(decaler(date, 1))}>
+              <IcChevron size={18} />
+            </button>
           </div>
-          {v.absences.length > 0 && (
+          {!v && !d.error && <p className="muted">Chargement…</p>}
+          {v && (
             <>
-              <p className="niveau-titre">Absences signalées</p>
-              <ul className="liste-eleves">
-                {v.absences.map((a) => (
-                  <li key={a.id} style={{ padding: '10px 12px', gap: 10 }}>
-                    <span className="nom" style={{ flex: 1 }}>
-                      <b>
-                        {a.last_name} {a.first_name}
-                      </b>
-                      <small>
-                        {a.par_lui ? 'Signalée par l’enseignant' : 'Marquée par l’administration'}
-                        {a.motif ? ` · ${a.motif}` : ''}
-                      </small>
-                    </span>
-                    <button type="button" className="btn btn-quiet" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => retirer(a.id)}>
-                      Retirer
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <div className="eleves-chiffres">
+                <div>
+                  <b>{v.cours.length}</b>
+                  <span>Cours prévus</span>
+                </div>
+                <div>
+                  <b className={sansAppel ? 'rouge' : ''}>{sansAppel}</b>
+                  <span>Sans appel</span>
+                </div>
+                <div>
+                  <b className={v.absences.length ? 'rouge' : ''}>{v.absences.length}</b>
+                  <span>Absences</span>
+                </div>
+              </div>
+
+              {v.absences.length > 0 && (
+                <>
+                  <p className="niveau-titre">Absences signalées</p>
+                  <ul className="liste-simple">
+                    {v.absences.map((a) => (
+                      <li key={a.id}>
+                        <span className="ls-texte">
+                          <b data-brut>
+                            {a.last_name} {a.first_name}
+                          </b>
+                          <small>
+                            {a.par_lui ? 'Signalée par l’enseignant' : 'Marquée par l’administration'}
+                            {a.motif ? ` · ${a.motif}` : ''}
+                          </small>
+                        </span>
+                        <button type="button" className="lien-action" onClick={() => retirerAbsence(a.id)}>
+                          Retirer
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              <p className="niveau-titre">Cours</p>
+              {v.cours.length === 0 ? (
+                <div className="vide">
+                  <b>Aucun cours ce jour</b>
+                  <small>Les cours apparaissent ici une fois les emplois du temps ajoutés.</small>
+                  <a href="#/import-emplois">Ajouter les emplois du temps</a>
+                </div>
+              ) : (
+                <ul className="liste-simple">
+                  {v.cours.map((c) => (
+                    <li key={c.id}>
+                      <span className="ls-heure">{c.debut}</span>
+                      <span className="ls-texte">
+                        <b>
+                          {c.classe} · {c.matiere || '—'}
+                        </b>
+                        <small data-brut>{c.last_name ? `${c.last_name} ${c.first_name}${c.absent ? ' · absent(e)' : ''}` : 'Enseignant non affecté'}</small>
+                        {c.etat === 'sans_appel' && (
+                          <span className="ls-actions">
+                            <button
+                              type="button"
+                              className="lien-action"
+                              onClick={() => {
+                                demandeAppel.date = date
+                                demandeAppel.periode = Number(c.debut.replace(':', ''))
+                                window.location.hash = `/classes/${c.class_id}/appel`
+                              }}
+                            >
+                              Faire l’appel
+                            </button>
+                            {c.teacher_id && !c.absent && (
+                              <button type="button" className="lien-action" onClick={() => marquer(c.teacher_id, `${c.first_name} ${c.last_name}`)}>
+                                Marquer absent
+                              </button>
+                            )}
+                          </span>
+                        )}
+                      </span>
+                      <span className={`etiquette ${ETAT[c.etat][1]}`}>{ETAT[c.etat][0]}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           )}
-          <p className="niveau-titre">Cours de la journée</p>
-          {v.cours.length === 0 && <p className="muted">Aucun cours prévu ce jour (emplois du temps non saisis, ou jour sans cours).</p>}
-          {v.cours.length > 0 && (
-            <ul className="liste-eleves">
-              {v.cours.map((c) => (
-                <li key={c.id} style={{ padding: '10px 12px', gap: 10 }}>
-                  <span className="nom" style={{ flex: 1, minWidth: 0 }}>
-                    <b>
-                      {c.debut} · {c.classe} · {c.matiere || '—'}
-                    </b>
+        </>
+      )}
+
+      {onglet === 'equipe' && (
+        <>
+          {(equipe.loading || actifs.loading) && !membres.length && <p className="muted">Chargement…</p>}
+          {!equipe.loading && !actifs.loading && membres.length === 0 && (
+            <div className="vide">
+              <b>Aucun enseignant pour l’instant</b>
+              <small>Importez la liste de vos enseignants : leurs comptes seront validés et leurs classes affectées automatiquement.</small>
+              <a href="#/import-enseignants">Importer la liste</a>
+            </div>
+          )}
+          {membres.length > 0 && (
+            <ul className="liste-simple">
+              {membres.map((m) => (
+                <li key={m.cle}>
+                  <span className="ls-texte">
+                    <b data-brut>{m.nom}</b>
                     <small>
-                      {c.last_name ? `${c.last_name} ${c.first_name}` : 'Enseignant non affecté'}
-                      {c.absent ? ' · absent(e)' : ''}
+                      {[m.matiere, m.classes].filter(Boolean).join(' · ') || '—'}
                     </small>
+                    {m.idListe && (
+                      <span className="ls-actions">
+                        <button type="button" className="lien-action discret" onClick={() => retirerDeLaListe(m.idListe)}>
+                          Retirer de la liste
+                        </button>
+                      </span>
+                    )}
                   </span>
-                  <b style={{ color: ETAT[c.etat][1], fontSize: 12, whiteSpace: 'nowrap' }}>{ETAT[c.etat][0]}</b>
-                  {c.etat !== 'a_venir' && c.etat !== 'assure' && (
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{ padding: '5px 8px', fontSize: 12 }}
-                      onClick={() => {
-                        demandeAppel.date = date
-                        demandeAppel.periode = Number(c.debut.replace(':', ''))
-                        window.location.hash = `/classes/${c.class_id}/appel`
-                      }}
-                    >
-                      Faire l’appel
-                    </button>
-                  )}
-                  {c.teacher_id && !c.absent && c.etat !== 'assure' && (
-                    <button type="button" className="btn btn-quiet" style={{ padding: '5px 8px', fontSize: 12 }} onClick={() => marquer(c.teacher_id, `${c.first_name} ${c.last_name}`)}>
-                      Absent
-                    </button>
-                  )}
+                  <span className={`etiquette ${ETAT_COMPTE[m.etat][1]}`}>{ETAT_COMPTE[m.etat][0]}</span>
                 </li>
               ))}
             </ul>
           )}
         </>
       )}
-      {v && onglet === 'bilan' && (
+
+      {onglet === 'bilan' && (
         <>
-          <p className="muted" style={{ fontSize: 14, marginBottom: 10 }}>
-            Cours prévus à l’emploi du temps sur les 30 derniers jours, et ceux pour lesquels aucun appel n’a été fait (cours probablement non assurés).
-          </p>
-          {v.bilan.length === 0 && <p className="muted">Pas encore de données : les emplois du temps doivent être saisis.</p>}
-          {v.bilan.length > 0 && (
-            <ul className="liste-eleves">
-              {v.bilan.map((b) => {
-                const taux = b.prevus ? Math.round(((b.prevus - b.sans_appel) / b.prevus) * 100) : 100
-                return (
-                  <li key={b.teacher_id} style={{ padding: '10px 12px', gap: 10 }}>
-                    <span className="nom" style={{ flex: 1 }}>
-                      <b>
-                        {b.last_name} {b.first_name}
-                      </b>
-                      <small>
-                        {b.prevus} cours prévus · {b.sans_appel} sans appel · {b.absences} absence(s) signalée(s)
-                      </small>
-                    </span>
-                    <b style={{ color: taux >= 90 ? '#7aa5ff' : 'var(--danger)' }}>{taux} %</b>
-                  </li>
-                )
-              })}
-            </ul>
+          {!v && !d.error && <p className="muted">Chargement…</p>}
+          {v && v.bilan.length === 0 && (
+            <div className="vide">
+              <b>Pas encore de bilan</b>
+              <small>Le bilan se calcule à partir des emplois du temps et des appels faits.</small>
+            </div>
+          )}
+          {v && v.bilan.length > 0 && (
+            <>
+              <p className="muted" style={{ fontSize: 13, margin: '0 2px 10px' }}>
+                Part des cours de l’emploi du temps où l’appel a été fait, sur les 30 derniers jours.
+              </p>
+              <ul className="liste-simple">
+                {v.bilan.map((b) => {
+                  const taux = b.prevus ? Math.round(((b.prevus - b.sans_appel) / b.prevus) * 100) : 100
+                  return (
+                    <li key={b.teacher_id}>
+                      <span className="ls-texte">
+                        <b data-brut>
+                          {b.last_name} {b.first_name}
+                        </b>
+                        <small>
+                          {b.prevus} cours · {b.sans_appel} sans appel · {b.absences} absence(s)
+                        </small>
+                      </span>
+                      <b className={`ls-taux ${taux >= 90 ? '' : 'rouge'}`}>{taux} %</b>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
           )}
         </>
       )}

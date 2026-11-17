@@ -198,6 +198,40 @@ router.post("/enseignants/import", async (req, res, next) => {
   }
 });
 
+// POST /enseignants/lire { images: [dataUrl] } ou { texte } : liste d'enseignants en photo, PDF ou Word,
+// lue par l'IA (meme plafond mensuel que les autres lectures automatiques)
+router.post("/enseignants/lire", async (req, res, next) => {
+  try {
+    ecoleDe(req);
+    const images = Array.isArray(req.body?.images) ? req.body.images.slice(0, 8) : [];
+    const texte = String(req.body?.texte || "").slice(0, 60000);
+    if (!images.length && texte.trim().length < 20) throw new ApiError(400, "Aucun document à lire");
+    const donnees = await require("../../utils/quota-ia").lireAvecQuota(req, "liste-enseignants", {
+      images,
+      texte: images.length ? undefined : texte,
+      consigne: `Ce document (images ou texte) est la liste du personnel enseignant d'un établissement scolaire camerounais.
+Extrais TOUS les enseignants, dans l'ordre. Pour chacun : nom (nom de famille, souvent en MAJUSCULES), prenom, matieres (matière(s) enseignée(s), séparées par des virgules), classes (classes tenues, séparées par des virgules, ex. "6e A, 5e B, Tle C"), principalDe (classe dont il est professeur principal, si indiquée), telephone, email.
+Ignore les en-têtes, signatures, totaux et cachets. Si un champ est absent ou illisible, mets une chaîne vide.
+Format : {"enseignants": [{"nom":"","prenom":"","matieres":"","classes":"","principalDe":"","telephone":"","email":""}]}`,
+    });
+    const t = (v, m) => String(v || "").trim().slice(0, m);
+    const enseignants = (Array.isArray(donnees.enseignants) ? donnees.enseignants : [])
+      .map((e) => ({
+        nom: t(e.nom, 100),
+        prenom: t(e.prenom, 100),
+        matieres: t(e.matieres, 300),
+        classes: t(e.classes, 600),
+        principalDe: t(e.principalDe, 100),
+        telephone: t(e.telephone, 30),
+        email: t(e.email, 150),
+      }))
+      .filter((e) => e.nom);
+    res.json({ success: true, data: enseignants });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // GET /enseignants/attendus : la liste importee, avec l'etat de chaque compte
 router.get("/enseignants/attendus", async (req, res, next) => {
   try {

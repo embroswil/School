@@ -995,3 +995,44 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 .ia-barre { display: block; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
 .ia-barre i { display: block; height: 100%; border-radius: 3px; background: #2f6bff; }
 .ia-rouge .ia-barre i { background: #e5484d; }
+
+/* ---------- elements communs des pages de gestion (sobres, sans doublons) ---------- */
+.page-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 14px; }
+.page-tete > div { flex: 1; min-width: 0; }
+.page-tete .page-title { margin: 0; }
+.page-tete .muted { font-size: 14px; margin-top: 2px; }
+.page-tete .btn { flex: none; }
+.segments { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; margin-bottom: 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.segments button { padding: 9px 6px; border: 0; border-radius: 10px; background: none; color: var(--muted); font: 700 14px/1.2 var(--font-body); cursor: pointer; white-space: nowrap; }
+.segments button[aria-selected='true'] { background: var(--primary); color: #fff; }
+.encart-alerte { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; margin-bottom: 14px; border-radius: 14px; border: 1px solid rgba(255, 77, 87, 0.35); background: rgba(255, 77, 87, 0.1); color: var(--text); }
+.encart-alerte b { display: block; font-size: 15px; }
+.encart-alerte small { color: var(--muted); font-size: 13px; }
+.jour-nav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 6px; margin-bottom: 12px; }
+.jour-nav > button { height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); display: grid; place-items: center; cursor: pointer; }
+.jour-nav > button:disabled { opacity: 0.35; cursor: default; }
+.jour-nav label { position: relative; display: grid; place-items: center; height: 44px; min-width: 0; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font: 700 15px/1.2 var(--font-body); text-transform: capitalize; overflow: hidden; cursor: pointer; }
+.jour-nav label input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; border: 0; }
+.liste-simple { list-style: none; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-bottom: 14px; }
+.liste-simple li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.liste-simple li:first-child { border-top: 0; }
+.ls-heure { flex: none; width: 46px; padding-top: 1px; font: 700 14px/1.3 var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ls-texte { flex: 1; min-width: 0; }
+.ls-texte b { display: block; font-size: 15px; line-height: 1.3; }
+.ls-texte small { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.ls-actions { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
+.ls-taux { flex: none; font: 800 16px/1.3 var(--font-display); }
+.rouge { color: #ff6b74 !important; }
+.etiquette { flex: none; align-self: center; padding: 4px 9px; border-radius: 999px; font: 700 12px/1.2 var(--font-body); white-space: nowrap; }
+.etiquette.ok { background: rgba(47, 107, 255, 0.16); color: #7aa5ff; }
+.etiquette.alerte { background: rgba(255, 77, 87, 0.14); color: #ff8a92; }
+.etiquette.neutre { background: var(--card-2, #1a1f2b); color: var(--muted); }
+.lien-action { border: 0; background: none; padding: 0; color: var(--primary); font: 700 13px/1.3 var(--font-body); cursor: pointer; }
+.lien-action.discret { color: var(--muted); font-weight: 600; }
+.vide { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 18px; text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.vide b { font-size: 15px; }
+.vide small { color: var(--muted); font-size: 13px; line-height: 1.45; max-width: 320px; }
+.vide a { margin-top: 6px; font-weight: 700; font-size: 14px; }
+.resultat-import { margin-top: 10px; padding: 18px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.resultat-import > b { font-size: 16px; }
+.resultat-import p { margin: 6px 0 14px; color: var(--muted); font-size: 14px; }
