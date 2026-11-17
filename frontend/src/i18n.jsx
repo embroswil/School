@@ -21,6 +21,7 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Pas encore ajouté": "Not added yet",
   "Cours de chaque classe": "Lessons for each class",
   "Toutes les classes ont leur emploi du temps": "All classes have their timetable",
   "Aucune classe pour l’instant": "No classes yet",

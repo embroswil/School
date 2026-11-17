@@ -119,17 +119,17 @@ export default function PayerEleve({ id }) {
           <div className="chips" style={{ marginTop: 8 }}>
             {moyens.enLigne && (
               <button type="button" className="chip" aria-pressed={op === 'enligne'} onClick={() => setMoyen('enligne')}>
-                💳 En ligne · Orange, MTN, carte
+                En ligne
               </button>
             )}
             {moyens.orange && (
               <button type="button" className="chip" aria-pressed={op === 'orange_money'} onClick={() => setMoyen('orange_money')}>
-                🟠 Orange Money
+                <img className="moyen-logo petit" src="/paiement/orange-money.png" alt="" /> Orange Money
               </button>
             )}
             {moyens.mtn && (
               <button type="button" className="chip" aria-pressed={op === 'mtn_momo'} onClick={() => setMoyen('mtn_momo')}>
-                🟡 MTN MoMo
+                <img className="moyen-logo petit" src="/paiement/mtn-momo.png" alt="" /> MTN MoMo
               </button>
             )}
           </div>

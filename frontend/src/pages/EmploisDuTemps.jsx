@@ -41,7 +41,7 @@ export default function EmploisDuTemps() {
             {n.classes.map((c) => (
               <a key={c.id} href={`#/classes/${c.id}/emploi`} className={c.cours ? '' : 'sans-emploi'}>
                 <b>{c.name}</b>
-                <small>{c.cours ? `${c.cours} cours par semaine` : 'À ajouter'}</small>
+                <small>{c.cours ? `${c.cours} cours par semaine` : 'Pas encore ajouté'}</small>
               </a>
             ))}
           </div>

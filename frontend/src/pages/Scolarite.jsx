@@ -204,12 +204,12 @@ function Situation() {
             )}
             {paiement.moyens.orange && (
               <button type="button" className="chip" aria-pressed={paiement.moyen === 'orange_money'} onClick={() => setPaiement({ ...paiement, moyen: 'orange_money' })}>
-                <span className="moyen-marque orange petit" aria-hidden="true">OM</span> Orange Money
+                <img className="moyen-logo petit" src="/paiement/orange-money.png" alt="" /> Orange Money
               </button>
             )}
             {paiement.moyens.mtn && (
               <button type="button" className="chip" aria-pressed={paiement.moyen === 'mtn_momo'} onClick={() => setPaiement({ ...paiement, moyen: 'mtn_momo' })}>
-                <span className="moyen-marque mtn petit" aria-hidden="true">MoMo</span> MTN MoMo
+                <img className="moyen-logo petit" src="/paiement/mtn-momo.png" alt="" /> MTN MoMo
               </button>
             )}
           </div>
@@ -755,14 +755,14 @@ function Reglages() {
   return (
     <form className="card" onSubmit={enregistrer}>
       <label className="moyen-champ">
-        <span className="moyen-marque orange" aria-hidden="true">OM</span>
+        <img className="moyen-logo" src="/paiement/orange-money.png" alt="Orange Money" />
         <span className="moyen-texte">
           <span>Orange Money</span>
           <input className="input" type="tel" inputMode="tel" placeholder="6 9X XX XX XX" value={v.orange} onChange={maj('orange')} />
         </span>
       </label>
       <label className="moyen-champ">
-        <span className="moyen-marque mtn" aria-hidden="true">MoMo</span>
+        <img className="moyen-logo" src="/paiement/mtn-momo.png" alt="MTN Mobile Money" />
         <span className="moyen-texte">
           <span>MTN Mobile Money</span>
           <input className="input" type="tel" inputMode="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
