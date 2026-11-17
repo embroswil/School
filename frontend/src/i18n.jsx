@@ -21,6 +21,7 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Guide": "Guide",
   "Ajoutez votre enfant pour suivre les informations de son établissement.": "Add your child to follow their school’s news.",
   "Changer d’espace": "Switch space",
   "Mes enfants": "My children",

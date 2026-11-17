@@ -2,10 +2,9 @@ import { useRef, useState } from 'react'
 import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { ReglagePush, installee } from '../push.jsx'
-import { ChoixLangue } from '../i18n.jsx'
 import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcAide, IcBouclier, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcEcole, IcSortie } from '../icones.jsx'
+import { IcAide, IcCarte, IcChevron, IcCle, IcCloche, IcClasses, IcCrayon, IcPhoto, IcProfil, IcSortie } from '../icones.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -65,7 +64,7 @@ function Informations({ user, onDone }) {
     setBusy(false)
   }
   return (
-    <form className="card" onSubmit={envoyer}>
+    <form className="volet-form" onSubmit={envoyer}>
       <div className="grid2">
         <Field label="Prénom">
           <input className="input" value={f.firstName} onChange={maj('firstName')} required />
@@ -106,7 +105,7 @@ function MotDePasse({ logout }) {
     }
   }
   return (
-    <form className="card" onSubmit={envoyer}>
+    <form className="volet-form" onSubmit={envoyer}>
       <Field label="Mot de passe actuel">
         <input className="input" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
       </Field>
@@ -206,7 +205,9 @@ export default function Account() {
       <section className="profil-carte">
         <button type="button" className="profil-avatar profil-avatar-btn" onClick={() => champPhoto.current?.click()} aria-label="Changer ma photo" title="Changer ma photo">
           {moi.profilePicture ? <img src={moi.profilePicture} alt="" /> : initiales}
-          <span className="profil-avatar-cam">📷</span>
+          <span className="profil-avatar-cam" aria-hidden="true">
+            <IcPhoto size={14} />
+          </span>
         </button>
         <input ref={champPhoto} type="file" accept="image/*" hidden onChange={(e) => {
           const f = e.target.files?.[0]
@@ -215,46 +216,41 @@ export default function Account() {
         }} />
         {aRecadrer && <Recadreur fichier={aRecadrer} ratio={1} sortie={320} rond onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
         <div className="profil-identite">
-          <h1>
+          <h1 data-brut>
             {moi.firstName} {moi.lastName}
           </h1>
-          <span className="profil-role">{ROLES[moi.role] || moi.role}</span>
-          {moi.schoolName && <p className="profil-ecole">{moi.schoolName}</p>}
-          <p className="profil-contact">
-            {emailReel && <span>{moi.email}</span>}
-            {moi.phone && <span>{moi.phone}</span>}
+          <p className="profil-poste">
+            {ROLES[moi.role] || moi.role}
+            {moi.schoolName && (
+              <>
+                {' · '}
+                <span data-brut>{moi.schoolName}</span>
+              </>
+            )}
           </p>
         </div>
-        <button type="button" className="btn btn-quiet profil-modifier" onClick={() => bascule('infos')}>
-          Modifier
-        </button>
       </section>
-      {ouvert === 'infos' && (
-        <div style={{ margin: '12px 0' }}>
-          <Informations
-            user={moi}
-            onDone={(d) => {
-              setMoi((m) => ({ ...m, ...d }))
-              setOuvert(null)
-            }}
-          />
-        </div>
-      )}
 
       <p className="groupe-titre">Compte</p>
       <div className="liste-reglages">
         <Reglage Icone={IcCrayon} titre="Informations personnelles" onClick={() => bascule('infos')} />
-        <Reglage Icone={IcCle} titre="Mot de passe" valeur="••••••••" onClick={() => bascule('mdp')} />
-      </div>
-      {ouvert === 'mdp' && (
-        <div style={{ marginTop: 12 }}>
-          <MotDePasse logout={logout} />
-        </div>
-      )}
-
-      <p className="groupe-titre">Notifications</p>
-      <div className="liste-reglages">
-        <Reglage Icone={IcCloche} titre="Notifications reçues" valeur="Tout voir" href="#/notifications" />
+        {ouvert === 'infos' && (
+          <div className="reglage-volet">
+            <Informations
+              user={moi}
+              onDone={(d) => {
+                setMoi((m) => ({ ...m, ...d }))
+                setOuvert(null)
+              }}
+            />
+          </div>
+        )}
+        <Reglage Icone={IcCle} titre="Mot de passe" onClick={() => bascule('mdp')} />
+        {ouvert === 'mdp' && (
+          <div className="reglage-volet">
+            <MotDePasse logout={logout} />
+          </div>
+        )}
         {moi.role !== 'admin' && emailReel && (
           <Reglage
             Icone={IcCloche}
@@ -270,42 +266,33 @@ export default function Account() {
       </div>
       <ReglagePush />
 
-      <p className="groupe-titre">Préférences</p>
-      <div className="liste-reglages">
-        <Reglage Icone={IcAide} titre="Langue" droite={<ChoixLangue />} />
-      </div>
-
       {moi.role === 'principal' && (
         <>
-          <p className="groupe-titre">Mon établissement</p>
+          <p className="groupe-titre">Établissement</p>
           <div className="liste-reglages">
-            <Reglage Icone={IcEcole} titre="Enseignants" href="#/presence-enseignants" />
-            <Reglage Icone={IcEcole} titre="Liste des enseignants" valeur="Importer" href="#/import-enseignants" />
-            <Reglage Icone={IcEcole} titre="Emplois du temps" valeur="Importer" href="#/import-emplois" />
-            <Reglage Icone={IcEcole} titre="Cahier d’appel" valeur="Importer" href="#/import-absences" />
-            <Reglage Icone={IcCle} titre="Administrateurs" valeur="3 max." href="#/administrateurs" />
-            <Reglage Icone={IcCarte} titre="Moyens de paiement" valeur="Orange, MTN…" href="#/scolarite" />
             <Reglage Icone={IcCarte} titre="Abonnement Sùkûl" href="#/abonnement" />
+            <Reglage Icone={IcProfil} titre="Administrateurs" href="#/administrateurs" />
+            <Reglage Icone={IcClasses} titre="Emplois du temps" href="#/import-emplois" />
           </div>
         </>
       )}
 
-      <p className="groupe-titre">Aide</p>
-      <div className="liste-reglages">
-        {moi.role !== 'admin' && moi.role !== 'principal' && <Reglage Icone={IcAide} titre="Contacter l’établissement" href="#/messages" />}
-        {!installee() && <Reglage Icone={IcAide} titre="Installer l’application" valeur="Écran d’accueil" href="#/installer" />}
-        <Reglage Icone={IcAide} titre="Guide de démarrage" href="#/guide" />
-        <Reglage Icone={IcBouclier} titre="Confidentialité" href="#/confidentialite" />
-        <Reglage Icone={IcBouclier} titre="Conditions d’utilisation" href="#/conditions" />
-      </div>
+      {!installee() && (
+        <div className="liste-reglages" style={{ marginTop: 22 }}>
+          <Reglage Icone={IcAide} titre="Installer l’application" href="#/installer" />
+        </div>
+      )}
 
-      <button type="button" className="btn btn-quiet btn-danger btn-block profil-sortie" onClick={logout}>
+      <button type="button" className="btn btn-quiet btn-block profil-sortie" onClick={logout}>
         <IcSortie size={18} /> Se déconnecter
       </button>
+
+      <nav className="profil-liens">
+        <a href="#/guide">Guide</a>
+        <a href="#/confidentialite">Confidentialité</a>
+        <a href="#/conditions">Conditions</a>
+      </nav>
       {moi.role !== 'admin' && !moi.espace && <SuppressionCompte logout={logout} />}
-      <p className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 14 }}>
-        Sùkûl by Embroswil
-      </p>
     </div>
   )
 }

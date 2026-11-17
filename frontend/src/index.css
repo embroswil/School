@@ -841,7 +841,12 @@ html.ordi .info, html.ordi .fil-filtres, html.ordi .stories { max-width: 760px; 
 .profil-contact { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; color: var(--muted); font-size: 13px; word-break: break-all; }
 .profil-modifier { position: absolute; top: 14px; right: 14px; padding: 6px 12px; font-size: 13px; }
 .profil .groupe-titre { margin: 22px 4px 8px; font: 700 12px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.profil-sortie { margin-top: 24px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.profil-sortie { margin-top: 24px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--danger); }
+.profil-poste { margin-top: 4px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.profil-liens { display: flex; justify-content: center; gap: 18px; margin-top: 22px; }
+.profil-liens a { color: var(--muted); font-size: 13px; font-weight: 600; }
+.reglage-volet { padding: 14px 16px 16px; border-top: 1px solid var(--line); }
+.volet-form .field:last-of-type { margin-bottom: 12px; }
 .interrupteur { position: relative; display: inline-block; width: 44px; height: 26px; border-radius: 999px; background: var(--line); transition: background 0.2s; }
 .interrupteur i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
 .interrupteur.on { background: #2f6bff; }
@@ -952,7 +957,7 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 /* ---------- photo de profil ---------- */
 .profil-avatar-btn { position: relative; border: 0; cursor: pointer; padding: 0; overflow: visible; }
 .profil-avatar-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 20px; display: block; }
-.profil-avatar-cam { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #1c2130; border: 2px solid #0d1220; font-size: 13px; }
+.profil-avatar-cam { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #1c2130; border: 2px solid #0d1220; font-size: 13px; color: #fff; }
 
 /* ---------- apercu des PDF dans le fil ---------- */
 .apercu-pdf { display: block; margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--card-2); color: var(--text); }
