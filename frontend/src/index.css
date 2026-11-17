@@ -1489,3 +1489,6 @@ a.cpt-op { text-decoration: none; }
 [data-theme='light'] .cpt-statuts .vert { color: #067647; }
 [data-theme='light'] .cpt-statuts .rouge { color: #d92d20; }
 [data-theme='light'] .cpt-statuts .orange { color: #b54708; }
+
+.recu-verifier { max-width: 640px; margin: 14px auto 0; text-align: center; }
+.recu-verifier a { font: 700 14px/1 var(--font-body); color: var(--lien); }

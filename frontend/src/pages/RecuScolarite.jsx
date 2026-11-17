@@ -2,8 +2,10 @@ import { useApi } from '../hooks.js'
 import { Note, annoncer } from '../ui.jsx'
 import { useAuth } from '../auth.jsx'
 import { qrSvg } from '../qr.js'
+import { pdfRecu } from '../pdf-recu.js'
+import { useState } from 'react'
 import { enLettres, fcfa, inWords, lienVerification, MODES_PAIEMENT } from '../recus.js'
-import { langue } from '../i18n.jsx'
+import { langue, traduire } from '../i18n.jsx'
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 const date = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—')
@@ -33,6 +35,7 @@ export function EnteteRecu({ ecoleId, aPhoto, ecole, ville, titre, numero, sous 
 export default function RecuScolarite({ id }) {
   const { user } = useAuth()
   const d = useApi(`/api/scolarite/recus/${id}`)
+  const [busy, setBusy] = useState(false)
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
   const r = d.data
@@ -49,10 +52,79 @@ export default function RecuScolarite({ id }) {
     ['Date', `${date(quand)} · ${heure(quand)}`],
     ...(r.frais_service ? [['Frais de transaction', fcfa(r.frais_service)]] : []),
   ]
+  const nomFichier = `Recu-${r.numero_recu}.pdf`
+  // photo de l'etablissement convertie en petit JPEG pour le PDF (sinon initiale)
+  async function logoJpeg() {
+    if (!r.a_photo) return null
+    try {
+      const rep = await fetch(`${API}/api/actualites/ecoles/${r.school_id}/photo`)
+      if (!rep.ok) return null
+      const url = URL.createObjectURL(await rep.blob())
+      const img = await new Promise((ok, ko) => {
+        const i = new Image()
+        i.onload = () => ok(i)
+        i.onerror = ko
+        i.src = url
+      })
+      const cote = Math.min(img.width, img.height)
+      const cv = document.createElement('canvas')
+      cv.width = 160
+      cv.height = 160
+      const ctx = cv.getContext('2d')
+      ctx.fillStyle = '#fff'
+      ctx.fillRect(0, 0, 160, 160)
+      ctx.drawImage(img, (img.width - cote) / 2, (img.height - cote) / 2, cote, cote, 0, 0, 160, 160)
+      URL.revokeObjectURL(url)
+      const blob = await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', 0.85))
+      return blob ? new Uint8Array(await blob.arrayBuffer()) : null
+    } catch {
+      return null
+    }
+  }
+  async function fabriquerPdf() {
+    const fr = langue !== 'en'
+    return pdfRecu({
+      ecole: r.ecole,
+      ville: r.city,
+      numero: r.numero_recu,
+      montant: fcfa(r.montant),
+      montantLettres: fr ? `Arrêté à la somme de ${enLettres(r.montant)} francs CFA` : `Received the sum of ${inWords(r.montant)} CFA francs`,
+      lignes: lignes.map(([k, v]) => [traduire(k), String(v).startsWith('Au guichet') ? traduire(v) : v]),
+      situation: [[traduire('Reste sur ce frais'), fcfa(r.resteApres)], ...(r.annee ? [[traduire('Payé sur l’année'), fcfa(r.annee.paye)], [traduire('Reste sur l’année'), fcfa(r.annee.reste)]] : [])],
+      lien,
+      code: r.code,
+      logo: await logoJpeg(),
+      libelles: { titre: traduire('Reçu de paiement').toUpperCase(), montant: traduire('Montant reçu').toUpperCase(), paye: traduire('Payé').toUpperCase(), verifiable: traduire('Reçu vérifiable'), code: traduire('Code :') },
+      mentions: {
+        verifier: traduire('Scannez ce code ou ouvrez sukul.site › Vérifier un reçu, avec le numéro et le code ci-dessous.'),
+        emis: traduire('Reçu émis électroniquement par Sùkûl pour le compte de l’établissement. Il fait foi du paiement enregistré.'),
+      },
+    })
+  }
+  async function telecharger() {
+    setBusy(true)
+    try {
+      const blob = await fabriquerPdf()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = nomFichier
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch {
+      annoncer('Le PDF n’a pas pu être créé')
+    }
+    setBusy(false)
+  }
   async function partager() {
     const texte = `Reçu ${r.numero_recu} · ${r.ecole} · ${r.first_name} ${r.last_name} · ${fcfa(r.montant)} (${r.frais})`
+    setBusy(true)
     try {
-      if (navigator.share) await navigator.share({ title: `Reçu ${r.numero_recu}`, text: texte, url: lien })
+      const fichier = new File([await fabriquerPdf()], nomFichier, { type: 'application/pdf' })
+      if (navigator.canShare?.({ files: [fichier] })) await navigator.share({ files: [fichier], title: `Reçu ${r.numero_recu}`, text: texte })
+      else if (navigator.share) await navigator.share({ title: `Reçu ${r.numero_recu}`, text: texte, url: lien })
       else {
         await navigator.clipboard.writeText(`${texte}\n${lien}`)
         annoncer('Lien du reçu copié')
@@ -60,14 +132,15 @@ export default function RecuScolarite({ id }) {
     } catch {
       /* partage annule */
     }
+    setBusy(false)
   }
   return (
     <>
       <div className="recu-actions sans-impression">
-        <button type="button" className="btn" onClick={() => window.print()}>
-          Imprimer
+        <button type="button" className="btn" disabled={busy} onClick={telecharger}>
+          Télécharger
         </button>
-        <button type="button" className="btn btn-quiet" onClick={partager}>
+        <button type="button" className="btn btn-quiet" disabled={busy} onClick={partager}>
           Partager
         </button>
         {user.role !== 'teacher' && (
@@ -129,6 +202,9 @@ export default function RecuScolarite({ id }) {
           </div>
         </footer>
       </article>
+      <p className="recu-verifier sans-impression">
+        <a href={`#/verifier/${encodeURIComponent(r.numero_recu)}?c=${r.code}`}>Vérifier ce reçu</a>
+      </p>
     </>
   )
 }

@@ -1748,7 +1748,10 @@ const EN = {
   "soldé": "settled",
   "Résumé": "Summary",
   "partiel": "partial",
-  "Détail par classe et par élève": "Detail by class and student"
+  "Détail par classe et par élève": "Detail by class and student",
+  "Télécharger": "Download",
+  "Vérifier ce reçu": "Verify this receipt",
+  "Le PDF n’a pas pu être créé": "The PDF could not be created"
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
