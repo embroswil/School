@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
@@ -163,10 +163,39 @@ function Action({ href, Icone, titre, texte, compteur, urgent }) {
   )
 }
 
-function EnteteEtablissement({ d, onChange }) {
+// Photo et nom de l'etablissement gardes sur l'appareil : a l'ouverture de l'application,
+// l'en-tete s'affiche tout de suite, sans attendre la reponse du serveur.
+const CLE_ENTETE = 'sukul-entete'
+const lireEntete = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_ENTETE) || 'null')
+  } catch (_) {
+    return null
+  }
+}
+
+function EnteteEtablissement({ d, ecole, onChange }) {
   const champ = useRef(null)
   const [busy, setBusy] = useState(false)
   const [aRecadrer, setARecadrer] = useState(null)
+  const [garde] = useState(lireEntete)
+  const charge = d.nom !== undefined
+  const memo = !charge && garde && garde.ecole === ecole ? garde : null
+  const photo = charge ? d.photo : memo?.photo
+  const nom = charge ? d.nom : memo?.nom
+  useEffect(() => {
+    if (!charge) return
+    try {
+      localStorage.setItem(CLE_ENTETE, JSON.stringify({ ecole, nom: d.nom || '', photo: d.photo || null }))
+    } catch (_) {
+      // photo trop lourde pour le stockage : on garde au moins le nom
+      try {
+        localStorage.setItem(CLE_ENTETE, JSON.stringify({ ecole, nom: d.nom || '', photo: null }))
+      } catch (__) {
+        /* stockage indisponible */
+      }
+    }
+  }, [charge, ecole, d.nom, d.photo])
   function choisir(e) {
     const f = e.target.files?.[0]
     e.target.value = ''
@@ -192,7 +221,7 @@ function EnteteEtablissement({ d, onChange }) {
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-end',
-        backgroundImage: d.photo ? `linear-gradient(180deg, rgba(15,26,60,0.05) 25%, rgba(15,26,60,0.88)), url(${d.photo})` : undefined,
+        backgroundImage: photo ? `linear-gradient(180deg, rgba(15,26,60,0.05) 25%, rgba(15,26,60,0.88)), url(${photo})` : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         position: 'relative',
@@ -201,7 +230,7 @@ function EnteteEtablissement({ d, onChange }) {
       <button
         type="button"
         className="icon-btn"
-        aria-label={d.photo ? 'Changer la photo' : 'Ajouter une photo'}
+        aria-label={photo ? 'Changer la photo' : 'Ajouter une photo'}
         style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.9)', border: 0 }}
         onClick={() => champ.current?.click()}
         disabled={busy}
@@ -213,7 +242,7 @@ function EnteteEtablissement({ d, onChange }) {
       <span className="badge" style={{ alignSelf: 'flex-start' }}>
         {d.annee?.name ? `Année ${d.annee.name}` : 'Établissement'}
       </span>
-      <h2 style={{ marginTop: 8 }}>{d.nom || 'Mon établissement'}</h2>
+      <h2 style={{ marginTop: 8 }}>{nom || 'Mon établissement'}</h2>
     </section>
   )
 }
@@ -240,6 +269,7 @@ const aujourdhuiLocal = () => {
 // Accueil de l'etablissement : la journee en 3 chiffres, ce qui attend, puis 3 portes d'entree.
 // Messages, Informer et Abonnement ne sont pas repetes ici : ils sont dans la barre du bas, le bouton « + » et le Profil.
 function EspaceEtablissement() {
+  const { user } = useAuth()
   const t = useApi('/api/etablissement/tableau')
   const abs = useApi(`/api/notes/absences?date=${aujourdhuiLocal()}`)
   const prof = useApi(`/api/presence-enseignants?date=${aujourdhuiLocal()}`)
@@ -264,7 +294,7 @@ function EspaceEtablissement() {
           </button>
         </div>
       )}
-      <EnteteEtablissement d={d} onChange={() => t.reload()} />
+      <EnteteEtablissement d={d} ecole={user.schoolId} onChange={() => t.reload()} />
 
       <h2 className="section-title">Aujourd’hui</h2>
       <div className="jour-chiffres">
