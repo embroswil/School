@@ -382,7 +382,7 @@ function Frais() {
                     {x.changements?.length ? ` · ${x.changements.join(' ; ')}` : ''}
                   </small>
                 </span>
-                <span className={`etiquette ${x.statut === 'identique' ? 'neutre' : 'ok'}`}>{STATUT_LU[x.statut][0]}</span>
+                <span className={`etiquette ${x.statut === 'identique' ? 'neutre' : 'ok'}`}>{(STATUT_LU[x.statut] || STATUT_LU.identique)[0]}</span>
               </li>
             ))}
           </ul>

@@ -201,7 +201,7 @@ export default function PresenceEnseignants() {
                           </span>
                         )}
                       </span>
-                      <span className={`etiquette ${ETAT[c.etat][1]}`}>{ETAT[c.etat][0]}</span>
+                      <span className={`etiquette ${(ETAT[c.etat] || ETAT.a_venir)[1]}`}>{(ETAT[c.etat] || ETAT.a_venir)[0]}</span>
                     </li>
                   ))}
                 </ul>
@@ -238,7 +238,7 @@ export default function PresenceEnseignants() {
                       </span>
                     )}
                   </span>
-                  <span className={`etiquette ${ETAT_COMPTE[m.etat][1]}`}>{ETAT_COMPTE[m.etat][0]}</span>
+                  <span className={`etiquette ${(ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans)[1]}`}>{(ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans)[0]}</span>
                 </li>
               ))}
             </ul>

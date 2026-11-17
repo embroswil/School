@@ -11,7 +11,7 @@ function Ecole({ e, onChange }) {
   const [p, setP] = useState({ montant: '', moyen: 'especes', reference: '' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [libelle, couleur, fond] = STATUTS[a.statut]
+  const [libelle, couleur, fond] = STATUTS[a.statut] || STATUTS.a_payer
 
   async function faire(fn) {
     setError('')

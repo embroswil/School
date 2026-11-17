@@ -152,8 +152,9 @@ export default function OrdrePaiement({ id }) {
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
   const o = d.data
-  const [titre, , couleur, fond] = ETATS[o.statut]
-  const decalage = new Date(o.maintenant).getTime() - Date.now()
+  const [titre, , couleur, fond] = ETATS[o.statut] || ETATS.annule
+  // arrondi a la seconde : la valeur reste stable d'un affichage a l'autre
+  const decalage = Math.round((new Date(o.maintenant).getTime() - Date.now()) / 1000) * 1000
 
   async function action(fn, confirmation) {
     if (confirmation && !window.confirm(confirmation)) return
@@ -180,7 +181,7 @@ export default function OrdrePaiement({ id }) {
             </div>
           </div>
           <span className="tag" style={{ marginLeft: 'auto', background: fond, color: couleur }}>
-            {ETATS[o.statut][1]}
+            {(ETATS[o.statut] || ETATS.annule)[1]}
           </span>
         </div>
         <Etapes statut={o.statut} />
@@ -416,7 +417,7 @@ export function ListeOrdres({ statut, vide }) {
   return (
     <ul className="rows">
       {d.data.map((o) => {
-        const [, court, couleur, fond] = ETATS[o.statut]
+        const [, court, couleur, fond] = ETATS[o.statut] || ETATS.annule
         return (
           <li className="row" key={o.id}>
             <a className="row-main" href={`#/ordres/${o.id}`} style={{ color: 'inherit' }}>

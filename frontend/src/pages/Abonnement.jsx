@@ -97,7 +97,7 @@ export default function Abonnement() {
       setBusy(false)
     }
   }
-  const [libelle, couleur, fond] = STATUTS[e.statut]
+  const [libelle, couleur, fond] = STATUTS[e.statut] || STATUTS.a_payer
   const pct = e.montant > 0 ? Math.min(100, Math.round((e.paye / e.montant) * 100)) : 100
   const doit = e.statut !== 'gratuit' && e.reste > 0
 
