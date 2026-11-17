@@ -1462,3 +1462,26 @@ html.ordi .cpt-resume > div { padding: 16px 18px; }
 @media (max-width: 380px) { .cpt-deux { grid-template-columns: 1fr; } }
 html.ordi .voile:has(.cpt-feuille) { align-items: center; }
 html.ordi .cpt-feuille { border-radius: 22px; }
+.cpt-recouvrement { padding: 16px; margin-bottom: 4px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.cpt-rec-tete { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.cpt-rec-tete > b { flex: none; white-space: nowrap; font: 800 30px/1 var(--font-display); color: var(--text); }
+.cpt-rec-tete span { font: 700 14px/1.3 var(--font-body); color: var(--text); }
+.cpt-rec-tete small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; font-weight: 500; }
+.cpt-recouvrement > .suivi-barre { display: block; width: 100%; height: 8px; }
+.cpt-statuts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.cpt-statuts a { display: flex; flex-direction: column; gap: 3px; padding: 10px; border-radius: 12px; background: var(--card-2); color: var(--text); text-decoration: none; }
+.cpt-statuts b { font: 800 18px/1 var(--font-display); }
+.cpt-statuts span { color: var(--muted); font-size: 12px; }
+.cpt-statuts .vert { color: #12b76a; }
+.cpt-statuts .orange { color: #e0a21a; }
+.cpt-statuts .rouge { color: #f04438; }
+.cpt-frais li, .cpt-niveaux li { align-items: center; }
+.cpt-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.cpt-modes > div { padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); min-width: 0; }
+.cpt-modes span { display: block; color: var(--muted); font: 700 11px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; }
+.cpt-modes b { display: block; margin-top: 7px; font: 800 15px/1.2 var(--font-display); white-space: nowrap; }
+.cpt-modes small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+a.cpt-op { text-decoration: none; }
+.cpt-montant .cpt-recu { color: var(--lien); }
+[data-theme='light'] .cpt-statuts .vert { color: #067647; }
+[data-theme='light'] .cpt-statuts .orange { color: #b54708; }

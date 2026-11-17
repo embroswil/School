@@ -1737,7 +1737,15 @@ const EN = {
   "Aucun tableau de montants trouvé. Utilisez un fichier Excel ou CSV : budget, journal des dépenses ou journal des paiements de scolarité.": "No table of amounts found. Use an Excel or CSV file: budget, expense ledger or school-fee payment ledger.",
   "Fichier trop volumineux : découpez-le ou gardez seulement les feuilles utiles, puis réessayez.": "File too large: split it or keep only the useful sheets, then try again.",
   "Données envoyées illisibles": "Unreadable data sent",
-  "Aucun tableau reconnu : il faut des colonnes « Poste » et « Montant » (budget), « Date », « Libellé » et « Montant » (dépenses), ou « Date », « Matricule », « Frais » et « Montant » (paiements de scolarité).": "No table recognised: it needs « Item » and « Amount » columns (budget), « Date », « Description » and « Amount » (expenses), or « Date », « Registration no. », « Fee » and « Amount » (school-fee payments)."
+  "Aucun tableau reconnu : il faut des colonnes « Poste » et « Montant » (budget), « Date », « Libellé » et « Montant » (dépenses), ou « Date », « Matricule », « Frais » et « Montant » (paiements de scolarité).": "No table recognised: it needs « Item » and « Amount » columns (budget), « Date », « Description » and « Amount » (expenses), or « Date », « Registration no. », « Fee » and « Amount » (school-fee payments).",
+  "Recouvrement de la scolarité": "School-fee collection",
+  "Par niveau": "By level",
+  "Derniers encaissements": "Latest payments received",
+  "à jour": "up to date",
+  "partiellement": "partly paid",
+  "rien payé": "nothing paid",
+  "Facultatif": "Optional",
+  "soldé": "settled"
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
@@ -1780,6 +1788,11 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(.+ FCFA) encaissés$/, '$1 collected'],
+  [/^sur (.+ FCFA) · reste (.+ FCFA)$/, 'of $1 · $2 left'],
+  [/^([\d  ,.]+) élèves$/, '$1 students'],
+  [/^reste (.+ FCFA)$/, '$1 left'],
+  [/^(\d+) % · ([\d  ,.]+) reçus$/, '$1 % · $2 receipts'],
   [/^dont scolarité (.+)$/, 'of which school fees $1'],
   [/^([\d  ,.]+) paiement\(s\) à enregistrer$/, '$1 payment(s) to record'],
   [/^Total (.+ FCFA) · un reçu vérifiable par paiement, visible par les parents$/, 'Total $1 · one verifiable receipt per payment, visible to parents'],

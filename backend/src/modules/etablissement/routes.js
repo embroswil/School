@@ -77,7 +77,7 @@ router.get("/eleves", async (req, res, next) => {
                   WHERE p.frais_id = f.id AND p.student_id = u.id AND p.statut = 'reussi'), 0))), 0)::int AS paye
          FROM frais_scolaires f
          WHERE f.school_id = $1 AND f.obligatoire AND (f.academic_year_id IS NULL OR f.academic_year_id = $2)
-           AND (f.classes IS NULL OR cardinality(f.classes) = 0 OR lower(COALESCE(c.name, '')) = ANY (SELECT lower(x) FROM unnest(f.classes) x))
+           AND (f.classes IS NULL OR cardinality(f.classes) = 0 OR EXISTS (SELECT 1 FROM unnest(f.classes) x WHERE lower(COALESCE(c.name, '')) = lower(x) OR lower(COALESCE(c.name, '')) LIKE lower(x) || ' %'))
        ) sc ON true
        WHERE u.school_id = $1 AND u.role = 'student'
          AND ($3 = '' OR (u.first_name || ' ' || u.last_name) ILIKE '%' || $3 || '%' OR (u.last_name || ' ' || u.first_name) ILIKE '%' || $3 || '%')

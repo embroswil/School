@@ -43,7 +43,7 @@ const situationEleve = async (studentId) => {
             COALESCE((SELECT SUM(p.montant) FROM paiements_scolaires p WHERE p.frais_id = f.id AND p.student_id = $2 AND p.statut = 'reussi'), 0)::int AS paye
      FROM frais_scolaires f
      WHERE f.school_id = $1 AND (f.academic_year_id IS NULL OR f.academic_year_id = $3)
-       AND (f.classes IS NULL OR cardinality(f.classes) = 0 OR lower($4) = ANY (SELECT lower(x) FROM unnest(f.classes) x))
+       AND (f.classes IS NULL OR cardinality(f.classes) = 0 OR EXISTS (SELECT 1 FROM unnest(f.classes) x WHERE lower($4) = lower(x) OR lower($4) LIKE lower(x) || ' %'))
      ORDER BY f.echeance NULLS LAST, f.id`,
     [eleve.school_id, eleve.id, annee?.id || null, eleve.classe || ""]
   );
@@ -603,7 +603,7 @@ const SQL_DU = `
   fr AS (SELECT id, nom, montant, classes, echeance, categorie FROM frais_scolaires
          WHERE school_id = $1 AND obligatoire AND (academic_year_id IS NULL OR academic_year_id = $2)),
   du AS (SELECT el.*, fr.id AS frais_id, fr.nom AS frais, fr.montant, fr.echeance, fr.categorie FROM el JOIN fr
-         ON (fr.classes IS NULL OR cardinality(fr.classes) = 0 OR lower(el.classe) = ANY (SELECT lower(x) FROM unnest(fr.classes) x))),
+         ON (fr.classes IS NULL OR cardinality(fr.classes) = 0 OR EXISTS (SELECT 1 FROM unnest(fr.classes) x WHERE lower(el.classe) = lower(x) OR lower(el.classe) LIKE lower(x) || ' %'))),
   pa AS (SELECT student_id, frais_id, SUM(montant) AS s FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi' GROUP BY 1, 2)
   SELECT du.*, LEAST(COALESCE(pa.s, 0), du.montant)::int AS paye, GREATEST(du.montant - COALESCE(pa.s, 0), 0)::int AS reste,
          (du.echeance < CURRENT_DATE AND COALESCE(pa.s, 0) < du.montant) AS en_retard
@@ -774,7 +774,7 @@ router.get("/comptabilite", async (req, res, next) => {
     const annee = await assurerAnneeScolaire(ecole);
     const p = [ecole, annee?.id || null];
     const q = (sql) => db.query(sql, p).then((r) => r.rows);
-    const [globale, categories, frais, classes, modes, mois, facultatifs] = await Promise.all([
+    const [globale, categories, frais, classes, modes, mois, facultatifs, statuts] = await Promise.all([
       q(`SELECT COALESCE(SUM(montant),0)::bigint AS attendu, COALESCE(SUM(paye),0)::bigint AS encaisse, COUNT(DISTINCT id)::int AS eleves,
                 COUNT(DISTINCT id) FILTER (WHERE en_retard)::int AS en_retard,
                 COUNT(DISTINCT id) FILTER (WHERE reste = 0)::int AS soldes FROM (${SQL_DU}) x`),
@@ -800,6 +800,9 @@ router.get("/comptabilite", async (req, res, next) => {
          WHERE pa.school_id = $1 AND pa.statut = 'reussi' AND NOT f.obligatoire GROUP BY f.id, f.nom, f.categorie ORDER BY f.nom`,
         [ecole]
       ).then((r) => r.rows),
+      // situation de chaque eleve sur les frais obligatoires : a jour, partiel, rien paye
+      q(`SELECT COUNT(*) FILTER (WHERE r = 0)::int AS a_jour, COUNT(*) FILTER (WHERE r > 0 AND p > 0)::int AS partiels, COUNT(*) FILTER (WHERE p = 0 AND r > 0)::int AS non_payes
+         FROM (SELECT id, SUM(reste) AS r, SUM(paye) AS p FROM (${SQL_DU}) x GROUP BY id) y`),
     ]);
     const g = globale[0] || { attendu: 0, encaisse: 0, eleves: 0, en_retard: 0, soldes: 0 };
     res.json({
@@ -813,6 +816,7 @@ router.get("/comptabilite", async (req, res, next) => {
         modes,
         mois,
         facultatifs,
+        statuts: statuts[0] || { a_jour: 0, partiels: 0, non_payes: 0 },
       },
     });
   } catch (e) {
