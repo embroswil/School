@@ -612,10 +612,20 @@ router.put("/frais/:id", async (req, res, next) => {
 });
 
 const sansAccentFrais = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+// Nom d'un frais pour la comparaison : « Pension – 1ère tranche », « pension 1re tranche » et
+// « Pension première tranche » designent le meme frais
+const ORDINAUX = [[/\b(1 ?(ere|re|er)|premiere?)\b/g, "1"], [/\b(2 ?(eme|e|nde|nd)|deuxieme|seconde?)\b/g, "2"], [/\b(3 ?(eme|e)|troisieme)\b/g, "3"], [/\b(4 ?(eme|e)|quatrieme)\b/g, "4"]];
+const cleFrais = (t) => {
+  // sigles ecrits avec des points (« A.P.E.E » = « APEE »)
+  let s = sansAccentFrais(t).replace(/\b(?:[a-z] )+[a-z]\b/g, (m) => m.replace(/ /g, ""));
+  for (const [motif, chiffre] of ORDINAUX) s = s.replace(motif, chiffre);
+  return s.replace(/\b(les?|la|du|de|des|d|frais)\b/g, " ").replace(/\s+/g, " ").trim();
+};
 const memesClasses = (a, b) => [...(a || [])].map(sansAccentFrais).sort().join("|") === [...(b || [])].map(sansAccentFrais).sort().join("|");
 
 // POST /frais/lire { url, mime } ou { texte } : lit un document contenant les frais de l'etablissement
-// et les compare aux frais existants (nouveau, modifie, identique). N'ecrit rien.
+// et les compare aux frais existants (nouveau, modifie, identique). N'ecrit rien : l'application
+// envoie ensuite les nouveaux et les modifies a /frais/appliquer. Aucun frais n'est jamais supprime.
 router.post("/frais/lire", async (req, res, next) => {
   try {
     reserve(req);
@@ -661,12 +671,16 @@ Si un même frais a un montant différent selon le niveau, crée une ligne par n
     const existants = (
       await db.query("SELECT * FROM frais_scolaires WHERE school_id = $1 AND (academic_year_id IS NULL OR academic_year_id = $2)", [ecole, annee?.id || null])
     ).rows;
+    // Chaque frais existant n'est associe qu'une seule fois (meme nom et memes classes d'abord)
+    const pris = new Set();
     const data = lus.map((c) => {
-      const ex = existants.find((e) => sansAccentFrais(e.nom) === sansAccentFrais(c.nom) && memesClasses(e.classes, c.classes))
-        || existants.find((e) => sansAccentFrais(e.nom) === sansAccentFrais(c.nom));
+      const libre = (e) => !pris.has(e.id) && cleFrais(e.nom) === cleFrais(c.nom);
+      const ex = existants.find((e) => libre(e) && memesClasses(e.classes, c.classes)) || existants.find(libre);
       let statut = "nouveau";
       let changements = [];
       if (ex) {
+        pris.add(ex.id);
+        c.nom = ex.nom; // le nom deja enregistre est garde : seules les donnees changent
         if (ex.montant !== c.montant) changements.push(`montant ${ex.montant.toLocaleString("fr-FR")} → ${c.montant.toLocaleString("fr-FR")}`);
         const ech = ex.echeance ? new Date(ex.echeance).toISOString().slice(0, 10) : null;
         if (ech !== c.echeance) changements.push(`échéance ${ech || "aucune"} → ${c.echeance || "aucune"}`);

@@ -21,6 +21,24 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Vous validez sur votre téléphone. Le reçu est émis automatiquement.": "You confirm on your phone. The receipt is issued automatically.",
+  "Vous payez directement l’établissement. Le numéro et le motif s’affichent à l’étape suivante.": "You pay the school directly. The number and reference appear at the next step.",
+  "Paiement confirmé. Votre reçu est disponible dans « Paiements effectués ».": "Payment confirmed. Your receipt is in “Payments made”.",
+  "Aucun enfant relié": "No child linked",
+  "Ajoutez votre enfant depuis l’accueil pour voir sa scolarité et la payer.": "Add your child from the home screen to see and pay their school fees.",
+  "Ajouter mon enfant": "Add my child",
+  "Élève(s) absent(s)": "Absent student(s)",
+  "Classes appelées": "Classes with roll call",
+  "Rechercher un élève ou une classe": "Search for a student or a class",
+  "Aucune absence ce jour": "No absences this day",
+  "Les absences sont saisies par les enseignants à l’appel, ou importées depuis le cahier d’appel.": "Absences are recorded by teachers at roll call, or imported from the attendance register.",
+  "Aucun résultat.": "No results.",
+  "Frais mis à jour depuis le document": "Fees updated from the document",
+  "Ajouté": "Added",
+  "Mis à jour": "Updated",
+  "Inchangé": "Unchanged",
+  "Fermer": "Close",
+  "Mise à jour des frais…": "Updating fees…",
   "Suivi": "Overview",
   "Rappeler tous les parents en retard": "Remind all overdue parents",
   "Rappeler les parents en retard": "Remind overdue parents",
@@ -1396,6 +1414,7 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) ajouté\(s\) · (\d+) mis à jour · (\d+) inchangé\(s\)$/, '$1 added · $2 updated · $3 unchanged'],
   [/^sur (.+) FCFA attendus$/, 'out of $1 FCFA expected'],
   [/^Reste (.+) FCFA(.*)$/, '$1 FCFA left$2'],
   [/^Rappel envoyé à (\d+) parent\(s\)\.$/, 'Reminder sent to $1 parent(s).'],

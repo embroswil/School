@@ -1072,3 +1072,5 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 .suivi-detail li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 13px; }
 .suivi-detail li small { display: block; color: var(--muted); font-size: 12px; }
 .suivi-detail details > a { font-size: 13px; font-weight: 700; }
+
+.eleves-chiffres.deux { grid-template-columns: repeat(2, minmax(0, 1fr)); }

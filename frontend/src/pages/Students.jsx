@@ -5,7 +5,7 @@ import { Note } from '../ui.jsx'
 import { IcChevron, IcImport } from '../icones.jsx'
 import { niveauClasse, trierClasses } from '../classes.js'
 import StatutScolarite from './StatutScolarite.jsx'
-import { BoutonExcel, TableauTriable, exporterExcel, surOrdinateur } from '../export.jsx'
+import { TableauTriable, exporterExcel, surOrdinateur } from '../export.jsx'
 
 // La classe ouverte et la recherche sont gardees le temps de la visite :
 // en revenant de la fiche d'un eleve, on retrouve la liste ou on l'avait laissee.
@@ -217,7 +217,6 @@ export default function Students() {
             <button type="button" className="back" onClick={fermer}>
               ← Toutes les classes
             </button>
-            {liste.length > 0 && <BoutonExcel onClick={exporter} />}
           </div>
           <h2 className="eleves-titre">
             {enRecherche ? `Résultats pour « ${recherche} »` : classeOuverte?.name || 'Classe'}
@@ -281,6 +280,11 @@ export default function Students() {
                 </li>
               ))}
             </ul>
+          )}
+          {liste.length > 0 && (
+            <button type="button" className="lien-discret" onClick={exporter}>
+              Exporter en Excel
+            </button>
           )}
           {!eleves.loading && eleves.data && liste.length === 0 && (
             <p className="lede">{enRecherche ? 'Aucun élève trouvé. Vérifiez l’orthographe.' : 'Aucun élève dans cette classe.'}</p>

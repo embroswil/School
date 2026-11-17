@@ -48,7 +48,7 @@ function Situation() {
       .get(`/api/scolarite/verifier/${encodeURIComponent(ref)}`)
       .then((r) => {
         if (r.data.statut === 'reussi') {
-          setInfo('✓ Paiement confirmé. Merci ! Votre reçu est disponible dans « Paiements effectués ».')
+          setInfo('Paiement confirmé. Votre reçu est disponible dans « Paiements effectués ».')
         }
         else if (r.data.statut === 'echoue') setError('Le paiement n’a pas abouti.')
         if (r.data.statut !== 'en_attente') localStorage.removeItem('school-paiement')
@@ -97,9 +97,11 @@ function Situation() {
       <ListeOrdres statut="a_payer,paye,litige" />
       {situation.loading && <p className="muted">Chargement…</p>}
       {situation.data?.length === 0 && (
-        <p className="lede">
-          Aucun élève relié à votre compte pour le moment. Un enfant est relié automatiquement dès qu’il apparaît dans l’établissement.
-        </p>
+        <div className="vide">
+          <b>Aucun enfant relié</b>
+          <small>Ajoutez votre enfant depuis l’accueil pour voir sa scolarité et la payer.</small>
+          <a href="#/trouver-eleve">Ajouter mon enfant</a>
+        </div>
       )}
       {situation.data?.map((s) => (
         <section key={s.eleve.id} style={{ marginBottom: 22 }}>
@@ -137,7 +139,7 @@ function Situation() {
                     </div>
                   </div>
                   {f.reste === 0 ? (
-                    <span className="tag tag-now">✓ Payé</span>
+                    <span className="etiquette ok">Payé</span>
                   ) : (
                     <>
                       <span className="tag tag-wait">Reste {fcfa(f.reste)}</span>
@@ -191,25 +193,23 @@ function Situation() {
           <b>
             {paiement.frais.nom} · {paiement.eleve.prenom}
           </b>
-          <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>
-            {paiement.moyen === 'enligne'
-              ? 'Paiement sécurisé par NotchPay : vous validez sur votre téléphone, le reçu est émis automatiquement.'
-              : 'Transfert direct à l’établissement : Sùkûl vous indique le numéro, le montant et un code à mettre en motif.'}
+          <p className="muted" style={{ fontSize: 13, margin: '4px 0 10px' }}>
+            {paiement.moyen === 'enligne' ? 'Vous validez sur votre téléphone. Le reçu est émis automatiquement.' : 'Vous payez directement l’établissement. Le numéro et le motif s’affichent à l’étape suivante.'}
           </p>
           <div className="chips">
             {paiement.moyens.enLigne && (
               <button type="button" className="chip" aria-pressed={paiement.moyen === 'enligne'} onClick={() => setPaiement({ ...paiement, moyen: 'enligne' })}>
-                💳 En ligne · Orange, MTN, carte
+                En ligne
               </button>
             )}
             {paiement.moyens.orange && (
               <button type="button" className="chip" aria-pressed={paiement.moyen === 'orange_money'} onClick={() => setPaiement({ ...paiement, moyen: 'orange_money' })}>
-                🟠 Orange Money
+                Orange Money
               </button>
             )}
             {paiement.moyens.mtn && (
               <button type="button" className="chip" aria-pressed={paiement.moyen === 'mtn_momo'} onClick={() => setPaiement({ ...paiement, moyen: 'mtn_momo' })}>
-                🟡 MTN MoMo
+                MTN MoMo
               </button>
             )}
           </div>
@@ -233,7 +233,7 @@ function Situation() {
 
 // ------------------------------------------------------------ etablissement
 const FRAIS_VIDE = { id: null, nom: '', montant: '', echeance: '', classes: '', categorie: 'scolarite', obligatoire: true }
-const STATUT_LU = { nouveau: ['Nouveau', '#5fd0a0'], modifie: ['Modifié', '#e0a21a'], identique: ['Identique', '#8c96aa'] }
+const STATUT_LU = { nouveau: ['Ajouté'], modifie: ['Mis à jour'], identique: ['Inchangé'] }
 
 // Lecture d'un document de frais : PDF, photo, Excel ou CSV
 async function texteDuTableur(fichier) {
@@ -326,9 +326,19 @@ function Frais() {
         const env = await envoyer(fichier)
         corps = { url: env.url, mime: env.mime }
       }
-      setLecture('Sùkûl lit le document… (jusqu’à une minute)')
+      setLecture('Lecture du document… (jusqu’à une minute)')
       const r = (await api.post('/api/scolarite/frais/lire', corps)).data
-      setLus(r.map((x, i) => ({ ...x, cle: i, choisi: x.statut !== 'identique' })))
+      // Mise a jour automatique : nouveaux frais ajoutes, frais modifies mis a jour,
+      // frais identiques laisses tels quels. Aucun frais existant n'est supprime.
+      const aEnvoyer = r.filter((x) => x.statut !== 'identique')
+      if (aEnvoyer.length) {
+        setLecture('Mise à jour des frais…')
+        await api.post('/api/scolarite/frais/appliquer', {
+          frais: aEnvoyer.map(({ id, nom, montant, echeance, classes, categorie, obligatoire }) => ({ id, nom, montant, echeance, classes, categorie, obligatoire })),
+        })
+      }
+      setLus(r.map((x, i) => ({ ...x, cle: i })))
+      frais.reload()
     } catch (err) {
       setError(err.message)
     }
@@ -336,22 +346,6 @@ function Frais() {
   }
   const zoneDepot = useDepotPage(choisirDocument, { texte: 'Déposez le document des frais', detail: 'PDF, Excel, Word ou photo' })
 
-  async function appliquer() {
-    const choisis = lus.filter((x) => x.choisi && x.statut !== 'identique')
-    if (!choisis.length) return setLus(null)
-    setBusy(true)
-    setError('')
-    try {
-      const r = (await api.post('/api/scolarite/frais/appliquer', { frais: choisis.map(({ id, nom, montant, echeance, classes, categorie, obligatoire }) => ({ id, nom, montant, echeance, classes, categorie, obligatoire })) })).data
-      setOk(`${r.crees} frais ajouté(s), ${r.modifies} mis à jour.`)
-      setLus(null)
-      frais.reload()
-    } catch (err) {
-      setError(err.message)
-    }
-    setBusy(false)
-  }
-  const majLu = (cle, champs) => setLus((l) => l.map((x) => (x.cle === cle ? { ...x, ...champs } : x)))
 
   const formulaireOuvert = edition || ajout
   return (
@@ -372,37 +366,29 @@ function Frais() {
       <Note>{error}</Note>
 
       {lus && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <b>{lus.length} frais trouvé(s) dans le document</b>
-          <p className="muted" style={{ fontSize: 13, margin: '4px 0 10px' }}>
-            Les frais identiques à ceux déjà enregistrés ne sont pas modifiés.
+        <div className="resultat-import" style={{ marginTop: 0, marginBottom: 14 }}>
+          <b>Frais mis à jour depuis le document</b>
+          <p>
+            {lus.filter((x) => x.statut === 'nouveau').length} ajouté(s) · {lus.filter((x) => x.statut === 'modifie').length} mis à jour ·{' '}
+            {lus.filter((x) => x.statut === 'identique').length} inchangé(s)
           </p>
-          {lus.map((x) => (
-            <div key={x.cle} className="frais-lu">
-              <label className="check" style={{ margin: 0, alignItems: 'flex-start' }}>
-                <input type="checkbox" checked={x.choisi && x.statut !== 'identique'} disabled={x.statut === 'identique'} onChange={(e) => majLu(x.cle, { choisi: e.target.checked })} />
-                <span style={{ flex: 1 }}>
-                  <b>{x.nom}</b> · {fcfa(x.montant)}
-                  <small className="muted" style={{ display: 'block' }}>
-                    {CATEGORIES[x.categorie]}
-                    {x.obligatoire ? '' : ' · facultatif'} · {x.classes?.length ? x.classes.join(', ') : 'toutes les classes'} · {x.echeance ? `avant le ${jour(x.echeance)}` : 'sans échéance'}
+          <ul className="liste-simple" style={{ marginBottom: 10 }}>
+            {lus.map((x) => (
+              <li key={x.cle}>
+                <span className="ls-texte">
+                  <b>{x.nom}</b>
+                  <small>
+                    {fcfa(x.montant)} · {x.classes?.length ? x.classes.join(', ') : 'toutes les classes'}
+                    {x.changements?.length ? ` · ${x.changements.join(' ; ')}` : ''}
                   </small>
-                  {x.changements?.length > 0 && <small style={{ display: 'block', color: '#e0a21a' }}>Change : {x.changements.join(' ; ')}</small>}
                 </span>
-                <span className="frais-lu-statut" style={{ color: STATUT_LU[x.statut][1] }}>
-                  {STATUT_LU[x.statut][0]}
-                </span>
-              </label>
-            </div>
-          ))}
-          <div className="actions" style={{ marginTop: 12 }}>
-            <button type="button" className="btn" onClick={appliquer} disabled={busy}>
-              {busy ? 'Application…' : `Appliquer (${lus.filter((x) => x.choisi && x.statut !== 'identique').length})`}
-            </button>
-            <button type="button" className="btn btn-quiet" onClick={() => setLus(null)}>
-              Annuler
-            </button>
-          </div>
+                <span className={`etiquette ${x.statut === 'identique' ? 'neutre' : 'ok'}`}>{STATUT_LU[x.statut][0]}</span>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="lien-action" onClick={() => setLus(null)}>
+            Fermer
+          </button>
         </div>
       )}
 
@@ -768,14 +754,12 @@ function Reglages() {
   }
   return (
     <form className="card" onSubmit={enregistrer}>
-      <div className="grid2">
-        <Field label="Orange Money">
-          <input className="input" type="tel" placeholder="6 9X XX XX XX" value={v.orange} onChange={maj('orange')} />
-        </Field>
-        <Field label="MTN MoMo">
-          <input className="input" type="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
-        </Field>
-      </div>
+      <Field label="Orange Money">
+        <input className="input" type="tel" inputMode="tel" placeholder="6 9X XX XX XX" value={v.orange} onChange={maj('orange')} />
+      </Field>
+      <Field label="MTN MoMo">
+        <input className="input" type="tel" inputMode="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
+      </Field>
       <Field label="Téléphone pour les questions de paiement">
         <input className="input" type="tel" placeholder="6 XX XX XX XX" value={v.telephone} onChange={maj('telephone')} />
       </Field>
