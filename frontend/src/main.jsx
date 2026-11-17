@@ -22,6 +22,7 @@ const retirer = () => {
   if (!el) return
   try {
     sessionStorage.removeItem('sukul-maj')
+    sessionStorage.removeItem('sukul-recharge')
   } catch (_) {
     /* stockage indisponible */
   }

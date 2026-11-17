@@ -21,6 +21,12 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "MTN Mobile Money": "MTN Mobile Money",
+  "L’emploi du temps importé remplace celui de chaque classe choisie.": "The imported timetable replaces the one of each chosen class.",
+  "Excel, PDF, Word ou photo · une ou plusieurs classes": "Excel, PDF, Word or photo · one or more classes",
+  "Jusqu’à une minute": "Up to a minute",
+  "Cette page n’a pas pu s’afficher": "This page could not be displayed",
+  "Réessayez. Si le problème continue, envoyez une capture de cet écran à l’équipe Sùkûl.": "Try again. If the problem continues, send a screenshot of this screen to the Sùkûl team.",
   "Vous validez sur votre téléphone. Le reçu est émis automatiquement.": "You confirm on your phone. The receipt is issued automatically.",
   "Vous payez directement l’établissement. Le numéro et le motif s’affichent à l’étape suivante.": "You pay the school directly. The number and reference appear at the next step.",
   "Paiement confirmé. Votre reçu est disponible dans « Paiements effectués ».": "Payment confirmed. Your receipt is in “Payments made”.",
@@ -1414,6 +1420,7 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Emploi du temps enregistré pour (\d+) classe\(s\) : (\d+) cours\.$/, 'Timetable saved for $1 class(es): $2 lessons.'],
   [/^(\d+) ajouté\(s\) · (\d+) mis à jour · (\d+) inchangé\(s\)$/, '$1 added · $2 updated · $3 unchanged'],
   [/^sur (.+) FCFA attendus$/, 'out of $1 FCFA expected'],
   [/^Reste (.+) FCFA(.*)$/, '$1 FCFA left$2'],

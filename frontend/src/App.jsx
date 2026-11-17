@@ -3,6 +3,7 @@ import { api } from './api.js'
 import { AuthProvider, useAuth } from './auth.jsx'
 import { usePath } from './router.js'
 import Shell from './layout.jsx'
+import Secours from './Secours.jsx'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
@@ -201,15 +202,20 @@ function Root() {
   }
   return (
     <Shell path={path}>
-      <Pages path={path} />
+      {/* un filet par page : changer de page efface l'erreur */}
+      <Secours key={path}>
+        <Pages path={path} />
+      </Secours>
     </Shell>
   )
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Root />
-    </AuthProvider>
+    <Secours>
+      <AuthProvider>
+        <Root />
+      </AuthProvider>
+    </Secours>
   )
 }

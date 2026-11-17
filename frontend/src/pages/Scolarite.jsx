@@ -204,12 +204,12 @@ function Situation() {
             )}
             {paiement.moyens.orange && (
               <button type="button" className="chip" aria-pressed={paiement.moyen === 'orange_money'} onClick={() => setPaiement({ ...paiement, moyen: 'orange_money' })}>
-                Orange Money
+                <span className="moyen-marque orange petit" aria-hidden="true">OM</span> Orange Money
               </button>
             )}
             {paiement.moyens.mtn && (
               <button type="button" className="chip" aria-pressed={paiement.moyen === 'mtn_momo'} onClick={() => setPaiement({ ...paiement, moyen: 'mtn_momo' })}>
-                MTN MoMo
+                <span className="moyen-marque mtn petit" aria-hidden="true">MoMo</span> MTN MoMo
               </button>
             )}
           </div>
@@ -754,12 +754,20 @@ function Reglages() {
   }
   return (
     <form className="card" onSubmit={enregistrer}>
-      <Field label="Orange Money">
-        <input className="input" type="tel" inputMode="tel" placeholder="6 9X XX XX XX" value={v.orange} onChange={maj('orange')} />
-      </Field>
-      <Field label="MTN MoMo">
-        <input className="input" type="tel" inputMode="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
-      </Field>
+      <label className="moyen-champ">
+        <span className="moyen-marque orange" aria-hidden="true">OM</span>
+        <span className="moyen-texte">
+          <span>Orange Money</span>
+          <input className="input" type="tel" inputMode="tel" placeholder="6 9X XX XX XX" value={v.orange} onChange={maj('orange')} />
+        </span>
+      </label>
+      <label className="moyen-champ">
+        <span className="moyen-marque mtn" aria-hidden="true">MoMo</span>
+        <span className="moyen-texte">
+          <span>MTN Mobile Money</span>
+          <input className="input" type="tel" inputMode="tel" placeholder="6 7X XX XX XX" value={v.mtn} onChange={maj('mtn')} />
+        </span>
+      </label>
       <Field label="Téléphone pour les questions de paiement">
         <input className="input" type="tel" placeholder="6 XX XX XX XX" value={v.telephone} onChange={maj('telephone')} />
       </Field>
