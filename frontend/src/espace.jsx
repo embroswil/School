@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { nomEcole } from './i18n.jsx'
 import { useAuth } from './auth.jsx'
 import { IcEcole, IcProfil } from './icones.jsx'
 
@@ -25,7 +26,7 @@ export function ChoixEspace() {
         <IcEcole size={18} />
         <span>
           <b>Établissement</b>
-          <small data-brut>{user.etablissement || '—'}</small>
+          <small data-brut>{nomEcole(user.etablissement) || '—'}</small>
         </span>
       </button>
       <button type="button" role="tab" aria-selected={parent} onClick={() => aller('parent')}>

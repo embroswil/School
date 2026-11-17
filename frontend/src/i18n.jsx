@@ -21,6 +21,98 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "ex. Compte au nom de LYCÉE DE YINGUI. Indiquez le nom de l’élève en motif.": "e.g. Account in the name of YINGUI HIGH SCHOOL. Put the student’s name as the payment reference.",
+  "élève(s)": "student(s)",
+  "ou rechercher un nom…": "or search for a name…",
+  "… avec un compte": "… with an account",
+  "Choisir la classe…": "Choose the class…",
+  "Page en erreur :": "Page error:",
+  "Aucune donnée": "No data",
+  "Admin. établissement": "School admin",
+  "Transféré": "Transferred",
+  "Diplômé": "Graduated",
+  "Image illisible (essayez une photo JPEG ou PNG)": "Unreadable image (try a JPEG or PNG photo)",
+  "Ce fichier Word ne peut pas être lu ici : enregistrez-le en PDF, puis réessayez.": "This Word file can’t be read here: save it as a PDF, then try again.",
+  "✓ Abonnement entièrement réglé. Merci !": "✓ Subscription fully paid. Thank you!",
+  "L’abonnement comprend toutes les fonctions de Sùkûl pour tous vos élèves et enseignants : appel, notes et bulletins, scolarité, informations aux familles et assistance.": "The subscription includes every Sùkûl feature for all your students and teachers: roll call, marks and report cards, school fees, news for families and support.",
+  "En vérification": "Being checked",
+  "Votre compte et vos accès seront supprimés. Les données de l’établissement (notes, absences, paiements) sont conservées par l’établissement.": "Your account and access will be deleted. The school’s data (marks, absences, payments) is kept by the school.",
+  "Administrateur ajouté": "Administrator added",
+  "Ils créent leur compte (profil Enseignant) et choisissent leurs classes ; vous les validez dans + › Enseignants.": "They create their account (Teacher profile) and choose their classes; you approve them in + › Teachers.",
+  "Les absences sont faites par les enseignants à l’appel. Déposez ici les cahiers d’appel (papier photographié, PDF ou Excel) pour compléter ou mettre à jour les absences : celles déjà saisies par un enseignant ne sont pas modifiées.": "Absences are recorded by teachers at roll call. Drop the attendance registers here (photographed paper, PDF or Excel) to complete or update absences: those already entered by a teacher are not changed.",
+  "ou glissez-déposez le fichier n’importe où sur cette page": "or drag and drop the file anywhere on this page",
+  "Les élèves « non reconnus » ne sont pas importés : vérifiez l’orthographe, ou choisissez la classe du cahier ci-dessus et relancez.": "“Unrecognised” students are not imported: check the spelling, or choose the register’s class above and try again.",
+  "PDF, photo, Excel ou CSV": "PDF, photo, Excel or CSV",
+  "Chaque lecture d’un document (PDF, photo) par l’IA coûte quelques francs. Fixez le nombre de lectures par mois dont chaque établissement dispose. L’import Excel / CSV et la saisie à la main ne comptent pas.": "Each document reading (PDF, photo) by the AI costs a few francs. Set the number of readings per month each school gets. Excel / CSV imports and manual entry don’t count.",
+  "Laissez vide pour appliquer le plafond par défaut. Mettez 0 pour désactiver la lecture automatique d’un établissement.": "Leave empty to apply the default limit. Enter 0 to turn off automatic reading for a school.",
+  "✓ Plafond par défaut enregistré.": "✓ Default limit saved.",
+  "Email d’un compte existant (il devient administrateur), ou nouveau compte complet.": "Email of an existing account (it becomes administrator), or a full new account.",
+  "toutes les classes": "all classes",
+  "Je consulte mes notes et les infos de ma classe.": "I check my marks and my class news.",
+  "janv.": "Jan",
+  "févr.": "Feb",
+  "mars": "Mar",
+  "avr.": "Apr",
+  "mai": "May",
+  "juin": "Jun",
+  "juil.": "Jul",
+  "août": "Aug",
+  "sept.": "Sep",
+  "oct.": "Oct",
+  "nov.": "Nov",
+  "déc.": "Dec",
+  "Mathématiques": "Mathematics",
+  "Français": "French",
+  "Anglais": "English",
+  "Histoire": "History",
+  "Géographie": "Geography",
+  "Éducation civique (ECM)": "Citizenship education (ECM)",
+  "Sciences de la vie et de la Terre (SVT)": "Life and Earth sciences (SVT)",
+  "Physique": "Physics",
+  "Chimie": "Chemistry",
+  "Technologie (PCT)": "Technology (PCT)",
+  "Informatique": "Computer science",
+  "Philosophie": "Philosophy",
+  "Espagnol": "Spanish",
+  "Allemand": "German",
+  "Langues et cultures nationales": "National languages and cultures",
+  "Littérature": "Literature",
+  "Économie": "Economics",
+  "Éducation physique et sportive (EPS)": "Physical education (PE)",
+  "Travail manuel": "Manual work",
+  "Arts plastiques": "Visual arts",
+  "Le compte administrateur de la plateforme ne peut pas être supprimé ici": "The platform administrator account can’t be deleted here",
+  "Mot de passe incorrect": "Incorrect password",
+  "Vous êtes le seul administrateur de l’établissement : ajoutez-en un autre avant de supprimer votre compte": "You are the school’s only administrator: add another one before deleting your account",
+  "Pour supprimer votre propre compte, utilisez le Profil": "To delete your own account, use Profile",
+  "Impossible de supprimer un administrateur de la plateforme": "A platform administrator can’t be deleted",
+  "Vous pouvez supprimer les enseignants et les administrateurs de votre établissement": "You can delete your school’s teachers and administrators",
+  "Il faut au moins un administrateur": "At least one administrator is required",
+  "Format non lisible : utilisez un PDF, une photo, un fichier Excel ou CSV": "Unreadable format: use a PDF, a photo, an Excel or CSV file",
+  "Aucun cours trouvé dans ce document": "No lessons found in this document",
+  "Aucune absence trouvée dans ce document": "No absences found in this document",
+  "Aucun enseignant à importer": "No teachers to import",
+  "Cet email est déjà utilisé par un autre compte": "This email is already used by another account",
+  "Vous ne pouvez pas retirer votre propre accès : demandez à un autre administrateur": "You can’t remove your own access: ask another administrator",
+  "Format non pris en charge : JPEG, PNG, WebP, MP4, MOV ou WebM": "Unsupported format: JPEG, PNG, WebP, MP4, MOV or WebM",
+  "L’appel est fait par l’enseignant ou par l’administration de l’établissement": "Roll call is taken by the teacher or by the school administration",
+  "L’appel a déjà été fait par l’enseignant : il le modifie lui-même": "The teacher has already taken roll call: they edit it themselves",
+  "Pourcentage entre 0 et 10": "Percentage between 0 and 10",
+  "Aucun frais trouvé dans ce document": "No fees found in this document",
+  "La lecture automatique des documents n’est pas activée pour votre établissement. Utilisez l’import Excel ou CSV, ou contactez Sùkûl.": "Automatic document reading is not enabled for your school. Use the Excel or CSV import, or contact Sùkûl.",
+  "Compte déjà confirmé": "Account already confirmed",
+  "Si un compte non vérifié existe, un code vient d'être envoyé.": "If an unverified account exists, a code has just been sent.",
+  "Si un compte existe, un code vient de lui être envoyé (WhatsApp ou email).": "If an account exists, a code has just been sent to it (WhatsApp or email).",
+  "Mot de passe modifié : vous pouvez vous connecter.": "Password changed: you can now sign in.",
+  "Compte supprimé": "Account deleted",
+  "Demande envoyée. Nous vous contacterons rapidement pour activer votre établissement.": "Request sent. We will contact you soon to activate your school.",
+  "Établissement activé : le responsable peut se connecter avec son email et son mot de passe.": "School activated: the head can sign in with their email and password.",
+  "Demande refusée": "Request declined",
+  "Élève placé dans la classe": "Student placed in the class",
+  "L’enseignant est maintenant administrateur": "The teacher is now an administrator",
+  "Enseignant validé": "Teacher approved",
+  "Paiement déclaré : l'établissement va le vérifier et le confirmer.": "Payment declared: the school will check and confirm it.",
+  "L'email n'a pas pu être envoyé. Réessayez dans un instant.": "The email could not be sent. Try again in a moment.",
   "Pas encore ajouté": "Not added yet",
   "Cours de chaque classe": "Lessons for each class",
   "Toutes les classes ont leur emploi du temps": "All classes have their timetable",
@@ -1284,8 +1376,7 @@ const EN = {
   "ex. 6e A, 6e B, 5e A, 2nde C, Tle D": "e.g. 6e A, 6e B, 5e A, 2nde C, Tle D",
   "ex. Absence de mon enfant": "e.g. My child’s absence",
   "ex. Censeur, Surveillant général, Secrétaire": "e.g. Deputy head, Head of discipline, Secretary",
-  "ex. Compte au nom de LYCÉE DE YINGUI. Indiquez le nom de l’élève en motif.": "e.g. Account in the name of LYCÉE DE YINGUI. Write the student’s name as the reference.",
-  "ex. Conseil de discipline du 12 novembre": "e.g. Disciplinary council of 12 November",
+    "ex. Conseil de discipline du 12 novembre": "e.g. Disciplinary council of 12 November",
   "ex. Exercices 3 et 4 page 52": "e.g. Exercises 3 and 4 page 52",
   "ex. Lycée Bilingue de Bonabéri": "e.g. Lycée Bilingue de Bonabéri",
   "ex. Pension – 1re tranche, Inscription, APEE": "e.g. Tuition – 1st instalment, Registration, PTA",
@@ -1427,8 +1518,103 @@ const EN = {
   "🖨️ Imprimer ou enregistrer en PDF": "🖨️ Print or save as PDF"
 }
 
+// Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
+const TYPES_ECOLE = [
+  [/^lyc[ée]e bilingue\b/i, 'Bilingual High School'],
+  [/^lyc[ée]e technique\b/i, 'Technical High School'],
+  [/^lyc[ée]e (?:classique|g[ée]n[ée]ral|moderne)(?: et moderne)?\b/i, 'High School'],
+  [/^lyc[ée]e\b/i, 'High School'],
+  [/^coll[èe]ge bilingue\b/i, 'Bilingual College'],
+  [/^coll[èe]ge\b/i, 'College'],
+  [/^[ée]cole primaire\b/i, 'Primary School'],
+  [/^[ée]cole maternelle\b/i, 'Nursery School'],
+  [/^[ée]cole\b/i, 'School'],
+  [/^complexe scolaire bilingue\b/i, 'Bilingual School Complex'],
+  [/^complexe scolaire\b/i, 'School Complex'],
+  [/^groupe scolaire bilingue\b/i, 'Bilingual School Group'],
+  [/^groupe scolaire\b/i, 'School Group'],
+  [/^institut\b/i, 'Institute'],
+]
+export function nomEcole(nom) {
+  if (langue !== 'en' || !nom) return nom
+  const n = String(nom).trim()
+  if (n.length > 80) return nom
+  // « · Lycée de X » ou « Lycée de X · Yaoundé » : seul le nom est traduit
+  const avant = n.match(/^·\s*/)
+  if (avant) return avant[0] + nomEcole(n.slice(avant[0].length))
+  const apres = n.indexOf(' · ')
+  if (apres > 0) return nomEcole(n.slice(0, apres)) + n.slice(apres)
+  for (const [motif, type] of TYPES_ECOLE) {
+    const m = n.match(motif)
+    if (!m) continue
+    let reste = n.slice(m[0].length).trim().replace(/^(?:de la|de l['’]|du|des|de|d['’])\s*/i, '')
+    if (reste) reste = reste[0].toUpperCase() + reste.slice(1)
+    const en = reste ? `${reste} ${type}` : type
+    return n === n.toUpperCase() ? en.toUpperCase() : en
+  }
+  return nom
+}
+const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomEcole(a))
+
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Jusqu’à (\d+) personnes de votre personnel peuvent administrer l’établissement \(proviseur, censeur, économe…\)\. (\d+) sur (\d+)\.$/, 'Up to $1 staff members can administer the school (principal, vice-principal, bursar…). $2 of $3.'],
+  [/^Un établissement peut avoir (\d+) administrateurs au maximum$/, 'A school can have at most $1 administrators'],
+  [/^Fichier trop lourd : (\d+) Mo maximum pour une (vidéo|photo)$/, (_, n, t) => `File too large: ${n} MB maximum for a ${t === 'vidéo' ? 'video' : 'photo'}`],
+  [/^Note entre 0 et (.+)$/, 'Mark between 0 and $1'],
+  [/^Montant entre (\d+) et (.+)$/, 'Amount between $1 and $2'],
+  [/^L’établissement n’a pas de numéro (.+)$/, 'The school has no $1 number'],
+  [/^Plafond de lectures automatiques atteint pour ce mois \((\d+) sur (\d+)\)\..*$/, 'Monthly limit of automatic readings reached ($1 of $2). Use the Excel or CSV import or manual entry, or contact Sùkûl to raise the limit.'],
+  [/^Abonnement en retard : (.+) à régler avant le (.+)\.$/, 'Subscription overdue: $1 to pay before $2.'],
+  [/^(\d+) % payé$/, '$1% paid'],
+  [/^(.+) \/ (.+) · échéance (.+)$/, '$1 / $2 · due $3'],
+  [/^Les informations de (.+)\.$/, (_, a) => `News from ${ecoleEn(a)}.`],
+  [/^Écrivez à (.+) : une question, une absence, un document…$/, (_, a) => `Write to ${ecoleEn(a)}: a question, an absence, a document…`],
+  [/^Retirer (.+) des administrateurs \? Il redevient enseignant\.$/, 'Remove $1 from the administrators? They become a teacher again.'],
+  [/^Appel enregistré\.(?: (\d+) absence\(s\) signalée\(s\) aux parents\.)?$/, (_, n) => `Roll call saved.${n ? ` ${n} absence(s) reported to parents.` : ''}`],
+  [/^Appréciation du professeur principal \(sinon : « (.*) »\)$/, 'Class teacher’s comment (otherwise: “$1”)'],
+  [/^(\d+) classe\(s\) prête\(s\)\.$/, '$1 class(es) ready.'],
+  [/^(·\s*)?avant le (.+)$/, (_, p, d) => `${p || ''}before ${d}`],
+  [/^·\s*depuis le (.+)$/, '· from $1'],
+  [/^·\s*par (.+)$/, '· by $1'],
+  [/^·\s*payé (.+)$/, '· paid $1'],
+  [/^·\s*confirmé (.+)$/, '· confirmed $1'],
+  [/^·\s*(\d+) en retard$/, '· $1 late'],
+  [/^·\s*(\d+) élèves$/, '· $1 students'],
+  [/^Envoyer un rappel aux parents des élèves en retard de (.+) \?$/, 'Send a reminder to the parents of late students in $1?'],
+  [/^(\d+) décision\(s\) enregistrée\(s\)\. Elles apparaissent sur le bulletin du 3e trimestre et chez les parents\.$/, '$1 decision(s) saved. They appear on the term 3 report card and for parents.'],
+  [/^(\d+) sanction\(s\) enregistrée\(s\)\. Les parents concernés sont prévenus\.$/, '$1 sanction(s) saved. The parents concerned have been notified.'],
+  [/^✓ (\d+) documents publiés : ils apparaissent dans le fil des familles\.$/, '✓ $1 documents published: they appear in the families’ feed.'],
+  [/^Publier les (\d+) documents$/, 'Publish the $1 documents'],
+  [/^Retirer (.+) comme parent de cet élève \? Son compte n’est pas supprimé\.$/, 'Remove $1 as a parent of this student? Their account is not deleted.'],
+  [/^(\d[\d\s  .,]*) avec un compte$/, '$1 with an account'],
+  [/^(\d+) enseignant\(s\) à valider$/, '$1 teacher(s) to approve'],
+  [/^(\d+) parent\(s\) à valider$/, '$1 parent(s) to approve'],
+  [/^✓ (\d+) absence\(s\) ajoutée\(s\)(?:, (\d+) déjà enregistrée\(s\) par l’appel des enseignants \(non modifiées\))?\.$/, (_, a, b) => `✓ ${a} absence(s) added${b ? `, ${b} already recorded at the teachers’ roll call (unchanged)` : ''}.`],
+  [/^(.+) — (\d+) élève\(s\) déjà importé\(s\) : relancez l’import pour terminer \(pas de doublons\)\.$/, (_, e, n) => `${traduire(e)} — ${n} student(s) already imported: run the import again to finish (no duplicates).`],
+  [/^Import en cours : (\d+) \/ (\d+)$/, 'Importing: $1 / $2'],
+  [/^Classe pour les (\d+) élève\(s\) sans classe$/, 'Class for the $1 student(s) without a class'],
+  [/^Enregistrer pour (\d+) classe\(s\)$/, 'Save for $1 class(es)'],
+  [/^Envoi de la photo (\d+) \/ (\d+)…$/, 'Sending photo $1 / $2…'],
+  [/^(\d+) photo\(s\) · en ajouter$/, '$1 photo(s) · add more'],
+  [/^Enregistré\.(?: (\d+) combinaison\(s\) déjà assurée\(s\) par un collègue n’ont pas été modifiées\.)?$/, (_, n) => `Saved.${n ? ` ${n} combination(s) already taught by a colleague were not changed.` : ''}`],
+  [/^Enregistrer \((\d+) matière\(s\), (\d+) classe\(s\)\)$/, 'Save ($1 subject(s), $2 class(es))'],
+  [/^Confirmez-vous avoir bien reçu (.+) sur votre compte \? Cette action émet le reçu et ne peut pas être annulée\.$/, 'Do you confirm you received $1 in your account? This issues the receipt and can’t be undone.'],
+  [/^Marquer (.+) absent\(e\) ce jour\. Motif \(facultatif\) :$/, 'Mark $1 absent today. Reason (optional):'],
+  [/^✓ Plafond de (.+) enregistré\.$/, (_, a) => `✓ Limit for ${nomEcole(a)} saved.`],
+  [/^défaut \((\d+)\)$/, 'default ($1)'],
+  [/^Abonnement Sùkûl · année scolaire (.+)$/, 'Sùkûl subscription · school year $1'],
+  [/^Suspendre (.+) \? Il n’apparaîtra plus à l’inscription, mais ses données sont conservées\.$/, (_, a) => `Suspend ${nomEcole(a)}? It will no longer appear at sign-up, but its data is kept.`],
+  [/^(\d+) en attente$/, '$1 pending'],
+  [/^Déclaré : (.+)$/, 'Declared: $1'],
+  [/^moyenne séq\. (\d)$/, 'seq. $1 average'],
+  [/^sur (\d+)$/, 'out of $1'],
+  [/^✓ (.+) est maintenant relié\(e\) à votre compte\.$/, '✓ $1 is now linked to your account.'],
+  [/^Le compte de (.+) est créé\. Communiquez-lui son mot de passe provisoire\.$/, '$1’s account has been created. Give them their temporary password.'],
+  [/^Supprimer définitivement le compte de (.+) \? Cette action est irréversible\.$/, 'Permanently delete $1’s account? This can’t be undone.'],
+  [/^Emploi du temps de la (.+)$/, 'Timetable of $1'],
+  [/^Décisions de fin d’année · (.+)$/, 'End-of-year decisions · $1'],
+  [/^(.+) · contrôle n° (\d+) \(séquence (\d)\)$/, (_, a, n, q) => `${a.split(' · ').map(traduire).join(' · ')} · test no. ${n} (sequence ${q})`],
   [/^(\d+) classe\(s\) sans emploi du temps$/, '$1 class(es) without a timetable'],
   [/^(\d+) cours par semaine$/, '$1 lessons per week'],
   [/^Emploi du temps enregistré pour (\d+) classe\(s\) : (\d+) cours\.$/, 'Timetable saved for $1 class(es): $2 lessons.'],
@@ -1486,6 +1672,8 @@ export const traduire = (texte) => {
   const direct = EN[t] || EN[t.replace(/\s+/g, ' ')]
   if (direct) return texte.replace(t, direct)
   for (const [motif, remplacement] of FORMULES) if (motif.test(t)) return texte.replace(t, t.replace(motif, remplacement))
+  const ecole = nomEcole(t)
+  if (ecole !== t) return texte.replace(t, ecole)
   return texte
 }
 
@@ -1500,7 +1688,9 @@ function traduireNoeud(n) {
     if (v !== n.nodeValue) n.nodeValue = v
     return
   }
-  if (n.nodeType !== 1 || IGNORER.has(n.nodeName) || n.hasAttribute?.('data-brut')) return
+  if (n.nodeType !== 1 || n.hasAttribute?.('data-brut')) return
+  // Le texte saisi dans une zone de texte n'est jamais traduit, son exemple (placeholder) si
+  if (IGNORER.has(n.nodeName) && n.nodeName !== 'TEXTAREA') return
   for (const a of ATTRIBUTS) {
     const v = n.getAttribute(a)
     if (v) {
@@ -1508,6 +1698,7 @@ function traduireNoeud(n) {
       if (t !== v) n.setAttribute(a, t)
     }
   }
+  if (n.nodeName === 'TEXTAREA') return
   for (const c of n.childNodes) traduireNoeud(c)
 }
 

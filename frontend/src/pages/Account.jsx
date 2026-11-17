@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { nomEcole } from '../i18n.jsx'
 import { api, session } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { ReglagePush, installee } from '../push.jsx'
@@ -224,7 +225,7 @@ export default function Account() {
             {moi.schoolName && (
               <>
                 {' · '}
-                <span data-brut>{moi.schoolName}</span>
+                <span data-brut>{nomEcole(moi.schoolName)}</span>
               </>
             )}
           </p>

@@ -51,7 +51,7 @@ export default function Administrateurs() {
     <>
       <h1 className="page-title">Administrateurs</h1>
       <p className="lede">
-        Jusqu’à {max} personnes de votre personnel peuvent administrer l’établissement (proviseur, censeur, économe…). {admins.length} sur {max}.
+        {`Jusqu’à ${max} personnes de votre personnel peuvent administrer l’établissement (proviseur, censeur, économe…). ${admins.length} sur ${max}.`}
       </p>
       <Note kind="ok">{ok}</Note>
       <Note>{error}</Note>
