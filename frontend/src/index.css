@@ -1150,6 +1150,20 @@ html[data-theme='light'], html[data-theme='light'] body { background: var(--bg);
   --rouge-texte: #ffd5d8;
   color: #fff;
 }
+/* une fenetre ouverte depuis un bloc vedette (recadrage de photo) reprend les couleurs normales */
+[data-theme='light'] :is(.hero-card, .suivi-total, .abo-hero, .profil-carte, .auth-haut) .voile {
+  --text: #0d1424;
+  --muted: #5f6b80;
+  --line: #e2e6ee;
+  --card: #ffffff;
+  --card-2: #eef1f7;
+  --primary-soft: #e8efff;
+  --lien: #1f55e0;
+  --lien-doux: #2a5bdc;
+  --rouge-texte: #d92d3a;
+  color: var(--text);
+  text-align: left;
+}
 [data-theme='light'] :is(.hero-card, .suivi-total, .abo-hero, .profil-carte) {
   background: linear-gradient(135deg, #3d78ff 0%, #2f6bff 45%, #1d47d6 100%);
   border: 0;
