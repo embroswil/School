@@ -13,11 +13,11 @@ const normalize = (err) => {
   if (err.type === "entity.too.large") return new ApiError(413, "Request body too large");
 
   switch (err.code) {
-    case "23505": return new ApiError(409, "Resource already exists");
-    case "23503": return new ApiError(409, "Operation conflicts with related records");
-    case "23502": return new ApiError(400, "A required field is missing");
-    case "23514": return new ApiError(400, "A value is not allowed");
-    case "22P02": return new ApiError(400, "Invalid input format");
+    case "23505": return new ApiError(409, "Cet élément existe déjà");
+    case "23503": return new ApiError(409, "Opération impossible : des données liées existent");
+    case "23502": return new ApiError(400, "Un champ obligatoire est manquant");
+    case "23514": return new ApiError(400, "Une valeur n’est pas autorisée");
+    case "22P02": return new ApiError(400, "Format de donnée invalide");
     default: return null;
   }
 };

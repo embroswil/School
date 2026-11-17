@@ -21,6 +21,11 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Cet élément existe déjà": "This item already exists",
+  "Opération impossible : des données liées existent": "Not possible: related data exists",
+  "Un champ obligatoire est manquant": "A required field is missing",
+  "Une valeur n’est pas autorisée": "A value is not allowed",
+  "Format de donnée invalide": "Invalid data format",
   "La lecture automatique des PDF et des photos n’est pas encore activée. Utilisez le fichier Excel ou Word, ou contactez Sùkûl.": "Automatic reading of PDFs and photos is not enabled yet. Use the Excel or Word file, or contact Sùkûl.",
   "Comptes actifs": "Active accounts",
   "Classes": "Classes",
