@@ -37,7 +37,7 @@ export default function DisciplineImport() {
   const zoneDepot = useDepotPage(lire, { texte: 'Déposez le document de discipline', detail: 'PDF, Excel ou photo' })
 
 
-  const maj = (i, k, v) => setEntrees((l) => l.map((x, j) => (j === i ? { ...x, [k]: v } : x)))
+  const maj = (i, k, v) => setEntrees((l) => l && l.map((x, j) => (j === i ? { ...x, [k]: v } : x)))
 
   async function enregistrer() {
     setError('')

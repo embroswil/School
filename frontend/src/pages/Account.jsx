@@ -4,7 +4,7 @@ import { useAuth } from '../auth.jsx'
 import { ReglagePush, installee } from '../push.jsx'
 import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcAide, IcCarte, IcChevron, IcCle, IcCloche, IcClasses, IcCrayon, IcPhoto, IcProfil, IcSortie } from '../icones.jsx'
+import { IcAide, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcPhoto, IcProfil, IcSortie } from '../icones.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -272,7 +272,6 @@ export default function Account() {
           <div className="liste-reglages">
             <Reglage Icone={IcCarte} titre="Abonnement Sùkûl" href="#/abonnement" />
             <Reglage Icone={IcProfil} titre="Administrateurs" href="#/administrateurs" />
-            <Reglage Icone={IcClasses} titre="Emplois du temps" href="#/import-emplois" />
           </div>
         </>
       )}

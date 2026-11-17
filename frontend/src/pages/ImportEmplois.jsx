@@ -28,14 +28,19 @@ export default function ImportEmplois() {
     try {
       setEtat('Lecture en cours…')
       const r = await lireDocumentEcole(f, '/api/documents-ecole/emplois/lire')
-      setLu({ classesEcole: [...r.classesEcole].sort((a, b) => comparerClasses(a.name, b.name)), classes: r.classes.map((c, i) => ({ ...c, cle: i, choisi: Boolean(c.classId) })) })
+      if (!r || !Array.isArray(r.classes) || !r.classes.length) throw new Error('Aucun cours trouvé dans ce document.')
+      setLu({
+        classesEcole: [...(r.classesEcole || [])].sort((a, b) => comparerClasses(a.name, b.name)),
+        classes: r.classes.map((c, i) => ({ ...c, creneaux: c.creneaux || [], cle: i, choisi: Boolean(c.classId) })),
+      })
     } catch (err) {
       setError(err.message)
     }
     setEtat('')
   }
   const zoneDepot = useDepotPage(choisir, { texte: 'Déposez l’emploi du temps', detail: 'Excel, PDF, Word ou photo' })
-  const maj = (cle, champs) => setLu((l) => ({ ...l, classes: l.classes.map((c) => (c.cle === cle ? { ...c, ...champs } : c)) }))
+  // l peut etre vide (import termine ou annule pendant un choix) : on ne touche alors a rien
+  const maj = (cle, champs) => setLu((l) => (l ? { ...l, classes: l.classes.map((c) => (c.cle === cle ? { ...c, ...champs } : c)) } : l))
 
   async function appliquer() {
     const choisis = lu.classes.filter((c) => c.choisi && c.classId)
@@ -43,7 +48,7 @@ export default function ImportEmplois() {
     setError('')
     try {
       const r = (await api.post('/api/documents-ecole/emplois/appliquer', { classes: choisis.map((c) => ({ classId: c.classId, creneaux: c.creneaux })) })).data
-      setOk(`Emploi du temps enregistré pour ${r.classes} classe(s) : ${r.cours} cours.`)
+      setOk(`Emploi du temps enregistré pour ${r?.classes ?? 0} classe(s) : ${r?.cours ?? 0} cours.`)
       setLu(null)
     } catch (err) {
       setError(err.message)

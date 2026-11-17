@@ -21,6 +21,8 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Importer pour une ou plusieurs classes": "Import for one or more classes",
+  "Aucun cours trouvé dans ce document.": "No lessons found in this document.",
   "MTN Mobile Money": "MTN Mobile Money",
   "L’emploi du temps importé remplace celui de chaque classe choisie.": "The imported timetable replaces the one of each chosen class.",
   "Excel, PDF, Word ou photo · une ou plusieurs classes": "Excel, PDF, Word or photo · one or more classes",

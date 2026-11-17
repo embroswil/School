@@ -44,7 +44,7 @@ export default function ImportEleves() {
 
 
   const maj = (i, k) => (e) =>
-    setEleves((l) => l.map((x, j) => (j === i ? { ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value } : x)))
+    setEleves((l) => l && l.map((x, j) => (j === i ? { ...x, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value } : x)))
 
   // Import par paquets de 80 eleves : plus rapide a l'ecran (progression) et
   // sans risque de depasser le temps de reponse du serveur
