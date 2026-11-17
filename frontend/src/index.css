@@ -1261,11 +1261,8 @@ html.ordi[data-theme='light'] .nav a[aria-current='page'] { background: #e8efff;
 .docs-recherche { margin-bottom: 14px; }
 .docs-dossiers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 html.ordi .docs-dossiers { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.doc-dossier { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
 .doc-dossier:hover { border-color: var(--primary); }
 .doc-dossier:active { transform: scale(0.98); }
-.doc-dossier b { font: 700 15px/1.25 var(--font-body); }
-.doc-dossier small { color: var(--muted); font-size: 12.5px; }
 [data-theme='light'] .doc-dossier { box-shadow: var(--shadow); }
 .doc-dossier-tete { margin-bottom: 6px; }
 .doc-dossier-tete .back { margin-bottom: 8px; }
@@ -1278,3 +1275,16 @@ html.ordi .docs-dossiers { grid-template-columns: repeat(4, minmax(0, 1fr)); gap
 .doc-mois .liste-simple { margin-top: 4px; }
 .doc-actions { flex: none; display: flex; gap: 14px; align-items: center; align-self: center; }
 .doc-dossier-tete .back { border: 0; background: none; padding: 0; color: var(--lien); font: inherit; font-weight: 700; cursor: pointer; }
+.doc-dossier { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+.doc-dossier svg { grid-row: 1 / 3; }
+.doc-dossier b { font: 700 14px/1.25 var(--font-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-dossier small { color: var(--muted); font-size: 12px; line-height: 1.3; }
+.docs-dossiers { gap: 8px; }
+.doc-carte { padding: 12px 12px 12px 14px; }
+.doc-entete .lien-action { flex: none; }
+.doc-destination { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 12px; }
+.doc-destination p { color: var(--muted); font-size: 14px; }
+.doc-dossier b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.doc-nom small { white-space: normal; }
+.docs-ajout .actions { display: flex; flex-wrap: nowrap; gap: 10px; }
+.docs-ajout .actions .btn { flex: none; }

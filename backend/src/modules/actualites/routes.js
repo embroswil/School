@@ -9,7 +9,8 @@ const ApiError = require("../../utils/ApiError");
 const { authenticate } = require("../../middlewares/auth.middleware");
 
 const TYPES = ["annonce", "evenement", "conseil_discipline", "resultats", "autre"];
-const PUBLICS = ["tous", "parents", "eleves", "enseignants"];
+// « interne » : document garde par l'etablissement (jamais affiche dans le fil)
+const PUBLICS = ["tous", "parents", "eleves", "enseignants", "interne"];
 const PUBLIC_DU_ROLE = { parent: "parents", student: "eleves", teacher: "enseignants" };
 const LIBELLES = {
   annonce: "Annonce",
@@ -78,7 +79,7 @@ router.get("/", async (req, res, next) => {
       `SELECT p.id, p.type, p.title, p.body, p.event_date, p.event_place, p.students, (p.image IS NOT NULL) AS a_image, p.audience,
               p.pinned, p.created_at, s.name AS school_name, p.medias
        FROM publications p JOIN schools s ON s.id = p.school_id
-       WHERE p.school_id = $1 AND ($2::text IS NULL OR p.audience IN ('tous', $2))
+       WHERE p.school_id = $1 AND p.audience <> 'interne' AND ($2::text IS NULL OR p.audience IN ('tous', $2))
        ORDER BY p.pinned DESC, p.created_at DESC LIMIT $3`,
       [ecole, peutPublier(req.user) ? null : publicRole || "tous", limite]
     );
@@ -200,19 +201,21 @@ router.post("/documents/analyser", async (req, res, next) => {
       pdfs: mime === "application/pdf" ? [b64] : [],
       maxTokens: 800,
       consigne: `Tu aides un établissement scolaire camerounais. Ce document vient d'être téléversé pour être affiché aux familles.
-Renvoie : {"nature": "information" | "absences" | "cahier_appel" | "liste_eleves" | "discipline" | "notes_nominatives", "categorie": une valeur parmi [${liste}],
+Renvoie : {"nature": "information" | "absences" | "cahier_appel" | "liste_eleves" | "liste_enseignants" | "emploi_du_temps" | "frais" | "discipline" | "notes_nominatives" | "interne", "categorie": une valeur parmi [${liste}],
 "titre": titre court et clair (max 80 caractères), "resume": 1 à 2 phrases utiles aux parents (max 250 caractères),
 "date_evenement": "AAAA-MM-JJ" ou null, "lieu": texte ou null}.
 "absences" : un récapitulatif des absences d'élèves (par mois, par séquence…) : categorie "absences".
 "cahier_appel" : un cahier d'appel ou une feuille de présence d'une classe (élèves absents jour par jour, à reporter dans les absences).
+"liste_enseignants" : liste du personnel enseignant (noms, matières, classes). "emploi_du_temps" : emploi du temps d'une ou plusieurs classes.
+"frais" : liste ou barème des frais de scolarité avec montants. "interne" : document administratif réservé à l'établissement (budget, comptabilité, registre, service des enseignants, procès-verbal interne…) : categorie "administration".
 "liste_eleves" : une liste nominative d'élèves sans autre information (liste de classe, effectifs nominatifs). "discipline" : sanctions, conseil de discipline,
 exclusions. "notes_nominatives" : relevé de notes ou bulletins d'élèves nommés. Sinon "information".`,
     });
     res.json({
       success: true,
       data: {
-        nature: ["liste_eleves", "discipline", "notes_nominatives", "cahier_appel"].includes(j.nature) ? j.nature : "information",
-        categorie: j.nature === "absences" ? "absences" : CATEGORIES.some((c) => c[0] === j.categorie) ? j.categorie : repli.categorie,
+        nature: ["liste_eleves", "liste_enseignants", "emploi_du_temps", "frais", "discipline", "notes_nominatives", "cahier_appel", "interne"].includes(j.nature) ? j.nature : "information",
+        categorie: j.nature === "absences" ? "absences" : j.nature === "interne" ? "administration" : CATEGORIES.some((c) => c[0] === j.categorie) ? j.categorie : repli.categorie,
         titre: texte(j.titre, 200) || repli.titre,
         resume: texte(j.resume, 500),
         dateEvenement: /^\d{4}-\d{2}-\d{2}$/.test(j.date_evenement || "") ? j.date_evenement : null,

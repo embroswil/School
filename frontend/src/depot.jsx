@@ -13,6 +13,11 @@ export const prendreFichiersEnAttente = () => {
   return f
 }
 
+/** Confie des fichiers a la page qui va s'ouvrir (elle les traite des son ouverture). */
+export const confierFichiers = (fichiers) => {
+  enAttente = fichiers
+}
+
 const contientDesFichiers = (e) => [...(e.dataTransfer?.types || [])].includes('Files')
 
 // Ecoute du glisser-deposer sur toute la fenetre ; renvoie l'etat « survol » et les fichiers deposes

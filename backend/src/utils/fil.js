@@ -36,6 +36,7 @@ const CATEGORIES = [
   ["fournitures", "Fournitures", "autre", /fourniture|liste de livres|manuels?/i],
   ["cantine", "Cantine", "autre", /cantine|menu|repas/i],
   ["evenement", "Événement", "evenement", /f[êe]te|sortie|excursion|tournoi|journ[ée]e|c[ée]r[ée]monie|semaine/i],
+  ["administration", "Administration", "autre", /budget|comptabilit|tr[ée]sorerie|recouvrement|encaissements|service des enseignants|registre|d[ée]penses/i],
   ["autre", "Document", "autre", /.*/],
 ];
 const categorieDe = (cle) => CATEGORIES.find((c) => c[0] === cle) || CATEGORIES[CATEGORIES.length - 1];

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
-import { useDepotPage } from '../depot.jsx'
+import { confierFichiers, useDepotPage } from '../depot.jsx'
+import { preparerDocument } from '../lecture-fichier.js'
 import CompteurIA from '../CompteurIA.jsx'
 import { Field, Note } from '../ui.jsx'
 import { IcChevron, IcImport } from '../icones.jsx'
@@ -21,13 +22,36 @@ export const CATEGORIES = [
   ['fournitures', 'Fournitures', 'Fournitures'],
   ['cantine', 'Cantine', 'Cantine'],
   ['evenement', 'Événement', 'Événements'],
+  ['administration', 'Administration', 'Administration'],
   ['autre', 'Document', 'Autres documents'],
 ]
-const REFUS = {
-  cahier_appel: ['Ce document est un cahier d’appel : il sert à mettre à jour les absences, pas à être affiché aux familles.', '#/import-absences', 'Mettre à jour les absences'],
-  liste_eleves: ['Ce document est une liste d’élèves : il ne sera pas affiché aux familles.', '#/import-eleves', 'Importer cette liste d’élèves'],
-  discipline: ['Ce document concerne la discipline : il ne sera pas affiché dans le fil.', '#/discipline', 'Enregistrer les sanctions'],
-  notes_nominatives: ['Ce document contient des notes d’élèves nommés : il ne sera pas affiché dans le fil. Les notes se saisissent dans Notes.', null, null],
+// Documents qui ne vont pas dans le fil : ils alimentent une page de l'etablissement.
+// [page, type reconnu, bouton, peut aussi etre publie pour les familles]
+const DESTINATIONS = {
+  liste_enseignants: ['/import-enseignants', 'Liste des enseignants', 'Ajouter à l’équipe enseignante', false],
+  liste_eleves: ['/import-eleves', 'Liste d’élèves', 'Importer les élèves', false],
+  cahier_appel: ['/import-absences', 'Cahier d’appel', 'Mettre à jour les absences', false],
+  emploi_du_temps: ['/import-emplois', 'Emploi du temps', 'Ajouter aux emplois du temps', true],
+  frais: ['/scolarite?onglet=frais', 'Frais de scolarité', 'Mettre à jour les frais', true],
+  discipline: ['/discipline', 'Discipline', 'Enregistrer les sanctions', false],
+  notes_nominatives: [null, 'Notes d’élèves', null, false],
+}
+const CATEGORIE_DE = { emploi_du_temps: 'emploi', frais: 'scolarite' }
+
+// Reconnaissance du document d'apres son contenu (Excel, Word, PDF avec texte) et son nom
+const sansAccents = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+function reconnaitre(nom, texte) {
+  const t = sansAccents(`${nom}\n${String(texte || '').slice(0, 8000)}`)
+  if (/service des enseignants|heures \/ semaine|heures supplementaires|budget|comptabilite|journal des (encaissements|depenses)|tresorerie|etat de recouvrement|absences des enseignants|bilan par enseignant/.test(t))
+    return { nature: 'interne', categorie: 'administration' }
+  if (/cahier d.appel|feuille d.appel|feuille de presence/.test(t)) return { nature: 'cahier_appel' }
+  if (/recapitulatif.{0,20}absences|absences des eleves/.test(t)) return { nature: 'interne', categorie: 'absences' }
+  if (/enseignant|professeur|equipe pedagogique/.test(t) && /matiere/.test(t) && /classe/.test(t)) return { nature: 'liste_enseignants' }
+  if (/matricule/.test(t) && /(date de naissance|nee? le|sexe)/.test(t)) return { nature: 'liste_eleves' }
+  if (/emploi du temps|emploi-du-temps/.test(t) || (/lundi/.test(t) && /mardi/.test(t) && /mercredi/.test(t) && /\d{1,2}\s*[:h]\s*\d{2}/.test(t))) return { nature: 'emploi_du_temps' }
+  if (/(sanction|conseil de discipline)/.test(t) && /(eleve|classe)/.test(t)) return { nature: 'discipline' }
+  if (/(frais|pension|scolarite|apee?)\b/.test(t) && /montant/.test(t) && /(echeance|tranche)/.test(t)) return { nature: 'frais' }
+  return null
 }
 
 // Photo reduite avant l'envoi (1600 px, JPEG)
@@ -72,21 +96,16 @@ export async function envoyer(fichier) {
   return { type: s.data.type, url: s.data.url, nom: fichier.name, mime }
 }
 
-// Un document lu peut aussi alimenter une autre page (en plus d'etre publie)
-const AUSSI = {
-  emploi: ['#/import-emplois', 'Ajouter aussi aux emplois du temps des classes'],
-  scolarite: ['#/scolarite?onglet=frais', 'Mettre à jour les frais de scolarité'],
-}
-const PUBLICS = { tous: 'Tout le monde', parents: 'Parents', eleves: 'Élèves', enseignants: 'Enseignants' }
+const PUBLICS = { tous: 'Tout le monde', parents: 'Parents', eleves: 'Élèves', enseignants: 'Enseignants', interne: 'Établissement seulement' }
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 const groupeDe = (libelle) => (CATEGORIES.find((c) => c[1] === libelle) || CATEGORIES[CATEGORIES.length - 1])[2]
 const jour = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 const sansAccent = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 // Dossier (une couleur par type de document)
-const COULEURS = { Communiqués: '#2f6bff', Réunions: '#7c4dff', Scolarité: '#12b76a', 'Emplois du temps': '#0ba5ec', Calendriers: '#f79009', Examens: '#ef6820', Résultats: '#ee46bc', Absences: '#f04438', Fournitures: '#875bf7', Cantine: '#eaaa08', Événements: '#06aed4', 'Autres documents': '#667085' }
+const COULEURS = { Communiqués: '#2f6bff', Réunions: '#7c4dff', Scolarité: '#12b76a', 'Emplois du temps': '#0ba5ec', Calendriers: '#f79009', Examens: '#ef6820', Résultats: '#ee46bc', Absences: '#f04438', Fournitures: '#875bf7', Cantine: '#eaaa08', Événements: '#06aed4', Administration: '#344054', 'Autres documents': '#667085' }
 const Dossier = ({ couleur }) => (
-  <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
+  <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l2 2h8.8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" fill={couleur} />
     <path d="M3 9.5h18v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z" fill="#fff" fillOpacity="0.22" />
   </svg>
@@ -139,22 +158,65 @@ export default function Documents() {
     setOk('')
     for (const [k, x] of choix.entries()) {
       const id = `${Date.now()}-${k}`
-      setItems((l) => [...l, { id, nom: x.name, etape: 'envoi', ...VIDE }])
+      const titre = x.name.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim()
+      setItems((l) => [...l, { id, nom: x.name, source: x, etape: 'lecture', ...VIDE, titre }])
       setEtat(`Lecture ${k + 1} / ${choix.length}…`)
       try {
+        // 1. contenu lu dans le navigateur (Excel, Word, PDF avec texte) : type reconnu sans attendre
+        let texte = ''
+        if (/\.(pdf|xlsx|xls|csv|ods|docx)$/i.test(x.name)) texte = (await preparerDocument([x]).catch(() => ({ texte: '' }))).texte || ''
+        const vu = reconnaitre(x.name, texte)
+        if (vu && DESTINATIONS[vu.nature]) {
+          maj(id, { etape: 'pret', analyse: { nature: vu.nature }, categorie: CATEGORIE_DE[vu.nature] || 'autre' })
+          continue
+        }
+        // 2. envoi, puis lecture automatique pour les PDF et les photos
         const envoye = await envoyer(x)
-        maj(id, { fichier: envoye, type: envoye.type, etape: 'lecture' })
-        const a = (await api.post('/api/actualites/documents/analyser', { url: envoye.url, mime: envoye.mime, nom: envoye.nom })).data
-        maj(id, { analyse: a, etape: 'pret', titre: a.titre || '', categorie: a.categorie || 'autre', description: a.resume || '', dateEvenement: a.dateEvenement || '', lieu: a.lieu || '' })
+        maj(id, { fichier: envoye, type: envoye.type })
+        let a = null
+        if (!vu && (envoye.mime === 'application/pdf' || envoye.type === 'image')) a = (await api.post('/api/actualites/documents/analyser', { url: envoye.url, mime: envoye.mime, nom: envoye.nom })).data
+        if (a && DESTINATIONS[a.nature]) {
+          maj(id, { etape: 'pret', analyse: { nature: a.nature }, categorie: CATEGORIE_DE[a.nature] || 'autre' })
+          continue
+        }
+        const nature = vu?.nature || a?.nature || 'information'
+        const categorie = vu?.categorie || a?.categorie || 'autre'
+        maj(id, {
+          analyse: { nature },
+          etape: 'pret',
+          titre: a?.titre || titre,
+          categorie,
+          audience: nature === 'interne' || categorie === 'administration' ? 'interne' : 'tous',
+          description: a?.resume || '',
+          dateEvenement: a?.dateEvenement || '',
+          lieu: a?.lieu || '',
+        })
       } catch (err) {
         maj(id, { etape: 'erreur', message: err.message })
       }
     }
     setEtat('')
   }
+  // Document qui alimente une autre page : il y est ouvert et lu directement
+  function transmettre(x) {
+    const d = DESTINATIONS[x.analyse.nature]
+    confierFichiers([x.source])
+    retirerItem(x.id)
+    window.location.hash = d[0]
+  }
+  // « Publier quand meme » (emploi du temps, frais) : le document devient publiable
+  async function publierAussi(x) {
+    maj(x.id, { etape: 'lecture' })
+    try {
+      const envoye = x.fichier || (await envoyer(x.source))
+      maj(x.id, { fichier: envoye, type: envoye.type, etape: 'pret', analyse: { nature: 'information' } })
+    } catch (err) {
+      maj(x.id, { etape: 'erreur', message: err.message })
+    }
+  }
   const zoneDepot = useDepotPage(choisir, { texte: 'Déposez vos documents', detail: 'PDF, Word, Excel, PowerPoint, photos, vidéos' })
 
-  const publiables = items.filter((x) => x.etape === 'pret' && !REFUS[x.analyse?.nature])
+  const publiables = items.filter((x) => x.etape === 'pret' && !DESTINATIONS[x.analyse?.nature])
   async function publier() {
     setError('')
     setOk('')
@@ -172,7 +234,7 @@ export default function Documents() {
     }
     setEtat('')
     if (n) {
-      setOk(n === 1 ? '✓ Document publié : il apparaît dans le fil des familles.' : `✓ ${n} documents publiés : ils apparaissent dans le fil des familles.`)
+      setOk(n === 1 ? '✓ Document enregistré.' : `✓ ${n} documents enregistrés.`)
       liste.reload()
     }
   }
@@ -231,39 +293,54 @@ export default function Documents() {
         <section className="docs-ajout">
           <p className="niveau-titre">{etat || `À publier · ${items.length}`}</p>
           {items.map((x) => {
-            const refus = x.analyse && REFUS[x.analyse.nature]
-            const aussi = !refus && AUSSI[x.categorie]
+            const dest = x.analyse && DESTINATIONS[x.analyse.nature]
+            const libelleType = (CATEGORIES.find((c) => c[0] === x.categorie) || CATEGORIES[CATEGORIES.length - 1])[1]
             return (
               <div key={x.id} className="doc-carte">
                 <div className="doc-entete">
                   <span className="doc-badge">{ETIQUETTE(x.nom, x.type)}</span>
                   <span className="doc-nom">
-                    <b data-brut>{x.nom}</b>
-                    {(x.etape === 'envoi' || x.etape === 'lecture') && <small>{x.etape === 'envoi' ? 'Envoi…' : 'Lecture et classement…'}</small>}
+                    <b>{x.etape === 'pret' && !dest ? x.titre || x.nom : x.nom}</b>
+                    <small>
+                      {x.etape === 'lecture' && 'Lecture…'}
+                      {x.etape === 'pret' && dest && `${dest[1]} · ne sera pas publié`}
+                      {x.etape === 'pret' && !dest && `${libelleType} · ${PUBLICS[x.audience]}`}
+                    </small>
                   </span>
+                  {x.etape === 'pret' && !dest && (
+                    <button type="button" className="lien-action discret" onClick={() => maj(x.id, { ouvert: !x.ouvert })}>
+                      {x.ouvert ? 'Fermer' : 'Modifier'}
+                    </button>
+                  )}
                   <button type="button" className="doc-croix" aria-label="Ne pas ajouter ce document" title="Ne pas ajouter ce document" onClick={() => retirerItem(x.id)}>
                     ×
                   </button>
                 </div>
                 {x.etape === 'erreur' && <Note>{x.message}</Note>}
-                {x.etape === 'pret' && refus && (
-                  <div className="doc-refus">
-                    <p>{refus[0]}</p>
-                    {refus[1] && (
-                      <a className="btn btn-block" href={refus[1]}>
-                        {refus[2]}
-                      </a>
+                {x.etape === 'pret' && dest && (
+                  <div className="doc-destination">
+                    {dest[0] ? (
+                      <button type="button" className="btn btn-block" onClick={() => transmettre(x)}>
+                        {dest[2]}
+                      </button>
+                    ) : (
+                      <p>Les notes se saisissent dans Notes : ce document n’est pas affiché aux familles.</p>
+                    )}
+                    {dest[3] && (
+                      <button type="button" className="lien-action discret" onClick={() => publierAussi(x)}>
+                        Publier aussi pour les familles
+                      </button>
                     )}
                   </div>
                 )}
-                {x.etape === 'pret' && !refus && (
+                {x.etape === 'pret' && !dest && x.ouvert && (
                   <div className="doc-champs">
                     <Field label="Titre">
                       <input className="input" value={x.titre} onChange={(e) => maj(x.id, { titre: e.target.value })} />
                     </Field>
                     <div className="grid2">
                       <Field label="Type de document">
-                        <select className="input" value={x.categorie} onChange={(e) => maj(x.id, { categorie: e.target.value })}>
+                        <select className="input" value={x.categorie} onChange={(e) => maj(x.id, { categorie: e.target.value, ...(e.target.value === 'administration' ? { audience: 'interne' } : {}) })}>
                           {CATEGORIES.filter((c) => c[0] !== 'absences' || user.role === 'principal').map(([k, v]) => (
                             <option key={k} value={k}>
                               {v}
@@ -277,6 +354,7 @@ export default function Documents() {
                           <option value="parents">Les parents</option>
                           <option value="eleves">Les élèves</option>
                           {user.role === 'principal' && <option value="enseignants">Les enseignants</option>}
+                          {user.role === 'principal' && <option value="interne">L’établissement seulement</option>}
                         </select>
                       </Field>
                     </div>
@@ -290,13 +368,10 @@ export default function Documents() {
                         </Field>
                       </div>
                     )}
-                    <Field label="Résumé pour les familles (facultatif)">
-                      <textarea className="input" value={x.description} onChange={(e) => maj(x.id, { description: e.target.value })} style={{ minHeight: 56 }} />
-                    </Field>
-                    {aussi && (
-                      <a className="lien-action" href={aussi[0]}>
-                        {aussi[1]}
-                      </a>
+                    {x.audience !== 'interne' && (
+                      <Field label="Résumé pour les familles (facultatif)">
+                        <textarea className="input" value={x.description} onChange={(e) => maj(x.id, { description: e.target.value })} style={{ minHeight: 56 }} />
+                      </Field>
                     )}
                   </div>
                 )}
@@ -306,7 +381,7 @@ export default function Documents() {
           {publiables.length > 0 && (
             <div className="actions">
               <button type="button" className="btn" onClick={publier} disabled={Boolean(etat)}>
-                {publiables.length === 1 ? 'Publier' : `Publier les ${publiables.length} documents`}
+                {publiables.length === 1 ? 'Enregistrer' : `Enregistrer les ${publiables.length} documents`}
               </button>
               <button type="button" className="btn btn-quiet" onClick={() => setItems([])} disabled={Boolean(etat)}>
                 Annuler
@@ -339,7 +414,7 @@ export default function Documents() {
                     <Dossier couleur={COULEURS[g] || '#667085'} />
                     <b>{g}</b>
                     <small>
-                      {ds.length} {ds.length > 1 ? 'documents' : 'document'} · {jour(ds[0].created_at)}
+                      {ds.length} {ds.length > 1 ? 'documents' : 'document'}
                     </small>
                   </button>
                 )
