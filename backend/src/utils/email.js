@@ -36,7 +36,7 @@ const envoyerEmail = async ({ a, nom, sujet, html, texte }) => {
 
 // Gabarit : un code a 6 chiffres
 const emailCode = ({ prenom, code, titre, intro, minutes, langue = "fr" }) => (langue === "en" ? emailCodeEn({ prenom, code, titre, intro, minutes }) : {
-  texte: `${titre}\n\nBonjour ${prenom || ""},\n${intro}\n\nVotre code : ${code}\n\nIl est valable ${minutes} minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n\nSchool`,
+  texte: `${titre}\n\nBonjour ${prenom || ""},\n${intro}\n\nVotre code : ${code}\n\nIl est valable ${minutes} minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n\nSùkûl`,
   html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e3e8f4">
@@ -56,7 +56,7 @@ const emailCode = ({ prenom, code, titre, intro, minutes, langue = "fr" }) => (l
 
 // Version anglaise du gabarit
 const emailCodeEn = ({ prenom, code, titre, intro, minutes }) => ({
-  texte: `${titre}\n\nHello ${prenom || ""},\n${intro}\n\nYour code: ${code}\n\nIt is valid for ${minutes} minutes. If you did not make this request, ignore this message.\n\nSchool`,
+  texte: `${titre}\n\nHello ${prenom || ""},\n${intro}\n\nYour code: ${code}\n\nIt is valid for ${minutes} minutes. If you did not make this request, ignore this message.\n\nSùkûl`,
   html: `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f1a3c">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e3e8f4">

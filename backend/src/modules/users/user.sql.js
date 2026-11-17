@@ -4,12 +4,17 @@ const { ecoleFiltre } = require("../../utils/contexte");
 const USER_COLUMNS = `id, email, role, first_name, last_name, phone, address,
   profile_picture, is_active, last_login, created_at, updated_at, school_id, status, email_verifie, notif_email, telephone_verifie`;
 
+// Gmail ne tient pas compte des points avant le @ : le compte est retrouve dans les deux ecritures
 const findByEmail = async (email) => {
   const { rows } = await db.query(
     `SELECT id, email, password_hash, role, first_name, last_name, phone, address,
             profile_picture, is_active, last_login, created_at, updated_at, school_id, status, email_verifie, notif_email, telephone_verifie,
             (SELECT name FROM schools s WHERE s.id = users.school_id) AS school_name
-     FROM users WHERE email = $1`,
+     FROM users
+     WHERE (email = $1 OR (split_part($1, '@', 2) IN ('gmail.com', 'googlemail.com')
+              AND split_part(lower(email), '@', 2) IN ('gmail.com', 'googlemail.com')
+              AND replace(split_part(lower(email), '@', 1), '.', '') = replace(split_part($1, '@', 1), '.', '')))
+     ORDER BY (email = $1) DESC, is_active DESC, id LIMIT 1`,
     [email]
   );
   return rows[0] || null;

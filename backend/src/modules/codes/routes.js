@@ -12,16 +12,24 @@ const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { envoyerEmail, emailCode } = require("../../utils/email");
 const WA = require("../../utils/whatsapp");
+const logger = require("../../utils/logger");
 
 const DUREE = { verification: 30, reinitialisation: 15 }; // minutes
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const normaliser = (e) => String(e || "").trim().toLowerCase();
 const nouveauCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, "0");
 
+// Gmail ne tient pas compte des points avant le @ (prenom.nom@gmail.com = prenomnom@gmail.com) :
+// le compte est retrouve dans les deux ecritures, l'adresse exacte restant prioritaire.
 const compteParEmail = async (email) =>
   (
     await db.query(
-      "SELECT id, email, phone, first_name, email_verifie, telephone_verifie, is_active, langue FROM users WHERE email = $1 AND email NOT LIKE '%@inscrit.school'",
+      `SELECT id, email, phone, first_name, email_verifie, telephone_verifie, is_active, langue FROM users
+       WHERE email NOT LIKE '%@inscrit.school'
+         AND (email = $1 OR (split_part($1, '@', 2) IN ('gmail.com', 'googlemail.com')
+              AND split_part(lower(email), '@', 2) IN ('gmail.com', 'googlemail.com')
+              AND replace(split_part(lower(email), '@', 1), '.', '') = replace(split_part($1, '@', 1), '.', '')))
+       ORDER BY (email = $1) DESC, is_active DESC, id LIMIT 1`,
       [email]
     )
   ).rows[0] || null;
@@ -144,7 +152,13 @@ router.post("/mot-de-passe/envoyer", async (req, res, next) => {
     if (!EMAIL_RE.test(id) && !WA.normaliserTel(id)) throw new ApiError(400, "Indiquez votre email ou votre numéro de téléphone");
     const u = await compteParIdentifiant(id);
     let envoi = null;
-    if (u && u.is_active) envoi = await envoyerCode(u, "reinitialisation").catch(() => null);
+    if (u && u.is_active) {
+      envoi = await envoyerCode(u, "reinitialisation").catch((e) => {
+        // L'echec n'est pas montre a l'ecran (on ne revele pas l'existence d'un compte), mais il est journalise
+        logger.error(`Code de reinitialisation non envoye (compte ${u.id}) : ${e.message}`);
+        return null;
+      });
+    }
     // Meme reponse dans tous les cas : on ne revele pas l'existence d'un compte
     res.json({ success: true, data: envoi ? { canal: envoi.canal } : null, message: "Si un compte existe, un code vient de lui être envoyé (WhatsApp ou email)." });
   } catch (e) {

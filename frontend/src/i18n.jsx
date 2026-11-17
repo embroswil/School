@@ -21,6 +21,19 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Saisissez le code": "Enter the code",
+  "Indiquez votre adresse e-mail ou votre numéro : vous recevrez un code à 6 chiffres.": "Enter your email address or phone number: you will receive a 6-digit code.",
+  "Un code à 6 chiffres vient d’être envoyé sur WhatsApp.": "A 6-digit code has just been sent on WhatsApp.",
+  "Un code à 6 chiffres vient d’être envoyé, si un compte correspond à cette adresse.": "A 6-digit code has just been sent, if an account matches this address.",
+  "Adresse e-mail ou numéro de téléphone": "Email address or phone number",
+  "vous@exemple.com": "you@example.com",
+  "Recevoir le code": "Get the code",
+  "Code à 6 chiffres": "6-digit code",
+  "8 caractères minimum": "At least 8 characters",
+  "Renvoyer le code": "Resend the code",
+  "Modifier l’adresse": "Change the address",
+  "Rien reçu ? Vérifiez l’adresse saisie et vos courriers indésirables. Le code est valable 15 minutes.": "Nothing received? Check the address you typed and your spam folder. The code is valid for 15 minutes.",
+  "Par sécurité, tous vos appareils ont été déconnectés.": "For security, all your devices have been logged out.",
   "Lectures automatiques (IA)": "Automatic readings (AI)",
   "Lecture automatique non activée": "Automatic reading not enabled",
   "Utilisez l’import Excel ou CSV, ou contactez Sùkûl.": "Use the Excel or CSV import, or contact Sùkûl.",
@@ -1298,6 +1311,7 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Renvoyer dans (\d+) s$/, 'Resend in $1 s'],
   [/^Lectures automatiques ce mois : (\d+) sur (\d+)$/, 'Automatic readings this month: $1 of $2'],
   [/^Plafond par défaut : (\d+) lectures par mois$/, 'Default limit: $1 readings per month'],
   [/^(\d+) pages? · Toucher pour ouvrir$/, '$1 page(s) · Tap to open'],
