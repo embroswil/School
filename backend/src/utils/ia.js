@@ -6,7 +6,7 @@ const ApiError = require("./ApiError");
 /** images : data URLs ; texte : contenu deja extrait (Excel, PDF texte). Renvoie l'objet JSON produit. */
 const lireDocument = async ({ images = [], pdfs = [], texte = "", consigne, maxTokens = 8000 }) => {
   const cle = process.env.ANTHROPIC_API_KEY;
-  if (!cle) throw new ApiError(503, "La lecture automatique des documents n'est pas encore activée (clé ANTHROPIC_API_KEY manquante)");
+  if (!cle) throw new ApiError(503, "La lecture automatique des PDF et des photos n’est pas encore activée. Utilisez le fichier Excel ou Word, ou contactez Sùkûl.");
   const blocs = [];
   for (const img of images.slice(0, 8)) {
     const m = String(img).match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);

@@ -16,5 +16,5 @@ export async function lireDocumentEcole(fichier, route, extra = {}) {
     const env = await envoyer(fichier)
     corps = { url: env.url, mime: env.mime }
   }
-  return (await api.post(route, { ...corps, ...extra })).data
+  return (await api.post(route, { ...corps, nom: fichier.name, ...extra })).data
 }

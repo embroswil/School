@@ -58,8 +58,10 @@ router.post("/emplois/lire", async (req, res, next) => {
     const ecole = ecoleDe(req);
     const classes = await classesDe(ecole);
     const unique = req.body?.classId ? classes.find((c) => c.id === Number(req.body.classId)) : null;
-    const doc = await charger(req.body || {});
-    const j = await lireAvecQuota(req, "emploi", {
+    // Tableau (Excel, CSV, Word) aux colonnes reconnaissables : lu directement, sans lecture automatique
+    const tableau = req.body?.texte ? require("../../utils/tableur").emplois(String(req.body.texte), req.body.nom) : null;
+    const doc = tableau ? null : await charger(req.body || {});
+    const j = tableau || await lireAvecQuota(req, "emploi", {
       ...doc,
       maxTokens: 8000,
       consigne: `Ce document est l'emploi du temps ${unique ? `de la classe « ${unique.name} »` : "d'une ou plusieurs classes"} d'un établissement scolaire camerounais.
@@ -117,8 +119,9 @@ router.post("/absences/lire", async (req, res, next) => {
     const ecole = ecoleDe(req);
     const classes = await classesDe(ecole);
     const unique = req.body?.classId ? classes.find((c) => c.id === Number(req.body.classId)) : null;
-    const doc = await charger(req.body || {});
-    const j = await lireAvecQuota(req, "absences", {
+    const tableau = req.body?.texte ? require("../../utils/tableur").absences(String(req.body.texte), req.body.nom) : null;
+    const doc = tableau ? null : await charger(req.body || {});
+    const j = tableau || await lireAvecQuota(req, "absences", {
       ...doc,
       maxTokens: 8000,
       consigne: `Ce document est un cahier d'appel (ou un relevé d'absences) d'un établissement scolaire camerounais${unique ? `, pour la classe « ${unique.name} »` : ""}. Il liste les élèves absents, par jour et parfois par heure de cours.

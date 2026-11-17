@@ -21,6 +21,7 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "La lecture automatique des PDF et des photos n’est pas encore activée. Utilisez le fichier Excel ou Word, ou contactez Sùkûl.": "Automatic reading of PDFs and photos is not enabled yet. Use the Excel or Word file, or contact Sùkûl.",
   "Comptes actifs": "Active accounts",
   "Classes": "Classes",
   "Rechercher un enseignant ou une matière": "Search for a teacher or a subject",
