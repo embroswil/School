@@ -5,7 +5,7 @@ import { BandeauInstallation } from './installation.jsx'
 import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcListe, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcListe, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
 const NAV = {
@@ -46,6 +46,7 @@ const NAV = {
 const NAV_ORDI = {
   principal: [
     ['/scolarite', IcCarte, 'Scolarité'],
+    ['/comptabilite', IcGraphique, 'Comptabilité'],
     ['/presence-enseignants', IcEcole, 'Enseignants'],
     ['/absences', IcEleves, 'Absences du jour'],
     ['/document', IcActus, 'Documents'],
@@ -102,6 +103,9 @@ const TITRES = {
   '/abonnements': 'Abonnements',
   '/quotas-ia': 'Lectures IA',
   '/recus': 'Reçu',
+  '/releve': 'Relevé de scolarité',
+  '/comptabilite': 'Comptabilité',
+  '/verifier': 'Vérifier un reçu',
   '/ordres': 'Paiement',
   '/trouver-eleve': 'Trouver un élève',
   '/payer': 'Payer la scolarité',

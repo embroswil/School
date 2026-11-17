@@ -526,6 +526,36 @@ router.post("/paiements", async (req, res, next) => {
   }
 });
 
+// GET /api/scolarite/releve/:eleveId : releve de l'annee (frais, paye, reste, tous les recus)
+router.get("/releve/:eleveId", async (req, res, next) => {
+  try {
+    const id = entier(req.params.eleveId);
+    const u = req.user;
+    const e = (await db.query("SELECT school_id FROM users WHERE id = $1 AND role = 'student'", [id])).rows[0];
+    const autorise = e && ((u.role === "principal" && u.schoolId === e.school_id) || u.role === "admin" || (await elevesAccessibles(u)).includes(id));
+    if (!autorise) throw new ApiError(404, "Élève introuvable");
+    const sit = await situationEleve(id);
+    const annee = await assurerAnneeScolaire(e.school_id);
+    const ecole = (await db.query("SELECT name, city, photo IS NOT NULL AS a_photo FROM schools WHERE id = $1", [e.school_id])).rows[0];
+    const recus = (
+      await db.query(
+        `SELECT p.id, p.montant, p.mode, p.created_at, p.confirme_le, p.numero_recu, f.nom AS frais
+         FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id
+         WHERE p.student_id = $1 AND p.statut = 'reussi' ORDER BY p.created_at`,
+        [id]
+      )
+    ).rows;
+    for (const p of recus.filter((x) => !x.numero_recu)) {
+      await attribuerRecu(p.id);
+      p.numero_recu = (await db.query("SELECT numero_recu FROM paiements_scolaires WHERE id = $1", [p.id])).rows[0].numero_recu;
+    }
+    const mat = (await db.query("SELECT admission_number FROM student_records WHERE student_id = $1", [id])).rows[0];
+    res.json({ success: true, data: { ...sit, recus, ecoleId: e.school_id, aPhoto: Boolean(ecole?.a_photo), ecole: ecole?.name, ville: ecole?.city, annee: annee?.name || "", matricule: mat?.admission_number || null, edite: new Date() } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/scolarite/recus/:id : recu d'un paiement (parent relie, eleve, etablissement)
 router.get("/recus/:id", async (req, res, next) => {
   try {
@@ -552,7 +582,12 @@ router.get("/recus/:id", async (req, res, next) => {
     const paye = (
       await db.query("SELECT COALESCE(SUM(montant), 0)::int AS t FROM paiements_scolaires WHERE frais_id = (SELECT frais_id FROM paiements_scolaires WHERE id = $1) AND student_id = $2 AND statut = 'reussi' AND created_at <= $3", [r.id, r.student_id, r.created_at])
     ).rows[0].t;
-    res.json({ success: true, data: { ...r, resteApres: Math.max(0, r.frais_montant - paye) } });
+    const sit = await situationEleve(r.student_id);
+    const { codeRecu } = require("../../utils/recus");
+    res.json({
+      success: true,
+      data: { ...r, resteApres: Math.max(0, r.frais_montant - paye), code: codeRecu(r.numero_recu, r.montant), annee: sit ? { total: sit.total, paye: sit.paye, reste: sit.reste } : null },
+    });
   } catch (e) {
     next(e);
   }

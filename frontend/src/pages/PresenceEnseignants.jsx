@@ -31,6 +31,7 @@ export default function PresenceEnseignants() {
   const tableau = useApi('/api/etablissement/tableau')
   const [error, setError] = useState('')
   const [classeEq, setClasseEq] = useState('')
+  const [classeJ, setClasseJ] = useState('')
   const [qEq, setQEq] = useState('')
   const v = d.data
   const attente = tableau.data?.enseignants_attente || 0
@@ -109,6 +110,17 @@ export default function PresenceEnseignants() {
     </li>
   )
   const sansAppel = v?.cours.filter((c) => c.etat === 'sans_appel').length || 0
+  // Journee rangee par classe
+  const coursParClasse = new Map()
+  for (const c of v?.cours || []) (coursParClasse.get(c.classe) || coursParClasse.set(c.classe, []).get(c.classe)).push(c)
+  const niveauxJ = []
+  for (const c of [...coursParClasse.keys()].sort(comparerClasses)) {
+    const n = niveauClasse(c)
+    const dernier = niveauxJ[niveauxJ.length - 1]
+    if (dernier && dernier.nom === n) dernier.classes.push(c)
+    else niveauxJ.push({ nom: n, classes: [c] })
+  }
+  const coursVus = classeJ === '__sans' ? (v?.cours || []).filter((c) => c.etat === 'sans_appel') : coursParClasse.get(classeJ) || []
 
   return (
     <>
@@ -146,6 +158,7 @@ export default function PresenceEnseignants() {
             onClick={() => {
               setOnglet(k)
               setClasseEq('')
+              setClasseJ('')
             }}
           >
             {t}
@@ -157,14 +170,14 @@ export default function PresenceEnseignants() {
       {onglet === 'jour' && (
         <>
           <div className="jour-nav">
-            <button type="button" aria-label="Jour précédent" onClick={() => setDate(decaler(date, -1))}>
+            <button type="button" aria-label="Jour précédent" onClick={() => { setClasseJ(''); setDate(decaler(date, -1)) }}>
               <IcChevron size={18} style={{ transform: 'rotate(180deg)' }} />
             </button>
             <label>
               <span>{jourLisible(date)}</span>
               <input type="date" value={date} max={aujourdhui()} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="Choisir une date" />
             </label>
-            <button type="button" aria-label="Jour suivant" disabled={date >= aujourdhui()} onClick={() => setDate(decaler(date, 1))}>
+            <button type="button" aria-label="Jour suivant" disabled={date >= aujourdhui()} onClick={() => { setClasseJ(''); setDate(decaler(date, 1)) }}>
               <IcChevron size={18} />
             </button>
           </div>
@@ -210,7 +223,49 @@ export default function PresenceEnseignants() {
                 </>
               )}
 
-              <p className="niveau-titre">Cours</p>
+              {v.cours.length > 0 && !classeJ && (
+                <>
+                  {sansAppel > 0 && (
+                    <button type="button" className="eleves-alerte" onClick={() => setClasseJ('__sans')}>
+                      <span>
+                        <b>{`${sansAppel} cours sans appel`}</b>
+                        <small>Voir les cours où l’appel n’a pas été fait</small>
+                      </span>
+                      <IcChevron size={18} />
+                    </button>
+                  )}
+                  {niveauxJ.map((n) => (
+                    <section className="eleves-niveau" key={n.nom}>
+                      <h2>{n.nom}</h2>
+                      <div className="eleves-classes">
+                        {n.classes.map((c) => {
+                          const cs = coursParClasse.get(c)
+                          const manque = cs.filter((x) => x.etat === 'sans_appel').length
+                          return (
+                            <button type="button" key={c} onClick={() => setClasseJ(c)}>
+                              <b>{c}</b>
+                              <small className={manque ? 'rouge' : ''}>{manque ? `${cs.length} cours · ${manque} sans appel` : `${cs.length} cours`}</small>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </>
+              )}
+              {classeJ && (
+                <>
+                  <div className="eleves-barre">
+                    <button type="button" className="back" onClick={() => setClasseJ('')}>
+                      ← Toutes les classes
+                    </button>
+                  </div>
+                  <h2 className="eleves-titre">
+                    {classeJ === '__sans' ? 'Cours sans appel' : classeJ}
+                    <small>{`${coursVus.length} cours`}</small>
+                  </h2>
+                </>
+              )}
               {v.cours.length === 0 ? (
                 <div className="vide">
                   <b>Aucun cours ce jour</b>
@@ -218,14 +273,12 @@ export default function PresenceEnseignants() {
                   <a href="#/import-emplois">Ajouter les emplois du temps</a>
                 </div>
               ) : (
-                <ul className="liste-simple">
-                  {v.cours.map((c) => (
+                classeJ && <ul className="liste-simple">
+                  {coursVus.map((c) => (
                     <li key={c.id}>
                       <span className="ls-heure">{c.debut}</span>
                       <span className="ls-texte">
-                        <b>
-                          {c.classe} · {c.matiere || '—'}
-                        </b>
+                        <b>{classeJ === '__sans' ? `${c.classe} · ${c.matiere || '—'}` : c.matiere || '—'}</b>
                         <small data-brut>{c.last_name ? `${c.last_name} ${c.first_name}${c.absent ? ' · absent(e)' : ''}` : 'Enseignant non affecté'}</small>
                         {c.etat === 'sans_appel' && (
                           <span className="ls-actions">

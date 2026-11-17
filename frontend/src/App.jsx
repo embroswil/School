@@ -45,6 +45,9 @@ import Abonnement from './pages/Abonnement.jsx'
 import AbonnementsAdmin from './pages/AbonnementsAdmin.jsx'
 import Recu from './pages/Recu.jsx'
 import RecuScolarite from './pages/RecuScolarite.jsx'
+import ReleveScolarite from './pages/ReleveScolarite.jsx'
+import VerifierRecu from './pages/VerifierRecu.jsx'
+import Compta from './pages/Compta.jsx'
 import OrdrePaiement, { ListeOrdres } from './pages/OrdrePaiement.jsx'
 import TrouverEleve from './pages/TrouverEleve.jsx'
 import PayerEleve from './pages/PayerEleve.jsx'
@@ -135,6 +138,7 @@ function Pages({ path }) {
   if (path === '/conditions') return <Conditions />
   if (path === '/guide') return <Guide />
   if (path === '/installer') return <PageInstallation />
+  if (path === '/comptabilite') return reserve(['principal', 'admin'].includes(user.role), <Compta />)
   if (path === '/absences') return reserve(['principal', 'admin'].includes(user.role), <AbsencesJour />)
   const infoMatch = path.match(/^\/infos\/(\d+)$/)
   if (infoMatch) return <InfoDetail key={infoMatch[1]} id={Number(infoMatch[1])} />
@@ -157,6 +161,8 @@ function Pages({ path }) {
         <ListeOrdres statut="litige" vide="Aucun litige en cours. 👍" />
       </>,
     )
+  const releveMatch = path.match(/^\/releve\/(\d+)$/)
+  if (releveMatch) return reserve(user.role !== 'teacher', <ReleveScolarite key={releveMatch[1]} id={Number(releveMatch[1])} />)
   const recuScolMatch = path.match(/^\/recus\/(\d+)$/)
   if (recuScolMatch) return <RecuScolarite key={recuScolMatch[1]} id={Number(recuScolMatch[1])} />
   const recuMatch = path.match(/^\/abonnement\/recus\/(\d+)$/)
@@ -194,6 +200,13 @@ function Root() {
     window.scrollTo(0, 0)
   }, [path])
 
+  // verification d'un recu (QR code) : accessible avec ou sans compte
+  const verif = path.match(/^\/verifier(?:\/(.+))?$/)
+  if (verif) {
+    const code = new URLSearchParams(window.location.hash.split('?')[1] || '').get('c') || ''
+    const page = <VerifierRecu key={path} numero={decodeURIComponent(verif[1] || '')} code={code} />
+    return user ? <Shell path={path}>{page}</Shell> : <div className="legal">{page}</div>
+  }
   if (!user) {
     if (path === '/connexion') return <Login />
     if (path === '/inscription') return <Signup />

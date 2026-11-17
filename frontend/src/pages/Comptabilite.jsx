@@ -64,7 +64,10 @@ function DetailClasse({ classe, enRetard, onRappel }) {
                 </li>
               ))}
           </ul>
-          <a href={`#/eleves/${e.id}`}>Fiche de l’élève</a>
+          <span className="suivi-liens-eleve">
+            <a href={`#/eleves/${e.id}`}>Fiche de l’élève</a>
+            <a href={`#/releve/${e.id}`}>Relevé des paiements</a>
+          </span>
         </details>
       ))}
     </div>
@@ -227,20 +230,9 @@ export default function Comptabilite() {
       )}
 
       <p className="suivi-liens">
-        <button
-          type="button"
-          className="lien-discret"
-          onClick={() => {
-            try {
-              sessionStorage.setItem('sukul-documents-dossier', 'Administration')
-            } catch (_) {
-              /* stockage indisponible */
-            }
-            window.location.hash = '/document'
-          }}
-        >
-          Budget et documents comptables
-        </button>
+        <a className="lien-discret" href="#/comptabilite">
+          Comptabilité de l’établissement
+        </a>
         <button type="button" className="lien-discret" onClick={exporter}>
           Exporter en Excel
         </button>

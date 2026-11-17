@@ -167,7 +167,12 @@ function Situation() {
           )}
           {s.paiements.length > 0 && (
             <>
-              <h3 style={{ font: '700 16px/1.3 var(--font-display)', margin: '16px 0 8px' }}>Paiements effectués</h3>
+              <div className="recu-entete-liste">
+                <h3>Paiements effectués</h3>
+                <a className="lien-action" href={`#/releve/${s.eleve.id}`}>
+                  Relevé de l’année
+                </a>
+              </div>
               <ul className="rows">
                 {s.paiements.map((p) => (
                   <li className="row" key={p.id}>

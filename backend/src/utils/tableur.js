@@ -240,4 +240,68 @@ function sanctions(texte) {
   return res.length ? { entrees: res } : null;
 }
 
-module.exports = { feuilles, emplois, absences, frais, sanctions, dateIso };
+// Comptabilite : budget previsionnel (poste, nature, montant prevu) et journal des operations
+// (date, libelle, montant, categorie, beneficiaire, piece, mode, etat).
+const RECETTE = /recette|produit|ressource|encaissement/;
+function comptabilite(texte) {
+  const postes = [];
+  const operations = [];
+  const montantDe = (v) => parseInt(String(v || "").replace(/[^\d]/g, ""), 10);
+  for (const f of feuilles(texte)) {
+    const nomFeuille = sansAccent(f.nom);
+    const j = entete(f.lignes, {
+      date: /^date/,
+      libelle: /^(libelle|designation|objet|intitule|operation)/,
+      montant: /^montant/,
+      "categorie?": /^(categorie|rubrique|poste)/,
+      "tiers?": /^(beneficiaire|fournisseur|tiers|payeur|client)/,
+      "piece?": /^(bon|piece|n°|no |numero|facture|ref)/,
+      "mode?": /^(mode|moyen|reglement)/,
+      "etat?": /^(etat|statut)/,
+      "sens?": /^(sens|type|nature)/,
+    });
+    if (j) {
+      for (const l of f.lignes.slice(j.ligne + 1)) {
+        const libelle = l[j.pos.libelle];
+        const montant = montantDe(l[j.pos.montant]);
+        const date = dateIso(l[j.pos.date]);
+        if (!libelle || !(montant > 0) || !date || /^(total|sous-total|solde)/.test(sansAccent(libelle))) continue;
+        const sensCel = j.pos["sens?"] !== undefined ? sansAccent(l[j.pos["sens?"]]) : "";
+        const val = (k) => (j.pos[k] !== undefined ? String(l[j.pos[k]] || "").trim() : "");
+        operations.push({
+          date,
+          libelle,
+          montant,
+          sens: RECETTE.test(sensCel) || (!sensCel && RECETTE.test(nomFeuille)) ? "recette" : "depense",
+          categorie: val("categorie?") || null,
+          tiers: val("tiers?") || null,
+          piece: val("piece?") || null,
+          mode: val("mode?") || null,
+          etat: /engag|attente|non pay|a payer/.test(sansAccent(val("etat?"))) ? "engage" : "paye",
+        });
+      }
+      continue;
+    }
+    // execution du budget, tresorerie : tableaux calcules, non importes
+    if (f.lignes.slice(0, 15).some((l) => l.some((c) => /^(depense|realise|taux|solde cumule)/.test(sansAccent(c))))) continue;
+    const b = entete(f.lignes, { poste: /^(poste|libelle|designation|rubrique|intitule)/, montant: /^(montant|prevu|budget|prevision)/, "nature?": /^(nature|type|categorie|sens)/ });
+    if (!b) continue;
+    for (const l of f.lignes.slice(b.ligne + 1)) {
+      const nom = l[b.pos.poste];
+      const prevu = montantDe(l[b.pos.montant]);
+      if (!nom || !(prevu > 0) || /^(total|sous-total|solde)/.test(sansAccent(nom))) continue;
+      const nature = b.pos["nature?"] !== undefined ? String(l[b.pos["nature?"]] || "").trim() : "";
+      const recette = RECETTE.test(sansAccent(nature));
+      postes.push({
+        nom,
+        prevu,
+        sens: recette ? "recette" : "depense",
+        categorie: !recette && nature && !/depense|charge/.test(sansAccent(nature)) ? nature : null,
+        scolarite: recette && /scolarit|famille|pension|contribution|inscription/.test(sansAccent(nom)),
+      });
+    }
+  }
+  return postes.length || operations.length ? { postes, operations } : null;
+}
+
+module.exports = { feuilles, emplois, absences, frais, sanctions, comptabilite, dateIso };

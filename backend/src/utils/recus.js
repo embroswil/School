@@ -1,0 +1,14 @@
+// utils/recus.js
+// Code de verification d'un recu : il prouve que le recu a bien ete emis par Sùkûl
+// (le QR code du recu ouvre la page publique de verification avec ce code).
+const crypto = require("crypto");
+const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // sans 0/O, 1/I/L
+
+function codeRecu(numero, montant) {
+  const h = crypto.createHmac("sha256", String(process.env.JWT_SECRET || "sukul")).update(`${numero}|${Number(montant)}`).digest();
+  let code = "";
+  for (let i = 0; i < 8; i++) code += ALPHABET[h[i] % ALPHABET.length];
+  return code;
+}
+
+module.exports = { codeRecu };
