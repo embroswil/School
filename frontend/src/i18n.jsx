@@ -21,6 +21,12 @@ export function changerLangue(l) {
 }
 
 const EN = {
+  "Cours de chaque classe": "Lessons for each class",
+  "Toutes les classes ont leur emploi du temps": "All classes have their timetable",
+  "Aucune classe pour l’instant": "No classes yet",
+  "Les classes sont créées en important les listes d’élèves.": "Classes are created by importing student lists.",
+  "À ajouter": "To add",
+  "Procès-verbal, sanctions": "Report, sanctions",
   "Importer pour une ou plusieurs classes": "Import for one or more classes",
   "Aucun cours trouvé dans ce document.": "No lessons found in this document.",
   "MTN Mobile Money": "MTN Mobile Money",
@@ -1422,6 +1428,8 @@ const EN = {
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) classe\(s\) sans emploi du temps$/, '$1 class(es) without a timetable'],
+  [/^(\d+) cours par semaine$/, '$1 lessons per week'],
   [/^Emploi du temps enregistré pour (\d+) classe\(s\) : (\d+) cours\.$/, 'Timetable saved for $1 class(es): $2 lessons.'],
   [/^(\d+) ajouté\(s\) · (\d+) mis à jour · (\d+) inchangé\(s\)$/, '$1 added · $2 updated · $3 unchanged'],
   [/^sur (.+) FCFA attendus$/, 'out of $1 FCFA expected'],

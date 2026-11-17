@@ -296,6 +296,7 @@ function EspaceEtablissement() {
         <Tuile href="#/eleves" Icone={IcEleves} titre="Élèves" texte="Listes, classes, fiches" chiffre={d.eleves ?? '…'} />
         <Tuile href="#/presence-enseignants" Icone={IcProf} titre="Enseignants" texte="Présence, cours assurés" chiffre={d.enseignants ?? '…'} />
         <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
+        <Tuile href="#/emplois" Icone={IcClasses} titre="Emplois du temps" texte="Cours de chaque classe" />
       </div>
     </>
   )

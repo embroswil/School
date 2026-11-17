@@ -560,7 +560,8 @@ router.get("/classes", async (req, res, next) => {
     const annee = await assurerAnneeScolaire(ecole);
     const { rows } = await db.query(
       `SELECT c.id, c.name,
-         (SELECT COUNT(*)::int FROM class_students cs WHERE cs.class_id = c.id AND cs.status = 'active') AS eleves
+         (SELECT COUNT(*)::int FROM class_students cs WHERE cs.class_id = c.id AND cs.status = 'active') AS eleves,
+         (SELECT COUNT(*)::int FROM creneaux k WHERE k.class_id = c.id) AS cours
        FROM classes c WHERE c.academic_year_id = $1 ORDER BY c.name`,
       [annee.id]
     );

@@ -5,7 +5,7 @@ import { BandeauInstallation } from './installation.jsx'
 import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcListe, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcClasses } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcListe, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
 const NAV = {
@@ -88,6 +88,7 @@ const TITRES = {
   '/import-enseignants': 'Liste des enseignants',
   '/administrateurs': 'Administrateurs',
   '/import-emplois': 'Emplois du temps',
+  '/emplois': 'Emplois du temps',
   '/import-absences': 'Cahier d’appel',
   '/etablissements': 'Établissements',
   '/utilisateurs': 'Comptes',
@@ -116,7 +117,7 @@ const ACTIONS = [
   ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
   ['/scolarite?onglet=encaisser', IcBillets, 'Encaisser', 'Paiement au guichet'],
   ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
-  ['/import-emplois', IcClasses, 'Emploi du temps', 'Importer pour une ou plusieurs classes'],
+  ['/discipline', IcBouclier, 'Discipline', 'Procès-verbal, sanctions'],
   ['/import-eleves', IcListe, 'Élèves', 'Importer une liste'],
 ]
 
