@@ -231,7 +231,7 @@ const createUser = async (data) => {
   if (!firstName || !lastName) throw new ApiError(400, "First name and last name are required");
   assertPassword(password);
 
-  if (await userSql.findByEmail(email)) throw new ApiError(409, "Email already in use");
+  if (await userSql.findByEmail(email)) throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail.");
 
   const created = await userSql.create({
     email,
@@ -304,7 +304,7 @@ const updateUser = async (id, data, actorId) => {
     const email = normalizeEmail(data.email);
     if (!EMAIL_RE.test(email)) throw new ApiError(400, "A valid email is required");
     const existing = await userSql.findByEmail(email);
-    if (existing && existing.id !== id) throw new ApiError(409, "Email already in use");
+    if (existing && existing.id !== id) throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail.");
     fields.email = email;
   }
 

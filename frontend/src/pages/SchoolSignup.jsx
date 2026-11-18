@@ -14,6 +14,7 @@ export default function SchoolSignup() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [fini, setFini] = useState('')
+  const [existe, setExiste] = useState(false)
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
 
   async function envoyer(e) {
@@ -25,6 +26,7 @@ export default function SchoolSignup() {
       setFini(r.message)
     } catch (err) {
       setError(err.message)
+      setExiste(err.status === 409 && /compte existe/.test(err.message))
     }
     setBusy(false)
   }
@@ -117,6 +119,16 @@ export default function SchoolSignup() {
             </Field>
           </div>
           <Note>{error}</Note>
+          {existe && (
+            <p className="compte-existe">
+              <a className="btn btn-quiet" href="#/connexion">
+                Se connecter
+              </a>
+              <a className="btn btn-quiet" href="#/mot-de-passe-oublie">
+                Mot de passe oublié
+              </a>
+            </p>
+          )}
           <button className="btn btn-block" type="submit" disabled={busy} style={{ marginTop: 8 }}>
             {busy ? 'Envoi…' : 'Envoyer la demande'}
           </button>

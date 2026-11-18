@@ -1847,7 +1847,10 @@ const EN = {
   "Aucune adresse e-mail sur ce compte : demandez à votre établissement de l’ajouter.": "No email address on this account: ask your school to add it.",
   "Le serveur ne répond pas pour le moment. Vérifiez votre connexion, puis réessayez dans une minute.": "The server is not responding right now. Check your connection, then try again in a minute.",
   "Travail introuvable": "Task not found",
-  "Ce travail est déjà lancé": "This task has already started"
+  "Ce travail est déjà lancé": "This task has already started",
+  "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».": "An account already exists with this email address: sign in, or use « Forgot password ».",
+  "Une demande est déjà en cours avec cette adresse e-mail : nous vous contacterons dès qu’elle sera validée.": "A request is already pending with this email address: we will contact you as soon as it is approved.",
+  "Un compte existe déjà avec cette adresse e-mail.": "An account already exists with this email address."
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »

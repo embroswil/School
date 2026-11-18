@@ -83,7 +83,7 @@ const inscription = async (req, res, next) => {
       nomEcole = ecole.rows[0].name;
     }
     if ((await q("SELECT 1 FROM users WHERE email = $1", [email])).rows[0]) {
-      throw new ApiError(409, "Un compte existe déjà avec cet email");
+      throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».");
     }
     // Enseignant : ses matieres et ses classes, choisies dans celles de l'etablissement
     let matieresChoisies = [];

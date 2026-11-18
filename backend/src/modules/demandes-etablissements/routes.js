@@ -33,10 +33,10 @@ router.post("/", async (req, res, next) => {
       throw new ApiError(400, "Mot de passe : 8 caractères minimum");
     }
     if ((await db.query("SELECT 1 FROM users WHERE email = $1", [email])).rows[0]) {
-      throw new ApiError(409, "Un compte existe déjà avec cet email");
+      throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».");
     }
     if ((await db.query("SELECT 1 FROM school_requests WHERE contact_email = $1 AND status = 'pending'", [email])).rows[0]) {
-      throw new ApiError(409, "Une demande est déjà en cours avec cet email");
+      throw new ApiError(409, "Une demande est déjà en cours avec cette adresse e-mail : nous vous contacterons dès qu’elle sera validée.");
     }
     await db.query(
       `INSERT INTO school_requests (name, type, city, address, student_count, contact_first_name, contact_last_name,
