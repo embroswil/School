@@ -14,7 +14,24 @@ const allowedOrigins = env.frontendUrl
   ? env.frontendUrl.split(",").map((o) => o.trim()).filter(Boolean)
   : null;
 
-app.use(cors(allowedOrigins ? { origin: allowedOrigins } : {}));
+// Adresses du site autorisees : celles de FRONTEND_URL, et toujours sukul.site avec ou sans « www. »
+// (Safari affiche « sukul.site » dans les deux cas : un appareil ouvert sur www.sukul.site ne doit pas
+// etre bloque, sinon toutes ses demandes echouent avec « Le serveur ne répond pas »).
+const origineSukul = (o) => {
+  try {
+    const h = new URL(o).hostname
+    return h === "sukul.site" || h.endsWith(".sukul.site")
+  } catch {
+    return false
+  }
+}
+app.use(
+  cors(
+    allowedOrigins
+      ? { origin: (o, ok) => ok(null, !o || allowedOrigins.includes(o) || origineSukul(o)) }
+      : {},
+  ),
+);
 // Lecture de photos de listes : images plus lourdes acceptees sur cette seule route
 app.use("/api/etablissement/lire-images", express.json({ limit: "15mb" }));
 app.use("/api/etablissement/enseignants/lire", express.json({ limit: "15mb" }));
