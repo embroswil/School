@@ -1852,7 +1852,16 @@ const EN = {
   "Une demande est déjà en cours avec cette adresse e-mail : nous vous contacterons dès qu’elle sera validée.": "A request is already pending with this email address: we will contact you as soon as it is approved.",
   "Un compte existe déjà avec cette adresse e-mail.": "An account already exists with this email address.",
   "Rejoignez Sùkûl gratuitement : votre espace est prêt dès l’inscription.": "Join Sùkûl for free: your space is ready as soon as you sign up.",
-  "Créer mon établissement": "Create my school"
+  "Créer mon établissement": "Create my school",
+  "Lun": "Mon",
+  "Mar": "Tue",
+  "Mer": "Wed",
+  "Jeu": "Thu",
+  "Ven": "Fri",
+  "Sam": "Sat",
+  "En cours": "Now",
+  "Associer…": "Match…",
+  "Voir les cours": "See the lessons"
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
@@ -1895,6 +1904,13 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi)( · aujourd’hui)? · (\d+) cours$/, (_, j, a, n) => `${{ Lundi: 'Monday', Mardi: 'Tuesday', Mercredi: 'Wednesday', Jeudi: 'Thursday', Vendredi: 'Friday', Samedi: 'Saturday' }[j]}${a ? ' · today' : ''} · ${n} lesson(s)`],
+  [/^Salle (.+)$/, 'Room $1'],
+  [/^(\d+) classe\(s\) lue\(s\)$/, '$1 class(es) read'],
+  [/^(\d+) cours · (\d+) à associer$/, '$1 lessons · $2 to match'],
+  [/^Enregistrer (\d+) classe\(s\)$/, 'Save $1 class(es)'],
+  [/^(\d+) \/ (\d+) classes · (\d+) %$/, '$1 / $2 classes · $3 %'],
+  [/^(\d+) cours$/, '$1 lessons'],
   [/^(\d+) % · (\d+) \/ (\d+) étapes$/, '$1 % · $2 / $3 steps'],
   [/^(\d+) étapes$/, '$1 steps'],
   [/^(\d+) % · continue même si l’application est fermée$/, '$1 % · continues even if the app is closed'],

@@ -1568,3 +1568,40 @@ html.ordi .travail-pastille { left: auto; right: 24px; transform: none; bottom: 
 
 .compte-existe { display: flex; gap: 8px; margin: -4px 0 12px; }
 .compte-existe .btn { flex: 1; text-align: center; padding: 10px 12px; font-size: 14px; }
+
+/* ---------- emplois du temps ---------- */
+.edt-jours { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; margin-bottom: 4px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.edt-jours button { position: relative; padding: 9px 4px; border: 0; border-radius: 10px; background: none; color: var(--muted); font: 700 13.5px/1 var(--font-body); cursor: pointer; }
+.edt-jours button[aria-selected='true'] { background: var(--primary); color: #fff; }
+.edt-jours button i { position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; }
+.edt-cours { list-style: none; margin: 0; padding: 0; border-radius: 16px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+.edt-cours li { display: flex; gap: 14px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.edt-cours li:first-child { border-top: 0; }
+.edt-cours li.en-cours { background: color-mix(in srgb, var(--primary) 10%, var(--card)); box-shadow: inset 3px 0 0 var(--primary); }
+.edt-h { flex: none; width: 50px; display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.edt-h b { font: 800 15px/1.2 var(--font-display); white-space: nowrap; }
+.edt-h small { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.edt-m { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.edt-m b { font: 700 15px/1.3 var(--font-body); overflow-wrap: anywhere; }
+.edt-m small { color: var(--muted); font-size: 13px; }
+.edt-m em { align-self: flex-start; margin-top: 2px; padding: 2px 8px; border-radius: 999px; background: var(--primary); color: #fff; font: 700 11px/1.4 var(--font-body); font-style: normal; }
+.edt-barre { position: sticky; top: 72px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 10px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.edt-barre b { display: block; font-size: 15px; }
+.edt-barre small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.edt-barre .btn { flex: none; padding: 10px 14px; font-size: 14px; }
+.edt-progres { margin: 0 0 12px; }
+.edt-progres .suivi-barre { display: block; width: 100%; height: 8px; }
+.edt-progres small { display: block; margin-top: 6px; color: var(--muted); font-size: 12.5px; }
+.edt-liste { list-style: none; margin: 0; padding: 0; border-radius: 16px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+.edt-liste > li { padding: 11px 14px; border-top: 1px solid var(--line); }
+.edt-liste > li:first-child { border-top: 0; }
+.edt-liste > li.a-associer { background: color-mix(in srgb, #f79009 8%, var(--card)); }
+.edt-ligne { display: flex; align-items: center; gap: 12px; }
+.edt-ligne input[type='checkbox'] { flex: none; width: 20px; height: 20px; accent-color: var(--primary); }
+.edt-ligne .ls-texte { flex: 1; min-width: 0; }
+.edt-ligne select { flex: none; width: auto; max-width: 150px; padding: 6px 8px; font-size: 13px; }
+.edt-details { margin: 6px 0 0 32px; }
+.edt-details summary { color: var(--lien); font: 600 13px/1.4 var(--font-body); cursor: pointer; }
+.edt-table { width: 100%; margin-top: 6px; border-collapse: collapse; font-size: 13px; }
+.edt-table td { padding: 5px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+.edt-table .edt-heure { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }

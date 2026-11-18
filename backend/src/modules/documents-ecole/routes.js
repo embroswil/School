@@ -85,30 +85,56 @@ Jours : lundi à samedi. Heures au format HH:MM (24 h). Si le document ne concer
 
 // POST /emplois/appliquer { classes: [{ classId, creneaux: [...] }] } : remplace l'emploi du temps de chaque classe
 router.post("/emplois/appliquer", async (req, res, next) => {
+  // Enregistrement groupe : quelques requetes pour toutes les classes envoyees (au lieu d'une par cours)
+  const client = await db.connect();
   try {
     const ecole = ecoleDe(req);
     const classes = await classesDe(ecole);
-    let nbClasses = 0;
-    let nbCours = 0;
+    const lignes = { classe: [], jour: [], debut: [], fin: [], matiere: [], salle: [] };
+    const ids = [];
+    const noms = new Map(); // matiere (en minuscules) -> nom
     for (const x of (Array.isArray(req.body?.classes) ? req.body.classes : []).slice(0, 80)) {
       const c = classes.find((k) => k.id === Number(x.classId));
       if (!c) continue;
-      const liste = (Array.isArray(x.creneaux) ? x.creneaux : []).slice(0, 80);
-      await db.query("DELETE FROM creneaux WHERE class_id = $1", [c.id]);
-      for (const k of liste) {
+      ids.push(c.id);
+      for (const k of (Array.isArray(x.creneaux) ? x.creneaux : []).slice(0, 80)) {
         const jour = Number(k.jour);
         const debut = heure(k.debut);
         const fin = heure(k.fin);
         if (!(jour >= 1 && jour <= 6) || !debut || !fin) continue;
-        const sid = k.matiere ? await matiereId(ecole, String(k.matiere).slice(0, 100)) : null;
-        await db.query("INSERT INTO creneaux (school_id, class_id, jour, debut, fin, subject_id, salle) VALUES ($1, $2, $3, $4, $5, $6, $7)", [ecole, c.id, jour, debut, fin, sid, String(k.salle || "").slice(0, 50) || null]);
-        nbCours += 1;
+        const m = k.matiere ? String(k.matiere).slice(0, 100).trim() : "";
+        if (m) noms.set(m.toLowerCase(), m);
+        lignes.classe.push(c.id);
+        lignes.jour.push(jour);
+        lignes.debut.push(debut);
+        lignes.fin.push(fin);
+        lignes.matiere.push(m.toLowerCase());
+        lignes.salle.push(String(k.salle || "").slice(0, 50));
       }
-      nbClasses += 1;
     }
-    res.json({ success: true, data: { classes: nbClasses, cours: nbCours } });
+    // matieres : celles qui existent, puis creation des nouvelles (une seule fois chacune)
+    const sid = new Map();
+    if (noms.size) {
+      const ex = await client.query("SELECT id, lower(name) AS n FROM subjects WHERE school_id = $1 AND lower(name) = ANY($2)", [ecole, [...noms.keys()]]);
+      for (const r of ex.rows) if (!sid.has(r.n)) sid.set(r.n, r.id);
+      for (const [n, nom] of noms) if (!sid.has(n)) sid.set(n, await matiereId(ecole, nom));
+    }
+    await client.query("BEGIN");
+    if (ids.length) await client.query("DELETE FROM creneaux WHERE school_id = $1 AND class_id = ANY($2)", [ecole, ids]);
+    if (lignes.classe.length)
+      await client.query(
+        `INSERT INTO creneaux (school_id, class_id, jour, debut, fin, subject_id, salle)
+         SELECT $1, c, j, d::time, f::time, s, NULLIF(sa, '')
+         FROM unnest($2::int[], $3::int[], $4::text[], $5::text[], $6::int[], $7::text[]) AS t(c, j, d, f, s, sa)`,
+        [ecole, lignes.classe, lignes.jour, lignes.debut, lignes.fin, lignes.matiere.map((m) => (m ? sid.get(m) ?? null : null)), lignes.salle]
+      );
+    await client.query("COMMIT");
+    res.json({ success: true, data: { classes: ids.length, cours: lignes.classe.length } });
   } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
     next(e);
+  } finally {
+    client.release();
   }
 });
 

@@ -5,38 +5,54 @@ import { Note } from '../ui.jsx'
 
 export const JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 
-// Affichage d'un emploi du temps, jour par jour
+const COURTS = ['', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+const minutes = (h) => {
+  const [a, b] = String(h || '').split(':').map(Number)
+  return a * 60 + (b || 0)
+}
+
+// Affichage d'un emploi du temps : un jour a la fois (aujourd'hui par defaut), cours en cours mis en avant
 export function GrilleEmploi({ creneaux, avecClasse = false }) {
+  const jours = [1, 2, 3, 4, 5, 6].filter((j) => creneaux.some((c) => c.jour === j))
+  const maintenant = new Date()
+  const aujourdhui = maintenant.getDay()
+  const [jour, setJour] = useState(() => (jours.includes(aujourdhui) ? aujourdhui : jours[0]))
   if (!creneaux.length) return <p className="muted">Aucun cours dans l’emploi du temps pour le moment.</p>
-  const aujourdhui = new Date().getDay()
-  return [1, 2, 3, 4, 5, 6]
-    .filter((j) => creneaux.some((c) => c.jour === j))
-    .map((j) => (
-      <section key={j} style={{ marginBottom: 14 }}>
-        <p className="groupe-titre" style={{ margin: '10px 4px 6px', color: j === aujourdhui ? 'var(--primary)' : undefined }}>
-          {JOURS[j]}
-          {j === aujourdhui ? ' · aujourd’hui' : ''}
-        </p>
-        <ul className="rows">
-          {creneaux
-            .filter((c) => c.jour === j)
-            .map((c) => (
-              <li className="row" key={c.id} style={{ padding: '10px 14px' }}>
-                <b style={{ width: 92, fontSize: 14 }}>
-                  {c.debut} – {c.fin}
-                </b>
-                <div className="row-main">
-                  <div className="row-title">{c.matiere || 'Cours'}</div>
-                  <div className="row-sub">
-                    {avecClasse ? c.classe : c.last_name ? `${c.first_name} ${c.last_name}` : ''}
-                    {c.salle ? ` · ${c.salle}` : ''}
-                  </div>
-                </div>
-              </li>
-            ))}
-        </ul>
-      </section>
-    ))
+  const actuel = jours.includes(jour) ? jour : jours[0]
+  const m = maintenant.getHours() * 60 + maintenant.getMinutes()
+  const cours = creneaux.filter((c) => c.jour === actuel).sort((a, b) => minutes(a.debut) - minutes(b.debut))
+  return (
+    <>
+      <div className="edt-jours" role="tablist">
+        {jours.map((j) => (
+          <button key={j} type="button" role="tab" aria-selected={j === actuel} onClick={() => setJour(j)}>
+            {COURTS[j]}
+            {j === aujourdhui && <i aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+      <p className="niveau-titre">{`${JOURS[actuel]}${actuel === aujourdhui ? ' · aujourd’hui' : ''} · ${cours.length} cours`}</p>
+      <ul className="edt-cours">
+        {cours.map((c) => {
+          const enCours = actuel === aujourdhui && m >= minutes(c.debut) && m < minutes(c.fin)
+          const qui = avecClasse ? c.classe : c.last_name ? `${c.first_name} ${c.last_name}` : ''
+          return (
+            <li key={c.id} className={enCours ? 'en-cours' : ''}>
+              <span className="edt-h">
+                <b>{c.debut}</b>
+                <small>{c.fin}</small>
+              </span>
+              <span className="edt-m">
+                <b>{c.matiere || 'Cours'}</b>
+                {(qui || c.salle) && <small>{[qui, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>}
+                {enCours && <em>En cours</em>}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </>
+  )
 }
 
 // Emploi du temps d'une classe : consultation, et saisie par l'administration
