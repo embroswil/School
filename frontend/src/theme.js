@@ -34,8 +34,6 @@ export function appliquerTheme(t = lireTheme()) {
   h.style.colorScheme = clair ? 'light' : 'dark'
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', fond)
-  const manifeste = document.querySelector('link[rel="manifest"]')
-  if (manifeste) manifeste.setAttribute('href', clair ? '/manifest.webmanifest' : '/manifest-sombre.webmanifest')
 }
 
 export function changerTheme(t) {

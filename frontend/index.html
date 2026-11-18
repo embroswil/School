@@ -50,7 +50,10 @@
           h.style.background = fond
           h.style.colorScheme = clair ? 'light' : 'dark'
           document.querySelector('meta[name="theme-color"]').setAttribute('content', fond)
-          if (!clair) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
+          // Couleurs gardees par l'iPhone quand l'icone est ajoutee a l'ecran d'accueil : fond de l'application
+          // avant son premier affichage et barre d'etat au lancement. Elles suivent le reglage du telephone,
+          // comme l'image de demarrage d'iOS (sinon une bande claire apparait en haut au lancement).
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
         } catch (e) {}
       })()
     </script>
