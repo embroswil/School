@@ -1,6 +1,6 @@
 // Service worker de Sùkûl : l'application s'ouvre tout de suite, meme avec un reseau lent,
 // et reste affichable hors connexion. Les donnees (API) ne sont jamais mises en cache.
-const CACHE = 'sukul-v3'
+const CACHE = 'sukul-v4'
 const POLICES = ['fonts.googleapis.com', 'fonts.gstatic.com']
 
 self.addEventListener('install', (e) => {
@@ -17,28 +17,23 @@ self.addEventListener('activate', (e) => {
   self.clients.claim()
 })
 
-// La page : la copie gardee sur l'appareil est affichee aussitot (aucune attente du reseau),
-// et la version en ligne est telechargee en meme temps. Si elle a change, la page est prevenue.
+// La page : toujours la version en ligne, pour que l'application (et l'icone ajoutee a l'ecran d'accueil)
+// recoive aussitot chaque correction. Sans reseau, ou si le reseau ne repond pas en 4 s, la copie
+// gardee sur l'appareil est affichee.
 async function page(e) {
   const cache = await caches.open(CACHE)
-  const copie = await cache.match('/')
-  const reseau = fetch(e.request).then(async (rep) => {
-    if (rep.ok) {
-      const nouveau = await rep.clone().text()
-      const ancien = copie ? await copie.clone().text() : null
-      await cache.put('/', rep.clone())
-      if (ancien !== null && ancien !== nouveau) {
-        const fenetres = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-        fenetres.forEach((f) => f.postMessage({ type: 'nouvelle-version' }))
-      }
-    }
+  const reseau = fetch(e.request, { cache: 'no-store' }).then((rep) => {
+    if (rep.ok) cache.put('/', rep.clone())
     return rep
   })
-  if (copie) {
-    e.waitUntil(reseau.catch(() => {}))
-    return copie.clone()
+  const delai = new Promise((r) => setTimeout(r, 4000)).then(() => cache.match('/'))
+  try {
+    const rep = await Promise.race([reseau, delai])
+    if (rep) return rep
+  } catch (_) {
+    /* pas de reseau */
   }
-  return reseau
+  return (await cache.match('/')) || reseau
 }
 
 // Fichiers qui ne changent jamais (scripts et styles numerotes, polices) : copie de l'appareil d'abord
