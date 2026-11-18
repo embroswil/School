@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { IcChevron, IcImport } from '../icones.jsx'
+import { IcChevron, IcClasses, IcImport } from '../icones.jsx'
+import { useAuth } from '../auth.jsx'
 import { niveauClasse, trierClasses } from '../classes.js'
 import StatutScolarite from './StatutScolarite.jsx'
 import { TableauTriable, exporterExcel, surOrdinateur } from '../export.jsx'
@@ -22,6 +23,7 @@ const nombre = (n) => Number(n || 0).toLocaleString('fr-FR')
 // Eleves de l'etablissement : classes regroupees par niveau, puis eleves de la classe choisie.
 // Les noms ne s'affichent qu'apres le choix d'une classe ou une recherche.
 export default function Students() {
+  const { user } = useAuth()
   const [q, setQ] = useState(() => memoire().q || '')
   const [recherche, setRecherche] = useState(() => memoire().q || '')
   const [classe, setClasse] = useState(() => memoire().classe ?? '') // '' | id de classe | '0' (sans classe)
@@ -184,6 +186,18 @@ export default function Students() {
               </span>
               <IcChevron size={18} />
             </button>
+          )}
+          {user?.role === 'principal' && (
+            <a className="eleves-lien" href="#/emplois">
+              <span className="eleves-lien-ico">
+                <IcClasses size={20} />
+              </span>
+              <span>
+                <b>Emplois du temps</b>
+                <small>Cours de chaque classe</small>
+              </span>
+              <IcChevron size={18} />
+            </a>
           )}
           {niveaux.map((n) => (
             <section className="eleves-niveau" key={n.nom}>
