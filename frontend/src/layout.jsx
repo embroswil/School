@@ -6,7 +6,7 @@ import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcChevron, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
 const NAV = {
@@ -207,14 +207,17 @@ export default function Shell({ path, children }) {
           <div className="feuille" onClick={(e) => e.stopPropagation()}>
             <div className="feuille-poignee" />
             <p className="feuille-titre">Actions rapides</p>
-            <div className="tuiles">
+            <div className="actions-liste">
               {ACTIONS.map(([to, Icone, t, st]) => (
-                <a key={to} className="tuile" href={`#${to}`}>
-                  <span className="tuile-ico">
-                    <Icone size={22} />
+                <a key={to} href={`#${to}`}>
+                  <span className="actions-ico">
+                    <Icone size={21} />
                   </span>
-                  <b>{t}</b>
-                  <span>{st}</span>
+                  <span className="actions-texte">
+                    <b>{t}</b>
+                    <small>{st}</small>
+                  </span>
+                  <IcChevron size={18} className="actions-fleche" />
                 </a>
               ))}
             </div>
