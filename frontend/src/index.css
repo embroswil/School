@@ -1585,7 +1585,7 @@ html.ordi .travail-pastille { left: auto; right: 24px; transform: none; bottom: 
 .edt-m b { font: 700 15px/1.3 var(--font-body); overflow-wrap: anywhere; }
 .edt-m small { color: var(--muted); font-size: 13px; }
 .edt-m em { align-self: flex-start; margin-top: 2px; padding: 2px 8px; border-radius: 999px; background: var(--primary); color: #fff; font: 700 11px/1.4 var(--font-body); font-style: normal; }
-.edt-barre { position: sticky; top: 72px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 10px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.edt-barre { position: sticky; top: calc(72px + env(safe-area-inset-top)); z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 10px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
 .edt-barre b { display: block; font-size: 15px; }
 .edt-barre small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
 .edt-barre .btn { flex: none; padding: 10px 14px; font-size: 14px; }

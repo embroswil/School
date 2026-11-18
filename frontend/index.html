@@ -47,6 +47,9 @@
           h.style.colorScheme = clair ? 'light' : 'dark'
           document.querySelector('meta[name="theme-color"]').setAttribute('content', fond)
           if (!clair) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
+          // iPhone, application installee : en sombre, la page passe sous la barre d'etat (fond de la page,
+          // texte blanc) ; iOS n'ajoute plus sa propre bande qui s'eclaircit au lancement
+          document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').setAttribute('content', clair ? 'default' : 'black-translucent')
         } catch (e) {}
       })()
     </script>

@@ -34,6 +34,8 @@ export function appliquerTheme(t = lireTheme()) {
   h.style.colorScheme = clair ? 'light' : 'dark'
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', fond)
+  const barre = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+  if (barre) barre.setAttribute('content', clair ? 'default' : 'black-translucent')
   const manifeste = document.querySelector('link[rel="manifest"]')
   if (manifeste) manifeste.setAttribute('href', clair ? '/manifest.webmanifest' : '/manifest-sombre.webmanifest')
 }
