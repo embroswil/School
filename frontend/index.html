@@ -39,18 +39,18 @@
         try {
           var t = localStorage.getItem('sukul-theme')
           var clair = t === 'auto' ? !(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) : t !== 'sombre'
-          document.documentElement.setAttribute('data-theme', clair ? 'light' : 'dark')
-          if (clair) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f3f5fa')
+          var fond = clair ? '#f3f5fa' : '#07080b'
+          var h = document.documentElement
+          h.setAttribute('data-theme', clair ? 'light' : 'dark')
+          // fond et couleur de la barre d'etat connus des la premiere image : pas d'eclair en haut de l'ecran
+          h.style.background = fond
+          h.style.colorScheme = clair ? 'light' : 'dark'
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', fond)
+          if (!clair) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
         } catch (e) {}
       })()
     </script>
     <title>Sùkûl – la vie scolaire, simplement</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
-      rel="stylesheet"
-    />
     <style>
       /* Ecran de demarrage : un seul ecran fixe, identique au pixel pres a l'image de demarrage d'iOS
          (bloc de 260 px centre, signature Embroswil de 150 px a 90 % de la hauteur).
@@ -68,6 +68,12 @@
       #demarrage.fini .bloc, #demarrage.fini .signe { opacity: 0; }
       #demarrage.parti { opacity: 0; pointer-events: none; }
     </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="demarrage" aria-hidden="true">

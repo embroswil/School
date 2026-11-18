@@ -27,9 +27,15 @@ const systemeClair = () => (typeof window !== 'undefined' && window.matchMedia ?
 
 export function appliquerTheme(t = lireTheme()) {
   const clair = t === 'clair' || (t === 'auto' && systemeClair())
-  document.documentElement.dataset.theme = clair ? 'light' : 'dark'
+  const fond = clair ? '#f3f5fa' : '#07080b'
+  const h = document.documentElement
+  h.dataset.theme = clair ? 'light' : 'dark'
+  h.style.background = fond
+  h.style.colorScheme = clair ? 'light' : 'dark'
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', clair ? '#f3f5fa' : '#07080b')
+  if (meta) meta.setAttribute('content', fond)
+  const manifeste = document.querySelector('link[rel="manifest"]')
+  if (manifeste) manifeste.setAttribute('href', clair ? '/manifest.webmanifest' : '/manifest-sombre.webmanifest')
 }
 
 export function changerTheme(t) {
