@@ -51,7 +51,7 @@ export function SaisieCode({ email, envoyer, onValide, libelle = 'Confirmer' }) 
         {busy ? 'Vérification…' : libelle}
       </button>
       <p className="muted" style={{ fontSize: 14, marginTop: 12, textAlign: 'center' }}>
-        Pas reçu ? Vérifiez WhatsApp, ou vos courriers indésirables (spam), ou{' '}
+        Pas reçu ? Vérifiez vos courriers indésirables (spam), ou{' '}
         <button type="button" onClick={renvoyer} style={{ border: 0, background: 'none', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', padding: 0, font: 'inherit' }}>
           renvoyez le code
         </button>
@@ -168,7 +168,7 @@ export default function MotDePasseOublie() {
 
   const titres = { 1: 'Mot de passe oublié', 2: 'Saisissez le code', 3: 'Mot de passe modifié' }
   const sousTitres = {
-    1: 'Indiquez votre adresse e-mail ou votre numéro : vous recevrez un code à 6 chiffres.',
+    1: 'Indiquez votre adresse e-mail : vous recevrez un code à 6 chiffres.',
     2: canal === 'whatsapp' ? 'Un code à 6 chiffres vient d’être envoyé sur WhatsApp.' : 'Un code à 6 chiffres vient d’être envoyé, si un compte correspond à cette adresse.',
     3: 'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
   }
@@ -177,8 +177,8 @@ export default function MotDePasseOublie() {
     <PageAuth titre={titres[etape]} sousTitre={sousTitres[etape]} retour={<a href="#/connexion">Se connecter</a>}>
       {etape === 1 && (
         <form className="card" onSubmit={demander}>
-          <Field label="Adresse e-mail ou numéro de téléphone">
-            <input className="input" type="text" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="vous@exemple.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Field label="Adresse e-mail">
+            <input className="input" type="email" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="vous@exemple.com" value={email} onChange={(e) => setEmail(e.target.value.trim())} required />
           </Field>
           <Note>{error}</Note>
           <button className="btn btn-block" type="submit" disabled={busy || !email.trim()}>

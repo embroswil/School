@@ -63,10 +63,10 @@ const envoyerCode = async (u, type) => {
   if (recents.rows[0].minute > 0) throw new ApiError(429, "Patientez une minute avant de demander un nouveau code");
   if (recents.rows[0].heure >= 5) throw new ApiError(429, "Trop de demandes : réessayez dans une heure");
   const code = nouveauCode();
-  // Canal : WhatsApp en priorite (si configure et numero valide), sinon email
-  const tel = WA.configure() ? WA.normaliserTel(u.phone) : null;
-  let canal = tel ? "whatsapp" : emailReel(u.email) ? "email" : null;
-  if (!canal) throw new ApiError(400, "Aucun moyen d’envoyer le code : ajoutez un email ou un numéro WhatsApp");
+  // Les codes sont envoyes uniquement par e-mail
+  const tel = null;
+  let canal = emailReel(u.email) ? "email" : null;
+  if (!canal) throw new ApiError(400, "Aucune adresse e-mail sur ce compte : demandez à votre établissement de l’ajouter.");
   await db.query("UPDATE codes_email SET utilise = true WHERE user_id = $1 AND type = $2 AND NOT utilise", [u.id, type]);
   const ins = await db.query(
     `INSERT INTO codes_email (user_id, type, code_hash, expire_le, canal) VALUES ($1, $2, $3, NOW() + ($4 || ' minutes')::interval, $5) RETURNING id`,
@@ -135,7 +135,7 @@ router.post("/verification/envoyer", async (req, res, next) => {
 // POST /api/codes/verification/confirmer { email, code }
 router.post("/verification/confirmer", async (req, res, next) => {
   try {
-    const u = await compteParIdentifiant(req.body?.email || req.body?.telephone);
+    const u = await compteParEmail(String(req.body?.email || "").trim().toLowerCase());
     if (!u) throw new ApiError(400, "Code incorrect");
     if (u.email_verifie || u.telephone_verifie) return res.json({ success: true, message: "Compte déjà confirmé" });
     const canal = await verifierCode(u, "verification", req.body?.code);
@@ -148,9 +148,9 @@ router.post("/verification/confirmer", async (req, res, next) => {
 // POST /api/codes/mot-de-passe/envoyer { email }
 router.post("/mot-de-passe/envoyer", async (req, res, next) => {
   try {
-    const id = String(req.body?.email || req.body?.telephone || "").trim();
-    if (!EMAIL_RE.test(id) && !WA.normaliserTel(id)) throw new ApiError(400, "Indiquez votre email ou votre numéro de téléphone");
-    const u = await compteParIdentifiant(id);
+    const id = String(req.body?.email || "").trim().toLowerCase();
+    if (!EMAIL_RE.test(id)) throw new ApiError(400, "Indiquez votre adresse e-mail.");
+    const u = await compteParEmail(id);
     let envoi = null;
     if (u && u.is_active) {
       envoi = await envoyerCode(u, "reinitialisation").catch((e) => {
@@ -160,7 +160,7 @@ router.post("/mot-de-passe/envoyer", async (req, res, next) => {
       });
     }
     // Meme reponse dans tous les cas : on ne revele pas l'existence d'un compte
-    res.json({ success: true, data: envoi ? { canal: envoi.canal } : null, message: "Si un compte existe, un code vient de lui être envoyé (WhatsApp ou email)." });
+    res.json({ success: true, data: envoi ? { canal: envoi.canal } : null, message: "Si un compte existe, un code vient d’être envoyé à cette adresse e-mail." });
   } catch (e) {
     next(e);
   }

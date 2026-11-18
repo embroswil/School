@@ -20,6 +20,7 @@ app.use("/api/etablissement/lire-images", express.json({ limit: "15mb" }));
 app.use("/api/etablissement/enseignants/lire", express.json({ limit: "15mb" }));
 app.use("/api/vie-scolaire/sanctions/lire", express.json({ limit: "15mb" }));
 app.use("/api/comptabilite/importer", express.json({ limit: "15mb" }));
+app.use("/api/travaux", express.json({ limit: "15mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 // --- santé ------------------------------------------------------------------
@@ -54,6 +55,7 @@ app.use("/api/verifier", require("./modules/scolarite/verifier"));
 app.use("/api/scolarite/ordres", require("./modules/scolarite/ordres"));
 app.use("/api/scolarite", require("./modules/scolarite/routes"));
 app.use("/api/comptabilite", require("./modules/comptabilite/routes"));
+app.use("/api/travaux", require("./modules/travaux/routes"));
 app.use("/api/notes", require("./modules/notes/routes"));
 app.use("/api/suivi", require("./modules/suivi/routes"));
 app.use("/api/vie-scolaire", require("./modules/vie-scolaire/routes"));

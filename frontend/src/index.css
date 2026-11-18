@@ -1551,3 +1551,17 @@ a.cpt-op { text-decoration: none; }
 .verif-situation small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; }
 .verif-liens { display: flex; gap: 18px; margin-top: 12px; }
 .verif-liens a { font: 700 14px/1 var(--font-body); color: var(--lien); }
+
+/* ---------- travaux en arriere-plan ---------- */
+.travail-pastille { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; gap: 10px; width: min(92vw, 420px); padding: 10px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(15, 26, 60, 0.18); color: var(--text); text-decoration: none; }
+.travail-pastille b { display: block; font-size: 13.5px; }
+.travail-pastille small { display: block; color: var(--muted); font-size: 12px; }
+.travail-pastille.fini { border-color: #12b76a; }
+.travail-coche { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #12b76a; color: #fff; font: 800 12px/1 var(--font-body); }
+.dos-roue.petite { flex: none; width: 20px; height: 20px; border-width: 2.5px; }
+html.ordi .travail-pastille { left: auto; right: 24px; transform: none; bottom: 24px; }
+.dos-serveur { margin-bottom: 14px; padding: 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.dos-serveur .suivi-barre { display: block; width: 100%; height: 8px; }
+.dos-serveur p { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.dos-file .dos-etat { border: 2px solid var(--line); }
+.dos-file .ls-texte { opacity: 0.7; }

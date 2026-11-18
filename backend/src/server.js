@@ -15,6 +15,7 @@ const start = async () => {
   require("./taches/rappels-abonnement").demarrer();
   require("./taches/verifier-paiements").demarrer();
   require("./taches/push").demarrer();
+  require("./taches/travaux").demarrer();
   const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`Backend running on port ${env.port} (${env.nodeEnv})`);
   });

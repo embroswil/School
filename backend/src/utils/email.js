@@ -25,6 +25,7 @@ const envoyerEmail = async ({ a, nom, sujet, html, texte }) => {
       htmlContent: html,
       textContent: texte,
     }),
+    signal: AbortSignal.timeout(15000), // jamais d'attente sans fin
   });
   if (!r.ok) {
     const j = await r.json().catch(() => ({}));

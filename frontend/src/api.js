@@ -99,14 +99,25 @@ async function request(path, { method = 'GET', body, auth = true, retry = true }
   if (auth && current?.accessToken) headers.Authorization = `Bearer ${current.accessToken}`
 
   let res
-  try {
-    res = await fetch(BASE + path, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  } catch {
-    throw new ApiError('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.', 0)
+  // Le serveur peut etre en train de redemarrer (mise a jour) : on reessaie deux fois avant d'abandonner.
+  // Sans reponse du tout, seules les lectures (GET) sont renvoyees : un envoi a peut-etre deja ete enregistre.
+  for (let essai = 0; ; essai++) {
+    let reseau = false
+    try {
+      res = await fetch(BASE + path, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+    } catch {
+      reseau = true
+    }
+    const indisponible = reseau ? method === 'GET' : [502, 503].includes(res.status)
+    if (!indisponible || essai >= 2) {
+      if (reseau) throw new ApiError('Le serveur ne répond pas pour le moment. Vérifiez votre connexion, puis réessayez dans une minute.', 0)
+      break
+    }
+    await new Promise((ok) => setTimeout(ok, 3000 * (essai + 1)))
   }
 
   if (res.status === 401 && auth && retry && current?.refreshToken) {

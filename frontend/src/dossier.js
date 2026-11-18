@@ -5,7 +5,6 @@
 // installe dans le bon ordre. Les imports sont sans doublons : on peut relancer le meme dossier.
 import { api } from './api.js'
 import { lireListeEleves, preparerDocument } from './lecture-fichier.js'
-import { lireDocumentEcole } from './documents-ecole.js'
 import { envoyer } from './pages/Documents.jsx'
 import { lireTableur as lireEnseignants } from './pages/ImportEnseignants.jsx'
 
@@ -170,7 +169,9 @@ export async function analyser(fichiers, onPas) {
   return res
 }
 
-// ---------------------------------------------------------------- installation
+// ---------------------------------------------------------------- installation (sur le serveur)
+// L'appareil prepare les donnees (listes lues, documents envoyes), puis le serveur installe tout en
+// arriere-plan : l'application peut etre fermee. Voir le module « travaux » du serveur.
 const decoupe = (l, n) => Array.from({ length: Math.ceil(l.length / n) }, (_, i) => l.slice(i * n, i * n + n))
 const feuillesUtiles = (texte) =>
   String(texte)
@@ -200,181 +201,106 @@ async function photoBandeau(f) {
   }
 }
 
-// Une etape par role : renvoie un resume en une ligne, et la liste des points a verifier
-const ETAPES = {
-  async photo(items) {
-    await api.put('/api/etablissement/photo', { photo: await photoBandeau(items[0].fichier) })
-    return { resume: 'Photo mise à jour' }
-  },
+// Donnees d'un document a lire par le serveur : texte (tableurs, Word) ou fichier envoye (PDF, photo)
+async function lisible(x) {
+  if (x.texte && (TABLEUR.includes(ext(x.nom)) || ext(x.nom) === 'docx')) return { texte: x.texte, nom: x.nom }
+  const env = await envoyer(x.fichier)
+  return { url: env.url, mime: env.mime, nom: x.nom }
+}
 
-  async eleves(items, pas) {
+/** Prepare les elements de l'installation sur l'appareil. onPas(texte). Renvoie la liste des elements. */
+async function preparer(analyse, roles, onPas) {
+  const elements = []
+  const ajouter = (role, libelle, donnees) => elements.push({ role, ordre: ROLES[role].ordre * 10000 + elements.length, libelle, donnees })
+  const de = (r) => (roles.includes(r) ? analyse.filter((x) => x.role === r) : [])
+
+  const photo = de('photo')[0]
+  if (photo) {
+    onPas('Photo de l’établissement')
+    ajouter('photo', photo.nom, { photo: await photoBandeau(photo.fichier) })
+  }
+  const listes = de('eleves')
+  if (listes.length) {
     const vus = new Map()
-    for (const [k, x] of items.entries()) {
-      pas(`Lecture ${k + 1} / ${items.length}`)
+    for (const [k, x] of listes.entries()) {
+      onPas(`Lecture des listes d’élèves · ${k + 1} / ${listes.length}`)
       for (const e of await lireListeEleves(x.fichier)) {
         const cle = sans(e.matricule || `${e.nom} ${e.prenom} ${e.classe}`)
         if (!vus.has(cle)) vus.set(cle, e)
       }
     }
-    const liste = [...vus.values()]
-    const t = { crees: 0, existants: 0, places: 0, erreurs: [] }
-    for (const [k, lot] of decoupe(liste, 80).entries()) {
-      pas(`Enregistrement ${Math.min((k + 1) * 80, liste.length)} / ${liste.length}`)
-      const r = (await api.post('/api/etablissement/import-eleves', { eleves: lot, classeParDefaut: '' })).data
-      t.crees += r.crees
-      t.existants += r.existants
-      t.places += r.places
-      t.erreurs.push(...(r.erreurs || []))
-    }
-    return { resume: `${liste.length.toLocaleString('fr-FR')} élèves · ${t.crees} ajoutés, ${t.existants} déjà présents`, alertes: t.erreurs.slice(0, 5) }
-  },
-
-  async enseignants(items, pas) {
+    decoupe([...vus.values()], 80).forEach((lot, k) => ajouter('eleves', `Élèves ${k * 80 + 1}–${k * 80 + lot.length}`, { eleves: lot }))
+  }
+  const profs = de('enseignants')
+  if (profs.length) {
+    onPas('Lecture de la liste des enseignants')
     let lignes = []
-    for (const x of items) {
-      pas(x.nom)
+    for (const x of profs) {
       if (TABLEUR.includes(ext(x.nom))) lignes = lignes.concat(await lireEnseignants(x.fichier))
       else lignes = lignes.concat((await api.post('/api/etablissement/enseignants/lire', await preparerDocument([x.fichier]))).data || [])
     }
-    if (!lignes.length) throw new Error('Aucun enseignant trouvé dans la liste.')
-    pas('Enregistrement')
-    await api.post('/api/etablissement/enseignants/import', { enseignants: lignes })
-    return { resume: `${lignes.length} enseignants` }
-  },
-
-  async emplois(items, pas) {
-    const classes = new Map()
-    const inconnues = new Set()
+    if (lignes.length) ajouter('enseignants', 'Liste des enseignants', { enseignants: lignes })
+  }
+  for (const role of ['emplois', 'frais', 'appel', 'discipline']) {
+    const items = de(role)
     for (const [k, x] of items.entries()) {
-      pas(`Lecture ${k + 1} / ${items.length}`)
-      const r = await lireDocumentEcole(x.fichier, '/api/documents-ecole/emplois/lire')
-      for (const c of r?.classes || []) {
-        if (c.classId) classes.set(c.classId, c.creneaux)
-        else inconnues.add(c.nomLu || x.nom)
-      }
+      onPas(`${ROLES[role].titre} · ${k + 1} / ${items.length}`)
+      ajouter(role, x.nom, await lisible(x))
     }
-    let nbCours = 0
-    for (const lot of decoupe([...classes].map(([classId, creneaux]) => ({ classId, creneaux })), 40)) {
-      pas('Enregistrement')
-      nbCours += (await api.post('/api/documents-ecole/emplois/appliquer', { classes: lot })).data?.cours || 0
-    }
-    return { resume: `${classes.size} classes · ${nbCours} cours`, alertes: inconnues.size ? [`Classes non reconnues : ${[...inconnues].slice(0, 6).join(', ')}`] : [] }
-  },
-
-  async frais(items, pas) {
-    let n = 0
-    for (const x of items) {
-      pas(x.nom)
-      const r = (await api.post('/api/scolarite/frais/lire', { texte: x.texte, nom: x.nom })).data
-      const aEnvoyer = r.filter((f) => f.statut !== 'identique')
-      if (aEnvoyer.length)
-        await api.post('/api/scolarite/frais/appliquer', { frais: aEnvoyer.map(({ id, nom, montant, echeance, classes, categorie, obligatoire }) => ({ id, nom, montant, echeance, classes, categorie, obligatoire })) })
-      n += r.length
-    }
-    return { resume: `${n} frais` }
-  },
-
-  async paiements(items, pas) {
-    let n = 0
-    let total = 0
-    const alertes = []
-    for (const x of items) {
-      pas(x.nom)
-      const r = (await api.post('/api/comptabilite/importer', { texte: feuillesUtiles(x.texte) })).data
-      n += r.paiements || 0
-      total += r.paiementsTotal || 0
-      if (r.elevesInconnus) alertes.push(`${r.elevesInconnus} matricule(s) introuvable(s)`)
-      if (r.fraisInconnus?.length) alertes.push(`Frais inconnus : ${r.fraisInconnus.join(', ')}`)
-    }
-    return { resume: n ? `${n.toLocaleString('fr-FR')} paiements · ${total.toLocaleString('fr-FR')} FCFA` : 'Paiements déjà enregistrés', alertes }
-  },
-
-  async compta(items, pas) {
-    let ops = 0
-    let postes = 0
-    for (const x of items) {
-      pas(x.nom)
-      const r = (await api.post('/api/comptabilite/importer', { texte: feuillesUtiles(x.texte) })).data
-      ops += r.operations || 0
-      postes += (r.postesNouveaux || 0) + (r.postesMaj || 0)
-    }
-    return { resume: `${postes} postes du budget · ${ops} opérations` }
-  },
-
-  async appel(items, pas) {
-    const absences = []
+  }
+  for (const role of ['paiements', 'compta']) for (const x of de(role)) ajouter(role, x.nom, { texte: feuillesUtiles(x.texte) })
+  for (const role of ['publier', 'interne']) {
+    const items = de(role)
     for (const [k, x] of items.entries()) {
-      pas(`Lecture ${k + 1} / ${items.length}`)
-      absences.push(...((await lireDocumentEcole(x.fichier, '/api/documents-ecole/absences/lire')) || []).filter((l) => l.trouve))
+      onPas(`Envoi des documents · ${k + 1} / ${items.length}`)
+      const env = await envoyer(x.fichier)
+      ajouter(role, x.nom, { titre: titreDe(x.nom), categorie: x.categorie || 'autre', audience: role === 'publier' ? 'tous' : 'interne', fichier: { type: env.type, url: env.url, nom: env.nom } })
     }
-    let ajoutees = 0
-    for (const lot of decoupe(absences, 2500)) {
-      pas('Enregistrement')
-      ajoutees += (await api.post('/api/documents-ecole/absences/appliquer', { absences: lot })).data?.ajoutees || 0
-    }
-    return { resume: `${ajoutees.toLocaleString('fr-FR')} absences ajoutées` }
-  },
-
-  async discipline(items, pas) {
-    let faites = 0
-    let aVoir = 0
-    for (const x of items) {
-      pas(x.nom)
-      const lues = (await api.post('/api/vie-scolaire/sanctions/lire', { texte: x.texte, nom: x.nom })).data || []
-      for (const [k, s] of lues.entries()) {
-        if (!s.eleve) {
-          aVoir++
-          continue
-        }
-        pas(`Sanction ${k + 1} / ${lues.length}`)
-        const r = await api.post('/api/vie-scolaire/sanctions', { studentId: s.eleve.id, type: s.type, motif: s.motif || s.type, date: s.date, dureeJours: s.dureeJours })
-        if (!r.data?.deja) faites++
-      }
-    }
-    return { resume: `${faites} sanctions enregistrées`, alertes: aVoir ? [`${aVoir} sanction(s) dont l’élève n’a pas été retrouvé : à saisir dans Discipline`] : [] }
-  },
-
-  async publier(items, pas, existants) {
-    return documents(items, pas, existants, 'tous')
-  },
-  async interne(items, pas, existants) {
-    return documents(items, pas, existants, 'interne')
-  },
+  }
+  return elements
 }
 
-async function documents(items, pas, existants, audience) {
-  let n = 0
-  let deja = 0
-  for (const [k, x] of items.entries()) {
-    pas(`${k + 1} / ${items.length}`)
-    if (existants.has(sans(x.nom))) {
-      deja++
-      continue
+/** Prepare puis confie l'installation au serveur. Renvoie l'identifiant du travail. */
+export async function lancerInstallation(analyse, roles, onPas) {
+  const elements = await preparer(analyse, roles, onPas)
+  if (!elements.length) throw new Error('Rien à installer.')
+  const travail = (await api.post('/api/travaux', { type: 'dossier', titre: 'Installation du dossier' })).data
+  // envoi par paquets d'environ 3 Mo
+  const paquets = [[]]
+  let taille = 0
+  for (const e of elements) {
+    const t = JSON.stringify(e).length
+    if (taille + t > 3_000_000 && paquets[paquets.length - 1].length) {
+      paquets.push([])
+      taille = 0
     }
-    const envoye = await envoyer(x.fichier)
-    await api.post('/api/actualites/documents', { titre: titreDe(x.nom), categorie: x.categorie || 'autre', audience, fichiers: [{ type: envoye.type, url: envoye.url, nom: envoye.nom }] })
-    n++
+    paquets[paquets.length - 1].push(e)
+    taille += t
   }
-  return { resume: `${n} document(s)${deja ? ` · ${deja} déjà présent(s)` : ''}` }
+  for (const [k, p] of paquets.entries()) {
+    onPas(`Envoi au serveur · ${k + 1} / ${paquets.length}`)
+    await api.post(`/api/travaux/${travail.id}/elements`, { elements: p })
+  }
+  await api.post(`/api/travaux/${travail.id}/lancer`)
+  return travail.id
 }
 
-/** Installe les roles choisis dans l'ordre. suivi(role, { etat, pas, resume, alertes, erreur }). */
-export async function installer(analyse, roles, suivi) {
-  let existants = new Set()
-  try {
-    existants = new Set(((await api.get('/api/actualites/documents')).data || []).flatMap((d) => (d.fichiers || d.medias || []).map((m) => sans(m.nom || ''))).filter(Boolean))
-  } catch {
-    /* liste indisponible : les documents sont ajoutes */
+const nb = (n) => Number(n || 0).toLocaleString('fr-FR')
+/** Resume d'un role a partir des compteurs du serveur. */
+export function resumeRole(role, r) {
+  const n = r.n || {}
+  const parties = {
+    photo: () => 'Photo mise à jour',
+    eleves: () => `${nb(n.eleves)} élèves · ${nb(n.crees)} ajoutés, ${nb(n.existants)} déjà présents`,
+    enseignants: () => `${nb(n.enseignants)} enseignants`,
+    emplois: () => `${nb(n.classes)} classes · ${nb(n.cours)} cours`,
+    frais: () => `${nb(n.frais)} frais`,
+    paiements: () => (n.paiements ? `${nb(n.paiements)} paiements · ${nb(n.montant)} FCFA` : 'Paiements déjà enregistrés'),
+    compta: () => `${nb(n.postes)} postes du budget · ${nb(n.operations)} opérations`,
+    appel: () => `${nb(n.absences)} absences ajoutées`,
+    discipline: () => `${nb(n.sanctions)} sanctions enregistrées${n.aVoir ? ` · ${nb(n.aVoir)} élève(s) non retrouvé(s)` : ''}`,
+    publier: () => `${nb(n.documents)} document(s)${n.deja ? ` · ${nb(n.deja)} déjà présent(s)` : ''}`,
+    interne: () => `${nb(n.documents)} document(s)${n.deja ? ` · ${nb(n.deja)} déjà présent(s)` : ''}`,
   }
-  for (const r of Object.keys(ROLES).filter((k) => roles.includes(k) && k !== 'ignore')) {
-    const items = analyse.filter((x) => x.role === r)
-    if (!items.length) continue
-    suivi(r, { etat: 'en_cours', pas: '' })
-    try {
-      const res = await ETAPES[r](items, (pas) => suivi(r, { etat: 'en_cours', pas }), existants)
-      suivi(r, { etat: 'fait', ...res })
-    } catch (err) {
-      suivi(r, { etat: 'erreur', erreur: err.message })
-    }
-  }
+  return (parties[role] || (() => ''))()
 }

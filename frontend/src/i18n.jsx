@@ -1825,7 +1825,29 @@ const EN = {
   "Ce reçu a été émis par un autre établissement.": "This receipt was issued by another school.",
   "La vérification des reçus est réservée à l’administration de l’établissement.": "Receipt checks are reserved for the school administration.",
   "Ce numéro de reçu papier ou de bordereau est déjà enregistré": "This paper receipt or slip number is already recorded",
-  "Reçu Sùkûl ": "Sùkûl receipt "
+  "Reçu Sùkûl ": "Sùkûl receipt ",
+  "Installation en cours": "Installation in progress",
+  "Installation arrêtée": "Installation stopped",
+  "L’installation continue sur le serveur : vous pouvez quitter cette page ou fermer l’application. Une notification vous préviendra à la fin.": "The installation continues on the server: you can leave this page or close the app. A notification will tell you when it is done.",
+  "Arrêter l’installation": "Stop the installation",
+  "Arrêter l’installation ? Ce qui est déjà installé est conservé.": "Stop the installation? What is already installed is kept.",
+  "Préparation": "Preparation",
+  "Préparation…": "Preparing…",
+  "Les fichiers sont préparés sur cet appareil, puis confiés au serveur.": "Files are prepared on this device, then handed to the server.",
+  "Gardez la page ouverte quelques instants : ensuite, vous pourrez fermer l’application.": "Keep the page open a few moments: then you can close the app.",
+  "Installation lancée sur le serveur": "Installation started on the server",
+  "Rien à installer.": "Nothing to install.",
+  "Installation du dossier": "Folder installation",
+  "Lecture de la liste des enseignants": "Reading the teacher list",
+  "Rien n’est enregistré avant « Installer ». L’installation se fait ensuite sur le serveur : vous pourrez fermer l’application. Un même dossier peut être relancé sans créer de doublons.": "Nothing is saved before « Install ». The installation then runs on the server: you can close the app. The same folder can be run again without creating duplicates.",
+  "Terminé · voir le résultat": "Done · see the result",
+  "Connectez-vous avec votre adresse e-mail.": "Sign in with your email address.",
+  "Indiquez votre adresse e-mail.": "Enter your email address.",
+  "Indiquez votre adresse e-mail : vous recevrez un code à 6 chiffres.": "Enter your email address: you will receive a 6-digit code.",
+  "Aucune adresse e-mail sur ce compte : demandez à votre établissement de l’ajouter.": "No email address on this account: ask your school to add it.",
+  "Le serveur ne répond pas pour le moment. Vérifiez votre connexion, puis réessayez dans une minute.": "The server is not responding right now. Check your connection, then try again in a minute.",
+  "Travail introuvable": "Task not found",
+  "Ce travail est déjà lancé": "This task has already started"
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
@@ -1868,6 +1890,14 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) % · (\d+) \/ (\d+) étapes$/, '$1 % · $2 / $3 steps'],
+  [/^(\d+) étapes$/, '$1 steps'],
+  [/^(\d+) % · continue même si l’application est fermée$/, '$1 % · continues even if the app is closed'],
+  [/^Lecture des listes d’élèves · (\d+) \/ (\d+)$/, 'Reading student lists · $1 / $2'],
+  [/^Envoi des documents · (\d+) \/ (\d+)$/, 'Sending documents · $1 / $2'],
+  [/^Envoi au serveur · (\d+) \/ (\d+)$/, 'Sending to the server · $1 / $2'],
+  [/^(Emplois du temps|Frais de scolarité|Cahiers d’appel|Sanctions) · (\d+) \/ (\d+)$/, (_, r, a, b) => `${{ 'Emplois du temps': 'Timetables', 'Frais de scolarité': 'School fees', 'Cahiers d’appel': 'Attendance registers', Sanctions: 'Sanctions' }[r]} · ${a} / ${b}`],
+  [/^(\d+) \/ (\d+)$/, '$1 / $2'],
   [/^(.+ FCFA) payés sur (.+ FCFA)$/, '$1 paid of $2'],
   [/^Analyse des fichiers · (\d+) \/ (\d+)$/, 'Analysing files · $1 / $2'],
   [/^(\d+) fichiers · (\d+) reconnus$/, '$1 files · $2 recognised'],
