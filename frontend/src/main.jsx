@@ -10,7 +10,7 @@ import { appliquerTheme, suivreSysteme } from './theme.js'
 demarrerTraduction()
 appliquerVersionOrdi()
 // Theme sombre ou clair
-appliquerTheme()
+appliquerTheme(undefined, { pendantDemarrage: Boolean(document.getElementById('demarrage')) })
 suivreSysteme()
 
 createRoot(document.getElementById('root')).render(
@@ -31,8 +31,12 @@ const retirer = () => {
     /* stockage indisponible */
   }
   el.classList.add('fini')
-  setTimeout(() => el.classList.add('parti'), 200)
-  setTimeout(() => el.remove(), 450)
+  // l'application prend ses couleurs sous l'ecran de demarrage, qui s'efface ensuite en fondu
+  setTimeout(() => {
+    appliquerTheme()
+    el.classList.add('parti')
+  }, 200)
+  setTimeout(() => el.remove(), 600)
 }
 requestAnimationFrame(() => setTimeout(retirer, Math.max(200, 1200 - performance.now())))
 

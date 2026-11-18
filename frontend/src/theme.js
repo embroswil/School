@@ -25,15 +25,18 @@ export function themeAChoisir() {
 
 const systemeClair = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)').matches : false)
 
-export function appliquerTheme(t = lireTheme()) {
+// pendantDemarrage : le fond et la couleur de la barre d'etat restent ceux de l'ecran de demarrage
+export function appliquerTheme(t = lireTheme(), { pendantDemarrage = false } = {}) {
   const clair = t === 'clair' || (t === 'auto' && systemeClair())
   const fond = clair ? '#f3f5fa' : '#07080b'
   const h = document.documentElement
   h.dataset.theme = clair ? 'light' : 'dark'
-  h.style.background = fond
   h.style.colorScheme = clair ? 'light' : 'dark'
-  const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', fond)
+  if (!pendantDemarrage) {
+    h.style.background = fond
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', fond)
+  }
   // style de la barre d'etat de l'iPhone (pris en compte a la prochaine ouverture de l'application)
   const barre = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
   if (barre) barre.setAttribute('content', clair ? 'default' : 'black-translucent')

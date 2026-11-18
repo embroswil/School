@@ -46,10 +46,15 @@
           var fond = clair ? '#f3f5fa' : '#07080b'
           var h = document.documentElement
           h.setAttribute('data-theme', clair ? 'light' : 'dark')
-          // fond et couleur de la barre d'etat connus des la premiere image : pas d'eclair en haut de l'ecran
-          h.style.background = fond
+          // Ecran de demarrage aux couleurs du telephone, comme l'image de demarrage d'iOS (qui suit toujours
+          // le reglage du telephone) : aucun changement de couleur a l'ouverture. Si le theme choisi est
+          // different, l'ecran de demarrage s'efface en douceur sur l'application a la fin.
+          var ecranSombre = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+          var fondDemarrage = ecranSombre ? '#07080b' : '#f3f5fa'
+          h.setAttribute('data-demarrage', ecranSombre ? 'sombre' : 'clair')
+          h.style.background = fondDemarrage
           h.style.colorScheme = clair ? 'light' : 'dark'
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', fond)
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', fondDemarrage)
           // iPhone, application installee : en clair, barre d'etat claire avec l'heure en noir, de la couleur
           // de la page ; en sombre, la page passe sous la barre d'etat (heure en blanc)
           document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').setAttribute('content', clair ? 'default' : 'black-translucent')
@@ -66,10 +71,11 @@
          (bloc de 260 px centre, signature Embroswil de 150 px a 90 % de la hauteur).
          Le logo et la signature sont dans la page : ils s'affichent en meme temps, sans chargement. */
       html, body { background: #07080b; margin: 0; }
-      html[data-theme='light'], html[data-theme='light'] body, html[data-theme='light'] #demarrage { background: #f3f5fa; }
-      #demarrage img.clair, html[data-theme='light'] #demarrage img.sombre { display: none !important; }
-      html[data-theme='light'] #demarrage img.clair { display: block !important; }
-      #demarrage { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 9999; background: #07080b; transition: opacity 0.22s ease; }
+      html[data-theme='light'], html[data-theme='light'] body { background: #f3f5fa; }
+      #demarrage { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 9999; background: #07080b; transition: opacity 0.35s ease; }
+      html[data-demarrage='clair'] #demarrage { background: #f3f5fa; }
+      #demarrage img.clair, html[data-demarrage='clair'] #demarrage img.sombre { display: none !important; }
+      html[data-demarrage='clair'] #demarrage img.clair { display: block !important; }
       #demarrage .bloc { position: absolute; left: 50%; top: 50%; width: 260px; transform: translate(-50%, -50%); transition: opacity 0.2s ease; }
       #demarrage .bloc img { display: block; width: 260px; height: 84px; }
       #demarrage .signe { position: absolute; left: 50%; top: 90%; width: 150px; margin-left: -75px; transition: opacity 0.2s ease; }
