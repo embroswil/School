@@ -6,7 +6,7 @@ import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcListe, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
 const NAV = {
@@ -124,7 +124,6 @@ const ACTIONS = [
   ['/scolarite?onglet=encaisser', IcBillets, 'Encaisser', 'Paiement au guichet'],
   ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
   ['/discipline', IcBouclier, 'Discipline', 'Procès-verbal, sanctions'],
-  ['/import-eleves', IcListe, 'Élèves', 'Importer une liste'],
 ]
 
 export default function Shell({ path, children }) {
