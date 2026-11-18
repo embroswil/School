@@ -1709,13 +1709,8 @@ html[data-theme='light'] body::before {
 .imp-etat { flex-basis: 100%; padding-left: 30px; font-size: 12px; color: var(--muted); }
 .imp-etat.change { color: #f79009; }
 
-/* Actions rapides : une liste claire, une action par ligne */
-.actions-liste { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
-.actions-liste a { display: flex; align-items: center; gap: 14px; padding: 13px 14px; color: var(--text); text-decoration: none; }
-.actions-liste a + a { border-top: 1px solid var(--line); }
-.actions-liste a:active { background: rgba(47, 107, 255, 0.08); }
-.actions-ico { flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: rgba(47, 107, 255, 0.14); color: var(--lien); }
-.actions-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.actions-texte b { font: 700 15px/1.25 var(--font-display); }
-.actions-texte small { font-size: 13px; color: var(--muted); }
-.actions-fleche { flex: none; color: var(--muted); opacity: 0.7; }
+/* Actions rapides : 3 tuiles en haut, 2 en bas qui occupent toute la largeur (aucun trou) */
+.tuiles-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.tuiles-actions > .tuile { grid-column: span 2; justify-content: center; }
+.tuiles-actions > .tuile:nth-last-child(-n + 2):nth-child(3n + 1),
+.tuiles-actions > .tuile:nth-last-child(-n + 2):nth-child(3n + 1) + .tuile { grid-column: span 3; }
