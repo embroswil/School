@@ -99,7 +99,7 @@ export default function SchoolFiche({ id }) {
         </div>
         <div className="kpi">
           <b>{nombre(e.paiements)}</b>
-          <span>FCFA encaissés</span>
+          <span>FCFA de scolarité enregistrés</span>
           <small>dernière activité {depuis(e.derniere_activite)}</small>
         </div>
       </div>

@@ -1799,7 +1799,33 @@ const EN = {
   "Photo mise à jour": "Photo updated",
   "Paiements déjà enregistrés": "Payments already recorded",
   "Archive .zip illisible.": "Unreadable .zip archive.",
-  "Aucun enseignant trouvé dans la liste.": "No teacher found in the list."
+  "Aucun enseignant trouvé dans la liste.": "No teacher found in the list.",
+  "Reçu Sùkûl": "Sùkûl receipt",
+  "Reçu Sùkûl unique": "Unique Sùkûl receipt",
+  "Reçu papier / bordereau": "Paper receipt / bank slip",
+  "Vérification par l’administration de l’établissement : scan du code QR ou du code-barres dans Sùkûl.": "Checked by the school administration: scan the QR code or barcode in Sùkûl.",
+  "Ce reçu atteste que le paiement est enregistré dans Sùkûl. Il ne remplace pas le reçu papier ou le bordereau remis par l’établissement ou la banque.": "This receipt certifies that the payment is recorded in Sùkûl. It does not replace the paper receipt or slip given by the school or the bank.",
+  "Scannez le code du reçu Sùkûl, ou tapez son numéro ou celui du reçu papier.": "Scan the Sùkûl receipt code, or type its number or the paper receipt number.",
+  "Scanner avec la caméra": "Scan with the camera",
+  "Fermer la caméra": "Close the camera",
+  "Avec un téléphone, scannez le QR code du reçu avec l’appareil photo : la vérification s’ouvre ici. Un lecteur de code-barres branché à l’ordinateur fonctionne aussi dans le champ ci-dessus.": "With a phone, scan the receipt’s QR code with the camera: the check opens here. A barcode reader plugged into the computer also works in the field above.",
+  "Reçu modifié": "Altered receipt",
+  "Ce paiement est bien enregistré dans Sùkûl.": "This payment is recorded in Sùkûl.",
+  "Le code du reçu ne correspond pas au paiement enregistré : ce document a été modifié. Seules les informations ci-dessous font foi.": "The receipt code does not match the recorded payment: this document has been altered. Only the information below is valid.",
+  "N° Sùkûl": "Sùkûl no.",
+  "Enregistré par": "Recorded by",
+  "Relevé de l’élève": "Student statement",
+  "La vérification des reçus est faite par l’administration de l’établissement.": "Receipts are checked by the school administration.",
+  "N° du reçu papier ou du bordereau (facultatif)": "Paper receipt or bank slip no. (optional)",
+  "Voir et partager": "View and share",
+  "FCFA payés en ligne": "FCFA paid online",
+  "via Sùkûl, à reverser aux écoles": "through Sùkûl, to pay back to schools",
+  "FCFA de scolarité enregistrés": "FCFA of school fees recorded",
+  "Aucun paiement ne correspond à ce numéro.": "No payment matches this number.",
+  "Ce reçu a été émis par un autre établissement.": "This receipt was issued by another school.",
+  "La vérification des reçus est réservée à l’administration de l’établissement.": "Receipt checks are reserved for the school administration.",
+  "Ce numéro de reçu papier ou de bordereau est déjà enregistré": "This paper receipt or slip number is already recorded",
+  "Reçu Sùkûl ": "Sùkûl receipt "
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
@@ -1842,6 +1868,7 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(.+ FCFA) payés sur (.+ FCFA)$/, '$1 paid of $2'],
   [/^Analyse des fichiers · (\d+) \/ (\d+)$/, 'Analysing files · $1 / $2'],
   [/^(\d+) fichiers · (\d+) reconnus$/, '$1 files · $2 recognised'],
   [/^Lecture (\d+) \/ (\d+)$/, 'Reading $1 / $2'],

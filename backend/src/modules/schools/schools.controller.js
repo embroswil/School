@@ -152,7 +152,7 @@ const statistiques = async (req, res, next) => {
         (SELECT COUNT(*)::int FROM users WHERE role = 'teacher' AND status = 'active') AS enseignants,
         (SELECT COUNT(*)::int FROM users WHERE role = 'parent') AS parents,
         (SELECT COUNT(*)::int FROM users WHERE created_at > NOW() - INTERVAL '7 days' AND email NOT LIKE '%@inscrit.school') AS inscrits_7j,
-        (SELECT COALESCE(SUM(montant),0)::bigint FROM paiements_scolaires WHERE statut = 'reussi') AS paiements_total`);
+        (SELECT COALESCE(SUM(montant),0)::bigint FROM paiements_scolaires WHERE statut = 'reussi' AND encaisse_par = 'plateforme') AS paiements_total`);
     const ecoles = await db.query(`
       SELECT s.id, s.name, s.type, s.city, s.is_active, s.created_at,
         (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role = 'student') AS eleves,

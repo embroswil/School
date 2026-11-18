@@ -1532,3 +1532,22 @@ a.cpt-op { text-decoration: none; }
 .dos-barre .btn { flex: 1; text-align: center; }
 .dos-note { font-size: 12.5px; margin-top: 10px; }
 [data-theme='light'] .dos-ligne small.dos-alerte { color: #b54708; }
+.recu-barres { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 14px; }
+.recu-barres > div { width: 220px; height: 42px; }
+.recu-barres svg { display: block; width: 100%; height: 100%; }
+.recu-barres span { color: #3d465a; font: 600 11px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.08em; }
+.recu-table .recu-externe { display: block; color: #5b6478; font-size: 10.5px; }
+.recu-dernier { margin: 4px 0 10px; font-size: 14px; }
+.verif-saisie { display: flex; gap: 8px; margin-bottom: 10px; }
+.verif-saisie .input { flex: 1; min-width: 0; font: 600 16px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.04em; text-transform: uppercase; }
+.verif-scanner { margin-bottom: 10px; }
+.verif-astuce { font-size: 12.5px; line-height: 1.5; }
+.verif-camera { margin-bottom: 12px; }
+.verif-camera video { display: block; width: 100%; max-height: 320px; object-fit: cover; border-radius: 16px; background: #000; margin-bottom: 8px; }
+.verif-situation { width: 100%; margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--card-2); text-align: left; }
+.verif-situation span { display: block; color: var(--muted); font-size: 12px; }
+.verif-situation b { display: block; margin-top: 4px; font: 800 17px/1.2 var(--font-display); }
+.verif-situation b.vert { color: #12b76a; }
+.verif-situation small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; }
+.verif-liens { display: flex; gap: 18px; margin-top: 12px; }
+.verif-liens a { font: 700 14px/1 var(--font-body); color: var(--lien); }

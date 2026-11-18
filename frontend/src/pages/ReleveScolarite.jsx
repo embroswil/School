@@ -88,6 +88,11 @@ export default function ReleveScolarite({ id }) {
                     <a href={`#/recus/${p.id}`} data-brut>
                       {p.numero_recu}
                     </a>
+                    {p.recu_externe && (
+                      <small className="recu-externe" data-brut>
+                        {p.recu_externe}
+                      </small>
+                    )}
                   </td>
                   <td>{p.frais}</td>
                   <td className="recu-col-option">{MODES_PAIEMENT[p.mode] || p.mode}</td>

@@ -2,6 +2,7 @@
 // Recu de scolarite en PDF (format A5), fabrique dans le navigateur sans bibliotheque :
 // polices standard Helvetica, QR code vectoriel, photo de l'etablissement si c'est un JPEG.
 import { qrModules } from './qr.js'
+import { code128 } from './code128.js'
 
 // Largeurs des caracteres (1/1000 em), Helvetica et Helvetica-Bold, codes 32 a 126
 const L_N = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584] // prettier-ignore
@@ -47,7 +48,7 @@ function tailleJpeg(b) {
 }
 
 /** Construit le PDF du recu. r : donnees du recu ; lignes : [libelle, valeur] ; logo : Uint8Array JPEG ou null. */
-export function pdfRecu({ ecole, ville, numero, montant, montantLettres, lignes, situation, lien, code, logo, mentions, libelles = {} }) {
+export function pdfRecu({ ecole, ville, numero, montant, montantLettres, lignes, situation, lien, code, barres, logo, mentions, libelles = {} }) {
   const L = { titre: 'REÇU DE PAIEMENT', montant: 'MONTANT REÇU', paye: 'PAYÉ', verifiable: 'Reçu vérifiable', code: 'Code :', ...libelles }
   const W = 420
   const H = 595
@@ -161,6 +162,17 @@ export function pdfRecu({ ecole, ville, numero, montant, montantLettres, lignes,
   for (const l of couper(mentions.emis, tw, 7.5, false)) {
     texte(l, tx, ty, { taille: 7.5, teinte: '#5b6478' })
     ty += 9.5
+  }
+
+  // code-barres du numero (lecteurs de guichet)
+  if (barres) {
+    const by = Math.max(y + cote, ty) + 14
+    const cb = code128(barres)
+    const larg = 200
+    const m = larg / cb.largeur
+    const bx = (W - larg) / 2
+    c += `0 0 0 rg ${cb.barres.map(([x, w]) => `${(bx + x * m).toFixed(2)} ${(H - by - 34).toFixed(2)} ${(w * m).toFixed(3)} 34 re`).join(' ')} f\n`
+    texte(barres, W / 2 - largeur(barres, false, 8) / 2, by + 45, { taille: 8, teinte: '#3d465a' })
   }
 
   // assemblage du fichier

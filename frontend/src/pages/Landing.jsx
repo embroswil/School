@@ -39,7 +39,7 @@ export default function Landing() {
         <p className="vitrine-pied">
           Sùkûl by Embroswil · © {new Date().getFullYear()}
           <br />
-          <a href="#/verifier">Vérifier un reçu</a> · <a href="#/confidentialite">Confidentialité</a> · <a href="#/conditions">Conditions d’utilisation</a>
+          <a href="#/confidentialite">Confidentialité</a> · <a href="#/conditions">Conditions d’utilisation</a>
         </p>
       </div>
     </div>

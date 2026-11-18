@@ -277,7 +277,7 @@ async function preparerPaiements(ecole, annee, lus) {
   }
   const frais = new Map((await db.query("SELECT id, nom FROM frais_scolaires WHERE school_id = $1 AND (academic_year_id IS NULL OR academic_year_id = $2)", [ecole, annee?.id || null])).rows.map((f) => [cle(f.nom), f.id]));
   const recus = lus.map((p) => p.recu).filter(Boolean);
-  const existants = new Set(recus.length ? (await db.query("SELECT numero_recu FROM paiements_scolaires WHERE numero_recu = ANY($1)", [recus])).rows.map((r) => r.numero_recu) : []);
+  const existants = new Set(recus.length ? (await db.query("SELECT recu_externe FROM paiements_scolaires WHERE school_id = $1 AND recu_externe = ANY($2)", [ecole, recus])).rows.map((r) => r.recu_externe) : []);
   const lignes = [];
   const inconnus = new Set();
   const exemples = [];
@@ -352,15 +352,13 @@ router.post("/importer", async (req, res, next) => {
       for (let i = 0; i < paie.lignes.length; i += 1000) {
         const lot = paie.lignes.slice(i, i + 1000);
         await client.query(
-          `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, enregistre_par, created_at, confirme_le, numero_recu)
+          `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, enregistre_par, created_at, confirme_le, recu_externe)
            SELECT $1, f, e, m, mo, 'reussi', NULLIF(r, ''), $2, d, d, NULLIF(n, '')
            FROM unnest($3::int[], $4::int[], $5::int[], $6::text[], $7::text[], $8::timestamp[], $9::text[]) AS t(f, e, m, mo, r, d, n)
            ON CONFLICT DO NOTHING`,
           [ecole, req.user.id, lot.map((p) => p.fraisId), lot.map((p) => p.eleve), lot.map((p) => p.montant), lot.map((p) => p.modeDb), lot.map((p) => p.reference || ""), lot.map((p) => `${p.date} 12:00:00`), lot.map((p) => p.recu || "")]
         );
       }
-      // numero de recu pour les paiements importes sans numero
-      await client.query("UPDATE paiements_scolaires SET numero_recu = 'REC-' || to_char(created_at, 'YYYY') || '-' || lpad(id::text, 6, '0') WHERE school_id = $1 AND numero_recu IS NULL AND statut = 'reussi'", [ecole]);
       await client.query("COMMIT");
     } catch (e) {
       await client.query("ROLLBACK");

@@ -206,8 +206,21 @@ function Root() {
   const verif = path.match(/^\/verifier(?:\/(.+))?$/)
   if (verif) {
     const code = new URLSearchParams(window.location.hash.split('?')[1] || '').get('c') || ''
-    const page = <VerifierRecu key={path} numero={decodeURIComponent(verif[1] || '')} code={code} />
-    return user ? <Shell path={path}>{page}</Shell> : <div className="legal">{page}</div>
+    // reservee a l'administration : connexion d'abord, puis retour sur la verification
+    if (!user) {
+      try {
+        sessionStorage.setItem('sukul-apres-connexion', window.location.hash.slice(1))
+      } catch {
+        /* stockage indisponible */
+      }
+      return <Login />
+    }
+    const page = ['principal', 'admin'].includes(user.role) ? (
+      <VerifierRecu key={window.location.hash} numero={decodeURIComponent(verif[1] || '')} code={code} />
+    ) : (
+      <Message title="Réservé à l’établissement">La vérification des reçus est faite par l’administration de l’établissement.</Message>
+    )
+    return <Shell path={path}>{page}</Shell>
   }
   if (!user) {
     if (path === '/connexion') return <Login />

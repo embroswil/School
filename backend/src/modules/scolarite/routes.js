@@ -242,10 +242,11 @@ const verifierPaiement = async (p) => {
   return statut;
 };
 
-// Numero de recu unique (ex. REC-2026-000123)
+// Numero de recu Sukul unique (ex. SK-2026-0000123), distinct du recu papier ou du bordereau (recu_externe).
+// La base l'attribue automatiquement a tout paiement reussi ; cette fonction couvre les anciens paiements.
 const attribuerRecu = (id) =>
   db.query(
-    "UPDATE paiements_scolaires SET numero_recu = 'REC-' || to_char(NOW(), 'YYYY') || '-' || lpad(id::text, 6, '0') WHERE id = $1 AND numero_recu IS NULL",
+    "UPDATE paiements_scolaires SET numero_recu = 'SK-' || to_char(COALESCE(confirme_le, created_at), 'YYYY') || '-' || lpad(id::text, 7, '0') WHERE id = $1 AND (numero_recu IS NULL OR numero_recu NOT LIKE 'SK-%')",
     [id]
   );
 
@@ -514,10 +515,13 @@ router.post("/paiements", async (req, res, next) => {
     if (!frais) throw new ApiError(404, "Frais introuvable pour cet élève");
     if (!(montant > 0) || montant > frais.reste) throw new ApiError(400, `Montant entre 1 et ${fcfa(frais.reste)}`);
     const { rows } = await db.query(
-      `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, enregistre_par, confirme_le)
-       VALUES ($1, $2, $3, $4, $5, 'reussi', $6, $7, NOW()) RETURNING *`,
-      [ecole, fraisId, studentId, montant, mode, texte(b.reference, 120) || `GUI-${studentId}-${Date.now()}`, req.user.id]
-    );
+      `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, enregistre_par, confirme_le, recu_externe)
+       VALUES ($1, $2, $3, $4, $5, 'reussi', $6, $7, NOW(), $8) RETURNING *`,
+      [ecole, fraisId, studentId, montant, mode, `GUI-${studentId}-${Date.now()}`, req.user.id, texte(b.recuExterne || b.reference, 80) || null]
+    ).catch((e) => {
+      if (e.code === "23505") throw new ApiError(409, "Ce numéro de reçu papier ou de bordereau est déjà enregistré");
+      throw e;
+    });
     // Les parents sont informes (l'etablissement n'a pas besoin de se notifier lui-meme)
     await apresPaiement({ ...rows[0], paye_par: null, school_id: -1 });
     res.status(201).json({ success: true, data: rows[0] });
@@ -539,13 +543,13 @@ router.get("/releve/:eleveId", async (req, res, next) => {
     const ecole = (await db.query("SELECT name, city, photo IS NOT NULL AS a_photo FROM schools WHERE id = $1", [e.school_id])).rows[0];
     const recus = (
       await db.query(
-        `SELECT p.id, p.montant, p.mode, p.created_at, p.confirme_le, p.numero_recu, f.nom AS frais
+        `SELECT p.id, p.montant, p.mode, p.created_at, p.confirme_le, p.numero_recu, p.recu_externe, f.nom AS frais
          FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id
          WHERE p.student_id = $1 AND p.statut = 'reussi' ORDER BY p.created_at`,
         [id]
       )
     ).rows;
-    for (const p of recus.filter((x) => !x.numero_recu)) {
+    for (const p of recus.filter((x) => !String(x.numero_recu || '').startsWith('SK-'))) {
       await attribuerRecu(p.id);
       p.numero_recu = (await db.query("SELECT numero_recu FROM paiements_scolaires WHERE id = $1", [p.id])).rows[0].numero_recu;
     }
@@ -560,7 +564,7 @@ router.get("/releve/:eleveId", async (req, res, next) => {
 router.get("/recus/:id", async (req, res, next) => {
   try {
     const { rows } = await db.query(
-      `SELECT p.id, p.montant, p.mode, p.reference, p.created_at, p.confirme_le, p.numero_recu, p.frais_service, p.student_id, p.school_id, p.paye_par,
+      `SELECT p.id, p.montant, p.mode, p.reference, p.created_at, p.confirme_le, p.numero_recu, p.recu_externe, p.frais_service, p.student_id, p.school_id, p.paye_par,
               f.nom AS frais, f.montant AS frais_montant, u.first_name, u.last_name, ${SQL_CLASSE} AS classe,
               s.name AS ecole, s.city, s.photo IS NOT NULL AS a_photo, sr.admission_number AS matricule,
               pp.first_name AS payeur_prenom, pp.last_name AS payeur_nom
@@ -575,7 +579,7 @@ router.get("/recus/:id", async (req, res, next) => {
     const autorise =
       (u.role === "principal" && u.schoolId === r.school_id) || u.role === "admin" || r.paye_par === u.id || (await elevesAccessibles(u)).includes(r.student_id);
     if (!autorise) throw new ApiError(404, "Reçu introuvable");
-    if (!r.numero_recu) {
+    if (!String(r.numero_recu || '').startsWith('SK-')) {
       await attribuerRecu(r.id);
       r.numero_recu = (await db.query("SELECT numero_recu FROM paiements_scolaires WHERE id = $1", [r.id])).rows[0].numero_recu;
     }

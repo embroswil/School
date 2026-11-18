@@ -15,7 +15,14 @@ export default function Login() {
     setBusy(true)
     try {
       await login(email, password)
-      window.location.hash = '/'
+      let retour = '/'
+      try {
+        retour = sessionStorage.getItem('sukul-apres-connexion') || '/'
+        sessionStorage.removeItem('sukul-apres-connexion')
+      } catch {
+        /* stockage indisponible */
+      }
+      window.location.hash = retour
     } catch (err) {
       setError(err.message)
       setBusy(false)

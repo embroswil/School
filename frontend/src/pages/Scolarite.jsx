@@ -481,6 +481,7 @@ function Paiements() {
   const tousFrais = useApi('/api/scolarite/frais')
   const [ed, setEd] = useState(null) // modification du frais choisi, sans quitter l'encaissement
   const [f, setF] = useState({ fraisId: '', montant: '', mode: 'especes', reference: '' })
+  const [dernier, setDernier] = useState(null)
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
@@ -496,8 +497,8 @@ function Paiements() {
         fraisId: Number(f.fraisId),
         montant: Number(String(f.montant).replace(/\s/g, '')),
         mode: f.mode,
-        reference: f.reference,
-      })
+        recuExterne: f.reference,
+      }).then((r) => setDernier(r.data))
       setOk('Paiement enregistré. Les parents de l’élève sont notifiés.')
       setF({ fraisId: '', montant: '', mode: 'especes', reference: '' })
       situation.reload()
@@ -614,10 +615,15 @@ function Paiements() {
                 </select>
               </Field>
             </div>
-            <Field label="N° de reçu (facultatif)">
+            <Field label="N° du reçu papier ou du bordereau (facultatif)">
               <input className="input" value={f.reference} onChange={(e) => setF({ ...f, reference: e.target.value })} />
             </Field>
           </>
+        )}
+        {dernier?.numero_recu && (
+          <p className="recu-dernier">
+            Reçu Sùkûl <b data-brut>{dernier.numero_recu}</b> · <a href={`#/recus/${dernier.id}`}>Voir et partager</a>
+          </p>
         )}
         <Note>{error}</Note>
         <Note kind="ok">{ok}</Note>
@@ -807,7 +813,12 @@ export default function Scolarite() {
     )
   return (
     <>
-      <h1 className="page-title">Scolarité</h1>
+      <div className="page-tete">
+        <h1 className="page-title">Scolarité</h1>
+        <a className="btn btn-quiet bouton-icone" href="#/verifier">
+          Vérifier un reçu
+        </a>
+      </div>
       <div className="segments" role="tablist">
         {[
           ['suivi', 'Suivi'],

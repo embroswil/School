@@ -2,6 +2,7 @@ import { useApi } from '../hooks.js'
 import { Note, annoncer } from '../ui.jsx'
 import { useAuth } from '../auth.jsx'
 import { qrSvg } from '../qr.js'
+import { code128Svg } from '../code128.js'
 import { pdfRecu } from '../pdf-recu.js'
 import { useState } from 'react'
 import { enLettres, fcfa, inWords, lienVerification, MODES_PAIEMENT } from '../recus.js'
@@ -47,7 +48,8 @@ export default function RecuScolarite({ id }) {
     ...(r.matricule ? [['Matricule', r.matricule]] : []),
     ['Objet', r.frais],
     ['Moyen de paiement', MODES_PAIEMENT[r.mode] || r.mode],
-    ...(r.reference ? [['Référence', r.reference]] : []),
+    ...(r.recu_externe ? [['Reçu papier / bordereau', r.recu_externe]] : []),
+    ...(r.reference && !/^(GUI|SCH)-/.test(r.reference) ? [['Référence', r.reference]] : []),
     ['Payé par', r.payeur_nom ? `${r.payeur_prenom} ${r.payeur_nom}` : 'Au guichet de l’établissement'],
     ['Date', `${date(quand)} · ${heure(quand)}`],
     ...(r.frais_service ? [['Frais de transaction', fcfa(r.frais_service)]] : []),
@@ -93,11 +95,12 @@ export default function RecuScolarite({ id }) {
       situation: [[traduire('Reste sur ce frais'), fcfa(r.resteApres)], ...(r.annee ? [[traduire('Payé sur l’année'), fcfa(r.annee.paye)], [traduire('Reste sur l’année'), fcfa(r.annee.reste)]] : [])],
       lien,
       code: r.code,
+      barres: r.numero_recu,
       logo: await logoJpeg(),
-      libelles: { titre: traduire('Reçu de paiement').toUpperCase(), montant: traduire('Montant reçu').toUpperCase(), paye: traduire('Payé').toUpperCase(), verifiable: traduire('Reçu vérifiable'), code: traduire('Code :') },
+      libelles: { titre: traduire('Reçu Sùkûl').toUpperCase(), montant: traduire('Montant reçu').toUpperCase(), paye: traduire('Payé').toUpperCase(), verifiable: traduire('Reçu Sùkûl unique'), code: traduire('Code :') },
       mentions: {
-        verifier: traduire('Scannez ce code ou ouvrez sukul.site › Vérifier un reçu, avec le numéro et le code ci-dessous.'),
-        emis: traduire('Reçu émis électroniquement par Sùkûl pour le compte de l’établissement. Il fait foi du paiement enregistré.'),
+        verifier: traduire('Vérification par l’administration de l’établissement : scan du code QR ou du code-barres dans Sùkûl.'),
+        emis: traduire('Ce reçu atteste que le paiement est enregistré dans Sùkûl. Il ne remplace pas le reçu papier ou le bordereau remis par l’établissement ou la banque.'),
       },
     })
   }
@@ -151,7 +154,7 @@ export default function RecuScolarite({ id }) {
       </div>
 
       <article className="bulletin recu">
-        <EnteteRecu ecoleId={r.school_id} aPhoto={r.a_photo} ecole={r.ecole} ville={r.city} titre="Reçu de paiement" numero={r.numero_recu} />
+        <EnteteRecu ecoleId={r.school_id} aPhoto={r.a_photo} ecole={r.ecole} ville={r.city} titre="Reçu Sùkûl" numero={r.numero_recu} />
 
         <div className="recu-montant">
           <span>Montant reçu</span>
@@ -166,7 +169,7 @@ export default function RecuScolarite({ id }) {
           {lignes.map(([k, v]) => (
             <div key={k}>
               <dt>{k}</dt>
-              <dd data-brut={k === 'Élève' || k === 'Référence' || k === 'Matricule' ? '' : undefined}>{v}</dd>
+              <dd data-brut={['Élève', 'Référence', 'Matricule', 'Reçu papier / bordereau'].includes(k) ? '' : undefined}>{v}</dd>
             </div>
           ))}
         </dl>
@@ -193,18 +196,24 @@ export default function RecuScolarite({ id }) {
         <footer className="recu-pied">
           <div className="recu-qr" dangerouslySetInnerHTML={{ __html: qrSvg(lien, 112) }} />
           <div>
-            <b>Reçu vérifiable</b>
-            <p>Scannez ce code ou ouvrez sukul.site › Vérifier un reçu, avec le numéro et le code ci-dessous.</p>
+            <b>Reçu Sùkûl unique</b>
+            <p>Vérification par l’administration de l’établissement : scan du code QR ou du code-barres dans Sùkûl.</p>
             <p className="recu-code">
               Code : <b data-brut>{r.code}</b>
             </p>
-            <p>Reçu émis électroniquement par Sùkûl pour le compte de l’établissement. Il fait foi du paiement enregistré.</p>
+            <p>Ce reçu atteste que le paiement est enregistré dans Sùkûl. Il ne remplace pas le reçu papier ou le bordereau remis par l’établissement ou la banque.</p>
           </div>
         </footer>
+        <div className="recu-barres">
+          <div dangerouslySetInnerHTML={{ __html: code128Svg(r.numero_recu) }} />
+          <span data-brut>{r.numero_recu}</span>
+        </div>
       </article>
-      <p className="recu-verifier sans-impression">
-        <a href={`#/verifier/${encodeURIComponent(r.numero_recu)}?c=${r.code}`}>Vérifier ce reçu</a>
-      </p>
+      {['principal', 'admin'].includes(user.role) && (
+        <p className="recu-verifier sans-impression">
+          <a href={`#/verifier/${encodeURIComponent(r.numero_recu)}?c=${r.code}`}>Vérifier ce reçu</a>
+        </p>
+      )}
     </>
   )
 }
