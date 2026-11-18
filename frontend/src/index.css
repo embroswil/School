@@ -1692,8 +1692,8 @@ html.ordi .df-hero-pied span { flex-direction: column; justify-content: flex-sta
 
 button.back { display: inline-flex; align-items: center; gap: 4px; margin: 2px 0 10px; padding: 0; border: 0; background: none; color: var(--lien); font: 700 14px/1.2 var(--font-body); cursor: pointer; }
 
-/* Application installee sur iPhone, theme clair : l'heure et la batterie sont ecrites en blanc par iOS ;
-   une bande sombre de la hauteur de la barre d'etat les garde lisibles (rien hors application installee) */
+/* Application installee sur iPhone, theme clair : si la page passe encore sous la barre d'etat (heure ecrite
+   en blanc par iOS), une bande sombre la garde lisible. Avec la barre claire, cette hauteur vaut 0 : rien ne s'affiche. */
 html[data-theme='light'] body::before {
   content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #07080b; z-index: 9998; pointer-events: none;
 }

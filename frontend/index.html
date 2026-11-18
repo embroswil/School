@@ -50,6 +50,9 @@
           h.style.background = fond
           h.style.colorScheme = clair ? 'light' : 'dark'
           document.querySelector('meta[name="theme-color"]').setAttribute('content', fond)
+          // iPhone, application installee : en clair, barre d'etat claire avec l'heure en noir, de la couleur
+          // de la page ; en sombre, la page passe sous la barre d'etat (heure en blanc)
+          document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').setAttribute('content', clair ? 'default' : 'black-translucent')
           // Couleurs gardees par l'iPhone quand l'icone est ajoutee a l'ecran d'accueil : fond de l'application
           // avant son premier affichage et barre d'etat au lancement. Elles suivent le reglage du telephone,
           // comme l'image de demarrage d'iOS (sinon une bande claire apparait en haut au lancement).
