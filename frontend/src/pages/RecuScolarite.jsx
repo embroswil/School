@@ -7,8 +7,8 @@ import { pdfRecu } from '../pdf-recu.js'
 import { useState } from 'react'
 import { enLettres, fcfa, inWords, lienVerification, MODES_PAIEMENT } from '../recus.js'
 import { langue, traduire } from '../i18n.jsx'
+import { apiBase } from '../api.js'
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 const date = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—')
 const heure = (d) => (d ? new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '')
 
@@ -17,7 +17,7 @@ export function EnteteRecu({ ecoleId, aPhoto, ecole, ville, titre, numero, sous 
   return (
     <header className="recu-tete">
       <div className="recu-ecole">
-        {aPhoto ? <img src={`${API}/api/actualites/ecoles/${ecoleId}/photo`} alt="" /> : <span className="recu-logo">{String(ecole || '?').charAt(0)}</span>}
+        {aPhoto ? <img src={`${apiBase()}/api/actualites/ecoles/${ecoleId}/photo`} alt="" /> : <span className="recu-logo">{String(ecole || '?').charAt(0)}</span>}
         <div>
           <b data-brut>{ecole}</b>
           {ville && <small>{ville}</small>}
@@ -59,7 +59,7 @@ export default function RecuScolarite({ id }) {
   async function logoJpeg() {
     if (!r.a_photo) return null
     try {
-      const rep = await fetch(`${API}/api/actualites/ecoles/${r.school_id}/photo`)
+      const rep = await fetch(`${apiBase()}/api/actualites/ecoles/${r.school_id}/photo`)
       if (!rep.ok) return null
       const url = URL.createObjectURL(await rep.blob())
       const img = await new Promise((ok, ko) => {

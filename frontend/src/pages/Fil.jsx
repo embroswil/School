@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../api.js'
+import { api, apiBase } from '../api.js'
 import { TYPES } from './Actualites.jsx'
 import ApercuPdf, { estPdf } from '../ApercuPdf.jsx'
 
 const etiquetteFichier = (nom) => ({ doc: 'DOC', docx: 'DOC', xls: 'XLS', xlsx: 'XLS', ppt: 'PPT', pptx: 'PPT', csv: 'CSV', txt: 'TXT' }[(String(nom || '').split('.').pop() || '').toLowerCase()] || 'FICHIER')
 import { LogoEcole } from './OrdrePaiement.jsx'
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 // Couleur de chaque type d'information (liseré et etiquette)
 const COULEURS = { annonce: '#2f6bff', evenement: '#7aa5ff', resultats: 'var(--text)', conseil_discipline: '#ff4d4d', autre: '#98a2b3' }
 const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
@@ -33,7 +32,7 @@ function Medias({ medias }) {
 export function Info({ p, complet = false }) {
   const t = TYPES[p.type] || TYPES.autre
   const d = new Date(p.created_at)
-  const tous = [...(p.medias || []), ...(p.image ? [{ type: 'image', url: `${API}${p.image}` }] : [])]
+  const tous = [...(p.medias || []), ...(p.image ? [{ type: 'image', url: `${apiBase()}${p.image}` }] : [])]
   const medias = tous.filter((m) => m.type !== 'document')
   const documents = tous.filter((m) => m.type === 'document')
   const long = !complet && (p.body || '').length > 200

@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/api/:chemin*", "destination": "https://school-1z7r.onrender.com/api/:chemin*" }]
+}

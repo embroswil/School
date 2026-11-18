@@ -2,7 +2,51 @@ import { langue } from './i18n.jsx'
 // Petit client pour l'API du backend : ajoute le token, le renouvelle si besoin
 // et traduit les messages d'erreur courants en français.
 
-const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
+const DIRECT = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
+const CLE_RELAIS = 'sukul-relais'
+const surSukul = () => typeof window !== 'undefined' && /(^|\.)sukul\.site$/.test(window.location.hostname)
+let relais = (() => {
+  try {
+    return surSukul() && localStorage.getItem(CLE_RELAIS) === '1'
+  } catch {
+    return false
+  }
+})()
+
+// Adresse du serveur. Certains reseaux mobiles n'arrivent pas a joindre l'adresse du serveur (Render) :
+// sur cet appareil, les demandes passent alors par sukul.site, qui les transmet au serveur (vercel.json).
+export const apiBase = () => (relais ? '' : DIRECT)
+export const urlApi = (chemin) => `${apiBase()}${chemin}`
+
+// Appele quand le serveur n'a pas pu etre joint : si le serveur est joignable par sukul.site mais pas
+// directement, cet appareil passe par sukul.site (choix garde). Vrai si le passage vient d'etre active.
+let essaiRelais = null
+function activerRelais() {
+  if (relais || !surSukul()) return Promise.resolve(false)
+  essaiRelais ??= (async () => {
+    try {
+      await fetch(`${DIRECT}/health`, { cache: 'no-store', signal: AbortSignal.timeout(8000) })
+      return false // le serveur repond directement : la panne est ailleurs
+    } catch {
+      /* serveur injoignable directement */
+    }
+    try {
+      await fetch('/api/joignable', { cache: 'no-store', signal: AbortSignal.timeout(15000) })
+      relais = true
+      try {
+        localStorage.setItem(CLE_RELAIS, '1')
+      } catch {
+        /* stockage indisponible */
+      }
+      return true
+    } catch {
+      return false
+    }
+  })().finally(() => {
+    essaiRelais = null
+  })
+  return essaiRelais
+}
 const KEY = 'school.session'
 
 export const session = {
@@ -76,7 +120,7 @@ async function renewSession() {
   const current = session.get()
   if (!current?.refreshToken) return false
   try {
-    const res = await fetch(`${BASE}/api/auth/refresh`, {
+    const res = await fetch(`${apiBase()}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken: current.refreshToken }),
@@ -104,13 +148,18 @@ async function request(path, { method = 'GET', body, auth = true, retry = true }
   for (let essai = 0; ; essai++) {
     let reseau = false
     try {
-      res = await fetch(BASE + path, {
+      res = await fetch(apiBase() + path, {
         method,
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
       })
     } catch {
       reseau = true
+      // reseau qui bloque l'adresse du serveur : on reessaie aussitot par sukul.site
+      if (await activerRelais()) {
+        essai--
+        continue
+      }
     }
     const indisponible = reseau ? method === 'GET' : [502, 503].includes(res.status)
     if (!indisponible || essai >= 2) {

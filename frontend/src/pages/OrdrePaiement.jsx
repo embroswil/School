@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../api.js'
+import { api, apiBase } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 
@@ -50,7 +50,6 @@ function Copier({ valeur, children }) {
   )
 }
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 // Numero au format international pour WhatsApp (Cameroun par defaut)
 const international = (t) => {
   const c = String(t || '').replace(/\D/g, '')
@@ -86,7 +85,7 @@ export function LogoEcole({ id, nom, taille = 46 }) {
   return (
     <span className="ordre-logo" style={{ width: taille, height: taille }}>
       {ok ? (
-        <img src={`${API}/api/actualites/ecoles/${id}/photo`} alt="" onError={() => setOk(false)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={`${apiBase()}/api/actualites/ecoles/${id}/photo`} alt="" onError={() => setOk(false)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
         (nom || '?')[0]
       )}

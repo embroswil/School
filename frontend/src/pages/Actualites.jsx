@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react'
-import { api } from '../api.js'
+import { api, apiBase } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '')
 
 export const TYPES = {
   annonce: { ico: '📣', nom: 'Annonce' },
@@ -42,7 +41,7 @@ export function Publication({ p, onDelete }) {
   const t = TYPES[p.type] || TYPES.autre
   return (
     <article className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      {p.image && <img src={p.image.startsWith('/api/') ? `${API_BASE}${p.image}` : p.image} alt="" loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 260, objectFit: 'cover' }} />}
+      {p.image && <img src={p.image.startsWith('/api/') ? `${apiBase()}${p.image}` : p.image} alt="" loading="lazy" style={{ display: 'block', width: '100%', maxHeight: 260, objectFit: 'cover' }} />}
       {!p.image && p.medias?.[0] && (p.medias[0].type === 'video' ? (
         <video src={p.medias[0].url} controls playsInline style={{ display: 'block', width: '100%', maxHeight: 320, background: '#000' }} />
       ) : (

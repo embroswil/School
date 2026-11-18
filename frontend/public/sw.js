@@ -63,6 +63,8 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url)
   if (POLICES.includes(url.hostname)) return e.respondWith(fige(req))
   if (url.origin !== self.location.origin) return
+  // demandes au serveur passees par sukul.site : jamais gardees sur l'appareil
+  if (url.pathname.startsWith('/api/')) return
   if (req.mode === 'navigate') return e.respondWith(page(e))
   if (url.pathname.startsWith('/assets/')) return e.respondWith(fige(req))
   e.respondWith(reseauDabord(req))
