@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import { Field, Note } from '../ui.jsx'
+import { useAuth } from '../auth.jsx'
 
 const TYPES = { maternelle: 'Maternelle', primaire: 'École primaire', college: 'Collège', lycee: 'Lycée' }
 const vide = {
@@ -8,12 +9,12 @@ const vide = {
   contactFirstName: '', contactLastName: '', contactFunction: '', contactEmail: '', contactPhone: '', password: '', message: '',
 }
 
-// « Inscrire mon etablissement » : demande examinee par l'equipe Sùkûl
+// « Inscrire mon etablissement » : l'etablissement est cree tout de suite et le responsable est connecte
 export default function SchoolSignup() {
+  const { login } = useAuth()
   const [f, setF] = useState(vide)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [fini, setFini] = useState('')
   const [existe, setExiste] = useState(false)
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
 
@@ -22,8 +23,11 @@ export default function SchoolSignup() {
     setError('')
     setBusy(true)
     try {
-      const r = await api.post('/api/demandes-etablissements', f, { auth: false })
-      setFini(r.message)
+      await api.post('/api/demandes-etablissements', f, { auth: false })
+      // connexion immediate : le responsable arrive sur son tableau de bord
+      await login(f.contactEmail.trim(), f.password)
+      window.location.hash = '/'
+      return
     } catch (err) {
       setError(err.message)
       setExiste(err.status === 409 && /compte existe/.test(err.message))
@@ -31,20 +35,6 @@ export default function SchoolSignup() {
     setBusy(false)
   }
 
-  if (fini) {
-    return (
-      <div className="public">
-        <main className="public-main" style={{ paddingTop: 60, textAlign: 'center' }}>
-          <div style={{ fontSize: 56 }}>🏫</div>
-          <h1 className="page-title">Demande envoyée</h1>
-          <p className="lede">{fini}</p>
-          <a className="btn" href="#/">
-            Retour à l’accueil
-          </a>
-        </main>
-      </div>
-    )
-  }
 
   return (
     <div className="public">
@@ -59,7 +49,7 @@ export default function SchoolSignup() {
       <main className="public-main">
         <h1 className="page-title">Inscrire mon établissement</h1>
         <p className="lede">
-          Rejoignez Sùkûl gratuitement. Une fois votre demande validée, vous gérez votre établissement depuis votre espace.
+          Rejoignez Sùkûl gratuitement : votre espace est prêt dès l’inscription.
         </p>
         <form onSubmit={envoyer}>
           <h2 className="section-title">L’établissement</h2>
@@ -130,7 +120,7 @@ export default function SchoolSignup() {
             </p>
           )}
           <button className="btn btn-block" type="submit" disabled={busy} style={{ marginTop: 8 }}>
-            {busy ? 'Envoi…' : 'Envoyer la demande'}
+            {busy ? 'Création…' : 'Créer mon établissement'}
           </button>
         </form>
       </main>

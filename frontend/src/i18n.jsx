@@ -1850,7 +1850,9 @@ const EN = {
   "Ce travail est déjà lancé": "This task has already started",
   "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».": "An account already exists with this email address: sign in, or use « Forgot password ».",
   "Une demande est déjà en cours avec cette adresse e-mail : nous vous contacterons dès qu’elle sera validée.": "A request is already pending with this email address: we will contact you as soon as it is approved.",
-  "Un compte existe déjà avec cette adresse e-mail.": "An account already exists with this email address."
+  "Un compte existe déjà avec cette adresse e-mail.": "An account already exists with this email address.",
+  "Rejoignez Sùkûl gratuitement : votre espace est prêt dès l’inscription.": "Join Sùkûl for free: your space is ready as soon as you sign up.",
+  "Créer mon établissement": "Create my school"
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »

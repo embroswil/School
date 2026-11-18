@@ -1,6 +1,6 @@
 // modules/demandes-etablissements/routes.js
-// « Inscrire mon etablissement » : un etablissement demande a rejoindre Sùkûl ;
-// l'administrateur de la plateforme valide (etablissement + compte administrateur crees).
+// « Inscrire mon etablissement » : l'etablissement et le compte de son responsable sont crees
+// immediatement (aucune validation par l'equipe Sùkûl). L'inscription reste enregistree pour le suivi.
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
@@ -8,6 +8,7 @@ const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate, isPlatformAdmin } = require("../../middlewares/auth.middleware");
 const { assurerAnneeScolaire } = require("../../utils/annees");
+const { notifierUtilisateur } = require("../../utils/notifier");
 
 const TYPES = ["maternelle", "primaire", "college", "lycee"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -35,32 +36,51 @@ router.post("/", async (req, res, next) => {
     if ((await db.query("SELECT 1 FROM users WHERE email = $1", [email])).rows[0]) {
       throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».");
     }
-    if ((await db.query("SELECT 1 FROM school_requests WHERE contact_email = $1 AND status = 'pending'", [email])).rows[0]) {
-      throw new ApiError(409, "Une demande est déjà en cours avec cette adresse e-mail : nous vous contacterons dès qu’elle sera validée.");
+    const client = await db.connect();
+    let ecoleId;
+    try {
+      await client.query("BEGIN");
+      const hash = await bcrypt.hash(b.password, 10);
+      ecoleId = (await client.query("INSERT INTO schools (name, type, city, is_active) VALUES ($1, $2, $3, true) RETURNING id", [nom, b.type, texte(b.city) || null])).rows[0].id;
+      await client.query(
+        `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, school_id, status)
+         VALUES ($1, $2, 'principal', $3, $4, $5, $6, 'active')`,
+        [email, hash, texte(b.contactFirstName), texte(b.contactLastName), texte(b.contactPhone, 30), ecoleId]
+      );
+      await client.query(
+        `INSERT INTO school_requests (name, type, city, address, student_count, contact_first_name, contact_last_name,
+           contact_function, contact_email, contact_phone, password_hash, message, status, school_id, decided_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'approved',$13,NOW())`,
+        [
+          nom,
+          b.type,
+          texte(b.city) || null,
+          texte(b.address, 500) || null,
+          texte(b.studentCount, 50) || null,
+          texte(b.contactFirstName),
+          texte(b.contactLastName),
+          texte(b.contactFunction) || null,
+          email,
+          texte(b.contactPhone, 30),
+          hash,
+          texte(b.message, 1000) || null,
+          ecoleId,
+        ]
+      );
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => {});
+      if (e.code === "23505") throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».");
+      throw e;
+    } finally {
+      client.release();
     }
-    await db.query(
-      `INSERT INTO school_requests (name, type, city, address, student_count, contact_first_name, contact_last_name,
-         contact_function, contact_email, contact_phone, password_hash, message)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-      [
-        nom,
-        b.type,
-        texte(b.city) || null,
-        texte(b.address, 500) || null,
-        texte(b.studentCount, 50) || null,
-        texte(b.contactFirstName),
-        texte(b.contactLastName),
-        texte(b.contactFunction) || null,
-        email,
-        texte(b.contactPhone, 30),
-        await bcrypt.hash(b.password, 10),
-        texte(b.message, 1000) || null,
-      ]
-    );
-    res.status(201).json({
-      success: true,
-      message: "Demande envoyée. Nous vous contacterons rapidement pour activer votre établissement.",
-    });
+    await assurerAnneeScolaire(ecoleId).catch(() => {});
+    // l'equipe Sùkûl est simplement informee
+    const admins = (await db.query("SELECT id FROM users WHERE role = 'admin' AND is_active")).rows;
+    for (const a of admins)
+      await notifierUtilisateur(a.id, { title: "Nouvel établissement inscrit", message: `${nom}${texte(b.city) ? ` · ${texte(b.city)}` : ""} · ${texte(b.contactFirstName)} ${texte(b.contactLastName)}`, type: "system" }).catch(() => {});
+    res.status(201).json({ success: true, data: { schoolId: ecoleId }, message: "Établissement créé : bienvenue sur Sùkûl." });
   } catch (e) {
     next(e);
   }
