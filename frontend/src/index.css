@@ -1691,3 +1691,9 @@ html.ordi .df-hero-pied span { flex-direction: column; justify-content: flex-sta
 [data-theme='light'] .tab-pro .vert, [data-theme='light'] .verif-situation b.vert { color: #067647; }
 
 button.back { display: inline-flex; align-items: center; gap: 4px; margin: 2px 0 10px; padding: 0; border: 0; background: none; color: var(--lien); font: 700 14px/1.2 var(--font-body); cursor: pointer; }
+
+/* Application installee sur iPhone, theme clair : l'heure et la batterie sont ecrites en blanc par iOS ;
+   une bande sombre de la hauteur de la barre d'etat les garde lisibles (rien hors application installee) */
+html[data-theme='light'] body::before {
+  content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #07080b; z-index: 9998; pointer-events: none;
+}

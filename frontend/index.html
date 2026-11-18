@@ -29,7 +29,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Sùkûl" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <!-- iPhone, application installee : la page passe sous la barre d'etat. iOS ne dessine donc plus sa propre
+         bande derriere l'heure et la batterie (c'est elle qui s'eclaircissait au lancement). Ce reglage est
+         enregistre par l'iPhone au moment ou l'icone est ajoutee a l'ecran d'accueil. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="Sùkûl : notes, absences, annonces et scolarité pour les parents, élèves, enseignants et établissements du Cameroun." />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#07080b" />
@@ -47,9 +50,6 @@
           h.style.colorScheme = clair ? 'light' : 'dark'
           document.querySelector('meta[name="theme-color"]').setAttribute('content', fond)
           if (!clair) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
-          // iPhone, application installee : en sombre, la page passe sous la barre d'etat (fond de la page,
-          // texte blanc) ; iOS n'ajoute plus sa propre bande qui s'eclaircit au lancement
-          document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').setAttribute('content', clair ? 'default' : 'black-translucent')
         } catch (e) {}
       })()
     </script>
