@@ -435,6 +435,12 @@ export default function Documents() {
           <IcImport size={18} /> Ajouter
         </button>
       </div>
+      {user.role === 'principal' && (
+        <a className="doc-dossier" href="#/dossier">
+          <b>Ajouter tout un dossier</b>
+          <small>Chaque fichier est reconnu et rangé au bon endroit</small>
+        </a>
+      )}
       <input ref={champ} type="file" hidden multiple accept={ACCEPT} onChange={choisir} />
       <CompteurIA discret />
       <Note kind="ok">{ok}</Note>

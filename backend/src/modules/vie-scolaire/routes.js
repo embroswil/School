@@ -195,6 +195,9 @@ router.post("/sanctions", async (req, res, next) => {
     if (!motif) throw new ApiError(400, "Indiquez le motif");
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.date || "") ? req.body.date : new Date().toISOString().slice(0, 10);
     const duree = entier(req.body?.dureeJours) || null;
+    // meme sanction deja enregistree (document importe deux fois) : rien n'est ajoute, aucun message
+    const deja = (await db.query("SELECT id FROM sanctions WHERE student_id = $1 AND type = $2 AND date_faits = $3 AND motif = $4 LIMIT 1", [studentId, type, date, motif])).rows[0];
+    if (deja) return res.json({ success: true, data: { id: deja.id, deja: true } });
     const { rows } = await db.query(
       `INSERT INTO sanctions (school_id, student_id, type, motif, date_faits, duree_jours, auteur_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,

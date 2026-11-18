@@ -105,6 +105,7 @@ const TITRES = {
   '/recus': 'Reçu',
   '/releve': 'Relevé de scolarité',
   '/comptabilite': 'Comptabilité',
+  '/dossier': 'Dossier de l’établissement',
   '/verifier': 'Vérifier un reçu',
   '/ordres': 'Paiement',
   '/trouver-eleve': 'Trouver un élève',

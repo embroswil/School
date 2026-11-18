@@ -279,7 +279,7 @@ function EspaceEtablissement() {
   const sansAppel = prof.data ? prof.data.cours.filter((c) => c.etat === 'sans_appel').length + prof.data.absences.length : null
   const aConfirmer = ordres.data?.length ?? null
   const taches = [
-    d.eleves === 0 && ['#/import-eleves', 'Ajoutez vos élèves', 'Importez vos listes de classe (Excel, PDF ou photo)'],
+    d.eleves === 0 && ['#/dossier', 'Installez votre établissement', 'Ajoutez votre dossier : élèves, enseignants, emplois du temps, frais… tout est reconnu'],
     d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`, 'Vérifiez et validez leurs comptes'],
     demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`, 'Demandes de suivi d’un élève'],
     d.eleves_sans_classe > 0 && ['#/eleves', `${d.eleves_sans_classe} élève(s) sans classe`, 'À placer dans leur classe'],

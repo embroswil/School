@@ -1492,3 +1492,43 @@ a.cpt-op { text-decoration: none; }
 
 .recu-verifier { max-width: 640px; margin: 14px auto 0; text-align: center; }
 .recu-verifier a { font: 700 14px/1 var(--font-body); color: var(--lien); }
+
+/* ---------- import du dossier de l'etablissement ---------- */
+.doc-dossier { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 14px; padding: 12px 14px; border-radius: 14px; border: 1.5px dashed var(--line); color: var(--text); text-decoration: none; }
+.doc-dossier b { font-size: 14px; }
+.doc-dossier small { color: var(--muted); font-size: 12.5px; }
+.dos-depot { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 20px; text-align: center; border-radius: 18px; border: 2px dashed var(--line); background: var(--card); color: var(--primary); }
+.dos-depot.survol { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); }
+.dos-depot b { color: var(--text); font: 800 17px/1.3 var(--font-display); }
+.dos-depot small { color: var(--muted); font-size: 13.5px; line-height: 1.5; max-width: 380px; margin-bottom: 6px; }
+.dos-depot .btn { max-width: 360px; }
+.dos-attente { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 34px 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); text-align: center; }
+.dos-attente small { color: var(--muted); font-size: 13px; }
+.dos-roue { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--primary); animation: dos-tour 0.9s linear infinite; }
+@keyframes dos-tour { to { transform: rotate(360deg); } }
+.dos-liste { list-style: none; margin: 0 0 14px; padding: 0; border-radius: 16px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+.dos-liste > li { padding: 12px 14px; border-top: 1px solid var(--line); }
+.dos-liste > li:first-child { border-top: 0; }
+.dos-ligne { display: flex; align-items: flex-start; gap: 12px; }
+.dos-ligne input[type='checkbox'] { flex: none; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--primary); }
+.dos-ligne .ls-texte { min-width: 0; }
+.dos-ligne b { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.dos-nb { padding: 2px 7px; border-radius: 999px; background: var(--card-2); color: var(--muted); font: 700 11.5px/1.3 var(--font-body); }
+.dos-ligne small { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.dos-ligne small.dos-alerte { color: #e0a21a; font-weight: 600; }
+.dos-etat { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; font: 800 12px/1 var(--font-body); color: var(--muted); }
+.dos-en_cours .dos-etat { border: 2.5px solid var(--line); border-top-color: var(--primary); animation: dos-tour 0.9s linear infinite; }
+.dos-fait .dos-etat { background: #12b76a; color: #fff; }
+.dos-erreur .dos-etat { background: #f04438; color: #fff; }
+.dos-erreur .dos-ligne small { color: var(--rouge-texte); }
+.dos-ignore { opacity: 0.7; }
+.dos-fichiers { margin: 8px 0 0 32px; }
+.dos-fichiers summary { color: var(--lien); font: 600 13px/1.4 var(--font-body); cursor: pointer; }
+.dos-fichiers ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 260px; overflow-y: auto; }
+.dos-fichiers li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+.dos-fichiers li span { min-width: 0; overflow-wrap: anywhere; color: var(--muted); }
+.dos-fichiers select { flex: none; width: auto; max-width: 150px; padding: 5px 8px; font-size: 12px; }
+.dos-barre { display: flex; gap: 10px; }
+.dos-barre .btn { flex: 1; text-align: center; }
+.dos-note { font-size: 12.5px; margin-top: 10px; }
+[data-theme='light'] .dos-ligne small.dos-alerte { color: #b54708; }

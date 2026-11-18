@@ -48,6 +48,7 @@ import RecuScolarite from './pages/RecuScolarite.jsx'
 import ReleveScolarite from './pages/ReleveScolarite.jsx'
 import VerifierRecu from './pages/VerifierRecu.jsx'
 import Compta from './pages/Compta.jsx'
+import ImportDossier from './pages/ImportDossier.jsx'
 import OrdrePaiement, { ListeOrdres } from './pages/OrdrePaiement.jsx'
 import TrouverEleve from './pages/TrouverEleve.jsx'
 import PayerEleve from './pages/PayerEleve.jsx'
@@ -138,6 +139,7 @@ function Pages({ path }) {
   if (path === '/conditions') return <Conditions />
   if (path === '/guide') return <Guide />
   if (path === '/installer') return <PageInstallation />
+  if (path === '/dossier') return reserve(user.role === 'principal', <ImportDossier />)
   if (path === '/comptabilite') return reserve(['principal', 'admin'].includes(user.role), <Compta />)
   if (path === '/absences') return reserve(['principal', 'admin'].includes(user.role), <AbsencesJour />)
   const infoMatch = path.match(/^\/infos\/(\d+)$/)

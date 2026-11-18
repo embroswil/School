@@ -19,7 +19,7 @@ const CHAMPS = {
 }
 const sans = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
-async function lireTableur(fichier) {
+export async function lireTableur(fichier) {
   const XLSX = await import('xlsx')
   const wb = XLSX.read(await fichier.arrayBuffer(), { type: 'array' })
   const lignes = []
