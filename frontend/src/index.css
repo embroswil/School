@@ -1605,3 +1605,11 @@ html.ordi .travail-pastille { left: auto; right: 24px; transform: none; bottom: 
 .edt-table { width: 100%; margin-top: 6px; border-collapse: collapse; font-size: 13px; }
 .edt-table td { padding: 5px 4px; border-top: 1px solid var(--line); vertical-align: top; }
 .edt-table .edt-heure { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+.verif-camera { position: relative; margin-bottom: 12px; border-radius: 18px; overflow: hidden; background: #000; }
+.verif-camera video { display: block; width: 100%; height: min(58vh, 420px); max-height: none; object-fit: cover; border-radius: 0; margin: 0; }
+.verif-cadre { position: absolute; left: 8%; right: 8%; top: 32%; height: 26%; border: 3px solid rgba(255, 255, 255, 0.95); border-radius: 14px; box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35); }
+.verif-cadre::after { content: ''; position: absolute; left: 6%; right: 6%; top: 50%; height: 2px; background: #f04438; box-shadow: 0 0 8px #f04438; animation: verif-ligne 1.6s ease-in-out infinite alternate; }
+@keyframes verif-ligne { from { transform: translateY(-28px); } to { transform: translateY(28px); } }
+.verif-camera p { position: absolute; left: 0; right: 0; bottom: 14px; margin: 0; text-align: center; color: #fff; font: 600 14px/1.3 var(--font-body); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7); }
+.verif-saisie { margin-top: 14px; }
+.verif-saisie .input::placeholder { text-transform: none; letter-spacing: 0; font-family: var(--font-body); font-weight: 500; }

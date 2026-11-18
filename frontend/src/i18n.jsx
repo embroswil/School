@@ -1861,7 +1861,13 @@ const EN = {
   "Sam": "Sat",
   "En cours": "Now",
   "Associer…": "Match…",
-  "Voir les cours": "See the lessons"
+  "Voir les cours": "See the lessons",
+  "Placez le code-barres du reçu dans le cadre": "Place the receipt barcode inside the frame",
+  "Scanner un reçu": "Scan a receipt",
+  "Scanner un autre reçu": "Scan another receipt",
+  "Ou tapez le n° du reçu": "Or type the receipt no.",
+  "La caméra n’est pas disponible. Autorisez l’accès à la caméra pour Sùkûl dans les réglages du téléphone, ou tapez le numéro du reçu.": "The camera is not available. Allow camera access for Sùkûl in the phone settings, or type the receipt number.",
+  "Scanner le code-barres": "Scan the barcode"
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »

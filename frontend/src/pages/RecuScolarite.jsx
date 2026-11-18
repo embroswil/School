@@ -209,11 +209,7 @@ export default function RecuScolarite({ id }) {
           <span data-brut>{r.numero_recu}</span>
         </div>
       </article>
-      {['principal', 'admin'].includes(user.role) && (
-        <p className="recu-verifier sans-impression">
-          <a href={`#/verifier/${encodeURIComponent(r.numero_recu)}?c=${r.code}`}>Vérifier ce reçu</a>
-        </p>
-      )}
+
     </>
   )
 }

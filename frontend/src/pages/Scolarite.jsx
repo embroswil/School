@@ -813,12 +813,7 @@ export default function Scolarite() {
     )
   return (
     <>
-      <div className="page-tete">
-        <h1 className="page-title">Scolarité</h1>
-        <a className="btn btn-quiet bouton-icone" href="#/verifier">
-          Vérifier un reçu
-        </a>
-      </div>
+      <h1 className="page-title">Scolarité</h1>
       <div className="segments" role="tablist">
         {[
           ['suivi', 'Suivi'],

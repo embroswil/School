@@ -8,7 +8,7 @@ import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -328,6 +328,7 @@ function EspaceEtablissement() {
         <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
         <Tuile href="#/comptabilite" Icone={IcGraphique} titre="Comptabilité" texte="Budget, dépenses, recettes" />
         <Tuile href="#/emplois" Icone={IcClasses} titre="Emplois du temps" texte="Cours de chaque classe" />
+        <Tuile href="#/verifier" Icone={IcScan} titre="Vérifier un reçu" texte="Scanner le code-barres" />
       </div>
     </>
   )

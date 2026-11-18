@@ -1,35 +1,58 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { fcfa, MODES_PAIEMENT } from '../recus.js'
+import { lireCode128 } from '../code128.js'
 
 const date = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—')
-const camera = typeof window !== 'undefined' && 'BarcodeDetector' in window && navigator.mediaDevices?.getUserMedia
+const camera = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
 
-// Lecture d'un QR code ou d'un code-barres par la camera (navigateurs qui le permettent)
-function Scanner({ onLu, onFermer }) {
+// Lecture du code-barres (ou du QR code) par la camera, directement dans l'application.
+// Le detecteur du navigateur est utilise s'il existe ; sinon (iPhone) le code-barres est lu image par image.
+function Scanner({ onLu, onErreur }) {
   const video = useRef(null)
-  const rappels = useRef({ onLu, onFermer })
-  rappels.current = { onLu, onFermer }
+  const rappels = useRef({ onLu, onErreur })
+  rappels.current = { onLu, onErreur }
   useEffect(() => {
     let flux = null
     let fini = false
-    const detecteur = new window.BarcodeDetector({ formats: ['qr_code', 'code_128'] })
+    const toile = document.createElement('canvas')
+    const ctx = toile.getContext('2d', { willReadFrequently: true })
+    const natif = 'BarcodeDetector' in window ? new window.BarcodeDetector({ formats: ['qr_code', 'code_128'] }) : null
     ;(async () => {
       try {
-        flux = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        flux = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
+        if (fini) return
         video.current.srcObject = flux
         await video.current.play()
         while (!fini) {
-          const codes = await detecteur.detect(video.current).catch(() => [])
-          if (codes[0]?.rawValue) {
+          const v = video.current
+          let texte = null
+          if (v && v.videoWidth) {
+            if (natif) texte = (await natif.detect(v).catch(() => []))[0]?.rawValue || null
+            if (!texte) {
+              // bande centrale de l'image (la ou se trouve le cadre)
+              const w = Math.min(v.videoWidth, 1600)
+              const ech = w / v.videoWidth
+              const h = Math.round(v.videoHeight * ech * 0.4)
+              toile.width = w
+              toile.height = h
+              ctx.drawImage(v, 0, v.videoHeight * 0.3, v.videoWidth, v.videoHeight * 0.4, 0, 0, w, h)
+              const px = ctx.getImageData(0, 0, w, h).data
+              const gris = new Uint8Array(w * h)
+              for (let k = 0, p = 0; k < gris.length; k++, p += 4) gris[k] = (px[p] * 77 + px[p + 1] * 150 + px[p + 2] * 29) >> 8
+              texte = lireCode128(gris, w, h)
+            }
+          }
+          if (texte) {
             fini = true
-            rappels.current.onLu(codes[0].rawValue)
+            navigator.vibrate?.(60)
+            rappels.current.onLu(texte)
             break
           }
-          await new Promise((r) => setTimeout(r, 250))
+          await new Promise((r) => setTimeout(r, 120))
         }
       } catch {
-        rappels.current.onFermer()
+        rappels.current.onErreur()
       }
     })()
     return () => {
@@ -39,10 +62,9 @@ function Scanner({ onLu, onFermer }) {
   }, [])
   return (
     <div className="verif-camera">
-      <video ref={video} playsInline muted />
-      <button type="button" className="btn btn-quiet btn-block" onClick={onFermer}>
-        Fermer la caméra
-      </button>
+      <video ref={video} playsInline muted autoPlay />
+      <span className="verif-cadre" aria-hidden="true" />
+      <p>Placez le code-barres du reçu dans le cadre</p>
     </div>
   )
 }
@@ -58,14 +80,15 @@ function lireScan(t) {
 // Verification d'un recu par l'administration de l'etablissement : scan (camera, lecteur de
 // code-barres) ou numero tape (recu Sukul ou recu papier / bordereau).
 export default function VerifierRecu({ numero: numeroLien = '', code: codeLien = '' }) {
-  const [saisie, setSaisie] = useState(numeroLien)
+  const [saisie, setSaisie] = useState('')
   const [etat, setEtat] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [scan, setScan] = useState(false)
-  const champ = useRef(null)
+  const [scan, setScan] = useState(camera && !numeroLien)
+  const [refus, setRefus] = useState(false)
 
   async function verifier(numero, code) {
     if (!numero) return
+    setScan(false)
     setBusy(true)
     setEtat(null)
     try {
@@ -76,52 +99,36 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
     }
     setBusy(false)
     setSaisie('')
-    champ.current?.focus()
   }
   useEffect(() => {
     if (numeroLien) verifier(numeroLien.toUpperCase(), codeLien.toUpperCase())
-    else champ.current?.focus()
   }, [numeroLien, codeLien])
 
   const r = etat?.recu
+  const relancer = () => {
+    setEtat(null)
+    setScan(camera)
+  }
   return (
     <div className="verif">
-      <div className="page-tete">
-        <div>
-          <h1 className="page-title">Vérifier un reçu</h1>
-          <p className="muted">Scannez le code du reçu Sùkûl, ou tapez son numéro ou celui du reçu papier.</p>
-        </div>
-      </div>
-
-      <form
-        className="verif-saisie"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const l = lireScan(saisie)
-          verifier(l.numero, l.code)
-        }}
-      >
-        <input ref={champ} className="input" value={saisie} onChange={(e) => setSaisie(e.target.value)} placeholder="SK-2026-0000123" autoComplete="off" autoCapitalize="characters" aria-label="Numéro du reçu" />
-        <button type="submit" className="btn" disabled={busy || !saisie.trim()}>
-          Vérifier
-        </button>
-      </form>
-      {camera && !scan && (
-        <button type="button" className="btn btn-quiet btn-block verif-scanner" onClick={() => setScan(true)}>
-          Scanner avec la caméra
-        </button>
-      )}
       {scan && (
         <Scanner
           onLu={(t) => {
-            setScan(false)
             const l = lireScan(t)
             verifier(l.numero, l.code)
           }}
-          onFermer={() => setScan(false)}
+          onErreur={() => {
+            setScan(false)
+            setRefus(true)
+          }}
         />
       )}
-      {!camera && <p className="muted verif-astuce">Avec un téléphone, scannez le QR code du reçu avec l’appareil photo : la vérification s’ouvre ici. Un lecteur de code-barres branché à l’ordinateur fonctionne aussi dans le champ ci-dessus.</p>}
+      {refus && !etat && <p className="muted verif-astuce">La caméra n’est pas disponible. Autorisez l’accès à la caméra pour Sùkûl dans les réglages du téléphone, ou tapez le numéro du reçu.</p>}
+      {!scan && !etat && camera && !busy && (
+        <button type="button" className="btn btn-block verif-scanner" onClick={relancer}>
+          Scanner un reçu
+        </button>
+      )}
 
       {busy && <p className="muted">Vérification…</p>}
       {etat && !r && (
@@ -170,6 +177,24 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
           </div>
         </div>
       )}
+      {etat && (
+        <button type="button" className="btn btn-block verif-scanner" onClick={relancer}>
+          Scanner un autre reçu
+        </button>
+      )}
+      <form
+        className="verif-saisie"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const l = lireScan(saisie)
+          verifier(l.numero, l.code)
+        }}
+      >
+        <input className="input" value={saisie} onChange={(e) => setSaisie(e.target.value)} placeholder="Ou tapez le n° du reçu" autoComplete="off" autoCapitalize="characters" aria-label="Numéro du reçu" />
+        <button type="submit" className="btn btn-quiet" disabled={busy || !saisie.trim()}>
+          Vérifier
+        </button>
+      </form>
     </div>
   )
 }
