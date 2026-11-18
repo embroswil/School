@@ -1697,3 +1697,15 @@ button.back { display: inline-flex; align-items: center; gap: 4px; margin: 2px 0
 html[data-theme='light'] body::before {
   content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #07080b; z-index: 9998; pointer-events: none;
 }
+
+/* Import d'eleves : comparaison avec les eleves deja inscrits */
+.imp-bilan { margin: 0 0 12px; padding: 14px 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.imp-bilan > b { display: block; font: 700 16px/1.3 var(--font-display); margin-bottom: 6px; }
+.imp-bilan p { margin: 4px 0 0; font-size: 14px; }
+.imp-bilan ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.imp-bilan li span { font-weight: 700; font-variant-numeric: tabular-nums; }
+.imp-bilan.rien { border-color: rgba(18, 183, 106, 0.45); background: rgba(18, 183, 106, 0.08); }
+.imp-bilan.rien > b { color: #12b76a; }
+.imp-etat { flex-basis: 100%; padding-left: 30px; font-size: 12px; color: var(--muted); }
+.imp-etat.change { color: #f79009; }
+

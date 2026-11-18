@@ -35,6 +35,7 @@ app.use(
 // Lecture de photos de listes : images plus lourdes acceptees sur cette seule route
 app.use("/api/etablissement/lire-images", express.json({ limit: "15mb" }));
 app.use("/api/etablissement/enseignants/lire", express.json({ limit: "15mb" }));
+app.use("/api/etablissement/import-eleves/apercu", express.json({ limit: "5mb" }));
 app.use("/api/vie-scolaire/sanctions/lire", express.json({ limit: "15mb" }));
 app.use("/api/comptabilite/importer", express.json({ limit: "15mb" }));
 app.use("/api/travaux", express.json({ limit: "15mb" }));

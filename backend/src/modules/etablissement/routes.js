@@ -353,6 +353,50 @@ const DATE = (v) => {
   return null;
 };
 
+// POST /api/etablissement/import-eleves/apercu { eleves: [{ nom, prenom, classe }] }
+// Compare la liste aux eleves deja inscrits, avant l'import : pour chaque ligne, « nouveau »,
+// « identique » (deja dans Sukul, meme classe), « classe » (deja inscrit, autre classe) ou
+// « double » (meme eleve plus haut dans la liste). Rien n'est enregistre.
+router.post("/import-eleves/apercu", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await anneeCourante(ecole);
+    const cle = (n, p) => `${n}|${p}`.toLowerCase().replace(/\s+/g, " ").trim();
+    const norm = (c) => String(c || "").toLowerCase().replace(/\s+/g, " ").trim();
+    const { rows } = await db.query(
+      `SELECT lower(trim(u.last_name)) AS n, lower(trim(u.first_name)) AS p,
+              COALESCE(cl.name, sr.declared_class) AS classe
+       FROM users u
+       LEFT JOIN student_records sr ON sr.student_id = u.id
+       LEFT JOIN LATERAL (
+         SELECT c.name FROM class_students cs JOIN classes c ON c.id = cs.class_id
+         WHERE cs.student_id = u.id AND cs.status = 'active' AND ($2::int IS NULL OR cs.academic_year_id = $2)
+         ORDER BY cs.enrolled_at DESC LIMIT 1
+       ) cl ON true
+       WHERE u.school_id = $1 AND u.role = 'student'`,
+      [ecole, annee?.id || null]
+    );
+    const inscrits = new Map(rows.map((r) => [cle(r.n, r.p), r.classe || ""]));
+    const vus = new Set();
+    const lignes = (Array.isArray(req.body?.eleves) ? req.body.eleves.slice(0, 8000) : []).map((e) => {
+      const nom = String(e?.nom || "").trim();
+      const prenom = String(e?.prenom || "").trim() || "-";
+      const k = cle(nom, prenom);
+      if (!nom) return { etat: "nouveau" };
+      if (vus.has(k)) return { etat: "double" };
+      vus.add(k);
+      if (!inscrits.has(k)) return { etat: "nouveau" };
+      const avant = inscrits.get(k);
+      const classe = String(e?.classe || "").trim();
+      if (classe && avant && norm(classe) !== norm(avant)) return { etat: "classe", avant };
+      return { etat: "identique", avant };
+    });
+    res.json({ success: true, data: { lignes, inscrits: rows.length } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // POST /api/etablissement/import-eleves
 // { eleves: [{ nom, prenom, classe, dateNaissance, sexe, matricule }], classeParDefaut }
 // Import en lots : quelques requetes seulement, meme pour 1 000 eleves.

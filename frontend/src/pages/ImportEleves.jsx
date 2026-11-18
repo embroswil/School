@@ -16,6 +16,7 @@ export default function ImportEleves() {
   const [busy, setBusy] = useState(false)
   const [resultat, setResultat] = useState(null)
   const [progres, setProgres] = useState(null) // { fait, total }
+  const [bilan, setBilan] = useState(null) // comparaison avec les eleves deja inscrits
 
   async function choisir(e) {
     const fichiers = [...(e.target.files || [])]
@@ -31,8 +32,26 @@ export default function ImportEleves() {
       if (fichiers.every(photo)) liste = await lirePhotos(fichiers)
       else for (const x of fichiers) liste = liste.concat(photo(x) ? await lirePhotos([x]) : await lireListeEleves(x))
       if (!liste.length) throw new Error('Aucun élève trouvé dans ce fichier. Vérifiez qu’il contient une colonne « Nom » ou « Noms et prénoms ».')
-      setEleves(liste.map((x) => ({ ...x, garder: true })))
       setFichier(fichiers.length > 1 ? `${fichiers.length} fichiers` : f.name)
+      setBilan(null)
+      // Comparaison avec les eleves deja dans Sukul : les eleves deja inscrits dans la meme classe
+      // (et les lignes en double) sont decoches, et la liste est resumee avant l'import
+      let etats = null
+      try {
+        const r = await api.post('/api/etablissement/import-eleves/apercu', { eleves: liste.map(({ nom, prenom, classe }) => ({ nom, prenom, classe })) })
+        etats = r.data.lignes
+      } catch {
+        /* comparaison indisponible : l'import reste possible, sans doublons */
+      }
+      const lignes = liste.map((x, i) => {
+        const e = etats?.[i]
+        return { ...x, etat: e?.etat || null, avant: e?.avant || '', garder: !e || e.etat === 'nouveau' || e.etat === 'classe' }
+      })
+      if (etats) {
+        const n = (k) => lignes.filter((x) => x.etat === k).length
+        setBilan({ total: lignes.length, nouveaux: n('nouveau'), classe: n('classe'), identiques: n('identique'), doubles: n('double') })
+      }
+      setEleves(lignes)
     } catch (err) {
       setError(err.message)
       setEleves(null)
@@ -68,6 +87,7 @@ export default function ImportEleves() {
       }
       setResultat(total)
       setEleves(null)
+      setBilan(null)
       window.scrollTo(0, 0)
     } catch (err) {
       setError(`${err.message} — ${total.crees + total.existants} élève(s) déjà importé(s) : relancez l’import pour terminer (pas de doublons).`)
@@ -112,11 +132,32 @@ export default function ImportEleves() {
         </div>
       )}
 
+      {eleves && bilan && (
+        <div className={`imp-bilan ${bilan.nouveaux + bilan.classe ? '' : 'rien'}`}>
+          {bilan.nouveaux + bilan.classe === 0 ? (
+            <>
+              <b>Cette liste est déjà dans Sùkûl</b>
+              <p>{`Les ${bilan.identiques.toLocaleString('fr-FR')} élèves de ce fichier sont déjà inscrits, dans les mêmes classes. Il n’y a rien à importer.`}</p>
+            </>
+          ) : (
+            <>
+              <b>{bilan.identiques ? 'Une partie de cette liste est déjà dans Sùkûl' : 'Nouvelle liste'}</b>
+              <ul>
+                {bilan.nouveaux > 0 && <li><span>{bilan.nouveaux.toLocaleString('fr-FR')}</span> nouvel(s) élève(s)</li>}
+                {bilan.classe > 0 && <li><span>{bilan.classe.toLocaleString('fr-FR')}</span> élève(s) déjà inscrit(s) qui change(nt) de classe</li>}
+                {bilan.identiques > 0 && <li className="muted"><span>{bilan.identiques.toLocaleString('fr-FR')}</span> déjà inscrit(s) dans la même classe : ignoré(s)</li>}
+              </ul>
+            </>
+          )}
+          {bilan.doubles > 0 && <p className="muted">{`${bilan.doubles.toLocaleString('fr-FR')} ligne(s) en double dans le fichier : ignorée(s).`}</p>}
+        </div>
+      )}
+
       {eleves && (
         <>
           <div className="barre-import">
             <div style={{ minWidth: 0 }}>
-              <b style={{ display: 'block' }}>{retenus} élève(s) à importer</b>
+              <b style={{ display: 'block' }}>{retenus ? `${retenus.toLocaleString('fr-FR')} élève(s) à importer` : 'Rien à importer'}</b>
               <small className="muted" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {progres ? `Import en cours : ${progres.fait} / ${progres.total}` : fichier}
               </small>
@@ -149,6 +190,9 @@ export default function ImportEleves() {
                   <input className="input" style={{ padding: '8px 10px' }} value={x.prenom} onChange={maj(i, 'prenom')} aria-label="Prénom" />
                   <input className="input" style={{ padding: '8px 10px' }} value={x.classe} placeholder={classeDefaut || 'Classe'} onChange={maj(i, 'classe')} aria-label="Classe" />
                 </div>
+                {x.etat === 'identique' && <small className="imp-etat">Déjà dans Sùkûl</small>}
+                {x.etat === 'classe' && <small className="imp-etat change">{`Déjà inscrit en ${x.avant} : passera en ${x.classe}`}</small>}
+                {x.etat === 'double' && <small className="imp-etat">En double dans le fichier</small>}
               </li>
             ))}
           </ul>
