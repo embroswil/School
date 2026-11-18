@@ -18,19 +18,27 @@ export default function ImportAbsences() {
   const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // Un ou plusieurs cahiers d'appel : lus l'un apres l'autre, puis reunis
   async function choisir(e) {
-    const f = [...(e.target.files || [])][0]
+    const fichiers = [...(e.target.files || [])]
     e.target.value = ''
-    if (!f) return
+    if (!fichiers.length) return
     setError('')
     setOk('')
     setLignes(null)
-    try {
-      setEtat('Lecture du cahier d’appel… (jusqu’à une minute)')
-      setLignes(await lireDocumentEcole(f, '/api/documents-ecole/absences/lire', classId ? { classId: Number(classId) } : {}))
-    } catch (err) {
-      setError(err.message)
+    const toutes = []
+    const rates = []
+    for (const [n, f] of fichiers.entries()) {
+      setEtat(fichiers.length > 1 ? `Lecture du cahier ${n + 1} / ${fichiers.length}…` : 'Lecture du cahier d’appel… (jusqu’à une minute)')
+      try {
+        toutes.push(...((await lireDocumentEcole(f, '/api/documents-ecole/absences/lire', classId ? { classId: Number(classId) } : {})) || []))
+      } catch (err) {
+        if (fichiers.length === 1) setError(err.message)
+        else rates.push(f.name)
+      }
     }
+    if (toutes.length || fichiers.length > 1) setLignes(toutes.length ? toutes : null)
+    if (rates.length) setError(`${rates.length} fichier(s) non lu(s) : ${rates.join(', ')}`)
     setEtat('')
   }
   const zoneDepot = useDepotPage(choisir, { texte: 'Déposez le cahier d’appel', detail: 'PDF, photo, Excel ou CSV' })
@@ -66,12 +74,12 @@ export default function ImportAbsences() {
           ))}
         </select>
       </Field>
-      <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,image/*" onChange={choisir} />
+      <input ref={champ} type="file" hidden multiple accept=".pdf,.xlsx,.xls,.csv,image/*" onChange={choisir} />
       <button type="button" className="depot" onClick={() => champ.current?.click()} disabled={Boolean(etat)}>
         <span style={{ fontSize: 34 }}>📒</span>
-        <b>{etat || 'Choisir le cahier d’appel'}</b>
+        <b>{etat || 'Choisir un ou plusieurs cahiers d’appel'}</b>
         <small>Photo, PDF, Excel ou CSV</small>
-        <small className="astuce-depot">ou glissez-déposez le fichier n’importe où sur cette page</small>
+        <small className="astuce-depot">ou glissez-déposez les fichiers n’importe où sur cette page</small>
       </button>
       <Note kind="ok">{ok}</Note>
       <Note>{error}</Note>

@@ -313,41 +313,52 @@ function Frais() {
     }
   }
 
-  // Document contenant tous les frais : Sùkûl le lit, compare avec les frais existants
+  // Documents des frais (un ou plusieurs) : Sùkûl les lit, compare avec les frais existants
   async function choisirDocument(e) {
-    const fichier = [...(e.target.files || [])][0]
+    const fichiers = [...(e.target.files || [])]
     e.target.value = ''
-    if (!fichier) return
+    if (!fichiers.length) return
     setError('')
     setOk('')
     setLus(null)
-    try {
-      setLecture('Envoi du document…')
-      setAjout(false)
-      let corps
-      if (/\.(xlsx|xls|csv)$/i.test(fichier.name)) corps = { texte: await texteDuTableur(fichier) }
-      else if (/\.docx$/i.test(fichier.name)) corps = { texte: (await preparerDocument([fichier])).texte }
-      else {
-        const env = await envoyer(fichier)
-        corps = { url: env.url, mime: env.mime }
+    setAjout(false)
+    const tous = []
+    const rates = []
+    for (const [n, fichier] of fichiers.entries()) {
+      const pre = fichiers.length > 1 ? `Fichier ${n + 1} / ${fichiers.length} · ` : ''
+      try {
+        tous.push(...(await lireUnDocument(fichier, pre)))
+      } catch (err) {
+        if (fichiers.length === 1) setError(err.message)
+        else rates.push(fichier.name)
       }
-      setLecture('Lecture du document… (jusqu’à une minute)')
-      const r = (await api.post('/api/scolarite/frais/lire', corps)).data
-      // Mise a jour automatique : nouveaux frais ajoutes, frais modifies mis a jour,
-      // frais identiques laisses tels quels. Aucun frais existant n'est supprime.
-      const aEnvoyer = r.filter((x) => x.statut !== 'identique')
-      if (aEnvoyer.length) {
-        setLecture('Mise à jour des frais…')
-        await api.post('/api/scolarite/frais/appliquer', {
-          frais: aEnvoyer.map(({ id, nom, montant, echeance, classes, categorie, obligatoire }) => ({ id, nom, montant, echeance, classes, categorie, obligatoire })),
-        })
-      }
-      setLus(r.map((x, i) => ({ ...x, cle: i })))
-      frais.reload()
-    } catch (err) {
-      setError(err.message)
     }
+    if (tous.length) setLus(tous.map((x, i) => ({ ...x, cle: i })))
+    if (rates.length) setError(`${rates.length} fichier(s) non lu(s) : ${rates.join(', ')}`)
+    frais.reload()
     setLecture('')
+  }
+  async function lireUnDocument(fichier, pre) {
+    setLecture(`${pre}Envoi du document…`)
+    let corps
+    if (/\.(xlsx|xls|csv)$/i.test(fichier.name)) corps = { texte: await texteDuTableur(fichier) }
+    else if (/\.docx$/i.test(fichier.name)) corps = { texte: (await preparerDocument([fichier])).texte }
+    else {
+      const env = await envoyer(fichier)
+      corps = { url: env.url, mime: env.mime }
+    }
+    setLecture(`${pre}Lecture du document… (jusqu’à une minute)`)
+    const r = (await api.post('/api/scolarite/frais/lire', corps)).data
+    // Mise a jour automatique : nouveaux frais ajoutes, frais modifies mis a jour,
+    // frais identiques laisses tels quels. Aucun frais existant n'est supprime.
+    const aEnvoyer = r.filter((x) => x.statut !== 'identique')
+    if (aEnvoyer.length) {
+      setLecture(`${pre}Mise à jour des frais…`)
+      await api.post('/api/scolarite/frais/appliquer', {
+        frais: aEnvoyer.map(({ id, nom, montant, echeance, classes, categorie, obligatoire }) => ({ id, nom, montant, echeance, classes, categorie, obligatoire })),
+      })
+    }
+    return r
   }
   const zoneDepot = useDepotPage(choisirDocument, { texte: 'Déposez le document des frais', detail: 'PDF, Excel, Word ou photo' })
 
@@ -364,7 +375,7 @@ function Frais() {
           <IcImport size={18} /> {lecture ? 'Lecture…' : 'Importer'}
         </button>
       </div>
-      <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,.docx,image/*" onChange={choisirDocument} />
+      <input ref={champ} type="file" hidden multiple accept=".pdf,.xlsx,.xls,.csv,.docx,image/*" onChange={choisirDocument} />
       <CompteurIA discret />
       {lecture && <p className="muted" style={{ fontSize: 13 }}>{lecture}</p>}
       <Note kind="ok">{ok}</Note>

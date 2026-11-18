@@ -19,24 +19,36 @@ export default function ImportEmplois() {
   const [busy, setBusy] = useState(false)
   const [progres, setProgres] = useState(null) // { fait, total }
 
+  // Un ou plusieurs fichiers (un par classe, ou toute l'ecole) : lus l'un apres l'autre, puis reunis
   async function choisir(e) {
-    const f = [...(e.target.files || [])][0]
+    const fichiers = [...(e.target.files || [])]
     e.target.value = ''
-    if (!f) return
+    if (!fichiers.length) return
     setError('')
     setOk('')
     setLu(null)
-    try {
-      setEtat('Lecture en cours…')
-      const r = await lireDocumentEcole(f, '/api/documents-ecole/emplois/lire')
-      if (!r || !Array.isArray(r.classes) || !r.classes.length) throw new Error('Aucun cours trouvé dans ce document.')
-      setLu({
-        classesEcole: [...(r.classesEcole || [])].sort((a, b) => comparerClasses(a.name, b.name)),
-        classes: r.classes.map((c, i) => ({ ...c, creneaux: c.creneaux || [], cle: i, choisi: Boolean(c.classId) })),
-      })
-    } catch (err) {
-      setError(err.message)
+    let classesEcole = []
+    const classes = []
+    const rates = []
+    for (const [n, f] of fichiers.entries()) {
+      setEtat(fichiers.length > 1 ? `Lecture du fichier ${n + 1} / ${fichiers.length}…` : 'Lecture en cours…')
+      try {
+        const r = await lireDocumentEcole(f, '/api/documents-ecole/emplois/lire')
+        if (!r || !Array.isArray(r.classes) || !r.classes.length) throw new Error('Aucun cours trouvé dans ce document.')
+        if (!classesEcole.length) classesEcole = r.classesEcole || []
+        classes.push(...r.classes)
+      } catch (err) {
+        if (fichiers.length === 1) setError(err.message)
+        else rates.push(f.name)
+      }
     }
+    if (classes.length) {
+      setLu({
+        classesEcole: [...classesEcole].sort((a, b) => comparerClasses(a.name, b.name)),
+        classes: classes.map((c, i) => ({ ...c, creneaux: c.creneaux || [], cle: i, choisi: Boolean(c.classId) })),
+      })
+    }
+    if (rates.length) setError(`${rates.length} fichier(s) non lu(s) : ${rates.join(', ')}`)
     setEtat('')
   }
   const zoneDepot = useDepotPage(choisir, { texte: 'Déposez l’emploi du temps', detail: 'Excel, PDF, Word ou photo' })
@@ -75,10 +87,10 @@ export default function ImportEmplois() {
       {zoneDepot}
       <h1 className="page-title">Emplois du temps</h1>
       <CompteurIA discret />
-      <input ref={champ} type="file" hidden accept=".pdf,.xlsx,.xls,.csv,.docx,image/*" onChange={choisir} />
+      <input ref={champ} type="file" hidden multiple accept=".pdf,.xlsx,.xls,.csv,.docx,image/*" onChange={choisir} />
       <button type="button" className="import-zone" style={{ marginTop: 10 }} onClick={() => champ.current?.click()} disabled={Boolean(etat)}>
         <IcImport size={22} />
-        <b>{etat || 'Choisir un fichier ou une photo'}</b>
+        <b>{etat || 'Choisir un ou plusieurs fichiers'}</b>
         <small>{etat ? 'Jusqu’à une minute' : 'Excel, PDF, Word ou photo · une ou plusieurs classes'}</small>
       </button>
       <p className="muted" style={{ fontSize: 13, marginTop: 12, lineHeight: 1.5 }}>

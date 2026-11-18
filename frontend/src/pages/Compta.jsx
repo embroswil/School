@@ -294,7 +294,7 @@ export default function Compta() {
         .join('\n')
       if (!texte.trim()) throw new Error('Aucun tableau de montants trouvé. Utilisez un fichier Excel ou CSV : budget, journal des dépenses ou journal des paiements de scolarité.')
       const r = await api.post('/api/comptabilite/importer', { texte, apercu: true })
-      setImport({ texte, nom: fichiers[0].name, ...r.data })
+      setImport({ texte, nom: fichiers.length > 1 ? `${fichiers.length} fichiers` : fichiers[0].name, ...r.data })
     } catch (err) {
       setError(err.message)
     }
@@ -458,7 +458,7 @@ export default function Compta() {
   return (
     <>
       {zoneDepot}
-      <input ref={champ} type="file" hidden accept=".xlsx,.xls,.csv,.ods" onChange={lire} />
+      <input ref={champ} type="file" hidden multiple accept=".xlsx,.xls,.csv,.ods" onChange={lire} />
       <div className="cpt-haut">
         <span className="muted">{`Année ${d.annee}`}</span>
         {!vide && (
