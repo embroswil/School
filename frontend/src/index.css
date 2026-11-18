@@ -1613,3 +1613,81 @@ html.ordi .travail-pastille { left: auto; right: 24px; transform: none; bottom: 
 .verif-camera p { position: absolute; left: 0; right: 0; bottom: 14px; margin: 0; text-align: center; color: #fff; font: 600 14px/1.3 var(--font-body); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7); }
 .verif-saisie { margin-top: 14px; }
 .verif-saisie .input::placeholder { text-transform: none; letter-spacing: 0; font-family: var(--font-body); font-weight: 500; }
+
+/* ---------- tableaux professionnels ---------- */
+.tab-cadre { overflow-x: auto; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.tab-pro { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tab-pro th { position: sticky; top: 0; padding: 10px 12px; background: var(--card-2); color: var(--muted); font: 700 11px/1.2 var(--font-body); text-transform: uppercase; letter-spacing: 0.05em; text-align: left; white-space: nowrap; }
+.tab-pro td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: middle; }
+.tab-pro td small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.tab-pro .nombre { text-align: right; white-space: nowrap; }
+.tab-pro .rouge { color: var(--rouge-texte); font-weight: 700; }
+.tab-pro .vert { color: #12b76a; font-weight: 700; }
+.tab-pro tr.cliquable { cursor: pointer; }
+.tab-pro tr.cliquable:hover td, .tab-pro tr.cliquable.ouvert td { background: color-mix(in srgb, var(--primary) 7%, transparent); }
+.tab-pro .tab-niveau td { background: var(--card-2); font-weight: 800; font-size: 13px; padding-top: 9px; padding-bottom: 9px; }
+.tab-pro tfoot td { border-top: 2px solid var(--line); font-weight: 800; background: var(--card-2); }
+.tab-taux { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; font-weight: 700; }
+.tab-taux .suivi-barre { width: 52px; height: 5px; }
+.tab-pro .tab-detail > td { padding: 4px 12px 12px 22px; background: color-mix(in srgb, var(--primary) 4%, transparent); }
+.tab-detail table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tab-detail table td { padding: 7px 0; border-top: 1px dashed var(--line); }
+.tab-detail table td + td { padding-left: 10px; }
+.tab-detail .suivi-liens-eleve { margin-top: 8px; font-size: 13px; }
+.tab-unite { margin: 6px 2px 14px; color: var(--muted); font-size: 12px; }
+.tab-entete { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin: 6px 0 8px; }
+.tab-entete h2 { margin: 0; font: 800 22px/1.2 var(--font-display); }
+.tab-entete small { color: var(--muted); font-size: 13px; }
+.tab-entete > b { flex: none; white-space: nowrap; font: 800 26px/1 var(--font-display); }
+.tab-entete + .suivi-barre { display: block; width: 100%; height: 8px; }
+.tab-chiffres { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0; color: var(--muted); font-size: 13px; }
+.tab-chiffres b { color: var(--text); font-weight: 800; }
+.tab-rappel { margin-bottom: 12px; }
+@media (max-width: 699px) { .tab-pro .col-ordi { display: none; } }
+.cpt-ligne-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.cpt-ligne-btn .ls-texte { flex: 1; min-width: 0; }
+.cpt-ligne-btn > svg { flex: none; color: var(--muted); }
+
+/* detail d'un frais */
+.df-titre { margin: 4px 0 2px; font: 800 22px/1.25 var(--font-display); }
+.df-sous { font-size: 13px; margin-bottom: 14px; }
+.df-hero { padding: 16px; margin-bottom: 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.df-hero-tete { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.df-hero-tete span { color: var(--muted); font: 700 11px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; }
+.df-hero-tete b { font: 800 30px/1 var(--font-display); }
+.df-hero > .suivi-barre { display: block; width: 100%; height: 9px; }
+.df-hero-pied { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; color: var(--muted); font-size: 13px; }
+.df-hero-pied span { display: flex; justify-content: space-between; gap: 10px; }
+.df-hero-pied b { color: var(--text); font: 800 14px/1.2 var(--font-display); white-space: nowrap; }
+html.ordi .df-hero-pied { flex-direction: row; justify-content: space-between; }
+html.ordi .df-hero-pied span { flex-direction: column; justify-content: flex-start; }
+.df-bloc { margin-bottom: 16px; padding: 14px 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.df-bloc:last-child { padding: 0; border: 0; background: none; }
+.df-bloc h3 { margin: 0 0 12px; color: var(--muted); font: 700 12px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.07em; }
+.df-bloc:last-child h3 { margin: 0 2px 8px; }
+.df-pile { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--card-2); }
+.df-pile i { display: block; height: 100%; }
+.df-pile i.vert, .df-legende .vert::before { background: #12b76a; }
+.df-pile i.orange, .df-legende .orange::before { background: #f79009; }
+.df-pile i.rouge, .df-legende .rouge::before { background: #f04438; }
+.df-legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; color: var(--muted); font-size: 12.5px; }
+.df-legende span::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 3px; }
+.df-legende b { color: var(--text); }
+.df-mois { display: flex; align-items: flex-end; gap: 8px; height: 170px; }
+.df-mois > div { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.df-mois > div > span { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.df-mois i { display: block; width: min(34px, 70%); min-height: 3px; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, #4d82ff, #2446d8); }
+.df-mois small { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.df-mois .df-mois-val { color: var(--text); font-weight: 700; }
+.df-note { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.df-modes { list-style: none; margin: 12px 0 0; padding: 0; }
+.df-modes li { display: grid; grid-template-columns: 10px 1fr auto auto; grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.df-modes li:first-child { border-top: 0; }
+.df-modes li > i { grid-row: span 2; width: 10px; height: 10px; border-radius: 3px; }
+.df-modes span { font-weight: 700; font-size: 14px; }
+.df-modes small { grid-column: 2; color: var(--muted); font-size: 12px; }
+.df-modes b { grid-column: 3; grid-row: 1 / span 2; font: 800 14px/1 var(--font-display); white-space: nowrap; }
+.df-modes em { grid-column: 4; grid-row: 1 / span 2; color: var(--muted); font-style: normal; font-weight: 700; font-size: 13px; min-width: 40px; text-align: right; }
+[data-theme='light'] .tab-pro .vert, [data-theme='light'] .verif-situation b.vert { color: #067647; }
+
+button.back { display: inline-flex; align-items: center; gap: 4px; margin: 2px 0 10px; padding: 0; border: 0; background: none; color: var(--lien); font: 700 14px/1.2 var(--font-body); cursor: pointer; }

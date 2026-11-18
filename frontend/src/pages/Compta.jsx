@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Field, Note, annoncer } from '../ui.jsx'
-import { IcGraphique, IcImport, IcPlus } from '../icones.jsx'
+import { IcChevron, IcGraphique, IcImport, IcPlus } from '../icones.jsx'
+import DetailFrais from './DetailFrais.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
 import { useDepotPage } from '../depot.jsx'
 import { exporterExcel } from '../export.jsx'
@@ -258,6 +259,7 @@ export default function Compta() {
   const champ = useRef(null)
   const [vue, setVue] = useState('bord')
   const [detail, setDetail] = useState('frais')
+  const [fraisOuvert, setFraisOuvert] = useState(null)
   const [filtre, setFiltre] = useState('tout')
   const [cherche, setCherche] = useState('')
   const [form, setForm] = useState(null)
@@ -591,7 +593,8 @@ export default function Compta() {
         </>
       )}
 
-      {vue === 'scol' && sc && (
+      {vue === 'scol' && sc && fraisOuvert && <DetailFrais id={fraisOuvert} onRetour={() => setFraisOuvert(null)} />}
+      {vue === 'scol' && sc && !fraisOuvert && (
         <>
           <div className="chips cpt-sous">
             {[
@@ -610,27 +613,33 @@ export default function Compta() {
                 const t = taux(f.encaisse, f.attendu)
                 return (
                   <li key={f.id}>
-                    <span className="ls-texte">
-                      <b>{f.nom}</b>
-                      <small>{Number(f.reste) ? `Reste ${fcfa(f.reste)}` : 'Soldé'}</small>
-                    </span>
-                    <span className="suivi-taux">
-                      <b>{t} %</b>
-                      <Barre valeur={t} />
-                    </span>
+                    <button type="button" className="cpt-ligne-btn" onClick={() => setFraisOuvert(f.id)}>
+                      <span className="ls-texte">
+                        <b>{f.nom}</b>
+                        <small>{Number(f.reste) ? `Reste ${fcfa(f.reste)}` : 'Soldé'}</small>
+                      </span>
+                      <span className="suivi-taux">
+                        <b>{t} %</b>
+                        <Barre valeur={t} />
+                      </span>
+                      <IcChevron size={16} />
+                    </button>
                   </li>
                 )
               })}
             {detail === 'frais' &&
               (sc.facultatifs || []).map((f) => (
                 <li key={`o${f.id}`}>
-                  <span className="ls-texte">
-                    <b>{f.nom}</b>
-                    <small>Facultatif</small>
-                  </span>
-                  <span className="suivi-taux">
-                    <b>{fcfa(f.encaisse)}</b>
-                  </span>
+                  <button type="button" className="cpt-ligne-btn" onClick={() => setFraisOuvert(f.id)}>
+                    <span className="ls-texte">
+                      <b>{f.nom}</b>
+                      <small>Facultatif</small>
+                    </span>
+                    <span className="suivi-taux">
+                      <b>{fcfa(f.encaisse)}</b>
+                    </span>
+                    <IcChevron size={16} />
+                  </button>
                 </li>
               ))}
             {detail === 'niveaux' &&

@@ -1867,7 +1867,17 @@ const EN = {
   "Scanner un autre reçu": "Scan another receipt",
   "Ou tapez le n° du reçu": "Or type the receipt no.",
   "La caméra n’est pas disponible. Autorisez l’accès à la caméra pour Sùkûl dans les réglages du téléphone, ou tapez le numéro du reçu.": "The camera is not available. Allow camera access for Sùkûl in the phone settings, or type the receipt number.",
-  "Scanner le code-barres": "Scan the barcode"
+  "Scanner le code-barres": "Scan the barcode",
+  "Dû": "Due",
+  "Situation": "Status",
+  "À jour": "Up to date",
+  "Partiel": "Partial",
+  "Rien payé": "Nothing paid",
+  "Montants en FCFA · touchez une classe pour voir ses élèves": "Amounts in FCFA · tap a class to see its students",
+  "← Tous les frais": "← All fees",
+  "Recouvrement": "Collection",
+  "Situation des élèves": "Student status",
+  "Encaissements par mois": "Payments by month"
 }
 
 // Noms d'etablissement en anglais : « Lycée de Yingui » -> « Yingui High School »
@@ -1910,6 +1920,15 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Rappeler les parents en retard \((\d+)\)$/, 'Remind late parents ($1)'],
+  [/^([\d  ,.]+) élèves · (.+ FCFA) encaissés sur (.+ FCFA)$/, '$1 students · $2 collected of $3'],
+  [/^(.+ FCFA) par élève$/, '$1 per student'],
+  [/^([\d  ,.]+) élèves concernés$/, '$1 students concerned'],
+  [/^soldé \((\d+) %\)$/, 'settled ($1 %)'],
+  [/^partiel \((\d+) %\)$/, 'partial ($1 %)'],
+  [/^rien payé \((\d+) %\)$/, 'nothing paid ($1 %)'],
+  [/^([\d  ,.]+) paiements · (.+ FCFA)$/, '$1 payments · $2'],
+  [/^([\d  ,.]+) reçus$/, '$1 receipts'],
   [/^(Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi)( · aujourd’hui)? · (\d+) cours$/, (_, j, a, n) => `${{ Lundi: 'Monday', Mardi: 'Tuesday', Mercredi: 'Wednesday', Jeudi: 'Thursday', Vendredi: 'Friday', Samedi: 'Saturday' }[j]}${a ? ' · today' : ''} · ${n} lesson(s)`],
   [/^Salle (.+)$/, 'Room $1'],
   [/^(\d+) classe\(s\) lue\(s\)$/, '$1 class(es) read'],

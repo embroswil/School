@@ -828,6 +828,41 @@ router.get("/comptabilite", async (req, res, next) => {
   }
 });
 
+// GET /comptabilite/frais/:id : detail d'un frais (par classe, par mois, par moyen, situation des eleves)
+router.get("/comptabilite/frais/:id", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const fid = entier(req.params.id);
+    const f = (await db.query("SELECT id, nom, montant, echeance, categorie, obligatoire, classes FROM frais_scolaires WHERE id = $1 AND school_id = $2", [fid, ecole])).rows[0];
+    if (!f) throw new ApiError(404, "Frais introuvable");
+    const p = [ecole, annee?.id || null, fid];
+    const [classes, mois, modes] = await Promise.all([
+      db.query(
+        `SELECT classe, COUNT(*)::int AS eleves, SUM(montant)::bigint AS attendu, SUM(paye)::bigint AS encaisse, SUM(reste)::bigint AS reste,
+                COUNT(*) FILTER (WHERE reste = 0)::int AS soldes, COUNT(*) FILTER (WHERE paye = 0)::int AS rien,
+                COUNT(*) FILTER (WHERE reste > 0 AND paye > 0)::int AS partiels, COUNT(*) FILTER (WHERE en_retard)::int AS retard
+         FROM (${SQL_DU}) x WHERE frais_id = $3 GROUP BY classe ORDER BY classe`,
+        p
+      ),
+      db.query(
+        `SELECT to_char(COALESCE(confirme_le, created_at), 'YYYY-MM') AS mois, SUM(montant)::bigint AS total, COUNT(*)::int AS nb
+         FROM paiements_scolaires WHERE school_id = $1 AND frais_id = $2 AND statut = 'reussi' GROUP BY 1 ORDER BY 1`,
+        [ecole, fid]
+      ),
+      db.query(
+        `SELECT mode, SUM(montant)::bigint AS total, COUNT(*)::int AS nb FROM paiements_scolaires
+         WHERE school_id = $1 AND frais_id = $2 AND statut = 'reussi' GROUP BY mode ORDER BY 2 DESC`,
+        [ecole, fid]
+      ),
+    ]);
+    res.json({ success: true, data: { frais: f, classes: classes.rows, mois: mois.rows, modes: modes.rows } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // GET /comptabilite/eleves[?classe=6e A] : le detail frais par frais de chaque eleve
 router.get("/comptabilite/eleves", async (req, res, next) => {
   try {

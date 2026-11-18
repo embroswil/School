@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { IcChevron } from '../icones.jsx'
 import { exporterExcel } from '../export.jsx'
 import { comparerClasses, niveauClasse } from '../classes.js'
 
@@ -19,58 +18,120 @@ function Barre({ valeur }) {
   )
 }
 
-// Eleves d'une classe : ce que chacun doit encore, frais par frais
-function DetailClasse({ classe, enRetard, onRappel }) {
-  const d = useApi(`/api/scolarite/comptabilite/eleves?classe=${encodeURIComponent(classe)}`)
+const nb = (n) => Number(n || 0).toLocaleString('fr-FR')
+const STATUTS = { solde: ['À jour', 'ok'], partiel: ['Partiel', 'neutre'], retard: ['En retard', 'alerte'], rien: ['Rien payé', 'alerte'] }
+
+// Eleves d'une classe, en tableau : paye, reste et situation ; une ligne s'ouvre sur le detail des frais
+function DetailClasse({ ligne, onRetour, onRappel }) {
+  const d = useApi(`/api/scolarite/comptabilite/eleves?classe=${encodeURIComponent(ligne.classe)}`)
+  const [ouvert, setOuvert] = useState(null)
   const eleves = []
   const idx = new Map()
   for (const l of d.data || []) {
     if (!idx.has(l.id)) {
-      const e = { id: l.id, nom: `${l.last_name} ${l.first_name}`, frais: [], reste: 0, retard: false }
+      const e = { id: l.id, nom: `${l.last_name} ${l.first_name}`, frais: [], du: 0, paye: 0, reste: 0, retard: false }
       idx.set(l.id, e)
       eleves.push(e)
     }
     const e = idx.get(l.id)
     e.frais.push(l)
-    e.reste += l.reste
+    e.du += Number(l.montant)
+    e.paye += Number(l.paye)
+    e.reste += Number(l.reste)
     if (l.en_retard) e.retard = true
   }
-  const aRegler = eleves.filter((e) => e.reste > 0).sort((a, b) => b.reste - a.reste)
+  for (const e of eleves) e.statut = e.reste === 0 ? 'solde' : e.paye === 0 ? 'rien' : e.retard ? 'retard' : 'partiel'
+  eleves.sort((a, b) => b.reste - a.reste || a.nom.localeCompare(b.nom))
+  const tc = taux(ligne.encaisse, ligne.attendu)
   return (
-    <div className="suivi-detail">
-      {d.loading && <p className="muted">Chargement…</p>}
-      {enRetard > 0 && (
-        <button type="button" className="lien-action" onClick={() => onRappel(classe)}>
-          Rappeler les parents en retard
+    <>
+      <button type="button" className="back" onClick={onRetour}>
+        ← Toutes les classes
+      </button>
+      <div className="tab-entete">
+        <div>
+          <h2>{ligne.classe}</h2>
+          <small>{`${nb(ligne.effectif)} élèves · ${fcfa(ligne.encaisse)} encaissés sur ${fcfa(ligne.attendu)}`}</small>
+        </div>
+        <b>{tc} %</b>
+      </div>
+      <Barre valeur={tc} />
+      <div className="tab-chiffres">
+        <span>
+          <b>{nb(eleves.filter((e) => e.statut === 'solde').length)}</b> à jour
+        </span>
+        <span>
+          <b>{nb(eleves.filter((e) => e.statut === 'partiel' || e.statut === 'retard').length)}</b> partiels
+        </span>
+        <span>
+          <b className="rouge">{nb(eleves.filter((e) => e.statut === 'rien').length)}</b> rien payé
+        </span>
+        <span>
+          Reste <b className={ligne.reste ? 'rouge' : ''}>{fcfa(ligne.reste)}</b>
+        </span>
+      </div>
+      {ligne.en_retard > 0 && (
+        <button type="button" className="btn btn-quiet btn-block tab-rappel" onClick={() => onRappel(ligne.classe)}>
+          {`Rappeler les parents en retard (${ligne.en_retard})`}
         </button>
       )}
-      {!d.loading && aRegler.length === 0 && <p className="muted">Tous les élèves de la classe sont à jour.</p>}
-      {aRegler.map((e) => (
-        <details key={e.id}>
-          <summary>
-            <b data-brut>{e.nom}</b>
-            <span className={e.retard ? 'rouge' : ''}>{fcfa(e.reste)}</span>
-          </summary>
-          <ul>
-            {e.frais
-              .filter((f) => f.reste > 0)
-              .map((f) => (
-                <li key={f.frais}>
-                  <span>
-                    {f.frais}
-                    <small>{f.echeance ? `avant le ${jour(f.echeance)}` : 'sans échéance'}</small>
-                  </span>
-                  <b className={f.en_retard ? 'rouge' : ''}>{fcfa(f.reste)}</b>
-                </li>
+      {d.loading && <p className="muted">Chargement…</p>}
+      {eleves.length > 0 && (
+        <div className="tab-cadre">
+          <table className="tab-pro">
+            <thead>
+              <tr>
+                <th>Élève</th>
+                <th className="nombre col-ordi">Dû</th>
+                <th className="nombre">Payé</th>
+                <th className="nombre">Reste</th>
+                <th>Situation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eleves.map((e) => (
+                <Fragment key={e.id}>
+                  <tr className={`cliquable ${ouvert === e.id ? 'ouvert' : ''}`} onClick={() => setOuvert(ouvert === e.id ? null : e.id)}>
+                    <td data-brut>{e.nom}</td>
+                    <td className="nombre col-ordi">{nb(e.du)}</td>
+                    <td className="nombre">{nb(e.paye)}</td>
+                    <td className={`nombre ${e.reste ? 'rouge' : ''}`}>{e.reste ? nb(e.reste) : '—'}</td>
+                    <td>
+                      <span className={`etiquette ${STATUTS[e.statut][1]}`}>{STATUTS[e.statut][0]}</span>
+                    </td>
+                  </tr>
+                  {ouvert === e.id && (
+                    <tr className="tab-detail">
+                      <td colSpan={5}>
+                        <table>
+                          <tbody>
+                            {e.frais.map((x) => (
+                              <tr key={x.frais}>
+                                <td>
+                                  {x.frais}
+                                  <small>{x.echeance ? `avant le ${jour(x.echeance)}` : 'sans échéance'}</small>
+                                </td>
+                                <td className="nombre">{`${nb(x.paye)} / ${nb(x.montant)}`}</td>
+                                <td className={`nombre ${x.reste ? (x.en_retard ? 'rouge' : '') : 'vert'}`}>{x.reste ? nb(x.reste) : 'Payé'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <span className="suivi-liens-eleve">
+                          <a href={`#/eleves/${e.id}`}>Fiche de l’élève</a>
+                          <a href={`#/releve/${e.id}`}>Relevé des paiements</a>
+                        </span>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
-          </ul>
-          <span className="suivi-liens-eleve">
-            <a href={`#/eleves/${e.id}`}>Fiche de l’élève</a>
-            <a href={`#/releve/${e.id}`}>Relevé des paiements</a>
-          </span>
-        </details>
-      ))}
-    </div>
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="tab-unite">Montants en FCFA</p>
+    </>
   )
 }
 
@@ -170,63 +231,114 @@ export default function Comptabilite() {
         </button>
       </div>
 
-      {vue === 'classes' &&
-        niveauxDe(classes).map((n) => (
-          <section key={n.nom}>
-            <p className="niveau-titre suivi-niveau">
-              <span>{n.nom}</span>
-              <span>{`${taux(n.encaisse, n.attendu)} % · reste ${fcfa(n.reste)}`}</span>
-            </p>
-        <ul className="liste-simple">
-          {n.classes.map((x) => {
-            const ouvert = ouverte === x.classe
-            const tc = taux(x.encaisse, x.attendu)
-            return (
-              <li key={x.classe} className="suivi-ligne">
-                <button type="button" onClick={() => setOuverte(ouvert ? null : x.classe)} aria-expanded={ouvert}>
-                  <span className="ls-texte">
-                    <b>{x.classe}</b>
-                    <small>
-                      Reste {fcfa(x.reste)}
-                      {x.en_retard ? ` · ${x.en_retard} en retard` : ''}
-                    </small>
-                  </span>
-                  <span className="suivi-taux">
-                    <b>{tc} %</b>
-                    <Barre valeur={tc} />
-                  </span>
-                  <IcChevron size={16} style={{ transform: ouvert ? 'rotate(90deg)' : 'none' }} />
-                </button>
-                {ouvert && <DetailClasse classe={x.classe} enRetard={x.en_retard} onRappel={rappeler} />}
-              </li>
-            )
-          })}
-        </ul>
-          </section>
-        ))}
+      {vue === 'classes' && ouverte && (
+        <DetailClasse ligne={classes.find((x) => x.classe === ouverte)} onRetour={() => setOuverte(null)} onRappel={rappeler} />
+      )}
+      {vue === 'classes' && !ouverte && (
+        <>
+          <div className="tab-cadre">
+            <table className="tab-pro">
+              <thead>
+                <tr>
+                  <th>Classe</th>
+                  <th className="nombre col-ordi">Élèves</th>
+                  <th className="nombre col-ordi">Attendu</th>
+                  <th className="nombre col-ordi">Encaissé</th>
+                  <th className="nombre">Reste</th>
+                  <th className="nombre">Taux</th>
+                  <th className="nombre">Retard</th>
+                </tr>
+              </thead>
+              {niveauxDe(classes).map((n) => (
+                <tbody key={n.nom}>
+                  <tr className="tab-niveau">
+                    <td>{n.nom}</td>
+                    <td className="nombre col-ordi">{nb(n.classes.reduce((a, x) => a + Number(x.effectif), 0))}</td>
+                    <td className="nombre col-ordi">{nb(n.attendu)}</td>
+                    <td className="nombre col-ordi">{nb(n.encaisse)}</td>
+                    <td className="nombre">{nb(n.reste)}</td>
+                    <td className="nombre">{`${taux(n.encaisse, n.attendu)} %`}</td>
+                    <td className="nombre">{nb(n.classes.reduce((a, x) => a + Number(x.en_retard), 0))}</td>
+                  </tr>
+                  {n.classes.map((x) => {
+                    const tc = taux(x.encaisse, x.attendu)
+                    return (
+                      <tr key={x.classe} className="cliquable" onClick={() => setOuverte(x.classe)}>
+                        <td>{x.classe}</td>
+                        <td className="nombre col-ordi">{nb(x.effectif)}</td>
+                        <td className="nombre col-ordi">{nb(x.attendu)}</td>
+                        <td className="nombre col-ordi">{nb(x.encaisse)}</td>
+                        <td className={`nombre ${x.reste ? '' : 'vert'}`}>{x.reste ? nb(x.reste) : '—'}</td>
+                        <td className="nombre">
+                          <span className="tab-taux">
+                            {tc} %
+                            <Barre valeur={tc} />
+                          </span>
+                        </td>
+                        <td className={`nombre ${x.en_retard ? 'rouge' : ''}`}>{x.en_retard ? nb(x.en_retard) : '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              ))}
+              <tfoot>
+                <tr>
+                  <td>Total</td>
+                  <td className="nombre col-ordi">{nb(classes.reduce((a, x) => a + Number(x.effectif), 0))}</td>
+                  <td className="nombre col-ordi">{nb(t.attendu)}</td>
+                  <td className="nombre col-ordi">{nb(t.encaisse)}</td>
+                  <td className="nombre">{nb(t.reste)}</td>
+                  <td className="nombre">{`${tx} %`}</td>
+                  <td className="nombre">{nb(classes.reduce((a, x) => a + Number(x.en_retard), 0))}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p className="tab-unite">Montants en FCFA · touchez une classe pour voir ses élèves</p>
+        </>
+      )}
 
       {vue === 'frais' && (
-        <ul className="liste-simple">
-          {d.frais.map((f) => {
-            const tf = taux(f.encaisse, f.attendu)
-            return (
-              <li key={f.id} className="suivi-ligne">
-                <div className="suivi-ligne-fixe">
-                  <span className="ls-texte">
-                    <b>{f.nom}</b>
-                    <small>
-                      {CATEGORIES[f.categorie]} · reste {fcfa(f.reste)}
-                    </small>
-                  </span>
-                  <span className="suivi-taux">
-                    <b>{tf} %</b>
-                    <Barre valeur={tf} />
-                  </span>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
+        <>
+          <div className="tab-cadre">
+            <table className="tab-pro">
+              <thead>
+                <tr>
+                  <th>Frais</th>
+                  <th className="col-ordi">Échéance</th>
+                  <th className="nombre col-ordi">Attendu</th>
+                  <th className="nombre">Encaissé</th>
+                  <th className="nombre">Reste</th>
+                  <th className="nombre">Taux</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.frais.map((f) => {
+                  const tf = taux(f.encaisse, f.attendu)
+                  return (
+                    <tr key={f.id}>
+                      <td>
+                        {f.nom}
+                        <small>{CATEGORIES[f.categorie]}</small>
+                      </td>
+                      <td className="col-ordi">{f.echeance ? jour(f.echeance) : '—'}</td>
+                      <td className="nombre col-ordi">{nb(f.attendu)}</td>
+                      <td className="nombre">{nb(f.encaisse)}</td>
+                      <td className={`nombre ${Number(f.reste) ? 'rouge' : 'vert'}`}>{Number(f.reste) ? nb(f.reste) : '—'}</td>
+                      <td className="nombre">
+                        <span className="tab-taux">
+                          {tf} %
+                          <Barre valeur={tf} />
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="tab-unite">Montants en FCFA</p>
+        </>
       )}
 
       <p className="suivi-liens">
