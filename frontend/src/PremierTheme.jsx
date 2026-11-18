@@ -21,7 +21,8 @@ function Apercu({ sombre }) {
 
 export default function PremierTheme() {
   const [ouvert, setOuvert] = useState(themeAChoisir)
-  const [choix, setChoix] = useState('clair')
+  // choix propose : celui du telephone (deja applique a l'ouverture)
+  const [choix, setChoix] = useState(() => (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'sombre' : 'clair'))
   if (!ouvert) return null
   const essayer = (t) => {
     setChoix(t)

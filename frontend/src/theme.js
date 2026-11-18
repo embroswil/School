@@ -1,5 +1,5 @@
 // theme.js
-// Theme de l'application : clair (par defaut), sombre, ou automatique (suit le reglage du telephone).
+// Theme de l'application : clair, sombre, ou automatique (suit le reglage du telephone, par defaut).
 // Le choix est garde sur l'appareil ; il est applique avant l'affichage par un petit script dans index.html.
 const CLE = 'sukul-theme'
 const CHOIX = ['sombre', 'clair', 'auto']
@@ -11,7 +11,7 @@ export function lireTheme() {
   } catch (_) {
     /* stockage indisponible */
   }
-  return 'clair'
+  return 'auto'
 }
 
 // Vrai tant que l'utilisateur n'a jamais choisi son theme (premiere ouverture)
