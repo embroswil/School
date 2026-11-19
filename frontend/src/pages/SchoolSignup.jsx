@@ -60,7 +60,6 @@ export default function SchoolSignup() {
               canal={aVerifier.canal}
               destination={aVerifier.destination}
               onConfirme={entrer}
-              onPlusTard={entrer}
             />
           </div>
         </main>

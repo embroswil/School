@@ -106,14 +106,6 @@ export default function Signup() {
               await login(aVerifier.identifiant || f.email, f.password)
               window.location.hash = '/'
             }}
-            onPlusTard={async () => {
-              if (role === 'teacher') {
-                setFini(aVerifier.message)
-                return
-              }
-              await login(f.email, f.password)
-              window.location.hash = '/'
-            }}
           />
           </div>
         </main>

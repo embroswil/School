@@ -98,6 +98,49 @@ function VerifierEmailConnecte() {
   )
 }
 
+// La confirmation de l'adresse e-mail est obligatoire pour tout compte cree a partir du 19 novembre 2026
+// (inscription d'un etablissement, d'un parent, d'un eleve ou d'un enseignant). Les comptes plus anciens et
+// ceux crees par l'etablissement sans adresse e-mail reelle ne sont pas concernes.
+const DEBUT_CONFIRMATION = '2026-11-19T17:30:00Z'
+const confirmationRequise = (u) =>
+  u && !u.emailVerifie && u.createdAt && new Date(u.createdAt) >= new Date(DEBUT_CONFIRMATION) && /@/.test(u.email || '') && !u.emailTechnique
+
+// Ecran bloquant : code a 6 chiffres recu par e-mail, sans lequel l'espace reste ferme
+function ConfirmationObligatoire() {
+  const { user, majUser, logout } = useAuth()
+  const [envoye, setEnvoye] = useState(false)
+  useEffect(() => {
+    if (envoye) return
+    setEnvoye(true)
+    api.post('/api/codes/verification/envoyer', { email: user.email }, { auth: false }).catch(() => {})
+  }, [user, envoye])
+  return (
+    <div className="auth">
+      <header className="auth-haut">
+        <span className="brand" style={{ color: '#fff' }}>
+          Sùkûl<span>.</span>
+        </span>
+      </header>
+      <main className="auth-main">
+        <div className="card">
+          <VerificationEmail
+            email={user.email}
+            onConfirme={async () => {
+              majUser({ emailVerifie: true })
+              window.location.hash = '/'
+            }}
+          />
+          <p style={{ textAlign: 'center', marginTop: 14 }}>
+            <button type="button" onClick={logout} className="muted" style={{ border: 0, background: 'none', cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>
+              Se déconnecter
+            </button>
+          </p>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 function Pages({ path }) {
   const { user } = useAuth()
   const gestion = user.role === 'admin' || user.role === 'principal'
@@ -238,6 +281,8 @@ function Root() {
     if (path === '/installer') return <PageInstallation />
     return <Landing />
   }
+  // Compte cree depuis la confirmation obligatoire : l'adresse e-mail doit etre confirmee avant d'entrer
+  if (confirmationRequise(user)) return <ConfirmationObligatoire />
   return (
     <Shell path={path}>
       {/* un filet par page : changer de page efface l'erreur */}
