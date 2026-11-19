@@ -34,8 +34,11 @@ export function appliquerTheme(t = lireTheme(), { pendantDemarrage = false } = {
   h.style.colorScheme = clair ? 'light' : 'dark'
   if (!pendantDemarrage) {
     h.style.background = fond
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', fond)
+    // barre d'etat : modifiee seulement si sa couleur change vraiment (chaque modification fait rejouer
+    // a l'iPhone une animation de la barre d'etat)
+    const metas = [...document.querySelectorAll('meta[name="theme-color"]')]
+    const active = metas.find((m) => !m.media || window.matchMedia?.(m.media).matches)
+    if (active?.getAttribute('content') !== fond) metas.forEach((m) => m.setAttribute('content', fond))
   }
 }
 

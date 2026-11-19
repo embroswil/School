@@ -35,7 +35,10 @@
          occupe tout l'ecran, d'un seul tenant. Pris en compte quand l'icone est ajoutee a l'ecran d'accueil. -->
     <meta name="description" content="Sùkûl : notes, absences, annonces et scolarité pour les parents, élèves, enseignants et établissements du Cameroun." />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#07080b" />
+    <!-- Couleur de la barre d'etat, fixee dans la page des le depart (aucun script ne la change pendant le
+         lancement : chaque changement fait rejouer a l'iPhone une animation de la barre d'etat). -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#07080b" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5fa" />
     <script>
       // Theme choisi (clair ou sombre), pose avant l'affichage. Tant qu'aucun theme n'est choisi, l'application
       // suit le reglage du telephone, comme l'ecran de demarrage d'iOS : pas de passage du noir au blanc.
@@ -55,7 +58,12 @@
           h.setAttribute('data-demarrage', installee ? (ecranSombre ? 'sombre' : 'clair') : 'aucun')
           h.style.background = fondDemarrage
           h.style.colorScheme = clair ? 'light' : 'dark'
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', fondDemarrage)
+          // Navigateur, theme choisi different du telephone : la barre prend la couleur du theme
+          if (!installee && fond !== (ecranSombre ? '#07080b' : '#f3f5fa')) {
+            document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
+              m.setAttribute('content', fond)
+            })
+          }
           // Couleurs gardees par l'iPhone quand l'icone est ajoutee a l'ecran d'accueil : fond de l'application
           // avant son premier affichage. Elles suivent le reglage du telephone, comme l'image de demarrage d'iOS.
           if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
