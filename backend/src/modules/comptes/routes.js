@@ -64,8 +64,15 @@ router.delete("/:id", async (req, res, next) => {
     if (req.user.role === "admin") {
       // administrateur de la plateforme : tout est permis
     } else if (req.user.role === "principal") {
-      if (cible.school_id !== req.user.schoolId || !["teacher", "principal"].includes(cible.role)) {
+      const { estMembre, autresEcoles, retirerDeLEcole } = require("../../utils/membres");
+      const membre = cible.school_id === req.user.schoolId || (cible.role === "teacher" && (await estMembre(cible.id, req.user.schoolId)));
+      if (!membre || !["teacher", "principal"].includes(cible.role)) {
         throw new ApiError(403, "Vous pouvez supprimer les enseignants et les administrateurs de votre établissement");
+      }
+      // Enseignant qui exerce aussi dans d'autres etablissements : il quitte seulement celui-ci
+      if (cible.role === "teacher" && (await autresEcoles(cible.id, req.user.schoolId)).length) {
+        await retirerDeLEcole(cible.id, req.user.schoolId);
+        return res.json({ success: true, message: "L’enseignant ne fait plus partie de l’établissement" });
       }
       if (cible.role === "principal") {
         const n = (await db.query("SELECT COUNT(*)::int AS n FROM users WHERE school_id = $1 AND role = 'principal' AND is_active = true", [cible.school_id])).rows[0].n;

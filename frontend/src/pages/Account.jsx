@@ -295,6 +295,15 @@ export default function Account() {
         <Reglage Icone={IcTheme} titre="Thème" droite={<ChoixTheme />} />
       </div>
 
+      {moi.role === 'teacher' && (
+        <>
+          <p className="groupe-titre">Établissements</p>
+          <div className="liste-reglages">
+            <Reglage Icone={IcCarte} titre="Mes établissements" href="#/mes-etablissements" />
+          </div>
+        </>
+      )}
+
       {moi.role === 'principal' && (
         <>
           <p className="groupe-titre">Établissement</p>

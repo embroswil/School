@@ -3,6 +3,7 @@
 // - emplois du temps (une classe ou toute l'ecole) ;
 // - cahiers d'appel (absences des eleves par date et par heure).
 const express = require("express");
+const { membreSql } = require("../../utils/membres");
 const router = express.Router();
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
@@ -232,7 +233,7 @@ Format : {"absences": [{"date": "AAAA-MM-JJ", "nom": "NOM de famille", "prenom":
 Une ligne par enseignant absent et par date (ou par cours si les heures sont indiquées). Laisse "debut" et "fin" vides si l'absence concerne toute la journée. Ignore les enseignants présents. Si l'année n'est pas indiquée, prends l'année scolaire 2026-2027 (septembre à décembre 2026, janvier à juin 2027). N'invente rien.`,
     });
     // Enseignants de l'etablissement (comptes) et liste importee (enseignants sans compte)
-    const comptes = (await db.query("SELECT id, first_name, last_name FROM users WHERE school_id = $1 AND role = 'teacher'", [ecole])).rows;
+    const comptes = (await db.query(`SELECT u.id, u.first_name, u.last_name FROM users u WHERE u.role = 'teacher' AND ${membreSql("u.", "$1")}`, [ecole])).rows;
     const attendus = (await db.query("SELECT last_name, first_name FROM enseignants_attendus WHERE school_id = $1", [ecole]).catch(() => ({ rows: [] }))).rows;
     const lignes = [];
     for (const a of (Array.isArray(j.absences) ? j.absences : []).slice(0, 1000)) {
@@ -277,7 +278,7 @@ router.post("/enseignants-absences/appliquer", async (req, res, next) => {
     let cours = 0;
     for (const a of (Array.isArray(req.body?.absences) ? req.body.absences : []).slice(0, 1000)) {
       const date = /^\d{4}-\d{2}-\d{2}$/.test(String(a.date || "")) ? a.date : null;
-      const t = date && (await db.query("SELECT id FROM users WHERE id = $1 AND school_id = $2 AND role = 'teacher'", [Number(a.teacherId), ecole])).rows[0];
+      const t = date && (await db.query(`SELECT u.id FROM users u WHERE u.id = $1 AND u.role = 'teacher' AND ${membreSql("u.", "$2")}`, [Number(a.teacherId), ecole])).rows[0];
       if (!t) continue;
       const motif = String(a.motif || "").trim().slice(0, 300) || null;
       const debut = heure(a.debut);

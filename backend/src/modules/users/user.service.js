@@ -180,6 +180,22 @@ const changerEspace = async ({ userId, espace, refreshToken, ip, userAgent }) =>
   return { ...tokens, user: toPublicUser(user, cible) };
 };
 
+// Enseignant qui exerce dans plusieurs etablissements : ouvrir un autre de ses etablissements
+const changerEtablissement = async ({ userId, schoolId, refreshToken, ip, userAgent }) => {
+  const user = await userSql.findById(userId);
+  if (!user || !user.is_active) throw new ApiError(401, "Ce compte n’existe plus ou a été désactivé. Reconnectez-vous.");
+  if (user.role !== "teacher") throw new ApiError(403, "Réservé aux enseignants");
+  const ecole = parseInt(schoolId, 10);
+  if (!ecole || !(await require("../../utils/membres").estMembre(userId, ecole))) {
+    throw new ApiError(403, "Vous ne faites pas partie de cet établissement");
+  }
+  await userSql.update(userId, { school_id: ecole });
+  const maj = await userSql.findById(userId);
+  if (typeof refreshToken === "string" && refreshToken) await userSql.deleteSession(sha256(refreshToken));
+  const tokens = await issueTokens(maj, { ip, userAgent });
+  return { ...tokens, user: toPublicUser(maj) };
+};
+
 const logout = async ({ userId, refreshToken }) => {
   if (typeof refreshToken === "string" && refreshToken) {
     await userSql.deleteSession(sha256(refreshToken));
@@ -255,9 +271,12 @@ const verifierCompte = (user) => {
   }
 };
 
-const verifierMemeEcole = (user) => {
+// (un enseignant membre de l'etablissement en fait partie, meme s'il a ouvert un autre etablissement)
+const verifierMemeEcole = async (user) => {
   const ecole = ecoleCourante();
-  if (ecole && user.school_id !== ecole) throw new ApiError(404, "User not found");
+  if (!ecole || user.school_id === ecole) return;
+  if (user.role === "teacher" && (await require("../../utils/membres").estMembre(user.id, ecole))) return;
+  throw new ApiError(404, "User not found");
 };
 
 const listUsers = async ({ role, isActive, search, status, page, limit }) => {
@@ -284,7 +303,7 @@ const listUsers = async ({ role, isActive, search, status, page, limit }) => {
 const getUser = async (id) => {
   const user = await userSql.findById(id);
   if (!user) throw new ApiError(404, "User not found");
-  verifierMemeEcole(user);
+  await verifierMemeEcole(user);
   return toPublicUser(user);
 };
 
@@ -292,7 +311,7 @@ const updateUser = async (id, data, actorId) => {
   const fields = {};
   const cible = await userSql.findById(id);
   if (!cible) throw new ApiError(404, "User not found");
-  verifierMemeEcole(cible);
+  await verifierMemeEcole(cible);
   verifierCompte(cible);
 
   if (data.firstName !== undefined) fields.first_name = String(data.firstName).trim();
@@ -333,9 +352,19 @@ const setUserActive = async (id, isActive, actorId) => {
   if (id === actorId && !isActive) throw new ApiError(400, "You cannot deactivate your own account");
   const cible = await userSql.findById(id);
   if (!cible) throw new ApiError(404, "User not found");
-  verifierMemeEcole(cible);
+  await verifierMemeEcole(cible);
   verifierCompte(cible);
 
+  // Enseignant qui exerce aussi dans d'autres etablissements : l'etablissement le retire de ses membres
+  // (son compte reste actif ailleurs) au lieu de desactiver tout son compte
+  const ecole = ecoleCourante();
+  if (!isActive && ecole && cible.role === "teacher") {
+    const m = require("../../utils/membres");
+    if ((await m.autresEcoles(id, ecole)).length) {
+      await m.retirerDeLEcole(id, ecole);
+      return toPublicUser(await userSql.findById(id));
+    }
+  }
   const updated = await userSql.update(id, { is_active: isActive });
   if (!updated) throw new ApiError(404, "User not found");
   if (!isActive) await userSql.deleteSessionsOfUser(id);
@@ -368,6 +397,7 @@ module.exports = {
   logout,
   getProfile,
   changerEspace,
+  changerEtablissement,
   changePassword,
   createUser,
   listUsers,

@@ -143,6 +143,7 @@ function Pages({ path }) {
 
   // Enseignant pas encore rattache a un etablissement : il le rejoint d'abord (son profil reste accessible)
   if (user.role === 'teacher' && !user.schoolId && path !== '/compte') return <RejoindreEtablissement />
+  if (path === '/mes-etablissements') return reserve(user.role === 'teacher', <RejoindreEtablissement />)
   if (path === '/') return <Home />
   if (path === '/compte') return <Account />
   if (path === '/verifier-email') return <VerifierEmailConnecte />

@@ -238,6 +238,8 @@ const validerEnseignant = async (req, res, next) => {
     const d = await chargerDemande(parseId(req.params.id));
     // L'enseignant inscrit sans etablissement est rattache a celui qui le valide
     await db.query("UPDATE users SET status = 'active', school_id = COALESCE(school_id, $2), updated_at = NOW() WHERE id = $1", [d.user_id, d.school_id]);
+    // membre de l'etablissement qui le valide (en plus de ses autres etablissements)
+    await db.query("INSERT INTO enseignant_ecoles (user_id, school_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", [d.user_id, d.school_id]);
     // Affectations choisies par l'enseignant : chaque matiere dans chaque classe
     // (sans retirer un collegue deja affecte a la meme matiere dans la meme classe)
     if (d.subject_ids?.length && d.class_ids?.length) {
@@ -281,15 +283,72 @@ const refuserEnseignant = async (req, res, next) => {
 // Si son nom figure dans la liste des enseignants fournie par l'etablissement, il est accepte tout de suite ;
 // sinon l'etablissement valide la demande.
 // GET /api/inscriptions/mes-etablissements
+// { membres: etablissements ou il est accepte (ouvert = celui de la session), demandes en attente ou refusees,
+//   declares: etablissements pas encore sur Sukul }
 const mesEtablissements = async (req, res, next) => {
   try {
+    const moi = (await db.query("SELECT school_id FROM users WHERE id = $1", [req.user.id])).rows[0];
+    const membres = (
+      await db.query(
+        `SELECT s.id AS school_id, s.name AS ecole, s.city, s.type FROM enseignant_ecoles ee JOIN schools s ON s.id = ee.school_id
+         WHERE ee.user_id = $1 ORDER BY ee.created_at`,
+        [req.user.id]
+      )
+    ).rows.map((m) => ({ ...m, ouvert: m.school_id === moi?.school_id }));
+    const demandes = (
+      await db.query(
+        `SELECT DISTINCT ON (tr.school_id) tr.id, tr.status, tr.created_at, tr.decision_reason, s.id AS school_id, s.name AS ecole, s.city
+         FROM teacher_requests tr JOIN schools s ON s.id = tr.school_id
+         WHERE tr.user_id = $1 AND tr.status <> 'approved'
+           AND tr.school_id NOT IN (SELECT school_id FROM enseignant_ecoles WHERE user_id = $1)
+         ORDER BY tr.school_id, tr.created_at DESC`,
+        [req.user.id]
+      )
+    ).rows;
+    const declares = (
+      await db.query("SELECT id, nom, ville, type FROM etablissements_declares WHERE user_id = $1 AND school_id IS NULL ORDER BY created_at", [req.user.id])
+    ).rows;
+    res.json({ success: true, data: { membres, demandes, declares } });
+  } catch (e) {
+    next(e);
+  }
+};
+
+// POST /api/inscriptions/declarer { nom, ville, type } : etablissement pas encore sur Sukul
+const declarer = async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const nom = texte(b.nom, 255);
+    if (!nom) throw new ApiError(400, "Indiquez le nom de l’établissement");
+    const n = (await db.query("SELECT COUNT(*)::int AS n FROM etablissements_declares WHERE user_id = $1", [req.user.id])).rows[0].n;
+    if (n >= 10) throw new ApiError(400, "Vous avez déjà déclaré 10 établissements");
     const { rows } = await db.query(
-      `SELECT tr.id, tr.status, tr.created_at, tr.decision_reason, s.id AS school_id, s.name AS ecole, s.city
-       FROM teacher_requests tr JOIN schools s ON s.id = tr.school_id
-       WHERE tr.user_id = $1 ORDER BY tr.created_at DESC`,
-      [req.user.id]
+      "INSERT INTO etablissements_declares (user_id, nom, ville, type) VALUES ($1, $2, $3, $4) RETURNING id, nom, ville, type",
+      [req.user.id, nom, texte(b.ville, 120) || null, ["maternelle", "primaire", "college", "lycee"].includes(b.type) ? b.type : null]
     );
-    res.json({ success: true, data: rows });
+    res.status(201).json({ success: true, data: rows[0], message: "Établissement ajouté" });
+  } catch (e) {
+    next(e);
+  }
+};
+
+// DELETE /api/inscriptions/declares/:id
+const retirerDeclare = async (req, res, next) => {
+  try {
+    await db.query("DELETE FROM etablissements_declares WHERE id = $1 AND user_id = $2", [parseId(req.params.id), req.user.id]);
+    res.json({ success: true });
+  } catch (e) {
+    next(e);
+  }
+};
+
+// Enseignant : quitter un etablissement (il reste membre des autres)
+// DELETE /api/inscriptions/mes-etablissements/:schoolId
+const quitter = async (req, res, next) => {
+  try {
+    const ecole = parseId(req.params.schoolId);
+    await require("../../utils/membres").retirerDeLEcole(req.user.id, ecole);
+    res.json({ success: true, message: "Vous ne faites plus partie de cet établissement" });
   } catch (e) {
     next(e);
   }
@@ -303,7 +362,7 @@ const rejoindre = async (req, res, next) => {
     const ecole = (await db.query("SELECT id, name FROM schools WHERE id = $1 AND is_active = true", [schoolId])).rows[0];
     if (!ecole) throw new ApiError(404, "Établissement introuvable");
     const moi = (await db.query("SELECT id, first_name, last_name, school_id FROM users WHERE id = $1", [req.user.id])).rows[0];
-    if (moi.school_id === schoolId) throw new ApiError(400, "Vous faites déjà partie de cet établissement");
+    if (await require("../../utils/membres").estMembre(req.user.id, schoolId)) throw new ApiError(400, "Vous faites déjà partie de cet établissement");
     const deja = await db.query("SELECT 1 FROM teacher_requests WHERE user_id = $1 AND school_id = $2 AND status = 'pending'", [req.user.id, schoolId]);
     if (deja.rows[0]) throw new ApiError(409, "Votre demande est déjà en attente auprès de cet établissement");
     const ids = (v) => (Array.isArray(v) ? v.map((x) => parseInt(x, 10)).filter((x) => x > 0) : []);
@@ -358,4 +417,4 @@ const mesEnfants = async (req, res, next) => {
   }
 };
 
-module.exports = { inscription, listeEnseignants, validerEnseignant, refuserEnseignant, mesEnfants, mesEtablissements, rejoindre };
+module.exports = { inscription, listeEnseignants, validerEnseignant, refuserEnseignant, mesEnfants, mesEtablissements, rejoindre, declarer, retirerDeclare, quitter };

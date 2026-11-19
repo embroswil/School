@@ -55,6 +55,16 @@ export function AuthProvider({ children }) {
     window.scrollTo(0, 0)
   }
 
+  // Enseignant dans plusieurs etablissements : ouvrir un autre de ses etablissements
+  async function changerEtablissement(schoolId) {
+    const refreshToken = session.get()?.refreshToken
+    const { data } = await api.post('/api/auth/etablissement', { schoolId, refreshToken })
+    session.set({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user })
+    window.location.hash = '/'
+    setUser(data.user)
+    window.scrollTo(0, 0)
+  }
+
   // Profil relu depuis le serveur (ex. enseignant accepte par un etablissement)
   async function actualiser() {
     if (await renewSession()) setUser(session.get()?.user ?? null)
@@ -72,7 +82,7 @@ export function AuthProvider({ children }) {
     window.location.hash = '/'
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, signup, majUser, changerEspace, actualiser }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, logout, signup, majUser, changerEspace, changerEtablissement, actualiser }}>{children}</AuthContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

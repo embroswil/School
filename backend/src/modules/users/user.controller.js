@@ -61,6 +61,16 @@ const changerEspace = async (req, res, next) => {
   }
 };
 
+const changerEtablissement = async (req, res, next) => {
+  try {
+    const { schoolId, refreshToken } = req.body || {};
+    const data = await userService.changerEtablissement({ userId: req.user.id, schoolId, refreshToken, ...clientInfo(req) });
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body || {};
@@ -131,6 +141,7 @@ module.exports = {
   logout,
   me,
   changerEspace,
+  changerEtablissement,
   changePassword,
   createUser,
   listUsers,

@@ -14,6 +14,10 @@ router.get("/mes-enfants", authenticate, authorize("parent"), ctrl.mesEnfants);
 // Enseignant : rejoindre un etablissement une fois connecte
 router.get("/mes-etablissements", authenticate, authorize("teacher"), ctrl.mesEtablissements);
 router.post("/rejoindre", authenticate, authorize("teacher"), ctrl.rejoindre);
+router.delete("/mes-etablissements/:schoolId", authenticate, authorize("teacher"), ctrl.quitter);
+// Etablissements pas encore sur Sukul
+router.post("/declarer", authenticate, authorize("teacher"), ctrl.declarer);
+router.delete("/declares/:id", authenticate, authorize("teacher"), ctrl.retirerDeclare);
 
 // Validation des enseignants (administrateur de l'etablissement ou de la plateforme)
 router.get("/enseignants", authenticate, authorize("admin"), ctrl.listeEnseignants);

@@ -2,6 +2,7 @@
 // Espace de l'administrateur d'un etablissement : tableau de bord, eleves,
 // enseignants. Tout est limite a SON etablissement.
 const express = require("express");
+const { membreSql, estMembre } = require("../../utils/membres");
 const router = express.Router();
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
@@ -41,8 +42,9 @@ router.get("/tableau", async (req, res, next) => {
         (SELECT name FROM schools WHERE id = $1) AS nom,
         (SELECT photo FROM schools WHERE id = $1) AS photo,
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'student') AS eleves,
-        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'active') AS enseignants,
-        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'pending') AS enseignants_attente,
+        (SELECT COUNT(*)::int FROM enseignant_ecoles ee JOIN users u ON u.id = ee.user_id WHERE ee.school_id = $1 AND u.role = 'teacher' AND u.is_active) AS enseignants,
+        ((SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'pending')
+          + (SELECT COUNT(*)::int FROM teacher_requests tr JOIN users u ON u.id = tr.user_id WHERE tr.school_id = $1 AND tr.status = 'pending' AND u.status = 'active')) AS enseignants_attente,
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'parent') AS parents,
         (SELECT COUNT(*)::int FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id WHERE ay.school_id = $1 AND ($2::int IS NULL OR ay.id = $2)) AS classes,
         (SELECT COUNT(*)::int FROM users u WHERE u.school_id = $1 AND u.role = 'student'
@@ -154,10 +156,10 @@ router.get("/enseignants", async (req, res, next) => {
     const ecole = ecoleDe(req);
     const { rows } = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.phone,
-              (SELECT tr.subjects FROM teacher_requests tr WHERE tr.user_id = u.id ORDER BY tr.id DESC LIMIT 1) AS matieres,
+              (SELECT tr.subjects FROM teacher_requests tr WHERE tr.user_id = u.id AND tr.school_id = $1 ORDER BY tr.id DESC LIMIT 1) AS matieres,
               (SELECT string_agg(DISTINCT c.name, ', ' ORDER BY c.name) FROM class_subjects cs JOIN classes c ON c.id = cs.class_id
-               WHERE cs.teacher_id = u.id) AS classes
-       FROM users u WHERE u.school_id = $1 AND u.role = 'teacher' AND u.status = 'active'
+               WHERE cs.teacher_id = u.id AND c.academic_year_id IN (SELECT id FROM academic_years WHERE school_id = $1)) AS classes
+       FROM users u WHERE u.role = 'teacher' AND u.status = 'active' AND u.id IN (SELECT user_id FROM enseignant_ecoles WHERE school_id = $1)
        ORDER BY u.last_name, u.first_name`,
       [ecole]
     );
@@ -286,8 +288,8 @@ router.post("/administrateurs", async (req, res, next) => {
     if (n >= MAX_ADMINS) throw new ApiError(400, `Un établissement peut avoir ${MAX_ADMINS} administrateurs au maximum`);
     const ex = (await db.query("SELECT id, role, school_id FROM users WHERE email = $1", [email])).rows[0];
     if (ex) {
-      if (ex.role !== "teacher" || ex.school_id !== ecole) throw new ApiError(409, "Cet email est déjà utilisé par un autre compte");
-      await db.query("UPDATE users SET role = 'principal', status = 'active', updated_at = NOW() WHERE id = $1", [ex.id]);
+      if (ex.role !== "teacher" || !(ex.school_id === ecole || (await estMembre(ex.id, ecole)))) throw new ApiError(409, "Cet email est déjà utilisé par un autre compte");
+      await db.query("UPDATE users SET role = 'principal', status = 'active', school_id = $2, updated_at = NOW() WHERE id = $1", [ex.id, ecole]);
       return res.status(201).json({ success: true, message: "L’enseignant est maintenant administrateur" });
     }
     if (!b.firstName || !b.lastName) throw new ApiError(400, "Prénom et nom obligatoires");
@@ -562,7 +564,7 @@ router.post("/affectations", async (req, res, next) => {
     const teacherId = parseInt(req.body?.teacherId, 10);
     const subjectId = parseInt(req.body?.subjectId, 10);
     const classIds = (Array.isArray(req.body?.classIds) ? req.body.classIds : []).map((x) => parseInt(x, 10)).filter(Boolean);
-    const prof = await db.query("SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'teacher' AND status = 'active'", [teacherId, ecole]);
+    const prof = await db.query(`SELECT 1 FROM users u WHERE u.id = $1 AND ${membreSql("u.", "$2")} AND u.role = 'teacher' AND u.status = 'active'`, [teacherId, ecole]);
     if (!prof.rows[0]) throw new ApiError(404, "Enseignant introuvable");
     const mat = await db.query("SELECT 1 FROM subjects WHERE id = $1 AND school_id = $2", [subjectId, ecole]);
     if (!mat.rows[0]) throw new ApiError(400, "Choisissez une matière");
@@ -676,7 +678,7 @@ router.put("/classes/:id/professeur-principal", async (req, res, next) => {
     const id = parseInt(req.params.id, 10);
     const teacherId = req.body?.teacherId ? parseInt(req.body.teacherId, 10) : null;
     if (teacherId) {
-      const t = await db.query("SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'teacher' AND status = 'active'", [teacherId, ecole]);
+      const t = await db.query(`SELECT 1 FROM users u WHERE u.id = $1 AND ${membreSql("u.", "$2")} AND u.role = 'teacher' AND u.status = 'active'`, [teacherId, ecole]);
       if (!t.rows[0]) throw new ApiError(400, "Enseignant introuvable");
     }
     const r = await db.query(

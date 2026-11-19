@@ -156,7 +156,7 @@ const statistiques = async (req, res, next) => {
     const ecoles = await db.query(`
       SELECT s.id, s.name, s.type, s.city, s.is_active, s.created_at,
         (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role = 'student') AS eleves,
-        (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role = 'teacher' AND u.status = 'active') AS enseignants,
+        (SELECT COUNT(*)::int FROM enseignant_ecoles ee WHERE ee.school_id = s.id) AS enseignants,
         (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.role = 'parent') AS parents,
         (SELECT MAX(u.last_login) FROM users u WHERE u.school_id = s.id) AS derniere_activite
       FROM schools s ORDER BY s.created_at DESC`);
@@ -191,8 +191,9 @@ const fiche = async (req, res, next) => {
       `SELECT
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'student') AS eleves,
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'student' AND email NOT LIKE '%@inscrit.school') AS eleves_avec_compte,
-        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'active') AS enseignants,
-        (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'pending') AS enseignants_attente,
+        (SELECT COUNT(*)::int FROM enseignant_ecoles WHERE school_id = $1) AS enseignants,
+        ((SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'pending')
+          + (SELECT COUNT(*)::int FROM teacher_requests tr JOIN users u ON u.id = tr.user_id WHERE tr.school_id = $1 AND tr.status = 'pending' AND u.status = 'active')) AS enseignants_attente,
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'parent') AS parents,
         (SELECT COUNT(*)::int FROM classes WHERE academic_year_id = $2) AS classes,
         (SELECT COUNT(*)::int FROM publications WHERE school_id = $1) AS publications,

@@ -95,7 +95,7 @@ const importer = async (ecole, lignes) => {
     if (existe.rows[0]) res.misAJour += 1;
     else res.ajoutes += 1;
     // Compte deja cree par cet enseignant ?
-    const comptes = await db.query("SELECT id, first_name, last_name, status FROM users WHERE school_id = $1 AND role = 'teacher'", [ecole]);
+    const comptes = await db.query("SELECT id, first_name, last_name, status FROM users WHERE role = 'teacher' AND (school_id = $1 OR id IN (SELECT user_id FROM enseignant_ecoles WHERE school_id = $1))", [ecole]);
     const compte = comptes.rows.find((u) => cle(u.last_name, u.first_name) === k);
     if (compte) {
       if (compte.status === "pending") {
@@ -130,6 +130,7 @@ const reconnaitre = async (ecole, userId, nom, prenom) => {
   // l'enseignant inscrit sans etablissement est rattache a celui-ci
   await db.query("UPDATE users SET status = 'active', school_id = COALESCE(school_id, $2), updated_at = NOW() WHERE id = $1", [userId, ecole]);
   await db.query("UPDATE teacher_requests SET status = 'approved', decided_at = NOW() WHERE user_id = $1 AND school_id = $2 AND status = 'pending'", [userId, ecole]);
+  await db.query("INSERT INTO enseignant_ecoles (user_id, school_id) VALUES ($1, $2) ON CONFLICT DO NOTHING", [userId, ecole]);
   await db.query("UPDATE enseignants_attendus SET user_id = $2 WHERE id = $1", [a.id, userId]);
   await affecter(userId, ecole, decouper(a.matieres), decouper(a.classes), a.principal_de);
   return a;

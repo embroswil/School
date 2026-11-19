@@ -59,6 +59,7 @@ const NAV_ORDI = {
     ['/document', IcActus, 'Documents'],
     ['/mes-cours', IcCoche, 'Mes cours'],
     ['/mon-absence', IcProfil, 'Mon absence'],
+    ['/mes-etablissements', IcEcole, 'Mes établissements'],
   ],
   parent: [['/trouver-eleve', IcEleves, 'Trouver un élève']],
   admin: [
@@ -82,6 +83,7 @@ const TITRES = {
   '/presence-enseignants': 'Enseignants',
   '/mon-absence': 'Mon absence',
   '/mes-cours': 'Mes cours',
+  '/mes-etablissements': 'Mes établissements',
   '/import-absences-enseignants': 'Absences des enseignants',
   '/infos': 'Information',
   '/guide': 'Guide',

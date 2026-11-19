@@ -7,6 +7,7 @@
 //    ou importe la liste des absences des enseignants (PDF, photo) ;
 //  - l'enseignant signale son absence a l'avance.
 const express = require("express");
+const { membreSql } = require("../../utils/membres");
 const router = express.Router();
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
@@ -168,7 +169,7 @@ router.post("/", async (req, res, next) => {
     const date = dateOk(req.body?.date);
     if (!date) throw new ApiError(400, "Date invalide");
     const teacherId = req.user.role === "teacher" ? req.user.id : entier(req.body?.teacherId);
-    const t = (await db.query("SELECT id, first_name, last_name FROM users WHERE id = $1 AND role = 'teacher' AND school_id = $2", [teacherId, req.user.schoolId])).rows[0];
+    const t = (await db.query(`SELECT u.id, u.first_name, u.last_name FROM users u WHERE u.id = $1 AND u.role = 'teacher' AND ${membreSql("u.", "$2")}`, [teacherId, req.user.schoolId])).rows[0];
     if (!t) throw new ApiError(404, "Enseignant introuvable");
     const motif = String(req.body?.motif || "").trim().slice(0, 300) || null;
     await db.query(

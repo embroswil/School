@@ -19,6 +19,23 @@ const parseId = (v) => {
   return id;
 };
 
+// Meme etablissement ? nom et ville compares sans accents, majuscules ni ponctuation
+const cleNom = (t) => require("../../utils/enseignants-attendus").cle(t, "");
+const proposerEnseignantsDeclares = async (ecoleId, nom, ville) => {
+  const { rows } = await db.query("SELECT id, user_id, nom, ville FROM etablissements_declares WHERE school_id IS NULL");
+  for (const d of rows) {
+    if (cleNom(d.nom) !== cleNom(nom) || (d.ville && ville && cleNom(d.ville) !== cleNom(ville))) continue;
+    await db.query("UPDATE etablissements_declares SET school_id = $2 WHERE id = $1", [d.id, ecoleId]);
+    await db.query("INSERT INTO teacher_requests (school_id, user_id, subjects) VALUES ($1, $2, '')", [ecoleId, d.user_id]);
+    await notifierUtilisateur(d.user_id, {
+      title: "Votre établissement est sur Sùkûl",
+      message: `${nom} vient de rejoindre Sùkûl : votre demande lui a été envoyée.`,
+      type: "account",
+      data: { lien: "/mes-etablissements" },
+    }).catch(() => {});
+  }
+};
+
 // Publique
 router.post("/", async (req, res, next) => {
   try {
@@ -81,6 +98,8 @@ router.post("/", async (req, res, next) => {
     const admins = (await db.query("SELECT id FROM users WHERE role = 'admin' AND is_active")).rows;
     for (const a of admins)
       await notifierUtilisateur(a.id, { title: "Nouvel établissement inscrit", message: `${nom}${texte(b.city) ? ` · ${texte(b.city)}` : ""} · ${texte(b.contactFirstName)} ${texte(b.contactLastName)}`, type: "system" }).catch(() => {});
+    // Enseignants qui avaient declare cet etablissement (pas encore sur Sukul) : leur demande lui est envoyee
+    await proposerEnseignantsDeclares(ecoleId, nom, texte(b.city)).catch(() => {});
     // Confirmation de l'adresse e-mail du responsable, des l'inscription (code a 6 chiffres)
     let envoi = null;
     try {

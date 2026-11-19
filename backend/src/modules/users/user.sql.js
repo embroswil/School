@@ -57,7 +57,8 @@ const list = async ({ role, isActive, search, status, limit, offset }) => {
   const ecole = ecoleFiltre();
   if (ecole) {
     params.push(ecole);
-    where.push(`school_id = $${params.length}`);
+    // (enseignants membres de l'etablissement compris, meme s'ils ont ouvert un autre etablissement)
+    where.push(`(school_id = $${params.length} OR id IN (SELECT user_id FROM enseignant_ecoles WHERE school_id = $${params.length}))`);
   }
   if (status) {
     params.push(status);

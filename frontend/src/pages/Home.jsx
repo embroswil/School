@@ -361,6 +361,34 @@ function EspaceEleve() {
 
 
 // Accueil de l'enseignant : le cours du moment, 4 actions, ses classes, puis le fil
+// Enseignant dans plusieurs etablissements : l'etablissement ouvert, et les autres d'un geste
+function ChoixEtablissement() {
+  const { changerEtablissement } = useAuth()
+  const d = useApi('/api/inscriptions/mes-etablissements')
+  const [busy, setBusy] = useState(null)
+  const membres = d.data?.membres || []
+  if (membres.length < 2) return null
+  return (
+    <div className="choix-etab">
+      {membres.map((m) => (
+        <button
+          key={m.school_id}
+          type="button"
+          aria-pressed={m.ouvert}
+          disabled={busy !== null}
+          onClick={() => {
+            if (m.ouvert) return
+            setBusy(m.school_id)
+            changerEtablissement(m.school_id).catch(() => setBusy(null))
+          }}
+        >
+          <span data-brut>{busy === m.school_id ? '…' : m.ecole}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function EspaceEnseignant() {
   const classes = useApi('/api/notes/mes-classes')
   const jour = useApi('/api/presence-enseignants/mes-cours')
@@ -505,6 +533,7 @@ export default function Home() {
       {user.role === 'principal' && <EspaceEtablissement />}
       {user.role === 'parent' && <EspaceParent />}
       {user.role === 'student' && <EspaceEleve />}
+      {user.role === 'teacher' && <ChoixEtablissement />}
       {user.role === 'teacher' && <EspaceEnseignant />}
       {user.role === 'teacher' && (
         <>
