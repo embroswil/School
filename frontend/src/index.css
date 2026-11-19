@@ -1722,3 +1722,153 @@ html[data-theme='light'] body::before {
 .eleves-lien small { color: var(--muted); font-size: 13px; }
 .eleves-lien > svg { color: var(--muted); flex: none; }
 .eleves-lien-ico { flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: rgba(47, 107, 255, 0.14); color: var(--lien); }
+
+/* ---------- Guichet de l'intendance (page Encaisser) ---------- */
+.guichet-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.guichet-tete .icon-btn.actif { color: var(--lien); border-color: var(--lien); }
+.guichet-reglages { display: grid; gap: 10px; margin-bottom: 14px; }
+.guichet-reglages .muted { font-size: 12.5px; margin: 0; }
+.guichet-corps { display: grid; gap: 16px; }
+.gu-form { display: grid; gap: 12px; }
+.gu-etape { margin: 4px 0 0; font: 700 12px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.gu-etape-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gu-situation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.gu-situation > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; }
+.gu-situation > div + div { border-left: 1px solid var(--line); }
+.gu-situation > div { min-width: 0; }
+.gu-situation span { font-size: 11.5px; color: var(--muted); }
+.gu-situation b { font: 700 16px/1.2 var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gu-situation-unite { grid-column: 1 / -1; padding: 5px 12px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); text-align: right; }
+.gu-form .grid2 { align-items: end; }
+.gu-situation .vert, .gu-ajour { color: #12b76a; }
+.gu-situation .rouge, .gu-ligne small.rouge, .gu-rendu.rouge { color: #f04438; }
+.gu-ajour { margin: 0; font-weight: 600; }
+.gu-frais { display: grid; gap: 8px; }
+.gu-ligne { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
+.gu-ligne.coche { border-color: var(--lien); background: rgba(47, 107, 255, 0.07); }
+.gu-ligne-nom { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.gu-ligne-nom input { width: 20px; height: 20px; flex: none; accent-color: var(--lien); }
+.gu-ligne-nom span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gu-ligne-nom b { font-size: 14.5px; }
+.gu-ligne-nom small { font-size: 12.5px; color: var(--muted); }
+.gu-montant { width: 128px; flex: none; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; padding: 9px 10px; }
+.gu-montant.erreur { border-color: #f04438; }
+.gu-soldes { margin: -4px 0 0; font-size: 12.5px; }
+.gu-choix { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.guichet-reglages .gu-choix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gu-choix button { padding: 10px 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 600 13.5px/1.2 var(--font-body); cursor: pointer; }
+.gu-choix button[aria-pressed='true'] { border-color: var(--lien); background: rgba(47, 107, 255, 0.12); color: var(--lien); }
+.gu-champ { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.gu-case { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+.gu-case input { width: 18px; height: 18px; accent-color: var(--lien); }
+.gu-rendu { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(18, 183, 106, 0.1); color: #12b76a; font-weight: 700; }
+.gu-rendu.rouge { background: rgba(240, 68, 56, 0.1); }
+.gu-valider { padding: 15px; font-size: 16px; }
+.gu-releve { justify-self: center; font-size: 13.5px; font-weight: 600; }
+.gu-fait { display: grid; gap: 14px; }
+.gu-fait-tete { display: flex; align-items: center; gap: 12px; }
+.gu-fait-tete b { display: block; font: 800 19px/1.2 var(--font-display); }
+.gu-fait-tete small { color: var(--muted); }
+.gu-sceau { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #12b76a; color: #fff; font-weight: 800; font-size: 20px; }
+.gu-apercu { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); max-height: 460px; overflow-y: auto; background: #fff; }
+.gu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gu-actions .btn { justify-content: center; }
+.gu-liens { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font-size: 13px; font-weight: 600; }
+.gu-caisse { display: flex; flex-direction: column; gap: 4px; }
+.gu-caisse-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.gu-caisse-tete span { display: block; font: 700 12px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.gu-caisse-tete small { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); text-transform: capitalize; }
+.gu-date { width: auto; padding: 7px 9px; font-size: 13px; }
+.gu-total { font: 800 28px/1.15 var(--font-display); font-variant-numeric: tabular-nums; }
+.gu-modes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.gu-modes span { padding: 5px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.gu-modes b { color: var(--text); margin-left: 4px; }
+.gu-brouillard { margin-top: 10px; justify-content: center; }
+.gu-liste-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 8px; }
+.gu-liste-tete .niveau-titre { margin: 0; }
+.gu-recherche { max-width: 200px; padding: 8px 11px; font-size: 13.5px; }
+.gu-liste small + small { margin-top: 1px; }
+.gu-liste .lien-action { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+html.ordi .guichet-corps { grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.9fr); align-items: start; gap: 22px; }
+html.ordi .guichet-caisse { position: sticky; top: 90px; }
+@media (max-width: 420px) {
+  .gu-choix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gu-montant { width: 108px; }
+}
+
+/* ---------- Recu de caisse (apercu et impression) : papier blanc dans les deux themes ---------- */
+.ri { background: #fff; color: #101828; font: 12px/1.4 'Inter', Arial, sans-serif; padding: 18px; }
+.ri b { color: #0f1a3c; }
+.ri-tete { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 2px solid #2446d8; }
+.ri-logo { width: 42px; height: 42px; border-radius: 9px; object-fit: cover; flex: none; }
+.ri-initiale { display: grid; place-items: center; background: #2446d8; color: #fff; font: 800 20px/1 'Inter', Arial, sans-serif; }
+.ri-tete b { display: block; font-size: 14px; }
+.ri-tete small { color: #475467; }
+.ri-titre { display: flex; flex-direction: column; align-items: center; gap: 1px; margin: 10px 0 8px; text-align: center; }
+.ri-titre b { font-size: 13px; letter-spacing: 0.12em; color: #2446d8; }
+.ri-titre span { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ri-titre small { color: #475467; }
+.ri-exemplaire { margin: 0 0 8px; text-align: center; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #475467; }
+.ri-bloc { display: grid; gap: 2px; margin: 6px 0; }
+.ri-l { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; border-bottom: 1px dotted #d0d5dd; }
+.ri-l span { color: #475467; }
+.ri-l b { text-align: right; }
+.ri-table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; }
+.ri-table th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #475467; border-bottom: 1px solid #101828; padding: 4px 0; }
+.ri-table th:last-child, .ri-table td:last-child { text-align: right; white-space: nowrap; padding-left: 10px; }
+.ri-table td { padding: 5px 0; border-bottom: 1px dotted #d0d5dd; vertical-align: top; font-weight: 600; }
+.ri-table td small { display: block; font-weight: 400; font-size: 10.5px; color: #475467; }
+.ri-table tfoot td { border-bottom: 0; border-top: 1.5px solid #101828; font-size: 14px; font-weight: 800; padding-top: 6px; }
+.ri-lettres { margin: 2px 0 8px; font-style: italic; color: #344054; font-size: 11px; }
+.ri-situation { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #d0d5dd; border-radius: 8px; margin: 8px 0; }
+.ri-situation div { padding: 6px 8px; display: flex; flex-direction: column; }
+.ri-situation div + div { border-left: 1px solid #d0d5dd; }
+.ri-situation span { font-size: 10px; color: #475467; }
+.ri-situation b { font-size: 12px; }
+.ri-pied { margin-top: 10px; display: grid; gap: 8px; }
+.ri-codes { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.ri-barres { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.ri-barres svg { width: 100%; max-width: 240px; height: 38px; }
+.ri-barres small, .ri-qr small { font-size: 10px; color: #475467; font-variant-numeric: tabular-nums; }
+.ri-qr { display: flex; flex-direction: column; align-items: center; }
+.ri-qr svg { width: 84px; height: 84px; }
+.ri-signature { height: 64px; border: 1px dashed #98a2b3; border-radius: 8px; display: flex; align-items: flex-end; justify-content: center; padding: 6px; }
+.ri-signature span { font-size: 10px; color: #475467; }
+.ri-pied p { margin: 0; text-align: center; font-size: 10px; color: #475467; }
+.impression-ticket .ri { width: 72mm; padding: 0; font-size: 11px; }
+.impression-ticket .ri-situation { grid-template-columns: 1fr; }
+.impression-ticket .ri-situation div { flex-direction: row; justify-content: space-between; padding: 3px 6px; }
+.impression-ticket .ri-situation div + div { border-left: 0; border-top: 1px solid #d0d5dd; }
+.impression-a5 .ri { padding: 0; }
+
+/* ---------- Brouillard de caisse (A4) ---------- */
+.bc { background: #fff; color: #101828; font: 11px/1.4 'Inter', Arial, sans-serif; }
+.bc-tete { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding-bottom: 8px; border-bottom: 2px solid #2446d8; }
+.bc-tete b { display: block; font-size: 14px; }
+.bc-tete small { color: #475467; }
+.bc-titre { text-align: right; }
+.bc-titre b { color: #2446d8; letter-spacing: 0.1em; font-size: 13px; }
+.bc-titre span { text-transform: capitalize; }
+.bc-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.bc-table th { text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #475467; border-bottom: 1px solid #101828; padding: 5px 4px; }
+.bc-table td { padding: 4px; border-bottom: 1px solid #eaecf0; vertical-align: top; }
+.bc-table th:last-child, .bc-table td:last-child { text-align: right; white-space: nowrap; font-weight: 700; }
+.bc-table tr { break-inside: avoid; }
+.bc-totaux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; break-inside: avoid; }
+.bc-totaux table { width: 100%; border-collapse: collapse; }
+.bc-totaux td { padding: 4px 6px; border-bottom: 1px solid #eaecf0; }
+.bc-totaux td:last-child { text-align: right; font-weight: 700; white-space: nowrap; }
+.bc-general td { border-top: 1.5px solid #101828; font-size: 12.5px; font-weight: 800; }
+.bc-lettres { font-style: italic; margin: 12px 0 30px; }
+.bc-signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center; font-weight: 700; break-inside: avoid; }
+.bc-signatures span { padding-bottom: 60px; border-bottom: 1px dashed #98a2b3; }
+
+/* ---------- Zone d'impression : seule visible quand on imprime depuis l'application ---------- */
+#zone-impression { display: none; }
+@media print {
+  html.impression-active, html.impression-active body { background: #fff !important; }
+  html.impression-active body > *:not(#zone-impression) { display: none !important; }
+  html.impression-active #zone-impression { display: block; }
+  #zone-impression .saut-page { break-after: page; page-break-after: always; height: 0; }
+  #zone-impression * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

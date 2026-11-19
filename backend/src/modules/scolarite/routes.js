@@ -5,6 +5,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../../config/db");
+const crypto = require("crypto");
 const ApiError = require("../../utils/ApiError");
 const { authenticate } = require("../../middlewares/auth.middleware");
 const { notifierEtablissement, notifierUtilisateur, emailNotification } = require("../../utils/notifier");
@@ -525,6 +526,186 @@ router.post("/paiements", async (req, res, next) => {
     // Les parents sont informes (l'etablissement n'a pas besoin de se notifier lui-meme)
     await apresPaiement({ ...rows[0], paye_par: null, school_id: -1 });
     res.status(201).json({ success: true, data: rows[0] });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---------------------------------------------------------------- guichet de l'intendance
+// Heure locale du Cameroun pour la caisse du jour (les dates sont enregistrees en UTC)
+const JOUR_LOCAL = "(p.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Douala')::date";
+const MODES_GUICHET = ["especes", "mobile_money", "banque", "autre"];
+
+// Un encaissement (une ou plusieurs lignes), pour le recu imprime.
+// op : numero d'operation, ou « P123 » pour un ancien paiement seul (id 123).
+const operationGuichet = async (ecole, op) => {
+  const seul = /^P\d+$/.test(op) ? Number(op.slice(1)) : null;
+  const { rows } = await db.query(
+    `SELECT p.id, p.montant, p.mode, p.created_at, p.numero_recu, p.recu_externe, p.verse_par, p.telephone, p.student_id, p.frais_id,
+            f.nom AS frais, f.montant AS frais_montant, u.first_name, u.last_name, ${SQL_CLASSE} AS classe,
+            sr.admission_number AS matricule, c.first_name AS caissier_prenom, c.last_name AS caissier_nom
+     FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id JOIN users u ON u.id = p.student_id
+     LEFT JOIN student_records sr ON sr.student_id = u.id LEFT JOIN users c ON c.id = p.enregistre_par
+     WHERE p.school_id = $1 AND p.statut = 'reussi' AND ${seul ? "p.id = $2" : "p.operation = $2"}
+     ORDER BY p.id`,
+    [ecole, seul || op]
+  );
+  if (!rows.length) return null;
+  for (const r of rows.filter((x) => !String(x.numero_recu || "").startsWith("SK-"))) {
+    await attribuerRecu(r.id);
+    r.numero_recu = (await db.query("SELECT numero_recu FROM paiements_scolaires WHERE id = $1", [r.id])).rows[0].numero_recu;
+  }
+  const t = rows[0];
+  // Situation de l'eleve au moment de l'encaissement (paiements jusqu'a cette operation incluse)
+  const sit = await situationEleve(t.student_id);
+  const payes = (
+    await db.query(
+      "SELECT frais_id, SUM(montant)::int AS s FROM paiements_scolaires WHERE student_id = $1 AND statut = 'reussi' AND id <= $2 GROUP BY frais_id",
+      [t.student_id, Math.max(...rows.map((r) => r.id))]
+    )
+  ).rows;
+  const payeA = new Map(payes.map((x) => [x.frais_id, x.s]));
+  const fraisApres = (sit?.frais || []).map((f) => ({ id: f.id, nom: f.nom, montant: f.montant, obligatoire: f.obligatoire, paye: Math.min(f.montant, payeA.get(f.id) || 0) }));
+  const total = fraisApres.reduce((a, f) => a + f.montant, 0);
+  const paye = fraisApres.reduce((a, f) => a + f.paye, 0);
+  const ecoleInfo = (await db.query("SELECT name, city, photo IS NOT NULL AS a_photo FROM schools WHERE id = $1", [ecole])).rows[0] || {};
+  const annee = await assurerAnneeScolaire(ecole);
+  const { codeRecu } = require("../../utils/recus");
+  return {
+    operation: seul ? `P${seul}` : op,
+    date: t.created_at,
+    ecole: { id: ecole, nom: ecoleInfo.name, ville: ecoleInfo.city, aPhoto: Boolean(ecoleInfo.a_photo) },
+    annee: annee?.name || "",
+    eleve: { id: t.student_id, nom: t.last_name, prenom: t.first_name, classe: t.classe, matricule: t.matricule },
+    mode: t.mode,
+    recuExterne: t.recu_externe,
+    versePar: t.verse_par,
+    telephone: t.telephone,
+    caissier: [t.caissier_prenom, t.caissier_nom].filter(Boolean).join(" "),
+    lignes: rows.map((r) => {
+      const f = fraisApres.find((x) => x.id === r.frais_id);
+      return { id: r.id, frais: r.frais, montant: r.montant, numero: r.numero_recu, code: codeRecu(r.numero_recu, r.montant), reste: f ? Math.max(0, f.montant - f.paye) : 0 };
+    }),
+    total: rows.reduce((a, r) => a + r.montant, 0),
+    situation: { total, paye, reste: Math.max(0, total - paye) },
+  };
+};
+
+// POST /api/scolarite/encaissements : encaissement au guichet, un ou plusieurs frais d'un eleve
+// { studentId, lignes: [{ fraisId, montant }], mode, recuExterne, versePar, telephone }
+router.post("/encaissements", async (req, res, next) => {
+  const client = await db.connect();
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const b = req.body || {};
+    const studentId = entier(b.studentId);
+    const mode = MODES_GUICHET.includes(b.mode) ? b.mode : "especes";
+    const ok = await db.query("SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'student'", [studentId, ecole]);
+    if (!ok.rows[0]) throw new ApiError(404, "Élève introuvable");
+    const s = await situationEleve(studentId);
+    const vus = new Set();
+    const lignes = (Array.isArray(b.lignes) ? b.lignes : []).slice(0, 30).map((l) => {
+      const fraisId = entier(l.fraisId);
+      const montant = entier(l.montant);
+      const frais = s.frais.find((f) => f.id === fraisId);
+      if (!frais) throw new ApiError(404, "Frais introuvable pour cet élève");
+      if (vus.has(fraisId)) throw new ApiError(400, `« ${frais.nom} » est choisi deux fois`);
+      vus.add(fraisId);
+      if (!(montant > 0) || montant > frais.reste) throw new ApiError(400, `${frais.nom} : montant entre 1 et ${fcfa(frais.reste)}`);
+      return { fraisId, montant };
+    });
+    if (!lignes.length) throw new ApiError(400, "Choisissez au moins un frais à encaisser");
+    const ref = texte(b.recuExterne, 80) || null;
+    const op = `OP-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+    await client.query("BEGIN");
+    for (const [i, l] of lignes.entries()) {
+      await client.query(
+        `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, enregistre_par, confirme_le,
+                                          recu_externe, operation, verse_par, telephone)
+         VALUES ($1, $2, $3, $4, $5, 'reussi', $6, $7, NOW(), $8, $9, $10, $11)`,
+        [ecole, l.fraisId, studentId, l.montant, mode, `${op}-${i + 1}`, req.user.id, ref && (i ? `${ref}/${i + 1}` : ref), op, texte(b.versePar, 120) || null, texte(b.telephone, 30) || null]
+      );
+    }
+    await client.query("COMMIT");
+    const data = await operationGuichet(ecole, op);
+    // Parents relies a l'eleve : une seule notification pour tout l'encaissement
+    const message = `${fcfa(data.total)} · ${data.lignes.map((l) => l.frais).join(", ")} · ${data.eleve.prenom} ${data.eleve.nom}`;
+    await db
+      .query(
+        `INSERT INTO notifications (user_id, title, message, type, data)
+         SELECT l.parent_id, 'Paiement de scolarité', $2, 'payment', '{"lien":"/scolarite"}'
+         FROM parent_student_links l WHERE l.student_id = $1 RETURNING user_id`,
+        [studentId, message]
+      )
+      .then((r) => r.rows.forEach((x) => emailNotification(x.user_id, { title: "Paiement de scolarité", message, data: { lien: "/scolarite" } })))
+      .catch(() => {});
+    res.status(201).json({ success: true, data });
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    if (e.code === "23505") return next(new ApiError(409, "Ce numéro de reçu papier ou de bordereau est déjà enregistré"));
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/scolarite/encaissements/:op : un encaissement, pour imprimer ou reimprimer le recu
+router.get("/encaissements/:op", async (req, res, next) => {
+  try {
+    reserve(req);
+    const data = await operationGuichet(ecoleDe(req), String(req.params.op).slice(0, 40));
+    if (!data) throw new ApiError(404, "Encaissement introuvable");
+    res.json({ success: true, data });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /api/scolarite/caisse?date=AAAA-MM-JJ : la caisse d'un jour (encaissements au guichet)
+router.get("/caisse", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || "")) ? req.query.date : null;
+    const { rows } = await db.query(
+      `SELECT COALESCE(p.operation, 'P' || p.id) AS op, MIN(p.created_at) AS created_at, SUM(p.montant)::int AS montant,
+              MIN(p.mode) AS mode, MIN(p.numero_recu) AS numero, MIN(p.recu_externe) AS recu_externe, MIN(p.verse_par) AS verse_par,
+              string_agg(f.nom, ', ' ORDER BY p.id) AS frais, MIN(u.last_name) AS nom, MIN(u.first_name) AS prenom,
+              MIN(${SQL_CLASSE}) AS classe, MIN(c.first_name || ' ' || c.last_name) AS caissier
+       FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id JOIN users u ON u.id = p.student_id
+       LEFT JOIN users c ON c.id = p.enregistre_par
+       WHERE p.school_id = $1 AND p.statut = 'reussi' AND p.enregistre_par IS NOT NULL
+         AND ${JOUR_LOCAL} = COALESCE($2::date, (NOW() AT TIME ZONE 'Africa/Douala')::date)
+       GROUP BY 1 ORDER BY 2 DESC`,
+      [ecole, date]
+    );
+    const parFrais = (
+      await db.query(
+        `SELECT f.nom, SUM(p.montant)::int AS total, COUNT(*)::int AS nb
+         FROM paiements_scolaires p JOIN frais_scolaires f ON f.id = p.frais_id
+         WHERE p.school_id = $1 AND p.statut = 'reussi' AND p.enregistre_par IS NOT NULL
+           AND ${JOUR_LOCAL} = COALESCE($2::date, (NOW() AT TIME ZONE 'Africa/Douala')::date)
+         GROUP BY f.nom ORDER BY 2 DESC`,
+        [ecole, date]
+      )
+    ).rows;
+    const parMode = {};
+    for (const r of rows) parMode[r.mode] = (parMode[r.mode] || 0) + r.montant;
+    const jourLocal = date || (await db.query("SELECT to_char((NOW() AT TIME ZONE 'Africa/Douala')::date, 'YYYY-MM-DD') AS d")).rows[0].d;
+    const ecoleInfo = (await db.query("SELECT name, city FROM schools WHERE id = $1", [ecole])).rows[0] || {};
+    res.json({
+      success: true,
+      data: {
+        date: jourLocal,
+        ecole: { nom: ecoleInfo.name, ville: ecoleInfo.city },
+        total: rows.reduce((a, r) => a + r.montant, 0),
+        nb: rows.length,
+        parMode,
+        parFrais,
+        operations: rows,
+      },
+    });
   } catch (e) {
     next(e);
   }
