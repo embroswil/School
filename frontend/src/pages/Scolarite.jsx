@@ -5,7 +5,7 @@ import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { ListeOrdres } from './OrdrePaiement.jsx'
 import StatutScolarite from './StatutScolarite.jsx'
-import { IcCalendrier, IcClasses, IcCrayon, IcImport, IcPlus, IcPoubelle } from '../icones.jsx'
+import { IcCalendrier, IcCrayon, IcImport, IcPlus, IcPoubelle } from '../icones.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
 import Comptabilite from './Comptabilite.jsx'
 import { envoyer } from './Documents.jsx'
@@ -460,30 +460,27 @@ function Frais() {
             const passe = x.echeance && new Date(x.echeance) < new Date()
             return (
               <article key={x.id} className="frais-carte">
-                <div className="frais-carte-tete">
-                  <span className="frais-badge">{CATEGORIES[x.categorie] || 'Scolarité'}</span>
-                  {!x.obligatoire && <span className="frais-badge discret">Facultatif</span>}
+                <div className="frais-ligne">
+                  <h3>{x.nom}</h3>
+                  <b className="frais-montant">{fcfa(x.montant)}</b>
+                </div>
+                <div className="frais-ligne">
+                  <div className="frais-infos">
+                    <span className="frais-badge">{CATEGORIES[x.categorie] || 'Scolarité'}</span>
+                    {!x.obligatoire && <span className="frais-badge discret">Facultatif</span>}
+                    <span>{x.classes?.length ? x.classes.join(', ') : 'Toutes les classes'}</span>
+                    <span className={passe ? 'passe' : ''}>
+                      <IcCalendrier size={13} />
+                      {x.echeance ? jour(x.echeance) : 'Sans échéance'}
+                    </span>
+                  </div>
                   <span className="frais-outils">
                     <button type="button" aria-label={`Modifier ${x.nom}`} title="Modifier" onClick={() => modifier(x)}>
-                      <IcCrayon size={17} />
+                      <IcCrayon size={15} />
                     </button>
                     <button type="button" className="danger" aria-label={`Supprimer ${x.nom}`} title="Supprimer" onClick={() => supprimer(x.id)}>
-                      <IcPoubelle size={17} />
+                      <IcPoubelle size={15} />
                     </button>
-                  </span>
-                </div>
-                <h3>{x.nom}</h3>
-                <p className="frais-montant">
-                  {Number(x.montant).toLocaleString('fr-FR')} <small>FCFA</small>
-                </p>
-                <div className="frais-infos">
-                  <span>
-                    <IcClasses size={15} />
-                    {x.classes?.length ? x.classes.join(', ') : 'Toutes les classes'}
-                  </span>
-                  <span className={passe ? 'passe' : ''}>
-                    <IcCalendrier size={15} />
-                    {x.echeance ? `Avant le ${jour(x.echeance)}` : 'Sans échéance'}
                   </span>
                 </div>
               </article>
