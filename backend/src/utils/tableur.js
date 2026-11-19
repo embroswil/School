@@ -172,6 +172,42 @@ function absences(texte, nomFichier) {
   return res.length ? { classe: classeDoc, absences: res } : null;
 }
 
+// Absences des enseignants : date, nom (enseignant), prenom, heures (debut-fin ou horaire), classe, motif
+function absencesEnseignants(texte) {
+  const res = [];
+  for (const f of feuilles(texte)) {
+    const e = entete(f.lignes, {
+      date: /^date/,
+      nom: /^(nom|enseignant|professeur|noms)/,
+      "prenom?": /^prenom/,
+      "debut?": /^(debut|heure de debut|de$)/,
+      "fin?": /^(fin|heure de fin|a$)/,
+      "horaire?": /^(heure|horaire|creneau|cours)/,
+      "classe?": /^classe/,
+      "motif?": /^(motif|raison|observation)/,
+    });
+    if (!e) continue;
+    const col = (l, k) => (e.pos[k] !== undefined ? l[e.pos[k]] : "");
+    for (const l of f.lignes.slice(e.ligne + 1)) {
+      const date = dateIso(col(l, "date"));
+      const nom = col(l, "nom");
+      if (!date || !nom) continue;
+      // « 07h30 - 09h20 » dans une seule colonne
+      const plage = String(col(l, "horaire?")).match(/(\d{1,2}\s*[h:H]\s*\d{2}).*?(\d{1,2}\s*[h:H]\s*\d{2})/);
+      res.push({
+        date,
+        nom,
+        prenom: col(l, "prenom?"),
+        debut: heure(col(l, "debut?")) || (plage ? heure(plage[1]) : heure(col(l, "horaire?"))),
+        fin: heure(col(l, "fin?")) || (plage ? heure(plage[2]) : ""),
+        classe: col(l, "classe?"),
+        motif: col(l, "motif?"),
+      });
+    }
+  }
+  return res.length ? { absences: res } : null;
+}
+
 const CATEGORIE_FRAIS = [
   [/inscription/, "inscription"],
   [/ape/, "apee"],
@@ -329,4 +365,4 @@ function comptabilite(texte) {
   return postes.length || operations.length || paiements.length ? { postes, operations, paiements } : null;
 }
 
-module.exports = { feuilles, emplois, absences, frais, sanctions, comptabilite, dateIso };
+module.exports = { feuilles, emplois, absences, absencesEnseignants, frais, sanctions, comptabilite, dateIso };

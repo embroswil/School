@@ -1950,3 +1950,51 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
 .ri-double .ri-signature { height: 24mm; }
 .ri-double .ri-mention { margin: 6px 0 0; text-align: center; font-size: 10px; color: #475467; }
 
+/* ---------- Presence des enseignants : statuts des cours ---------- */
+.etiquette.gris { background: rgba(152, 162, 179, 0.18); color: var(--muted); }
+.etiquette.encours { background: rgba(247, 144, 9, 0.14); color: #f79009; }
+:is(.pe-cours, .mc-cours) .etiquette.ok { background: rgba(18, 183, 106, 0.14); color: #12b76a; }
+.pe-chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pe-chiffres .vert { color: #12b76a; }
+.pe-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.pe-actions .btn { padding: 10px 14px; font-size: 14px; }
+.pe-verifier { border-color: rgba(152, 162, 179, 0.4); background: rgba(152, 162, 179, 0.1); }
+.pe-cours li { align-items: flex-start; }
+.pe-cours .etiquette { align-self: flex-start; }
+.pe-signaux { color: #12b76a !important; }
+.pe-absent .pe-signaux, .pe-absent_prevu .pe-signaux { color: var(--rouge-texte) !important; }
+.pe-cahier { font-style: italic; }
+.pe-cours li.pe-absent, .pe-cours li.pe-absent_prevu { border-color: rgba(255, 77, 87, 0.35); }
+.lien-action.rouge { color: var(--rouge-texte); background: rgba(255, 77, 87, 0.12) !important; }
+
+/* ---------- Mes cours (enseignant) ---------- */
+.mc-intro { font-size: 13.5px; margin: -4px 0 12px; }
+.mc-liste { display: grid; gap: 8px; }
+.mc-cours { display: grid; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+.mc-cours.fait { border-color: rgba(18, 183, 106, 0.4); }
+.mc-tete { display: flex; align-items: center; gap: 12px; }
+.mc-heure { flex: none; width: 46px; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.mc-heure b { font-size: 15px; }
+.mc-heure small { color: var(--muted); font-size: 12px; }
+.mc-titre { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mc-titre b { font-size: 14.5px; }
+.mc-titre small { color: var(--muted); font-size: 12.5px; }
+.mc-present { padding: 13px; font-size: 15.5px; }
+.mc-cahier { display: grid; gap: 8px; }
+.mc-cahier p { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--bg); font-size: 13.5px; }
+.mc-cahier p span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 2px; }
+.mc-boutons { display: flex; gap: 8px; }
+.mc-liens { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mc-liens .lien-action { padding: 5px 11px; border-radius: 999px; background: rgba(47, 107, 255, 0.12); font-size: 12.5px; text-decoration: none; }
+.mc-liens .lien-action.discret { background: var(--bg); border: 1px solid var(--line); }
+.mc-appel { font-size: 12.5px; color: #12b76a; font-weight: 600; }
+.cours-confirme { font-weight: 700; color: #fff !important; background: rgba(255, 255, 255, 0.16); padding: 10px 12px; border-radius: 12px; margin: 0 0 10px !important; }
+.cours-erreur { background: rgba(255, 255, 255, 0.92); color: #b42318 !important; padding: 8px 10px; border-radius: 10px; font-size: 13px; margin-top: 8px !important; }
+.cours-liens { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+.cours-liens a { color: #fff; font-weight: 700; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 420px) {
+  .pe-chiffres b { font-size: 20px; }
+  .pe-chiffres span { font-size: 11px; }
+}
+
+html.ordi .mc-present { justify-self: start; width: auto; padding-left: 32px; padding-right: 32px; }

@@ -18,7 +18,26 @@ const jourLisible = (jour) => {
   if (jour === decaler(aujourdhui(), -1)) return 'Hier'
   return new Date(`${jour}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
-const ETAT = { assure: ['Appel fait', 'ok'], sans_appel: ['Pas d’appel', 'alerte'], a_venir: ['À venir', 'neutre'] }
+const ETAT = {
+  assure: ['Confirmé', 'ok'],
+  a_verifier: ['À vérifier', 'gris'],
+  absent: ['Absent', 'alerte'],
+  absent_prevu: ['Absence prévue', 'alerte'],
+  en_cours: ['En cours', 'encours'],
+  a_venir: ['À venir', 'neutre'],
+}
+const heureDe = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Douala' })
+// Ce qui confirme le cours (l'appel n'est qu'un signal parmi d'autres)
+const signauxDe = (c) =>
+  [
+    c.signaux.includes('confirme') && `Confirmé par l’enseignant à ${heureDe(c.confirme_le)}`,
+    c.signaux.includes('cahier') && 'Cahier de textes rempli',
+    c.signaux.includes('appel') && 'Appel fait',
+    c.signaux.includes('ronde') && 'Présence constatée par la direction',
+    c.signaux.includes('liste') && 'Liste de l’établissement',
+    c.constat === 'absent' && (c.constat_source === 'liste' ? 'Absent sur la liste de l’établissement' : 'Absence constatée par la direction'),
+  ].filter(Boolean)
+const SOURCE_ABSENCE = { enseignant: 'Signalée par l’enseignant', liste: 'Liste de l’établissement', direction: 'Marquée par la direction' }
 
 // Enseignants : la journee (cours, appels, absences), l'equipe, et le bilan sur 30 jours.
 // Un seul bouton « Importer » pour la liste des enseignants (Excel, PDF, Word ou photo).
@@ -36,11 +55,15 @@ export default function PresenceEnseignants() {
   const v = d.data
   const attente = tableau.data?.enseignants_attente || 0
 
-  async function marquer(teacherId, nom) {
-    const motif = window.prompt(`Marquer ${nom} absent(e) ce jour. Motif (facultatif) :`, '')
-    if (motif === null) return
+  // Ronde de la direction : present, absent, ou annuler le constat
+  async function constater(c, etat) {
+    let note = ''
+    if (etat === 'absent') {
+      note = window.prompt(`${c.last_name ? `${c.first_name} ${c.last_name}` : 'L’enseignant'} absent(e) à ce cours (${c.classe}, ${c.debut}). Remarque (facultatif) :`, '')
+      if (note === null) return
+    }
     try {
-      await api.post('/api/presence-enseignants', { teacherId, date, motif })
+      await api.post('/api/presence-enseignants/constat', { classId: c.class_id, debut: c.debut, date, etat, note })
       d.reload()
     } catch (err) {
       setError(err.message)
@@ -109,7 +132,10 @@ export default function PresenceEnseignants() {
       </span>
     </li>
   )
-  const sansAppel = v?.cours.filter((c) => c.etat === 'sans_appel').length || 0
+  const nb = (e) => v?.cours.filter((c) => c.etat === e).length || 0
+  const aVerifier = nb('a_verifier')
+  const absentsCours = nb('absent') + nb('absent_prevu')
+  const enCours = (v?.cours || []).filter((c) => c.etat === 'en_cours' || (v?.maintenant && c.debut <= v.maintenant && v.maintenant < c.fin))
   // Journee rangee par classe
   const coursParClasse = new Map()
   for (const c of v?.cours || []) (coursParClasse.get(c.classe) || coursParClasse.set(c.classe, []).get(c.classe)).push(c)
@@ -120,7 +146,9 @@ export default function PresenceEnseignants() {
     if (dernier && dernier.nom === n) dernier.classes.push(c)
     else niveauxJ.push({ nom: n, classes: [c] })
   }
-  const coursVus = classeJ === '__sans' ? (v?.cours || []).filter((c) => c.etat === 'sans_appel') : coursParClasse.get(classeJ) || []
+  const coursVus =
+    classeJ === '__verifier' ? (v?.cours || []).filter((c) => c.etat === 'a_verifier') : classeJ === '__maintenant' ? enCours : coursParClasse.get(classeJ) || []
+  const TITRE_VUE = { __verifier: 'Cours à vérifier', __maintenant: 'Cours en ce moment' }
 
   return (
     <>
@@ -184,19 +212,33 @@ export default function PresenceEnseignants() {
           {!v && !d.error && <p className="muted">Chargement…</p>}
           {v && (
             <>
-              <div className="eleves-chiffres">
+              <div className="eleves-chiffres pe-chiffres">
                 <div>
                   <b>{v.cours.length}</b>
                   <span>Cours prévus</span>
                 </div>
                 <div>
-                  <b className={sansAppel ? 'rouge' : ''}>{sansAppel}</b>
-                  <span>Sans appel</span>
+                  <b className="vert">{nb('assure')}</b>
+                  <span>Confirmés</span>
                 </div>
                 <div>
-                  <b className={v.absences.length ? 'rouge' : ''}>{v.absences.length}</b>
-                  <span>Absences</span>
+                  <b>{aVerifier}</b>
+                  <span>À vérifier</span>
                 </div>
+                <div>
+                  <b className={absentsCours ? 'rouge' : ''}>{absentsCours}</b>
+                  <span>Absents</span>
+                </div>
+              </div>
+              <div className="pe-actions">
+                {v.maintenant && enCours.length > 0 && (
+                  <button type="button" className="btn bouton-icone" onClick={() => setClasseJ('__maintenant')}>
+                    {`Ronde : ${enCours.length} cours en ce moment`}
+                  </button>
+                )}
+                <a className="btn btn-quiet bouton-icone" href="#/import-absences-enseignants">
+                  <IcImport size={17} /> Liste des absences
+                </a>
               </div>
 
               {v.absences.length > 0 && (
@@ -210,7 +252,7 @@ export default function PresenceEnseignants() {
                             {a.last_name} {a.first_name}
                           </b>
                           <small>
-                            {a.par_lui ? 'Signalée par l’enseignant' : 'Marquée par l’administration'}
+                            {SOURCE_ABSENCE[a.source] || (a.par_lui ? SOURCE_ABSENCE.enseignant : SOURCE_ABSENCE.direction)}
                             {a.motif ? ` · ${a.motif}` : ''}
                           </small>
                         </span>
@@ -225,11 +267,11 @@ export default function PresenceEnseignants() {
 
               {v.cours.length > 0 && !classeJ && (
                 <>
-                  {sansAppel > 0 && (
-                    <button type="button" className="eleves-alerte" onClick={() => setClasseJ('__sans')}>
+                  {aVerifier > 0 && (
+                    <button type="button" className="eleves-alerte pe-verifier" onClick={() => setClasseJ('__verifier')}>
                       <span>
-                        <b>{`${sansAppel} cours sans appel`}</b>
-                        <small>Voir les cours où l’appel n’a pas été fait</small>
+                        <b>{`${aVerifier} cours à vérifier`}</b>
+                        <small>Aucune confirmation : ni l’enseignant, ni l’appel, ni la direction</small>
                       </span>
                       <IcChevron size={18} />
                     </button>
@@ -240,11 +282,12 @@ export default function PresenceEnseignants() {
                       <div className="eleves-classes">
                         {n.classes.map((c) => {
                           const cs = coursParClasse.get(c)
-                          const manque = cs.filter((x) => x.etat === 'sans_appel').length
+                          const abs = cs.filter((x) => x.etat === 'absent' || x.etat === 'absent_prevu').length
+                          const ver = cs.filter((x) => x.etat === 'a_verifier').length
                           return (
                             <button type="button" key={c} onClick={() => setClasseJ(c)}>
                               <b>{c}</b>
-                              <small className={manque ? 'rouge' : ''}>{manque ? `${cs.length} cours · ${manque} sans appel` : `${cs.length} cours`}</small>
+                              <small className={abs ? 'rouge' : ''}>{[`${cs.length} cours`, abs && `${abs} absent(s)`, ver && `${ver} à vérifier`].filter(Boolean).join(' · ')}</small>
                             </button>
                           )
                         })}
@@ -261,7 +304,7 @@ export default function PresenceEnseignants() {
                     </button>
                   </div>
                   <h2 className="eleves-titre">
-                    {classeJ === '__sans' ? 'Cours sans appel' : classeJ}
+                    {TITRE_VUE[classeJ] || classeJ}
                     <small>{`${coursVus.length} cours`}</small>
                   </h2>
                 </>
@@ -273,38 +316,58 @@ export default function PresenceEnseignants() {
                   <a href="#/import-emplois">Ajouter les emplois du temps</a>
                 </div>
               ) : (
-                classeJ && <ul className="liste-simple">
-                  {coursVus.map((c) => (
-                    <li key={c.id}>
-                      <span className="ls-heure">{c.debut}</span>
-                      <span className="ls-texte">
-                        <b>{classeJ === '__sans' ? `${c.classe} · ${c.matiere || '—'}` : c.matiere || '—'}</b>
-                        <small data-brut>{c.last_name ? `${c.last_name} ${c.first_name}${c.absent ? ' · absent(e)' : ''}` : 'Enseignant non affecté'}</small>
-                        {c.etat === 'sans_appel' && (
-                          <span className="ls-actions">
-                            <button
-                              type="button"
-                              className="lien-action"
-                              onClick={() => {
-                                demandeAppel.date = date
-                                demandeAppel.periode = Number(c.debut.replace(':', ''))
-                                window.location.hash = `/classes/${c.class_id}/appel`
-                              }}
-                            >
-                              Faire l’appel
-                            </button>
-                            {c.teacher_id && !c.absent && (
-                              <button type="button" className="lien-action" onClick={() => marquer(c.teacher_id, `${c.first_name} ${c.last_name}`)}>
-                                Marquer absent
-                              </button>
+                classeJ && (
+                  <ul className="liste-simple pe-cours">
+                    {coursVus.map((c) => {
+                      const passe = c.etat !== 'a_venir'
+                      const sig = signauxDe(c)
+                      return (
+                        <li key={`${c.class_id}-${c.debut}`} className={`pe-${c.etat}`}>
+                          <span className="ls-heure">{c.debut}</span>
+                          <span className="ls-texte">
+                            <b>{classeJ.startsWith('__') ? `${c.classe} · ${c.matiere || '—'}` : c.matiere || '—'}</b>
+                            <small data-brut>{c.last_name ? `${c.last_name} ${c.first_name}` : 'Enseignant sans compte Sùkûl'}</small>
+                            {sig.length > 0 && <small className="pe-signaux">{sig.join(' · ')}</small>}
+                            {c.contenu && <small className="pe-cahier">{`« ${c.contenu} »`}</small>}
+                            {passe && c.etat !== 'absent_prevu' && (
+                              <span className="ls-actions">
+                                {c.constat !== 'present' && c.etat !== 'assure' && (
+                                  <button type="button" className="lien-action" onClick={() => constater(c, 'present')}>
+                                    Présent
+                                  </button>
+                                )}
+                                {c.constat !== 'absent' && (
+                                  <button type="button" className="lien-action rouge" onClick={() => constater(c, 'absent')}>
+                                    Absent
+                                  </button>
+                                )}
+                                {c.constat && c.constat_source !== 'liste' && (
+                                  <button type="button" className="lien-action discret" onClick={() => constater(c, '')}>
+                                    Annuler le constat
+                                  </button>
+                                )}
+                                {!c.appel && (
+                                  <button
+                                    type="button"
+                                    className="lien-action discret"
+                                    onClick={() => {
+                                      demandeAppel.date = date
+                                      demandeAppel.periode = Number(c.debut.replace(':', ''))
+                                      window.location.hash = `/classes/${c.class_id}/appel`
+                                    }}
+                                  >
+                                    Faire l’appel
+                                  </button>
+                                )}
+                              </span>
                             )}
                           </span>
-                        )}
-                      </span>
-                      <span className={`etiquette ${(ETAT[c.etat] || ETAT.a_venir)[1]}`}>{(ETAT[c.etat] || ETAT.a_venir)[0]}</span>
-                    </li>
-                  ))}
-                </ul>
+                          <span className={`etiquette ${(ETAT[c.etat] || ETAT.a_venir)[1]}`}>{(ETAT[c.etat] || ETAT.a_venir)[0]}</span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )
               )}
             </>
           )}
@@ -401,17 +464,17 @@ export default function PresenceEnseignants() {
           {v && v.bilan.length === 0 && (
             <div className="vide">
               <b>Pas encore de bilan</b>
-              <small>Le bilan se calcule à partir des emplois du temps et des appels faits.</small>
+              <small>Le bilan se calcule à partir des emplois du temps et des confirmations des cours.</small>
             </div>
           )}
           {v && v.bilan.length > 0 && (
             <>
               <p className="muted" style={{ fontSize: 13, margin: '0 2px 10px' }}>
-                Part des cours de l’emploi du temps où l’appel a été fait, sur les 30 derniers jours.
+                Part des cours confirmés (par l’enseignant, le cahier de textes, l’appel ou la direction), sur les 30 derniers jours.
               </p>
               <ul className="liste-simple">
                 {v.bilan.map((b) => {
-                  const taux = b.prevus ? Math.round(((b.prevus - b.sans_appel) / b.prevus) * 100) : 100
+                  const taux = b.prevus ? Math.round((b.confirmes / b.prevus) * 100) : 100
                   return (
                     <li key={b.teacher_id}>
                       <span className="ls-texte">
@@ -419,10 +482,10 @@ export default function PresenceEnseignants() {
                           {b.last_name} {b.first_name}
                         </b>
                         <small>
-                          {b.prevus} cours · {b.sans_appel} sans appel · {b.absences} absence(s)
+                          {`${b.prevus} cours · ${b.confirmes} confirmé(s) · ${b.a_verifier} à vérifier · ${b.absences} absence(s)`}
                         </small>
                       </span>
-                      <b className={`ls-taux ${taux >= 90 ? '' : 'rouge'}`}>{taux} %</b>
+                      <b className={`ls-taux ${b.absences ? 'rouge' : taux >= 90 ? 'vert' : ''}`}>{taux} %</b>
                     </li>
                   )
                 })}

@@ -216,4 +216,91 @@ router.post("/absences/appliquer", async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------- absences des enseignants (liste de l'etablissement)
+// POST /enseignants-absences/lire { url, mime } | { texte } : liste des absences des enseignants (PDF, photo, Excel)
+router.post("/enseignants-absences/lire", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    // Tableau (Excel, CSV, Word) aux colonnes reconnaissables : lu directement, sans lecture automatique
+    const tableau = req.body?.texte ? require("../../utils/tableur").absencesEnseignants(String(req.body.texte)) : null;
+    const doc = tableau ? null : await charger(req.body || {});
+    const j = tableau || await lireAvecQuota(req, "absences-enseignants", {
+      ...doc,
+      maxTokens: 6000,
+      consigne: `Ce document est une liste des absences des enseignants d'un établissement scolaire camerounais (cahier de présence des enseignants, rapport du surveillant général ou du censeur, état des absences).
+Format : {"absences": [{"date": "AAAA-MM-JJ", "nom": "NOM de famille", "prenom": "Prénom(s)", "debut": "HH:MM" ou "", "fin": "HH:MM" ou "", "classe": "6e A" ou "", "motif": "" }]}.
+Une ligne par enseignant absent et par date (ou par cours si les heures sont indiquées). Laisse "debut" et "fin" vides si l'absence concerne toute la journée. Ignore les enseignants présents. Si l'année n'est pas indiquée, prends l'année scolaire 2026-2027 (septembre à décembre 2026, janvier à juin 2027). N'invente rien.`,
+    });
+    // Enseignants de l'etablissement (comptes) et liste importee (enseignants sans compte)
+    const comptes = (await db.query("SELECT id, first_name, last_name FROM users WHERE school_id = $1 AND role = 'teacher'", [ecole])).rows;
+    const attendus = (await db.query("SELECT last_name, first_name FROM enseignants_attendus WHERE school_id = $1", [ecole]).catch(() => ({ rows: [] }))).rows;
+    const lignes = [];
+    for (const a of (Array.isArray(j.absences) ? j.absences : []).slice(0, 1000)) {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(a.date || "")) ? a.date : null;
+      const k = cle(a.nom, a.prenom);
+      const kNom = cle(a.nom, "");
+      const t =
+        comptes.find((u) => cle(u.last_name, u.first_name) === k) ||
+        comptes.find((u) => k && cle(u.last_name, u.first_name).includes(k)) ||
+        (kNom && comptes.filter((u) => cle(u.last_name, "") === kNom).length === 1 ? comptes.find((u) => cle(u.last_name, "") === kNom) : null);
+      const sansCompte = !t && attendus.some((x) => cle(x.last_name, x.first_name) === k || (kNom && cle(x.last_name, "") === kNom));
+      const debut = heure(a.debut);
+      const fin = heure(a.fin);
+      lignes.push({
+        date,
+        nom: `${a.nom || ""} ${a.prenom || ""}`.trim(),
+        teacherId: t?.id || null,
+        enseignant: t ? `${t.last_name} ${t.first_name}` : null,
+        sansCompte,
+        debut,
+        fin: debut ? fin : null,
+        classe: String(a.classe || "").slice(0, 50),
+        motif: String(a.motif || "").trim().slice(0, 300),
+        trouve: Boolean(t && date),
+      });
+    }
+    if (!lignes.length) throw new ApiError(422, "Aucune absence d’enseignant trouvée dans ce document");
+    res.json({ success: true, data: lignes });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /enseignants-absences/appliquer { absences: [{ teacherId, date, debut, fin, motif }] }
+// Sans heures : absence de toute la journee. Avec heures : les cours de l'enseignant dans ce creneau
+// sont constates « absent » (source : liste de l'etablissement).
+router.post("/enseignants-absences/appliquer", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const { SQL_COURS, suivre } = require("../presence-enseignants/routes");
+    let jours = 0;
+    let cours = 0;
+    for (const a of (Array.isArray(req.body?.absences) ? req.body.absences : []).slice(0, 1000)) {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(a.date || "")) ? a.date : null;
+      const t = date && (await db.query("SELECT id FROM users WHERE id = $1 AND school_id = $2 AND role = 'teacher'", [Number(a.teacherId), ecole])).rows[0];
+      if (!t) continue;
+      const motif = String(a.motif || "").trim().slice(0, 300) || null;
+      const debut = heure(a.debut);
+      if (!debut) {
+        const r = await db.query(
+          `INSERT INTO absences_enseignants (school_id, teacher_id, date, motif, declare_par, source) VALUES ($1, $2, $3, $4, $5, 'liste')
+           ON CONFLICT (teacher_id, date) DO UPDATE SET motif = COALESCE(EXCLUDED.motif, absences_enseignants.motif)`,
+          [ecole, t.id, date, motif, req.user.id]
+        );
+        jours += r.rowCount;
+        continue;
+      }
+      const fin = heure(a.fin) || "23:59";
+      const liste = (await db.query(SQL_COURS("AND cs.teacher_id = $3"), [ecole, date, t.id])).rows.filter((c) => c.debut >= debut && c.debut < fin);
+      for (const c of liste) {
+        await suivre(ecole, c.class_id, date, c.debut, t.id, { constat: "absent", constat_par: req.user.id, constat_le: new Date(), constat_source: "liste", constat_note: motif });
+        cours += 1;
+      }
+    }
+    res.json({ success: true, data: { jours, cours } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 module.exports = router;

@@ -57,6 +57,7 @@ const NAV_ORDI = {
   teacher: [
     ['/emploi', IcEcole, 'Emploi du temps'],
     ['/document', IcActus, 'Documents'],
+    ['/mes-cours', IcCoche, 'Mes cours'],
     ['/mon-absence', IcProfil, 'Mon absence'],
   ],
   parent: [['/trouver-eleve', IcEleves, 'Trouver un élève']],
@@ -80,6 +81,8 @@ const TITRES = {
   '/info': 'Information',
   '/presence-enseignants': 'Enseignants',
   '/mon-absence': 'Mon absence',
+  '/mes-cours': 'Mes cours',
+  '/import-absences-enseignants': 'Absences des enseignants',
   '/infos': 'Information',
   '/guide': 'Guide',
   '/installer': 'Installer Sùkûl',

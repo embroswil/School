@@ -65,6 +65,8 @@ import AbsencesJour from './pages/AbsencesJour.jsx'
 import PageInstallation from './installation.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
 import EleveFiche from './pages/EleveFiche.jsx'
+import MesCours from './pages/MesCours.jsx'
+import ImportAbsencesEnseignants from './pages/ImportAbsencesEnseignants.jsx'
 
 function Message({ title, children }) {
   return (
@@ -149,6 +151,8 @@ function Pages({ path }) {
   if (path === '/info') return reserve(['principal', 'teacher'].includes(user.role), <InfoPublier />)
   if (path === '/presence-enseignants') return reserve(user.role === 'principal', <PresenceEnseignants />)
   if (path === '/mon-absence') return reserve(user.role === 'teacher', <MonAbsence />)
+  if (path === '/mes-cours') return reserve(user.role === 'teacher', <MesCours />)
+  if (path === '/import-absences-enseignants') return reserve(user.role === 'principal', <ImportAbsencesEnseignants />)
   if (path === '/document' || path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Documents />)
   if (path === '/trouver-eleve') return reserve(user.role === 'parent', <TrouverEleve />)
   if (path === '/rattachements') return reserve(user.role === 'principal', <Rattachements />)

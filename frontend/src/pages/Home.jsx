@@ -9,6 +9,7 @@ import Fil from './Fil.jsx'
 import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
 import { IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
   admin: 'Administrateur de la plateforme',
@@ -276,7 +277,7 @@ function EspaceEtablissement() {
   const ordres = useApi('/api/scolarite/ordres?statut=paye,litige')
   const demandes = useApi('/api/familles/demandes')
   const d = t.data || {}
-  const sansAppel = prof.data ? prof.data.cours.filter((c) => c.etat === 'sans_appel').length + prof.data.absences.length : null
+  const aVerifier = prof.data ? prof.data.cours.filter((c) => c.etat === 'a_verifier').length : null
   const aConfirmer = ordres.data?.length ?? null
   const taches = [
     d.eleves === 0 && ['#/dossier', 'Installez votre établissement', 'Ajoutez votre dossier : élèves, enseignants, emplois du temps, frais… tout est reconnu'],
@@ -303,8 +304,8 @@ function EspaceEtablissement() {
           <span>élève(s) absent(s)</span>
         </a>
         <a href="#/presence-enseignants">
-          <b className={sansAppel ? 'rouge' : ''}>{sansAppel ?? '…'}</b>
-          <span>cours non assuré(s)</span>
+          <b>{aVerifier ?? '…'}</b>
+          <span>cours à vérifier</span>
         </a>
         <a href="#/scolarite?onglet=confirmer">
           <b className={aConfirmer ? 'rouge' : ''}>{aConfirmer ?? '…'}</b>
@@ -324,7 +325,7 @@ function EspaceEtablissement() {
       <h2 className="section-title">Mon établissement</h2>
       <div className="grille-tuiles quatre">
         <Tuile href="#/eleves" Icone={IcEleves} titre="Élèves" texte="Listes, classes, fiches" chiffre={d.eleves ?? '…'} />
-        <Tuile href="#/presence-enseignants" Icone={IcProf} titre="Enseignants" texte="Présence, cours assurés" chiffre={d.enseignants ?? '…'} />
+        <Tuile href="#/presence-enseignants" Icone={IcProf} titre="Enseignants" texte="Présence et cours du jour" chiffre={d.enseignants ?? '…'} />
         <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
         <Tuile href="#/verifier" Icone={IcScan} titre="Vérifier un reçu" texte="Scanner le code-barres" />
       </div>
@@ -358,21 +359,29 @@ function EspaceEleve() {
   return <Fil enfants={moi.data || []} />
 }
 
-// Cours du moment (ou le prochain de la journee) d'apres l'emploi du temps de l'enseignant
-function coursDuMoment(creneaux) {
-  const d = new Date()
-  const jour = d.getDay()
-  const t = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  const auj = creneaux.filter((c) => c.jour === jour).sort((a, b) => a.debut.localeCompare(b.debut))
-  return { maintenant: auj.find((c) => c.debut <= t && t < c.fin), suivant: auj.find((c) => c.debut > t), nombre: auj.length }
-}
 
 // Accueil de l'enseignant : le cours du moment, 4 actions, ses classes, puis le fil
 function EspaceEnseignant() {
   const classes = useApi('/api/notes/mes-classes')
-  const edt = useApi('/api/vie-scolaire/emplois/moi')
-  const { maintenant, suivant, nombre } = coursDuMoment(edt.data?.creneaux || [])
+  const jour = useApi('/api/presence-enseignants/mes-cours')
+  const v = jour.data
+  const liste = v?.cours || []
+  const t = v?.maintenant || ''
+  const maintenant = liste.find((c) => c.debut <= t && t < c.fin)
+  const suivant = liste.find((c) => c.debut > t)
+  const nombre = liste.length
   const cours = maintenant || suivant
+  const [confirmation, setConfirmation] = useState('')
+  async function jeSuisEnCours() {
+    setConfirmation('…')
+    try {
+      await confirmerCours(cours, v.date)
+      jour.reload()
+      setConfirmation('')
+    } catch (err) {
+      setConfirmation(err.message)
+    }
+  }
   return (
     <>
       <section className="cours-moment">
@@ -386,15 +395,31 @@ function EspaceEnseignant() {
               {cours.debut} – {cours.fin}
               {cours.salle ? ` · salle ${cours.salle}` : ''}
             </p>
-            <a className="btn btn-block" href={`#/classes/${cours.class_id}/appel`}>
-              Faire l’appel
-            </a>
+            {cours.confirme_le ? (
+              <p className="cours-confirme">{`✓ Présence confirmée à ${new Date(cours.confirme_le).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Douala' })}`}</p>
+            ) : (
+              confirmable(cours, v) && (
+                <button type="button" className="btn btn-block" disabled={confirmation === '…'} onClick={jeSuisEnCours}>
+                  {confirmation === '…' ? '…' : 'Je suis en cours'}
+                </button>
+              )
+            )}
+            {confirmation && confirmation !== '…' && <p className="cours-erreur">{confirmation}</p>}
+            <div className="cours-liens">
+              <a href={`#/classes/${cours.class_id}/appel`}>{cours.appel ? 'Appel fait' : 'Faire l’appel'}</a>
+              <a href="#/mes-cours">Cahier de textes</a>
+            </div>
           </>
         ) : (
           <>
             <span className="badge">Aujourd’hui</span>
             <h2>{nombre ? 'Vos cours du jour sont terminés' : 'Pas de cours aujourd’hui'}</h2>
-            <p>{edt.data?.creneaux?.length ? 'Bonne fin de journée !' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</p>
+            <p>{v?.total ? 'Bonne fin de journée !' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</p>
+            {nombre > 0 && (
+              <div className="cours-liens">
+                <a href="#/mes-cours">Mes cours du jour et cahier de textes</a>
+              </div>
+            )}
           </>
         )}
       </section>
