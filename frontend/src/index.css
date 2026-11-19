@@ -1753,7 +1753,9 @@ html[data-theme='light'] body::before {
 .gu-montant.erreur { border-color: #f04438; }
 .gu-soldes { margin: -4px 0 0; font-size: 12.5px; }
 .gu-choix { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.guichet-reglages .gu-choix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.guichet-reglages .gu-choix { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gu-note { margin: 0; font-size: 13px; }
+.guichet-reglages .gu-choix button { white-space: normal; }
 .gu-choix button { padding: 11px 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 600 13px/1.2 var(--font-body); white-space: nowrap; cursor: pointer; }
 .gu-plus { margin-top: 8px; }
 .gu-choix button[aria-pressed='true'] { border-color: var(--lien); background: rgba(47, 107, 255, 0.12); color: var(--lien); }
@@ -1917,3 +1919,34 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
 .ls-actions .lien-action { padding: 4px 10px; border-radius: 999px; background: rgba(47, 107, 255, 0.12); font-size: 12.5px; }
 .ls-actions .lien-action.discret { background: var(--bg); border: 1px solid var(--line); }
 .ls-montant .lien-action { padding: 3px 10px; border-radius: 999px; background: rgba(47, 107, 255, 0.12); font-size: 12.5px; }
+
+/* ---------- Recu sur une feuille A4 : exemplaire de l'eleve en haut, souche de la caisse en bas ---------- */
+.ri-feuille { display: flex; flex-direction: column; height: 279mm; }
+.ri-feuille .ri-double { flex: 1; }
+.ri-coupe { position: relative; height: 9mm; display: flex; align-items: center; justify-content: center; }
+.ri-coupe::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1.5px dashed #98a2b3; }
+.ri-coupe span { position: relative; padding: 0 10px; background: #fff; color: #667085; font: 600 9.5px/1 'Inter', Arial, sans-serif; letter-spacing: 0.06em; }
+.ri-double { padding: 0; font-size: 12px; display: flex; flex-direction: column; overflow: hidden; }
+.ri-double .ri-logo { width: 48px; height: 48px; }
+.ri-double .ri-tete { padding-bottom: 8px; }
+.ri-double .ri-tete b { font-size: 15px; }
+.ri-double .ri-tete > div:nth-child(2) { flex: 1; min-width: 0; }
+.ri-double .ri-titre { margin: 0; align-items: flex-end; text-align: right; gap: 2px; }
+.ri-double .ri-titre b { font-size: 14px; }
+.ri-ex { margin-top: 3px; padding: 2px 8px; border-radius: 999px; border: 1px solid #2446d8; color: #2446d8; font: 700 9.5px/1.3 'Inter', Arial, sans-serif; font-style: normal; text-transform: uppercase; letter-spacing: 0.06em; }
+.ri-double .ri-cols { display: grid; grid-template-columns: 1.15fr 1fr; gap: 7mm; margin-top: 10px; flex: 1; }
+.ri-double .ri-l { padding: 3px 0; }
+.ri-double .ri-table { margin: 10px 0 4px; }
+.ri-double .ri-table td { padding: 5px 0; }
+.ri-double .ri-table td small { font-size: 10px; }
+.ri-double .ri-table tfoot td { font-size: 14px; }
+.ri-double .ri-lettres { font-size: 11px; margin: 4px 0 0; }
+.ri-double .ri-situation { margin: 10px 0; }
+.ri-double .ri-situation b { font-size: 13px; }
+.ri-double .ri-codes-signature { display: grid; gap: 8px; }
+.ri-double .ri-codes { align-items: flex-end; gap: 10px; }
+.ri-double .ri-barres svg { height: 40px; }
+.ri-double .ri-qr svg { width: 74px; height: 74px; }
+.ri-double .ri-signature { height: 24mm; }
+.ri-double .ri-mention { margin: 6px 0 0; text-align: center; font-size: 10px; color: #475467; }
+

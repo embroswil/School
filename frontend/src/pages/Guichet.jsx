@@ -5,7 +5,7 @@ import { Note } from '../ui.jsx'
 import ChoixEleve from '../ChoixEleve.jsx'
 import { fcfa, MODES_PAIEMENT } from '../recus.js'
 import { IcImprimante, IcReglages } from '../icones.jsx'
-import { brouillardHtml, ecrireReglagesImpression, FORMATS, imprimer, lireReglagesImpression, recuHtml } from '../impression.js'
+import { brouillardHtml, ecrireReglagesImpression, FORMATS, imprimer, lireReglagesImpression, recuHtml, recusAImprimer } from '../impression.js'
 
 const MODES = ['especes', 'mobile_money', 'banque']
 const nombre = (v) => Number(String(v ?? '').replace(/[^\d]/g, '')) || 0
@@ -23,9 +23,7 @@ const logoEcole = (op) => (op.ecole.aPhoto ? `${apiBase()}/api/actualites/ecoles
 
 // Impression d'un recu de caisse, en un ou deux exemplaires
 function imprimerRecu(op, reglages) {
-  const exemplaires = reglages.copies === 2 ? ['Exemplaire de l’élève', 'Exemplaire de la caisse'] : ['']
-  const html = exemplaires.map((e) => recuHtml(op, { format: reglages.format, exemplaire: e, logo: logoEcole(op) })).join('<div class="saut-page"></div>')
-  imprimer(html, reglages.format)
+  imprimer(recusAImprimer(op, { ...reglages, logo: logoEcole(op) }), reglages.format)
 }
 
 // Guichet de l'intendance : encaisser un ou plusieurs frais d'un eleve, imprimer le recu,
@@ -153,10 +151,14 @@ export default function Guichet() {
               </button>
             ))}
           </div>
-          <label className="gu-case">
-            <input type="checkbox" checked={reglages.copies === 2} onChange={(e) => majReglages({ copies: e.target.checked ? 2 : 1 })} />
-            Deux exemplaires (élève et caisse)
-          </label>
+          {reglages.format === 'double' ? (
+            <p className="muted gu-note">Une feuille A4 : le reçu de l’élève en haut, la souche de la caisse en bas, à découper.</p>
+          ) : (
+            <label className="gu-case">
+              <input type="checkbox" checked={reglages.copies === 2} onChange={(e) => majReglages({ copies: e.target.checked ? 2 : 1 })} />
+              Deux exemplaires (élève et caisse)
+            </label>
+          )}
           <label className="gu-case">
             <input type="checkbox" checked={reglages.auto} onChange={(e) => majReglages({ auto: e.target.checked })} />
             Imprimer automatiquement après chaque encaissement

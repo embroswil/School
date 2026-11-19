@@ -1862,6 +1862,8 @@ const EN = {
   "Total de l’année": "Total for the year",
   "2. Frais à encaisser": "2. Fees to collect",
   "Tout solder": "Pay everything",
+  "Une feuille A4 : le reçu de l’élève en haut, la souche de la caisse en bas, à découper.": "One A4 sheet: the student’s receipt on top, the cash desk stub below, to cut apart.",
+  "A4 + souche": "A4 + stub",
   "Relevé et reçus de l’élève (PDF, partage)": "Student statement and receipts (PDF, share)",
   "Caisse": "Cash desk",
   "Parent ou tuteur": "Parent or guardian",

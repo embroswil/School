@@ -6,14 +6,14 @@ import { qrSvg } from './qr.js'
 import { enLettres, fcfa, lienVerification, MODES_PAIEMENT } from './recus.js'
 
 const CLE = 'sukul-impression'
-export const FORMATS = { ticket: 'Ticket 80 mm', a5: 'Feuille A5' }
+export const FORMATS = { double: 'A4 + souche', a5: 'A5', ticket: 'Ticket 80 mm' }
 
 export function lireReglagesImpression() {
   try {
     const r = JSON.parse(localStorage.getItem(CLE) || '{}')
-    return { format: FORMATS[r.format] ? r.format : 'a5', copies: r.copies === 2 ? 2 : 1, auto: Boolean(r.auto) }
+    return { format: FORMATS[r.format] ? r.format : 'double', copies: r.copies === 2 ? 2 : 1, auto: Boolean(r.auto) }
   } catch {
-    return { format: 'a5', copies: 1, auto: false }
+    return { format: 'double', copies: 1, auto: false }
   }
 }
 export function ecrireReglagesImpression(r) {
@@ -32,55 +32,87 @@ const jourLong = (d) => majuscule(new Date(`${d}T12:00:00`).toLocaleDateString('
 const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
 // Recu d'un encaissement (une ou plusieurs lignes). op : donnees de /api/scolarite/encaissements/:op
+// format : ticket (80 mm), a5, ou double (moitie de feuille A4 : recu + souche sur la meme feuille)
 export function recuHtml(op, { format = 'a5', exemplaire = '', logo = '' } = {}) {
   const premier = op.lignes[0]
   const ligne = (k, v) => (v ? `<div class="ri-l"><span>${esc(k)}</span><b>${esc(v)}</b></div>` : '')
   const plus = op.lignes.length > 1 ? ` (+${op.lignes.length - 1})` : ''
-  return `
-<article class="ri ri-${format}">
+  const tete = `
   <header class="ri-tete">
     ${logo ? `<img class="ri-logo" src="${esc(logo)}" alt="" />` : `<span class="ri-logo ri-initiale">${esc(String(op.ecole.nom || '?').charAt(0))}</span>`}
     <div><b>${esc(op.ecole.nom)}</b><small>${esc([op.ecole.ville, op.annee && `Année ${op.annee}`].filter(Boolean).join(' · '))}</small></div>
-  </header>
-  <div class="ri-titre"><b>REÇU DE CAISSE</b><span>N° ${esc(premier.numero)}${plus}</span><small>${esc(dateHeure(op.date))}</small></div>
-  ${exemplaire ? `<p class="ri-exemplaire">${esc(exemplaire)}</p>` : ''}
-  <section class="ri-bloc">
+    ${format === 'double' ? `<div class="ri-titre"><b>REÇU DE CAISSE</b><span>N° ${esc(premier.numero)}${plus}</span><small>${esc(dateHeure(op.date))}</small>${exemplaire ? `<em class="ri-ex">${esc(exemplaire)}</em>` : ''}</div>` : ''}
+  </header>`
+  const titre =
+    format === 'double'
+      ? ''
+      : `<div class="ri-titre"><b>REÇU DE CAISSE</b><span>N° ${esc(premier.numero)}${plus}</span><small>${esc(dateHeure(op.date))}</small></div>
+  ${exemplaire ? `<p class="ri-exemplaire">${esc(exemplaire)}</p>` : ''}`
+  const eleve = `<section class="ri-bloc">
     ${ligne('Élève', `${op.eleve.nom} ${op.eleve.prenom}`)}
     ${ligne('Classe', op.eleve.classe || '—')}
     ${ligne('Matricule', op.eleve.matricule)}
-  </section>
-  <table class="ri-table">
+  </section>`
+  const table = `<table class="ri-table">
     <thead><tr><th>Objet</th><th>Montant</th></tr></thead>
     <tbody>
-      ${op.lignes
-        .map(
-          (l) => `<tr><td>${esc(l.frais)}<small>${esc(l.numero)} · reste ${esc(fcfa(l.reste))}</small></td><td>${esc(fcfa(l.montant))}</td></tr>`,
-        )
-        .join('')}
+      ${op.lignes.map((l) => `<tr><td>${esc(l.frais)}<small>${esc(l.numero)} · reste ${esc(fcfa(l.reste))}</small></td><td>${esc(fcfa(l.montant))}</td></tr>`).join('')}
     </tbody>
     <tfoot><tr><td>TOTAL REÇU</td><td>${esc(fcfa(op.total))}</td></tr></tfoot>
   </table>
-  <p class="ri-lettres">Arrêté à la somme de ${esc(enLettres(op.total))} francs CFA</p>
-  <section class="ri-bloc">
+  <p class="ri-lettres">Arrêté à la somme de ${esc(enLettres(op.total))} francs CFA</p>`
+  const paiement = `<section class="ri-bloc">
     ${ligne('Mode de paiement', MODES_PAIEMENT[op.mode] || op.mode)}
     ${ligne(op.mode === 'banque' ? 'N° du bordereau' : op.mode === 'mobile_money' ? 'N° de transaction' : 'N° du reçu papier', op.recuExterne)}
     ${ligne('Versé par', [op.versePar, op.telephone].filter(Boolean).join(' · '))}
     ${ligne('Caissier', op.caissier)}
-  </section>
-  <section class="ri-situation">
+  </section>`
+  const situation = `<section class="ri-situation">
     <div><span>Total de l’année</span><b>${esc(fcfa(op.situation.total))}</b></div>
     <div><span>Déjà payé</span><b>${esc(fcfa(op.situation.paye))}</b></div>
     <div><span>Reste à payer</span><b>${esc(fcfa(op.situation.reste))}</b></div>
-  </section>
-  <footer class="ri-pied">
-    <div class="ri-codes">
+  </section>`
+  const qr = format === 'ticket' ? '' : `<div class="ri-qr">${qrSvg(lienVerification(premier.numero, premier.code), 92)}<small>Code ${esc(premier.code)}</small></div>`
+  const codes = `<div class="ri-codes">
       <div class="ri-barres">${code128Svg(premier.numero, 40)}<small>${esc(premier.numero)}</small></div>
-      ${format === 'a5' ? `<div class="ri-qr">${qrSvg(lienVerification(premier.numero, premier.code), 92)}<small>Code ${esc(premier.code)}</small></div>` : ''}
-    </div>
-    ${format === 'a5' ? '<div class="ri-signature"><span>Cachet et signature de l’intendance</span></div>' : ''}
+      ${qr}
+    </div>`
+  const signature = format === 'ticket' ? '' : '<div class="ri-signature"><span>Cachet et signature de l’intendance</span></div>'
+  if (format === 'double') {
+    return `
+<article class="ri ri-double">
+  ${tete}
+  <div class="ri-cols">
+    <div>${eleve}${table}</div>
+    <div>${paiement}${situation}<div class="ri-codes-signature">${codes}${signature}</div></div>
+  </div>
+  <p class="ri-mention">Reçu Sùkûl vérifiable par l’établissement (code-barres). Conservez-le.</p>
+</article>`
+  }
+  return `
+<article class="ri ri-${format}">
+  ${tete}
+  ${titre}
+  ${eleve}
+  ${table}
+  ${paiement}
+  ${situation}
+  <footer class="ri-pied">
+    ${codes}
+    ${signature}
     <p>Reçu Sùkûl vérifiable par l’établissement (code-barres). Conservez-le.</p>
   </footer>
 </article>`
+}
+
+// Document a imprimer pour un encaissement, selon les reglages :
+// double : une feuille A4 avec le recu de l'eleve en haut et la souche de la caisse en bas (a decouper)
+export function recusAImprimer(op, { format = 'a5', copies = 1, logo = '' } = {}) {
+  if (format === 'double') {
+    return `<div class="ri-feuille">${recuHtml(op, { format, exemplaire: 'Exemplaire de l’élève', logo })}<div class="ri-coupe"><span>✂ Découper ici</span></div>${recuHtml(op, { format, exemplaire: 'Souche de la caisse', logo })}</div>`
+  }
+  const exemplaires = copies === 2 ? ['Exemplaire de l’élève', 'Exemplaire de la caisse'] : ['']
+  return exemplaires.map((e) => recuHtml(op, { format, exemplaire: e, logo })).join('<div class="saut-page"></div>')
 }
 
 // Brouillard de caisse d'une journee. c : donnees de /api/scolarite/caisse
@@ -141,7 +173,7 @@ export function imprimer(html, format = 'a5') {
   document.body.appendChild(page)
   zone.className = `impression-${format}`
   zone.innerHTML = html
-  let taille = format === 'a4' ? 'A4 portrait' : 'A5 portrait'
+  let taille = format === 'a4' || format === 'double' ? 'A4 portrait' : 'A5 portrait'
   if (format === 'ticket') {
     // ticket : 80 mm de large, hauteur du recu (mesuree hors ecran)
     zone.style.cssText = 'display:block;position:absolute;left:-10000px;top:0;width:74mm'
