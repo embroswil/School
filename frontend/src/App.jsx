@@ -63,6 +63,7 @@ import MonAbsence from './pages/MonAbsence.jsx'
 import InfoDetail from './pages/InfoDetail.jsx'
 import { Confidentialite, Conditions } from './pages/Legal.jsx'
 import Guide from './pages/Guide.jsx'
+import Faq from './pages/Faq.jsx'
 import AbsencesJour from './pages/AbsencesJour.jsx'
 import PageInstallation from './installation.jsx'
 import MotDePasseOublie, { VerificationEmail } from './pages/CodeEmail.jsx'
@@ -183,6 +184,7 @@ function Pages({ path }) {
   if (path === '/confidentialite') return <Confidentialite />
   if (path === '/conditions') return <Conditions />
   if (path === '/guide') return <Guide />
+  if (path === '/faq') return <Faq />
   if (path === '/installer') return <PageInstallation />
   if (path === '/dossier') return reserve(user.role === 'principal', <ImportDossier />)
   if (path === '/comptabilite') return reserve(['principal', 'admin'].includes(user.role), <Compta />)
@@ -277,6 +279,7 @@ function Root() {
     if (path === '/confidentialite') return <Confidentialite />
     if (path === '/conditions') return <Conditions />
     if (path === '/installer') return <PageInstallation />
+    if (path === '/faq') return <Faq />
     return <Landing />
   }
   // Compte cree depuis la confirmation obligatoire : l'adresse e-mail doit etre confirmee avant d'entrer

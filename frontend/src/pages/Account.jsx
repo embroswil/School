@@ -319,6 +319,7 @@ export default function Account() {
       <div className="liste-reglages">
         <Reglage Icone={IcAide} titre="Didacticiel" valeur="Revoir" onClick={lancerDidacticiel} />
         <Reglage Icone={IcAide} titre="Guide de démarrage" href="#/guide" />
+        <Reglage Icone={IcAide} titre="Questions fréquentes" href="#/faq" />
         {!installee() && <Reglage Icone={IcAide} titre="Installer l’application" href="#/installer" />}
       </div>
 

@@ -86,6 +86,7 @@ const TITRES = {
   '/import-absences-enseignants': 'Absences des enseignants',
   '/infos': 'Information',
   '/guide': 'Guide',
+  '/faq': 'Questions fréquentes',
   '/installer': 'Installer Sùkûl',
   '/absences': 'Absences du jour',
   '/confidentialite': 'Confidentialité',
