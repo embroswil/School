@@ -2021,11 +2021,11 @@ html.ordi .maj-dispo { left: auto; right: 24px; top: 84px; transform: none; }
    l'application reste clair. Les pages sans en-tete (connexion, choix du theme…) gardent un liseré bleu nuit
    derriere l'heure. Ailleurs (navigateur, Android, ordinateur), rien ne change. */
 html.barre-ios[data-theme='light'] body::before {
-  content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #0d1424; z-index: 9998; pointer-events: none;
+  content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #1f55e0; z-index: 9998; pointer-events: none;
 }
 html.barre-ios[data-theme='light'] .topbar {
-  --text: #ffffff; --muted: #aab4c6; --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 255, 255, 0.12); --lien: #9dbcff;
-  background: #0d1424; color: #fff; border-bottom: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+  --text: #ffffff; --muted: #dbe5ff; --card: rgba(255, 255, 255, 0.14); --line: rgba(255, 255, 255, 0.22); --lien: #ffffff;
+  background: #1f55e0; color: #fff; border-bottom: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
 }
 html.barre-ios[data-theme='light'] .topbar .icon-btn { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); color: #fff; box-shadow: none; }
 
@@ -2083,7 +2083,7 @@ html.barre-ios[data-theme='light'] .topbar .icon-btn { background: rgba(255, 255
 .ea-choix-fleche { flex: none; color: var(--muted); }
 html.ordi .ea-main { padding-top: 40px; }
 /* iPhone, application installee, theme clair : l'heure est ecrite en blanc, l'en-tete est bleu nuit */
-html.barre-ios[data-theme='light'] .ea-haut { background: #0d1424; --text: #fff; --line: rgba(255, 255, 255, 0.14); --card: rgba(255, 255, 255, 0.08); --muted: #aab4c6; }
+html.barre-ios[data-theme='light'] .ea-haut { background: #1f55e0; --text: #fff; --line: rgba(255, 255, 255, 0.22); --card: rgba(255, 255, 255, 0.14); --muted: #dbe5ff; }
 html.barre-ios[data-theme='light'] .ea-haut .brand { color: #fff; }
 .rj-actions { display: flex; gap: 10px; margin: 4px 0 18px; }
 .rj-actions .btn { flex: 1; padding: 11px 10px; font-size: 14.5px; white-space: nowrap; }
@@ -2108,3 +2108,14 @@ html.barre-ios[data-theme='light'] .ea-haut .brand { color: #fff; }
 html.ordi .choix-etab { max-width: 620px; }
 .ens-retirer { flex: none; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; }
 .ens-retirer:hover { color: var(--rouge-texte); background: var(--danger-soft); }
+
+/* Application installee sur iPhone : pas de rebond de la page vers le bas quand on tire en haut de l'ecran
+   (il decouvrait une bande de la couleur du fond au-dessus de l'en-tete) */
+html.barre-ios, html.barre-ios body { overscroll-behavior-y: none; }
+/* Theme clair : l'en-tete bleu de Sùkûl (heure en blanc par iOS) */
+html.barre-ios[data-theme='light'] .topbar .brand span { color: #bcd0ff; }
+html.barre-ios[data-theme='light'] .topbar .icon-btn { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.22); }
+html.barre-ios[data-theme='light'] .ea-haut .brand span { color: #bcd0ff; }
+html.barre-ios[data-theme='light'] .ea-haut .choix-langue { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.22); }
+html.barre-ios[data-theme='light'] .ea-haut .choix-langue button { color: rgba(255, 255, 255, 0.8); }
+html.barre-ios[data-theme='light'] .ea-haut .choix-langue button[aria-pressed='true'] { background: #fff; color: #1f55e0; }

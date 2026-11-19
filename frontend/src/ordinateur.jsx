@@ -12,16 +12,23 @@ export const ordiForce = () => {
   }
 }
 
-// « Version pour ordinateur » demandee dans Safari ou Chrome sur iPhone / iPad : le navigateur
-// se presente alors comme un Mac (MacIntel) tout en ayant un ecran tactile.
-const versionOrdiDuNavigateur = () => navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+// « Version pour ordinateur » demandee dans le navigateur d'un telephone :
+// - Safari ou Chrome sur iPhone / iPad : le navigateur se presente comme un Mac (MacIntel) avec un ecran tactile ;
+// - Chrome, Samsung Internet… sur Android : le navigateur se presente comme un ordinateur Linux (« X11 »),
+//   sans « Android » ni « Mobile », alors que l'ecran reste tactile.
+const versionOrdiIphone = () => navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+const versionOrdiAndroid = () => {
+  const ua = navigator.userAgent || ''
+  const tactile = navigator.maxTouchPoints > 0 || Boolean(window.matchMedia?.('(pointer: coarse)').matches)
+  return tactile && !/Android|Mobile|iPhone|iPad|iPod|CrOS/i.test(ua) && /X11; Linux/i.test(ua)
+}
 const petitEcran = () => Math.min(window.screen?.width || 0, window.screen?.height || 0) < 600
 
 export function appliquerVersionOrdi() {
   const mq = window.matchMedia?.(requete)
   const maj = () => {
-    // Sur iPhone, « Version pour ordinateur » du navigateur affiche la version ordinateur de Sùkûl
-    const force = ordiForce() || (versionOrdiDuNavigateur() && petitEcran())
+    // Sur telephone (iPhone ou Android), « Version pour ordinateur » du navigateur affiche la version ordinateur de Sùkûl
+    const force = ordiForce() || (versionOrdiIphone() && petitEcran()) || versionOrdiAndroid()
     document.documentElement.classList.toggle('ordi', force || Boolean(mq?.matches))
     document.documentElement.classList.toggle('ordi-tactile', force && !mq?.matches)
     // Apercu sur telephone : la page est dessinee comme sur un ecran d'ordinateur, puis reduite
