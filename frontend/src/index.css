@@ -1887,3 +1887,35 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
   #zone-impression .saut-page { break-after: page; page-break-after: always; height: 0; }
   #zone-impression * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ---------- Frais de scolarite : une carte par frais ---------- */
+.frais-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.frais-carte { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+.frais-carte-tete { display: flex; align-items: center; gap: 6px; min-height: 30px; }
+.frais-badge { padding: 4px 9px; border-radius: 999px; background: rgba(47, 107, 255, 0.12); color: var(--lien); font: 700 11.5px/1.2 var(--font-body); white-space: nowrap; }
+.frais-badge.discret { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.frais-outils { margin-left: auto; display: flex; gap: 6px; }
+.frais-outils button { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); cursor: pointer; }
+.frais-outils button:hover { color: var(--lien); border-color: var(--lien); }
+.frais-outils button.danger:hover { color: #f04438; border-color: #f04438; }
+.frais-carte h3 { margin: 2px 0 0; font: 700 16px/1.3 var(--font-display); }
+.frais-montant { margin: 0; font: 800 24px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.frais-montant small { font-size: 13px; font-weight: 700; color: var(--muted); }
+.frais-infos { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 2px; font-size: 13px; color: var(--muted); }
+.frais-infos span { display: inline-flex; align-items: center; gap: 6px; }
+.frais-infos svg { flex: none; opacity: 0.8; }
+.frais-infos .passe { color: #f79009; }
+[data-theme='light'] .frais-carte { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
+
+/* ---------- Listes : chaque element est une carte a part, plus aeree ---------- */
+.liste-simple { display: grid; gap: 8px; padding: 0; background: none; border: 0; border-radius: 0; overflow: visible; }
+.liste-simple li { align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+.liste-simple li:first-child { border-top: 1px solid var(--line); }
+[data-theme='light'] .liste-simple { box-shadow: none; }
+[data-theme='light'] .liste-simple li { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
+.liste-simple .ls-texte b { font-size: 15px; }
+.liste-simple .ls-montant b { font: 700 15px/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+.ls-actions { gap: 6px; margin-top: 10px; }
+.ls-actions .lien-action { padding: 6px 12px; border-radius: 999px; background: rgba(47, 107, 255, 0.12); font-size: 12.5px; }
+.ls-actions .lien-action.discret { background: var(--bg); border: 1px solid var(--line); }
+.ls-montant .lien-action { padding: 5px 11px; border-radius: 999px; background: rgba(47, 107, 255, 0.12); font-size: 12.5px; }

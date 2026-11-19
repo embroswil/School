@@ -48,3 +48,5 @@ export const IcProf = I(<><rect x="2.5" y="3.5" width="19" height="9" rx="1.5" /
 export const IcListe = I(<><circle cx="9" cy="8" r="3" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M17 8h4M17 12h4M17 16h4" /></>)
 export const IcImprimante = I(<><path d="M7 9V3.5h10V9" /><rect x="3" y="9" width="18" height="8" rx="2" /><path d="M7 14h10v6.5H7z" /><path d="M17.5 12h.01" /></>)
 export const IcReglages = I(<><path d="M4 7h10" /><path d="M18 7h2" /><circle cx="16" cy="7" r="2" /><path d="M4 17h4" /><path d="M12 17h8" /><circle cx="10" cy="17" r="2" /></>)
+export const IcPoubelle = I(<><path d="M4 7h16" /><path d="M9 7V4.5h6V7" /><path d="M6.5 7l1 12.5h9l1-12.5" /><path d="M10 11v5" /><path d="M14 11v5" /></>)
+export const IcCalendrier = I(<><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" /><path d="M3.5 10h17" /><path d="M8 3v4" /><path d="M16 3v4" /></>)
