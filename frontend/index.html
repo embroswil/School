@@ -116,14 +116,21 @@
         var signe = el.children[1]
         function caler() {
           if (!el.parentNode) return
-          var d = window.screen.height - window.innerHeight
-          if (window.navigator.standalone === true && d > 0 && d < 120) {
-            el.style.top = -d + 'px'
-            el.style.bottom = 'auto'
-            el.style.height = window.screen.height + 'px'
-          }
+          // Application installee sur iPhone : la page passe sous l'heure, comme l'image de demarrage d'iOS qui
+          // couvre tout l'ecran. On se cale donc sur l'ecran entier (window.screen), et non sur la hauteur de la
+          // page : au lancement, iOS donne d'abord a la page une hauteur provisoire, ce qui faisait remonter le
+          // logo au moment ou la page remplace l'image d'iOS.
           var l = el.clientWidth
           var h = el.clientHeight
+          if (window.navigator.standalone === true) {
+            // (iOS donne toujours les dimensions de l'ecran en portrait)
+            var paysage = window.innerWidth > window.innerHeight
+            l = paysage ? window.screen.height : window.screen.width
+            h = paysage ? window.screen.width : window.screen.height
+            el.style.top = '0'
+            el.style.bottom = 'auto'
+            el.style.height = h + 'px'
+          }
           bloc.style.transform = 'none'
           bloc.style.left = Math.floor((l - 260) / 2) + 'px'
           bloc.style.top = Math.floor((h - 84) / 2) + 'px'
