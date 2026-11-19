@@ -6,7 +6,7 @@ import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcGraphique, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
 const NAV = {
@@ -48,7 +48,6 @@ const NAV_ORDI = {
   principal: [
     ['/eleves', IcEleves, 'Élèves'],
     ['/scolarite', IcCarte, 'Scolarité'],
-    ['/comptabilite', IcGraphique, 'Comptabilité'],
     ['/presence-enseignants', IcEcole, 'Enseignants'],
     ['/absences', IcEleves, 'Absences du jour'],
     ['/document', IcActus, 'Documents'],

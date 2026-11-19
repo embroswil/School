@@ -151,6 +151,8 @@ const EN = {
   "Établissement pas encore sur Sùkûl": "School not on Sùkûl yet",
   "Il apparaîtra dans vos établissements. Dès qu’il s’inscrira sur Sùkûl, votre demande lui sera envoyée automatiquement.": "It will appear in your schools. As soon as it signs up on Sùkûl, your request will be sent to it automatically.",
   "Établissement ajouté. Invitez-le à rejoindre Sùkûl.": "School added. Invite it to join Sùkûl.",
+  "Rechercher un nom, une matière ou une classe": "Search a name, subject or class",
+  "Nom, matière ou classe": "Name, subject or class",
   "Nouvelle version de Sùkûl disponible": "New version of Sùkûl available",
   "Mettre à jour": "Update",
   "Affichage": "Display",
@@ -2061,6 +2063,8 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 // Formules avec des nombres ou des noms
 const FORMULES = [
   [/^Bienvenue, (.+)$/, 'Welcome, $1'],
+  [/^(\d+) enseignant\(s\) trouvé\(s\)$/, '$1 teacher(s) found'],
+  [/^Professeur principal · (.+)$/, 'Form tutor · $1'],
   [/^Quitter (.+) \? Vous ne verrez plus ses classes\.$/, 'Leave $1? You will no longer see its classes.'],
   [/^Élève · (.+)$/, 'Student · $1'],
   [/^Rappeler les parents en retard \((\d+)\)$/, 'Remind late parents ($1)'],

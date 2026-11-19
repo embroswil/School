@@ -26,12 +26,9 @@ export function appliquerVersionOrdi() {
     document.documentElement.classList.toggle('ordi-tactile', force && !mq?.matches)
     // Apercu sur telephone : la page est dessinee comme sur un ecran d'ordinateur, puis reduite
     const meta = document.querySelector('meta[name="viewport"]')
-    if (meta) {
-      meta.setAttribute(
-        'content',
-        force && !mq?.matches ? 'width=1280, viewport-fit=cover' : 'width=device-width, initial-scale=1, viewport-fit=cover',
-      )
-    }
+    // (modifie seulement si necessaire : chaque modification fait recalculer toute la page a l'ouverture)
+    const voulu = force && !mq?.matches ? 'width=1280, viewport-fit=cover' : 'width=device-width, initial-scale=1.0, viewport-fit=cover'
+    if (meta && meta.getAttribute('content') !== voulu) meta.setAttribute('content', voulu)
   }
   maj()
   mq?.addEventListener?.('change', maj)

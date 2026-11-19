@@ -2106,3 +2106,5 @@ html.barre-ios[data-theme='light'] .ea-haut .brand { color: #fff; }
 .choix-etab button { flex: 1 0 auto; max-width: 70%; border: 0; border-radius: 10px; padding: 9px 12px; background: none; color: var(--muted); font: 700 13.5px/1.2 var(--font-body); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .choix-etab button[aria-pressed='true'] { background: var(--primary); color: #fff; }
 html.ordi .choix-etab { max-width: 620px; }
+.ens-retirer { flex: none; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; }
+.ens-retirer:hover { color: var(--rouge-texte); background: var(--danger-soft); }

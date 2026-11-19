@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { IcChevron, IcImport } from '../icones.jsx'
+import { IcChevron, IcImport, IcPoubelle } from '../icones.jsx'
 import { demandeAppel } from './Appel.jsx'
 import { comparerClasses, niveauClasse } from '../classes.js'
+import { surOrdinateur, TableauTriable } from '../export.jsx'
 
 const enChaine = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const aujourdhui = () => enChaine(new Date())
@@ -39,17 +40,16 @@ const signauxDe = (c) =>
   ].filter(Boolean)
 const SOURCE_ABSENCE = { enseignant: 'Signalée par l’enseignant', liste: 'Liste de l’établissement', direction: 'Marquée par la direction' }
 
-// Enseignants : la journee (cours, appels, absences), l'equipe, et le bilan sur 30 jours.
+// Enseignants : la journee (cours, appels, absences) et la liste complete des enseignants.
 // Un seul bouton « Importer » pour la liste des enseignants (Excel, PDF, Word ou photo).
 export default function PresenceEnseignants() {
   const [onglet, setOnglet] = useState('jour')
   const [date, setDate] = useState(aujourdhui())
-  const d = useApi(onglet === 'equipe' ? null : `/api/presence-enseignants?date=${date}`)
+  const d = useApi(onglet === 'liste' ? null : `/api/presence-enseignants?date=${date}`)
   const equipe = useApi('/api/etablissement/enseignants/attendus')
   const actifs = useApi('/api/etablissement/enseignants')
   const tableau = useApi('/api/etablissement/tableau')
   const [error, setError] = useState('')
-  const [classeEq, setClasseEq] = useState('')
   const [classeJ, setClasseJ] = useState('')
   const [qEq, setQEq] = useState('')
   const v = d.data
@@ -98,41 +98,43 @@ export default function PresenceEnseignants() {
     return liste.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
   })()
   const ETAT_COMPTE = { actif: ['Compte actif', 'ok'], attente: ['À valider', 'alerte'], sans: ['Sans compte', 'neutre'] }
-  // Equipe rangee par classe : chaque classe et ses enseignants
-  const listeDe = (t) => String(t || '').split(',').map((c) => c.trim()).filter(Boolean)
-  const parClasse = new Map()
-  for (const m of membres) for (const c of listeDe(m.classes)) (parClasse.get(c) || parClasse.set(c, []).get(c)).push(m)
-  const sansClasse = membres.filter((m) => !listeDe(m.classes).length)
-  const niveauxEq = []
-  for (const c of [...parClasse.keys()].sort(comparerClasses)) {
-    const n = niveauClasse(c)
-    const dernier = niveauxEq[niveauxEq.length - 1]
-    if (dernier && dernier.nom === n) dernier.classes.push(c)
-    else niveauxEq.push({ nom: n, classes: [c] })
-  }
   const sansAcc = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-  const trouves = qEq.trim().length >= 2 ? membres.filter((m) => sansAcc(`${m.nom} ${m.matiere}`).includes(sansAcc(qEq.trim()))) : null
-  const equipeClasse = classeEq === '__sans' ? sansClasse : [...(parClasse.get(classeEq) || [])].sort((a, b) => String(a.matiere).localeCompare(String(b.matiere), 'fr') || a.nom.localeCompare(b.nom, 'fr'))
-  const ligneMembre = (m, { retirer, classe } = {}) => (
+  const q = sansAcc(qEq.trim())
+  const listeVue = q ? membres.filter((m) => sansAcc(`${m.nom} ${m.matiere} ${m.classes}`).includes(q)) : membres
+  const etatCompte = (m) => ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans
+  const ligneMembre = (m) => (
     <li key={m.cle}>
       <span className="ls-texte">
         <b data-brut>{m.nom}</b>
-        <small>{classe ? m.matiere || '—' : [m.matiere, m.classes].filter(Boolean).join(' · ') || '—'}</small>
-        {retirer && m.idListe && (
-          <span className="ls-actions">
-            <button type="button" className="lien-action discret" onClick={() => retirerDeLaListe(m.idListe)}>
-              Retirer de la liste
-            </button>
-          </span>
-        )}
+        <small>{[m.matiere, m.classes].filter(Boolean).join(' · ') || '—'}</small>
+        {m.pp && <small>{`Professeur principal · ${m.pp}`}</small>}
       </span>
-      <span className="eq-etiquettes">
-        {classe && m.pp === classe && <span className="etiquette ok">Prof. principal</span>}
-        {m.etat !== 'actif' && !(classe && m.etat === 'sans') && <span className={`etiquette ${(ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans)[1]}`}>{(ETAT_COMPTE[m.etat] || ETAT_COMPTE.sans)[0]}</span>}
-      </span>
+      {m.etat !== 'actif' && <span className={`etiquette ${etatCompte(m)[1]}`}>{etatCompte(m)[0]}</span>}
+      {m.idListe && (
+        <button type="button" className="ens-retirer" aria-label={`Retirer ${m.nom} de la liste`} onClick={() => retirerDeLaListe(m.idListe)}>
+          <IcPoubelle size={17} />
+        </button>
+      )}
     </li>
   )
-  const nb = (e) => v?.cours.filter((c) => c.etat === e).length || 0
+  const COLONNES = [
+    { cle: 'nom', titre: 'Enseignant', rendu: (m) => <b data-brut>{m.nom}</b> },
+    { cle: 'matiere', titre: 'Matière(s)', rendu: (m) => m.matiere || '—' },
+    { cle: 'classes', titre: 'Classes', rendu: (m) => m.classes || '—' },
+    { cle: 'pp', titre: 'Prof. principal', rendu: (m) => m.pp || '—' },
+    { cle: 'etat', titre: 'Compte', rendu: (m) => <span className={`etiquette ${etatCompte(m)[1]}`}>{etatCompte(m)[0]}</span> },
+    {
+      cle: 'actions',
+      titre: '',
+      rendu: (m) =>
+        m.idListe ? (
+          <button type="button" className="lien-action discret" onClick={() => retirerDeLaListe(m.idListe)}>
+            Retirer
+          </button>
+        ) : null,
+    },
+  ]
+  const nb = (e) => (v?.cours || []).filter((c) => c.etat === e).length
   const aVerifier = nb('a_verifier')
   const absentsCours = nb('absent') + nb('absent_prevu')
   const enCours = (v?.cours || []).filter((c) => c.etat === 'en_cours' || (v?.maintenant && c.debut <= v.maintenant && v.maintenant < c.fin))
@@ -175,8 +177,7 @@ export default function PresenceEnseignants() {
       <div className="segments" role="tablist">
         {[
           ['jour', 'Journée'],
-          ['equipe', 'Équipe'],
-          ['bilan', 'Bilan 30 jours'],
+          ['liste', 'Liste des enseignants'],
         ].map(([k, t]) => (
           <button
             key={k}
@@ -185,7 +186,6 @@ export default function PresenceEnseignants() {
             aria-selected={onglet === k}
             onClick={() => {
               setOnglet(k)
-              setClasseEq('')
               setClasseJ('')
             }}
           >
@@ -374,7 +374,7 @@ export default function PresenceEnseignants() {
         </>
       )}
 
-      {onglet === 'equipe' && (
+      {onglet === 'liste' && (
         <>
           {(equipe.loading || actifs.loading) && !membres.length && <p className="muted">Chargement…</p>}
           {!equipe.loading && !actifs.loading && membres.length === 0 && (
@@ -384,112 +384,13 @@ export default function PresenceEnseignants() {
               <a href="#/import-enseignants">Importer la liste</a>
             </div>
           )}
-          {membres.length > 0 && !classeEq && (
+          {membres.length > 0 && (
             <>
-              <div className="eleves-chiffres">
-                <div>
-                  <b>{membres.length}</b>
-                  <span>Enseignants</span>
-                </div>
-                <div>
-                  <b>{membres.filter((m) => m.etat === 'actif').length}</b>
-                  <span>Comptes actifs</span>
-                </div>
-                <div>
-                  <b>{parClasse.size}</b>
-                  <span>Classes</span>
-                </div>
-              </div>
-              <input className="input eleves-recherche" type="search" placeholder="Rechercher un enseignant ou une matière" value={qEq} onChange={(e) => setQEq(e.target.value)} />
-            </>
-          )}
-
-          {/* resultats de la recherche */}
-          {trouves && !classeEq && (
-            <>
-              <p className="niveau-titre">{`${trouves.length} enseignant(s)`}</p>
-              {trouves.length > 0 ? <ul className="liste-simple">{trouves.map((m) => ligneMembre(m, { retirer: true }))}</ul> : <p className="muted">Aucun enseignant trouvé.</p>}
-            </>
-          )}
-
-          {/* classes par niveau */}
-          {!trouves && !classeEq && membres.length > 0 && (
-            <>
-              {niveauxEq.map((n) => (
-                <section className="eleves-niveau" key={n.nom}>
-                  <h2>{n.nom}</h2>
-                  <div className="eleves-classes">
-                    {n.classes.map((c) => (
-                      <button type="button" key={c} onClick={() => setClasseEq(c)}>
-                        <b>{c}</b>
-                        <small>{`${parClasse.get(c).length} enseignant(s)`}</small>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              ))}
-              {sansClasse.length > 0 && (
-                <button type="button" className="eleves-alerte" onClick={() => setClasseEq('__sans')}>
-                  <span>
-                    <b>{`${sansClasse.length} enseignant(s) sans classe`}</b>
-                    <small>Leurs classes seront affectées à l’import ou par eux-mêmes</small>
-                  </span>
-                  <IcChevron size={18} />
-                </button>
-              )}
-            </>
-          )}
-
-          {/* enseignants d'une classe */}
-          {classeEq && (
-            <>
-              <div className="eleves-barre">
-                <button type="button" className="back" onClick={() => setClasseEq('')}>
-                  ← Toutes les classes
-                </button>
-              </div>
-              <h2 className="eleves-titre">
-                {classeEq === '__sans' ? 'Sans classe' : classeEq}
-                <small>{`${equipeClasse.length} enseignant(s)`}</small>
-              </h2>
-              <ul className="liste-simple">{equipeClasse.map((m) => ligneMembre(m, { classe: classeEq, retirer: classeEq === '__sans' }))}</ul>
-            </>
-          )}
-        </>
-      )}
-
-      {onglet === 'bilan' && (
-        <>
-          {!v && !d.error && <p className="muted">Chargement…</p>}
-          {v && v.bilan.length === 0 && (
-            <div className="vide">
-              <b>Pas encore de bilan</b>
-              <small>Le bilan se calcule à partir des emplois du temps et des confirmations des cours.</small>
-            </div>
-          )}
-          {v && v.bilan.length > 0 && (
-            <>
-              <p className="muted" style={{ fontSize: 13, margin: '0 2px 10px' }}>
-                Part des cours confirmés (par l’enseignant, le cahier de textes, l’appel ou la direction), sur les 30 derniers jours.
-              </p>
-              <ul className="liste-simple">
-                {v.bilan.map((b) => {
-                  const taux = b.prevus ? Math.round((b.confirmes / b.prevus) * 100) : 100
-                  return (
-                    <li key={b.teacher_id}>
-                      <span className="ls-texte">
-                        <b data-brut>
-                          {b.last_name} {b.first_name}
-                        </b>
-                        <small>
-                          {`${b.prevus} cours · ${b.confirmes} confirmé(s) · ${b.a_verifier} à vérifier · ${b.absences} absence(s)`}
-                        </small>
-                      </span>
-                      <b className={`ls-taux ${b.absences ? 'rouge' : taux >= 90 ? 'vert' : ''}`}>{taux} %</b>
-                    </li>
-                  )
-                })}
-              </ul>
+              <input className="input eleves-recherche" type="search" placeholder="Nom, matière ou classe" value={qEq} onChange={(e) => setQEq(e.target.value)} />
+              <p className="niveau-titre">{q ? `${listeVue.length} enseignant(s) trouvé(s)` : `${membres.length} enseignant(s)`}</p>
+              {listeVue.length === 0 && <p className="muted">Aucun enseignant trouvé.</p>}
+              {listeVue.length > 0 && surOrdinateur() && <TableauTriable colonnes={COLONNES} lignes={listeVue} cleLigne={(m) => m.cle} />}
+              {listeVue.length > 0 && !surOrdinateur() && <ul className="liste-simple">{listeVue.map(ligneMembre)}</ul>}
             </>
           )}
         </>
