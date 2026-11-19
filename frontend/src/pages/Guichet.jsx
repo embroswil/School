@@ -7,7 +7,7 @@ import { fcfa, MODES_PAIEMENT } from '../recus.js'
 import { IcImprimante, IcReglages } from '../icones.jsx'
 import { brouillardHtml, ecrireReglagesImpression, FORMATS, imprimer, lireReglagesImpression, recuHtml } from '../impression.js'
 
-const MODES = ['especes', 'mobile_money', 'banque', 'autre']
+const MODES = ['especes', 'mobile_money', 'banque']
 const nombre = (v) => Number(String(v ?? '').replace(/[^\d]/g, '')) || 0
 const millier = (n) => (n ? Number(n).toLocaleString('fr-FR') : '')
 const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
@@ -15,7 +15,10 @@ const aujourdhui = () => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
-const jourCourt = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+const jourCourt = (d) => {
+  const t = new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
 const logoEcole = (op) => (op.ecole.aPhoto ? `${apiBase()}/api/actualites/ecoles/${op.ecole.id}/photo` : '')
 
 // Impression d'un recu de caisse, en un ou deux exemplaires
@@ -34,7 +37,6 @@ export default function Guichet() {
   const [mode, setMode] = useState('especes')
   const [ref, setRef] = useState('')
   const [versePar, setVersePar] = useState('')
-  const [telephone, setTelephone] = useState('')
   const [remis, setRemis] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -45,16 +47,21 @@ export default function Guichet() {
   const [reglages, setReglages] = useState(lireReglagesImpression)
   const [voirReglages, setVoirReglages] = useState(false)
   const [reimpression, setReimpression] = useState('')
+  const [tout, setTout] = useState(false) // liste du jour : les 8 derniers, ou tout
 
   // nouvel eleve choisi : on repart de zero
   useEffect(() => {
     setChoix({})
     setRef('')
     setVersePar('')
-    setTelephone('')
     setRemis('')
     setError('')
   }, [eleveId])
+  // un seul frais a payer : il est coche d'office
+  useEffect(() => {
+    const d = (situation.data?.frais || []).filter((f) => f.reste > 0)
+    if (d.length === 1) setChoix({ [d[0].id]: millier(d[0].reste) })
+  }, [situation.data])
 
   const majReglages = (r) => {
     const n = { ...reglages, ...r }
@@ -64,7 +71,6 @@ export default function Guichet() {
 
   const s = situation.data
   const dus = (s?.frais || []).filter((f) => f.reste > 0)
-  const soldes = (s?.frais || []).length - dus.length
   const lignes = dus.filter((f) => choix[f.id] !== undefined).map((f) => ({ frais: f, montant: nombre(choix[f.id]) }))
   const total = lignes.reduce((t, l) => t + l.montant, 0)
   const trop = lignes.find((l) => l.montant > l.frais.reste)
@@ -91,9 +97,8 @@ export default function Guichet() {
         studentId: Number(eleveId),
         lignes: lignes.map((l) => ({ fraisId: l.frais.id, montant: l.montant })),
         mode,
-        recuExterne: ref.trim(),
+        recuExterne: mode === 'especes' ? '' : ref.trim(),
         versePar: versePar.trim(),
-        telephone: telephone.trim(),
       })
       setRecu(r.data)
       caisse.reload()
@@ -156,7 +161,6 @@ export default function Guichet() {
             <input type="checkbox" checked={reglages.auto} onChange={(e) => majReglages({ auto: e.target.checked })} />
             Imprimer automatiquement après chaque encaissement
           </label>
-          <p className="muted">Ticket 80 mm : imprimante de caisse. A5 : imprimante de bureau, avec QR code et cachet.</p>
         </div>
       )}
 
@@ -183,12 +187,9 @@ export default function Guichet() {
                   Nouvel encaissement
                 </button>
               </div>
-              <p className="gu-liens">
-                {recu.lignes.map((l) => (
-                  <a key={l.id} href={`#/recus/${l.id}`}>{`Reçu ${l.numero} (PDF, partage)`}</a>
-                ))}
-                <a href={`#/releve/${recu.eleve.id}`}>Relevé de l’élève</a>
-              </p>
+              <a className="gu-releve" href={`#/releve/${recu.eleve.id}`}>
+                Relevé et reçus de l’élève (PDF, partage)
+              </a>
             </div>
           )}
 
@@ -202,21 +203,16 @@ export default function Guichet() {
               {eleveId && situation.error && <Note>{situation.error}</Note>}
               {s && (
                 <>
-                  <div className="gu-situation">
-                    <div>
-                      <span>Année</span>
-                      <b>{millier(s.total) || '0'}</b>
-                    </div>
-                    <div>
-                      <span>Payé</span>
-                      <b className="vert">{millier(s.paye) || '0'}</b>
-                    </div>
-                    <div>
-                      <span>Reste</span>
-                      <b className={s.reste ? 'rouge' : 'vert'}>{millier(s.reste) || '0'}</b>
-                    </div>
-                    <small className="gu-situation-unite">Montants en FCFA</small>
-                  </div>
+                  <p className={`gu-solde ${s.reste ? '' : 'ajour'}`}>
+                    {s.reste ? (
+                      <>
+                        Reste à payer <b>{fcfa(s.reste)}</b>
+                        <span>{`payé ${fcfa(s.paye)} sur ${fcfa(s.total)}`}</span>
+                      </>
+                    ) : (
+                      <b>Scolarité soldée</b>
+                    )}
+                  </p>
 
                   <div className="gu-etape-ligne">
                     <p className="gu-etape">2. Frais à encaisser</p>
@@ -226,7 +222,6 @@ export default function Guichet() {
                       </button>
                     )}
                   </div>
-                  {!dus.length && <p className="gu-ajour">Cet élève est à jour : aucun frais à payer.</p>}
                   <div className="gu-frais">
                     {dus.map((f) => {
                       const coche = choix[f.id] !== undefined
@@ -255,7 +250,6 @@ export default function Guichet() {
                       )
                     })}
                   </div>
-                  {soldes > 0 && <p className="muted gu-soldes">{`${soldes} frais déjà soldé(s)`}</p>}
                   {trop && <Note>{`${trop.frais.nom} : le montant dépasse le reste à payer (${fcfa(trop.frais.reste)}).`}</Note>}
 
                   {lignes.length > 0 && (
@@ -269,26 +263,21 @@ export default function Guichet() {
                         ))}
                       </div>
                       <div className="grid2">
-                        <label className="gu-champ">
-                          <span>{mode === 'banque' ? 'N° du bordereau' : mode === 'mobile_money' ? 'N° de transaction' : 'N° du reçu papier'} (facultatif)</span>
-                          <input className="input" value={ref} onChange={(e) => setRef(e.target.value)} autoComplete="off" />
-                        </label>
-                        <label className="gu-champ">
-                          <span>Versé par (facultatif)</span>
-                          <input className="input" value={versePar} onChange={(e) => setVersePar(e.target.value)} placeholder="Nom du parent ou du tuteur" />
-                        </label>
-                      </div>
-                      <div className="grid2">
-                        <label className="gu-champ">
-                          <span>Téléphone (facultatif)</span>
-                          <input className="input" type="tel" inputMode="tel" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
-                        </label>
-                        {mode === 'especes' && (
+                        {mode === 'especes' ? (
                           <label className="gu-champ">
-                            <span>Somme remise (pour la monnaie)</span>
-                            <input className="input" inputMode="numeric" value={remis} onChange={(e) => setRemis(millier(nombre(e.target.value)))} />
+                            <span>Somme remise</span>
+                            <input className="input" inputMode="numeric" value={remis} onChange={(e) => setRemis(millier(nombre(e.target.value)))} placeholder={millier(total)} />
+                          </label>
+                        ) : (
+                          <label className="gu-champ">
+                            <span>{mode === 'banque' ? 'N° du bordereau' : 'N° de transaction'}</span>
+                            <input className="input" value={ref} onChange={(e) => setRef(e.target.value)} autoComplete="off" />
                           </label>
                         )}
+                        <label className="gu-champ">
+                          <span>Versé par</span>
+                          <input className="input" value={versePar} onChange={(e) => setVersePar(e.target.value)} placeholder="Parent ou tuteur" />
+                        </label>
                       </div>
                       {rendu > 0 && <p className="gu-rendu">{`Monnaie à rendre : ${fcfa(rendu)}`}</p>}
                       {manque && <p className="gu-rendu rouge">{`Il manque ${fcfa(total - nombre(remis))}`}</p>}
@@ -303,7 +292,6 @@ export default function Guichet() {
                   {busy ? 'Enregistrement…' : lignes.length ? `Encaisser ${fcfa(total)}` : 'Cochez le ou les frais payés'}
                 </button>
               )}
-              {s && <a className="gu-releve" href={`#/releve/${s.eleve.id}`}>Relevé de scolarité de l’élève</a>}
             </form>
           )}
         </div>
@@ -313,8 +301,8 @@ export default function Guichet() {
           <div className="card gu-caisse">
             <div className="gu-caisse-tete">
               <div>
-                <span>{estAujourdhui ? 'Caisse du jour' : 'Caisse du'}</span>
-                <small>{jourCourt(date)}</small>
+                <span>Caisse</span>
+                <small>{estAujourdhui ? 'Aujourd’hui' : jourCourt(date)}</small>
               </div>
               <input className="input gu-date" type="date" value={date} max={aujourdhui()} onChange={(e) => setDate(e.target.value || aujourdhui())} aria-label="Jour" />
             </div>
@@ -343,7 +331,7 @@ export default function Guichet() {
           {c && !c.operations.length && <p className="muted">{estAujourdhui ? 'Aucun encaissement pour le moment aujourd’hui.' : 'Aucun encaissement ce jour-là.'}</p>}
           {ops.length > 0 && (
             <ul className="liste-simple gu-liste">
-              {ops.map((o) => (
+              {(tout || q ? ops : ops.slice(0, 8)).map((o) => (
                 <li key={o.op}>
                   <span className="ls-texte">
                     <b data-brut>{`${o.nom} ${o.prenom}`}</b>
@@ -359,6 +347,11 @@ export default function Guichet() {
                 </li>
               ))}
             </ul>
+          )}
+          {!tout && !q && ops.length > 8 && (
+            <button type="button" className="btn btn-quiet btn-block gu-plus" onClick={() => setTout(true)}>
+              {`Afficher les ${ops.length - 8} autres`}
+            </button>
           )}
         </aside>
       </div>

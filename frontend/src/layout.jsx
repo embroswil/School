@@ -123,7 +123,6 @@ const TITRES = {
 const ACTIONS = [
   ['/info', IcMegaphone, 'Informer', 'Info, cours, photos'],
   ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
-  ['/encaisser', IcBillets, 'Encaisser', 'Paiement au guichet'],
   ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
   ['/discipline', IcBouclier, 'Discipline', 'Procès-verbal, sanctions'],
 ]

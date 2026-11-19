@@ -1710,10 +1710,8 @@ html[data-theme='light'] body::before {
 .imp-etat.change { color: #f79009; }
 
 /* Actions rapides : 3 tuiles en haut, 2 en bas qui occupent toute la largeur (aucun trou) */
-.tuiles-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.tuiles-actions > .tuile { grid-column: span 2; justify-content: center; }
-.tuiles-actions > .tuile:nth-last-child(-n + 2):nth-child(3n + 1),
-.tuiles-actions > .tuile:nth-last-child(-n + 2):nth-child(3n + 1) + .tuile { grid-column: span 3; }
+.tuiles-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tuiles-actions > .tuile { justify-content: center; }
 
 /* Page Eleves : acces aux emplois du temps */
 .eleves-lien { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text); text-decoration: none; }
@@ -1754,9 +1752,10 @@ html[data-theme='light'] body::before {
 .gu-montant { width: 128px; flex: none; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; padding: 9px 10px; }
 .gu-montant.erreur { border-color: #f04438; }
 .gu-soldes { margin: -4px 0 0; font-size: 12.5px; }
-.gu-choix { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.gu-choix { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .guichet-reglages .gu-choix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.gu-choix button { padding: 10px 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 600 13.5px/1.2 var(--font-body); cursor: pointer; }
+.gu-choix button { padding: 11px 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 600 13px/1.2 var(--font-body); white-space: nowrap; cursor: pointer; }
+.gu-plus { margin-top: 8px; }
 .gu-choix button[aria-pressed='true'] { border-color: var(--lien); background: rgba(47, 107, 255, 0.12); color: var(--lien); }
 .gu-champ { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
 .gu-case { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
@@ -1772,12 +1771,12 @@ html[data-theme='light'] body::before {
 .gu-sceau { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #12b76a; color: #fff; font-weight: 800; font-size: 20px; }
 .gu-apercu { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); max-height: 460px; overflow-y: auto; background: #fff; }
 .gu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.gu-actions .btn { justify-content: center; }
+.gu-actions .btn { justify-content: center; font-size: 14.5px; white-space: nowrap; padding-left: 10px; padding-right: 10px; }
 .gu-liens { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font-size: 13px; font-weight: 600; }
 .gu-caisse { display: flex; flex-direction: column; gap: 4px; }
 .gu-caisse-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
 .gu-caisse-tete span { display: block; font: 700 12px/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
-.gu-caisse-tete small { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); text-transform: capitalize; }
+.gu-caisse-tete small { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); }
 .gu-date { width: auto; padding: 7px 9px; font-size: 13px; }
 .gu-total { font: 800 28px/1.15 var(--font-display); font-variant-numeric: tabular-nums; }
 .gu-modes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -1792,9 +1791,13 @@ html[data-theme='light'] body::before {
 html.ordi .guichet-corps { grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.9fr); align-items: start; gap: 22px; }
 html.ordi .guichet-caisse { position: sticky; top: 90px; }
 @media (max-width: 420px) {
-  .gu-choix { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .gu-montant { width: 108px; }
 }
+.gu-solde { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 10px 12px; border-radius: 12px; background: rgba(240, 68, 56, 0.08); font-size: 14px; }
+.gu-solde b { color: #f04438; font: 700 16px/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+.gu-solde span { flex-basis: 100%; font-size: 12.5px; color: var(--muted); }
+.gu-solde.ajour { background: rgba(18, 183, 106, 0.1); }
+.gu-solde.ajour b { color: #12b76a; }
 
 /* ---------- Recu de caisse (apercu et impression) : papier blanc dans les deux themes ---------- */
 .ri { background: #fff; color: #101828; font: 12px/1.4 'Inter', Arial, sans-serif; padding: 18px; }
@@ -1839,7 +1842,17 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
 .impression-ticket .ri-situation { grid-template-columns: 1fr; }
 .impression-ticket .ri-situation div { flex-direction: row; justify-content: space-between; padding: 3px 6px; }
 .impression-ticket .ri-situation div + div { border-left: 0; border-top: 1px solid #d0d5dd; }
-.impression-a5 .ri { padding: 0; }
+.impression-a5 .ri { padding: 0; font-size: 11px; }
+.impression-a5 .ri-tete { padding-bottom: 7px; }
+.impression-a5 .ri-titre { margin: 7px 0 5px; }
+.impression-a5 .ri-l { padding: 1px 0; }
+.impression-a5 .ri-table { margin: 5px 0 3px; }
+.impression-a5 .ri-table td { padding: 3px 0; }
+.impression-a5 .ri-situation { margin: 6px 0; }
+.impression-a5 .ri-pied { margin-top: 6px; gap: 6px; }
+.impression-a5 .ri-qr svg { width: 72px; height: 72px; }
+.impression-a5 .ri-signature { height: 46px; }
+.impression-a5 .ri { break-inside: avoid; }
 
 /* ---------- Brouillard de caisse (A4) ---------- */
 .bc { background: #fff; color: #101828; font: 11px/1.4 'Inter', Arial, sans-serif; }
@@ -1848,10 +1861,12 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
 .bc-tete small { color: #475467; }
 .bc-titre { text-align: right; }
 .bc-titre b { color: #2446d8; letter-spacing: 0.1em; font-size: 13px; }
-.bc-titre span { text-transform: capitalize; }
+
 .bc-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
 .bc-table th { text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #475467; border-bottom: 1px solid #101828; padding: 5px 4px; }
 .bc-table td { padding: 4px; border-bottom: 1px solid #eaecf0; vertical-align: top; }
+.bc-table td:nth-child(1), .bc-table td:nth-child(2), .bc-table td:nth-child(4), .bc-table td:nth-child(6) { white-space: nowrap; }
+.bc-table { font-size: 10px; }
 .bc-table th:last-child, .bc-table td:last-child { text-align: right; white-space: nowrap; font-weight: 700; }
 .bc-table tr { break-inside: avoid; }
 .bc-totaux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; break-inside: avoid; }
@@ -1866,7 +1881,7 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
 /* ---------- Zone d'impression : seule visible quand on imprime depuis l'application ---------- */
 #zone-impression { display: none; }
 @media print {
-  html.impression-active, html.impression-active body { background: #fff !important; }
+  html.impression-active, html.impression-active body { background: #fff !important; color-scheme: light !important; }
   html.impression-active body > *:not(#zone-impression) { display: none !important; }
   html.impression-active #zone-impression { display: block; }
   #zone-impression .saut-page { break-after: page; page-break-after: always; height: 0; }

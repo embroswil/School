@@ -27,7 +27,8 @@ export function ecrireReglagesImpression(r) {
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 const dateHeure = (d) =>
   new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-const jourLong = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+const majuscule = (t) => t.charAt(0).toUpperCase() + t.slice(1)
+const jourLong = (d) => majuscule(new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
 const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
 // Recu d'un encaissement (une ou plusieurs lignes). op : donnees de /api/scolarite/encaissements/:op
@@ -96,7 +97,8 @@ export function brouillardHtml(c) {
     <tbody>
       ${
         c.operations.length
-          ? c.operations
+          ? [...c.operations]
+              .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)) // ordre chronologique
               .map(
                 (o) =>
                   `<tr><td>${esc(heure(o.created_at))}</td><td>${esc(o.numero)}</td><td>${esc(`${o.nom} ${o.prenom}`)}</td><td>${esc(o.classe || '—')}</td><td>${esc(o.frais)}</td><td>${esc(MODES_PAIEMENT[o.mode] || o.mode)}</td><td>${esc(fcfa(o.montant))}</td></tr>`,
