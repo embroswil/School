@@ -17,23 +17,39 @@ self.addEventListener('activate', (e) => {
   self.clients.claim()
 })
 
-// La page : toujours la version en ligne, pour que l'application (et l'icone ajoutee a l'ecran d'accueil)
-// recoive aussitot chaque correction. Sans reseau, ou si le reseau ne repond pas en 4 s, la copie
-// gardee sur l'appareil est affichee.
+// La page : la copie gardee sur l'appareil s'affiche aussitot. A l'ouverture de l'application installee,
+// l'iPhone garde son image de demarrage tant que la page n'est pas affichee, puis la remplace (avec une
+// animation de la barre d'etat) : attendre le reseau retardait ce moment d'une a deux secondes.
+// La version en ligne est verifiee en meme temps ; si elle a change, elle est gardee et l'application la
+// charge aussitot, sous l'ecran de demarrage (ou a la prochaine ouverture).
 async function page(e) {
   const cache = await caches.open(CACHE)
-  const reseau = fetch(e.request, { cache: 'no-store' }).then((rep) => {
-    if (rep.ok) cache.put('/', rep.clone())
+  const copie = await cache.match('/')
+  // texte de la copie lu tout de suite (la copie elle-meme part vers la page)
+  const texteCopie = copie ? copie.clone().text() : Promise.resolve(null)
+  // (une requete de navigation ne peut pas etre reprise telle quelle avec d'autres options : on passe l'adresse)
+  const reseau = fetch(e.request.url, { cache: 'no-store', credentials: 'same-origin' }).then(async (rep) => {
+    if (!rep.ok) return rep
+    const nouveau = await rep.clone().text()
+    const ancien = await texteCopie
+    await cache.put('/', rep.clone())
+    if (ancien !== null && ancien !== nouveau) {
+      const id = e.resultingClientId || e.clientId
+      const client = id ? await self.clients.get(id) : null
+      const fenetres = client ? [client] : await self.clients.matchAll({ type: 'window' })
+      fenetres.forEach((f) => f.postMessage({ type: 'nouvelle-version' }))
+    }
     return rep
   })
-  const delai = new Promise((r) => setTimeout(r, 4000)).then(() => cache.match('/'))
-  try {
-    const rep = await Promise.race([reseau, delai])
-    if (rep) return rep
-  } catch (_) {
-    /* pas de reseau */
+  if (copie) {
+    e.waitUntil(reseau.catch(() => {}))
+    return copie
   }
-  return (await cache.match('/')) || reseau
+  try {
+    return await reseau
+  } catch (_) {
+    return Response.error()
+  }
 }
 
 // Fichiers qui ne changent jamais (scripts et styles numerotes, polices) : copie de l'appareil d'abord
