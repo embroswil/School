@@ -38,15 +38,16 @@ router.post("/", async (req, res, next) => {
     }
     const client = await db.connect();
     let ecoleId;
+    let responsableId;
     try {
       await client.query("BEGIN");
       const hash = await bcrypt.hash(b.password, 10);
       ecoleId = (await client.query("INSERT INTO schools (name, type, city, is_active) VALUES ($1, $2, $3, true) RETURNING id", [nom, b.type, texte(b.city) || null])).rows[0].id;
-      await client.query(
+      responsableId = (await client.query(
         `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, school_id, status)
-         VALUES ($1, $2, 'principal', $3, $4, $5, $6, 'active')`,
+         VALUES ($1, $2, 'principal', $3, $4, $5, $6, 'active') RETURNING id`,
         [email, hash, texte(b.contactFirstName), texte(b.contactLastName), texte(b.contactPhone, 30), ecoleId]
-      );
+      )).rows[0].id;
       await client.query(
         `INSERT INTO school_requests (name, type, city, address, student_count, contact_first_name, contact_last_name,
            contact_function, contact_email, contact_phone, password_hash, message, status, school_id, decided_at)
@@ -80,7 +81,19 @@ router.post("/", async (req, res, next) => {
     const admins = (await db.query("SELECT id FROM users WHERE role = 'admin' AND is_active")).rows;
     for (const a of admins)
       await notifierUtilisateur(a.id, { title: "Nouvel établissement inscrit", message: `${nom}${texte(b.city) ? ` · ${texte(b.city)}` : ""} · ${texte(b.contactFirstName)} ${texte(b.contactLastName)}`, type: "system" }).catch(() => {});
-    res.status(201).json({ success: true, data: { schoolId: ecoleId }, message: "Établissement créé : bienvenue sur Sùkûl." });
+    // Confirmation de l'adresse e-mail du responsable, des l'inscription (code a 6 chiffres)
+    let envoi = null;
+    try {
+      const { envoyerCode } = require("../codes/routes");
+      envoi = await envoyerCode({ id: responsableId, email, first_name: texte(b.contactFirstName) }, "verification");
+    } catch (_) {
+      // l'etablissement reste cree ; un nouveau code pourra etre demande depuis l'ecran de confirmation
+    }
+    res.status(201).json({
+      success: true,
+      data: { schoolId: ecoleId, codeEnvoye: Boolean(envoi), canal: envoi?.canal || null, destination: envoi?.destination || null },
+      message: "Établissement créé : bienvenue sur Sùkûl.",
+    });
   } catch (e) {
     next(e);
   }

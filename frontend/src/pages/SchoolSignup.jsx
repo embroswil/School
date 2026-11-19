@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import { Field, Note } from '../ui.jsx'
 import { useAuth } from '../auth.jsx'
+import { VerificationEmail } from './CodeEmail.jsx'
 
 const TYPES = { maternelle: 'Maternelle', primaire: 'École primaire', college: 'Collège', lycee: 'Lycée' }
 const vide = {
@@ -9,13 +10,15 @@ const vide = {
   contactFirstName: '', contactLastName: '', contactFunction: '', contactEmail: '', contactPhone: '', password: '', message: '',
 }
 
-// « Inscrire mon etablissement » : l'etablissement est cree tout de suite et le responsable est connecte
+// « Inscrire mon etablissement » : l'etablissement est cree tout de suite, le responsable confirme son
+// adresse e-mail avec le code recu, puis il est connecte
 export default function SchoolSignup() {
   const { login } = useAuth()
   const [f, setF] = useState(vide)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [existe, setExiste] = useState(false)
+  const [aVerifier, setAVerifier] = useState(null)
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
 
   async function envoyer(e) {
@@ -23,10 +26,10 @@ export default function SchoolSignup() {
     setError('')
     setBusy(true)
     try {
-      await api.post('/api/demandes-etablissements', f, { auth: false })
-      // connexion immediate : le responsable arrive sur son tableau de bord
-      await login(f.contactEmail.trim(), f.password)
-      window.location.hash = '/'
+      const r = await api.post('/api/demandes-etablissements', f, { auth: false })
+      // etablissement cree : le responsable confirme son adresse e-mail avant d'arriver sur son tableau de bord
+      setAVerifier(r?.data || {})
+      setBusy(false)
       return
     } catch (err) {
       setError(err.message)
@@ -35,6 +38,35 @@ export default function SchoolSignup() {
     setBusy(false)
   }
 
+
+  async function entrer() {
+    await login(f.contactEmail.trim(), f.password)
+    window.location.hash = '/'
+  }
+
+  // Etablissement cree : confirmation de l'adresse e-mail par le code recu
+  if (aVerifier) {
+    return (
+      <div className="auth">
+        <header className="auth-haut">
+          <span className="brand" style={{ color: '#fff' }}>
+            Sùkûl<span>.</span>
+          </span>
+        </header>
+        <main className="auth-main">
+          <div className="card">
+            <VerificationEmail
+              email={f.contactEmail.trim().toLowerCase()}
+              canal={aVerifier.canal}
+              destination={aVerifier.destination}
+              onConfirme={entrer}
+              onPlusTard={entrer}
+            />
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="public">

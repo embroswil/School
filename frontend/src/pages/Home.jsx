@@ -492,11 +492,6 @@ export default function Home() {
   const { user } = useAuth()
   return (
     <>
-      {user.emailVerifie === false && (
-        <a className="note" href="#/verifier-email" style={{ display: 'block', background: 'rgba(255, 211, 77, 0.12)', color: 'var(--primary)', marginTop: 4 }}>
-          ✉️ Confirmez votre adresse email pour sécuriser votre compte (mot de passe oublié…). <u>Confirmer</u>
-        </a>
-      )}
       <ChoixEspace />
       {user.role !== 'admin' && user.schoolId && <BandeauAbonnement role={user.role} />}
       {user.role === 'teacher' && (
