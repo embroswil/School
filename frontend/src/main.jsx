@@ -40,20 +40,18 @@ const retirer = () => {
 }
 requestAnimationFrame(() => setTimeout(retirer, Math.max(200, 1200 - performance.now())))
 
-// Nouvelle version en ligne : l'application s'ouvre tout de suite avec la copie gardee sur l'appareil.
-// Si une version plus recente arrive pendant l'ecran de demarrage, elle est chargee aussitot,
-// sous cet ecran (une seule fois) ; sinon elle sera utilisee a la prochaine ouverture.
+// Nouvelle version en ligne : l'application s'ouvre tout de suite avec la copie gardee sur l'appareil,
+// et la version en ligne est gardee pour la prochaine ouverture. On ne recharge jamais la page de soi-meme :
+// sur iPhone, chaque chargement d'une page dans l'application installee fait clignoter la barre d'etat.
+// Une discrete annonce propose plutot la mise a jour, que l'utilisateur lance quand il le souhaite.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (e) => {
-    if (e.data?.type !== 'nouvelle-version') return
-    const el = document.getElementById('demarrage')
-    if (!el || el.classList.contains('fini')) return
-    try {
-      if (sessionStorage.getItem('sukul-maj')) return
-      sessionStorage.setItem('sukul-maj', '1')
-    } catch (_) {
-      return
-    }
-    window.location.reload()
+    if (e.data?.type !== 'nouvelle-version' || document.querySelector('.annonce-maj')) return
+    const a = document.createElement('button')
+    a.type = 'button'
+    a.className = 'annonce annonce-maj'
+    a.innerHTML = '<span>Nouvelle version de Sùkûl disponible</span><b>Mettre à jour</b>'
+    a.addEventListener('click', () => window.location.reload())
+    setTimeout(() => document.body.appendChild(a), 1500)
   })
 }

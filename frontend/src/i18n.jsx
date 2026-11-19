@@ -94,6 +94,8 @@ const EN = {
   "Date": "Date",
   "Choisissez votre affichage": "Choose your display",
   "Vous pourrez le changer à tout moment dans votre profil.": "You can change it at any time in your profile.",
+  "Nouvelle version de Sùkûl disponible": "New version of Sùkûl available",
+  "Mettre à jour": "Update",
   "Affichage": "Display",
   "Thème": "Theme",
   "Sombre": "Dark",

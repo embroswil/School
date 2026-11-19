@@ -1997,3 +1997,8 @@ html.ordi .mc-present { justify-self: start; width: auto; padding-left: 32px; pa
    en paysage, iOS peut laisser de chaque cote une marge (encoche) peinte de la couleur de la page. La barre
    laterale prend cette meme couleur : l'ecran parait occupe d'un bord a l'autre, sans bandes. */
 html.ordi.ordi-tactile .nav, html.ordi.ordi-tactile[data-theme='light'] .nav { background: var(--bg); }
+
+/* Mise a jour disponible : proposee, jamais imposee (pas de rechargement automatique) */
+.annonce-maj { z-index: 9500; border: 0; text-align: left; }
+.annonce-maj b { flex: none; padding: 6px 10px; border-radius: 9px; background: #2f6bff; color: #fff; font: 700 13px/1 var(--font-body); }
+html.ordi .annonce-maj { left: auto; right: 24px; transform: none; animation: none; }
