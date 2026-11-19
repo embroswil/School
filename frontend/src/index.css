@@ -2002,3 +2002,16 @@ html.ordi.ordi-tactile .nav, html.ordi.ordi-tactile[data-theme='light'] .nav { b
 .annonce-maj { z-index: 9500; border: 0; text-align: left; }
 .annonce-maj b { flex: none; padding: 6px 10px; border-radius: 9px; background: #2f6bff; color: #fff; font: 700 13px/1 var(--font-body); }
 html.ordi .annonce-maj { left: auto; right: 24px; transform: none; animation: none; }
+
+/* Application installee sur iPhone, theme clair : iOS ecrit l'heure et la batterie en blanc, par-dessus le
+   haut de la page. L'en-tete est donc bleu nuit, de bord a bord jusqu'en haut de l'ecran ; le reste de
+   l'application reste clair. Les pages sans en-tete (connexion, choix du theme…) gardent un liseré bleu nuit
+   derriere l'heure. Ailleurs (navigateur, Android, ordinateur), rien ne change. */
+html.barre-ios[data-theme='light'] body::before {
+  content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #0d1424; z-index: 9998; pointer-events: none;
+}
+html.barre-ios[data-theme='light'] .topbar {
+  --text: #ffffff; --muted: #aab4c6; --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 255, 255, 0.12); --lien: #9dbcff;
+  background: #0d1424; color: #fff; border-bottom: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+html.barre-ios[data-theme='light'] .topbar .icon-btn { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.12); color: #fff; box-shadow: none; }

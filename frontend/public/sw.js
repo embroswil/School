@@ -81,8 +81,6 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return
   // demandes au serveur passees par sukul.site : jamais gardees sur l'appareil
   if (url.pathname.startsWith('/api/')) return
-  // pages d'essai (/essai-a/, /essai-b/, …) : jamais remplacees par l'application
-  if (url.pathname.startsWith('/essai-')) return
   if (req.mode === 'navigate') return e.respondWith(page(e))
   if (url.pathname.startsWith('/assets/')) return e.respondWith(fige(req))
   e.respondWith(reseauDabord(req))

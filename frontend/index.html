@@ -29,17 +29,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Sùkûl" />
-    <!-- Pas de reglage « apple-mobile-web-app-status-bar-style » : l'iPhone peint alors la barre d'etat de la
-         couleur « theme-color » (ecrite plus bas, celle du theme de l'application). Pris en compte quand
-         l'icone est ajoutee a l'ecran d'accueil. -->
+    <!-- iPhone, application installee : la page passe sous l'heure et la batterie (ecrites en blanc par iOS).
+         Mesure faite sur iPhone (pages d'essai A, B, C) : c'est le seul reglage ou iOS ne fait pas clignoter
+         de bande grise derriere l'heure a l'ouverture. Pris en compte quand l'icone est ajoutee a l'ecran
+         d'accueil. En theme clair, le haut de l'ecran (en-tete) est bleu nuit pour que l'heure reste lisible. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="Sùkûl : notes, absences, annonces et scolarité pour les parents, élèves, enseignants et établissements du Cameroun." />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <script>
       // Theme de l'application (choisi, sinon celui du telephone), pose avant tout affichage.
-      // Barre d'etat, ecran de demarrage et page ont toujours LA MEME couleur : celle du theme de l'application.
-      // L'iPhone retient la couleur de la barre d'etat d'une ouverture a l'autre et anime tout changement :
-      // si le lancement prenait une autre couleur (celle du telephone) que l'application (theme choisi),
-      // la barre passait du clair au sombre a chaque ouverture (la bande grise en haut).
       ;(function () {
         var fond = '#07080b'
         try {
@@ -49,15 +47,19 @@
           fond = clair ? '#f3f5fa' : '#07080b'
           var h = document.documentElement
           h.setAttribute('data-theme', clair ? 'light' : 'dark')
-          // Application installee : ecran de demarrage aux couleurs du theme. Dans le navigateur : aucun.
+          // iPhone / iPad (Safari) : l'heure est toujours ecrite en blanc dans l'application installee, donc
+          // le demarrage y est toujours sombre et, en theme clair, l'en-tete est bleu nuit (classe barre-ios).
+          var ios = typeof window.navigator.standalone === 'boolean'
           var installee = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-          h.setAttribute('data-demarrage', installee ? (clair ? 'clair' : 'sombre') : 'aucun')
-          h.style.background = fond
+          if (ios && installee) h.classList.add('barre-ios')
+          var demarrageClair = clair && !ios
+          h.setAttribute('data-demarrage', installee ? (demarrageClair ? 'clair' : 'sombre') : 'aucun')
+          h.style.background = installee && !demarrageClair ? '#07080b' : fond
           h.style.colorScheme = clair ? 'light' : 'dark'
-          // Image de demarrage de l'iPhone et couleurs gardees a l'installation : celles du theme aussi
+          // Image de demarrage de l'iPhone : sombre sur iPhone, sinon celle du theme
           document.querySelectorAll('link[rel="apple-touch-startup-image"]').forEach(function (l) {
             var imageClaire = l.getAttribute('href').indexOf('-clair') > 0
-            if (imageClaire !== clair) l.parentNode.removeChild(l)
+            if (imageClaire !== (ios ? false : clair)) l.parentNode.removeChild(l)
             else l.setAttribute('media', l.getAttribute('media').replace(/ and \(prefers-color-scheme: (light|dark)\)/, ''))
           })
           if (!clair) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
