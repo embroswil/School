@@ -5,6 +5,7 @@ import { useAuth } from '../auth.jsx'
 import { ReglagePush, installee } from '../push.jsx'
 import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import Recadreur from '../Recadreur.jsx'
+import { lancerDidacticiel } from '../Didacticiel.jsx'
 import { IcAide, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcPhoto, IcProfil, IcSortie, IcTheme } from '../icones.jsx'
 import { changerTheme, lireTheme } from '../theme.js'
 
@@ -314,11 +315,12 @@ export default function Account() {
         </>
       )}
 
-      {!installee() && (
-        <div className="liste-reglages" style={{ marginTop: 22 }}>
-          <Reglage Icone={IcAide} titre="Installer l’application" href="#/installer" />
-        </div>
-      )}
+      <p className="groupe-titre">Aide</p>
+      <div className="liste-reglages">
+        <Reglage Icone={IcAide} titre="Didacticiel" valeur="Revoir" onClick={lancerDidacticiel} />
+        <Reglage Icone={IcAide} titre="Guide de démarrage" href="#/guide" />
+        {!installee() && <Reglage Icone={IcAide} titre="Installer l’application" href="#/installer" />}
+      </div>
 
       <button type="button" className="btn btn-quiet btn-block profil-sortie" onClick={logout}>
         <IcSortie size={18} /> Se déconnecter

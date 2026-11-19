@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../auth.jsx'
+import { lancerDidacticiel } from '../Didacticiel.jsx'
 
 // Guide de demarrage, adapte a chaque profil
 const GUIDES = {
@@ -41,6 +42,9 @@ export default function Guide() {
   return (
     <>
       <h1 className="page-title">Guide de démarrage</h1>
+      <button type="button" className="btn guide-tuto" onClick={lancerDidacticiel}>
+        Lancer le didacticiel
+      </button>
       {user.role === 'admin' || user.role === 'principal' ? (
         <div className="chips">
           {[

@@ -5,6 +5,7 @@ import { usePath } from './router.js'
 import Shell from './layout.jsx'
 import Secours from './Secours.jsx'
 import PremierTheme from './PremierTheme.jsx'
+import Didacticiel from './Didacticiel.jsx'
 import { Annonces, PageAuth } from './ui.jsx'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
@@ -281,12 +282,15 @@ function Root() {
   // Compte cree depuis la confirmation obligatoire : l'adresse e-mail doit etre confirmee avant d'entrer
   if (confirmationRequise(user)) return <ConfirmationObligatoire />
   return (
-    <Shell path={path}>
-      {/* un filet par page : changer de page efface l'erreur */}
-      <Secours key={path}>
-        <Pages path={path} />
-      </Secours>
-    </Shell>
+    <>
+      <Shell path={path}>
+        {/* un filet par page : changer de page efface l'erreur */}
+        <Secours key={path}>
+          <Pages path={path} />
+        </Secours>
+      </Shell>
+      <Didacticiel />
+    </>
   )
 }
 
