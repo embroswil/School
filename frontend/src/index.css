@@ -35,11 +35,11 @@ a { color: var(--primary); text-decoration: none; }
 .muted { color: var(--muted); }
 
 /* ---------- mise en page de l'espace connecte ---------- */
-.app { min-height: 100vh; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+.app { min-height: 100vh; min-height: 100dvh; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 .topbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: calc(12px + env(safe-area-inset-top)) 20px 12px;
+  padding: calc(12px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 12px calc(20px + env(safe-area-inset-left));
   background: rgba(244, 246, 251, 0.92); backdrop-filter: blur(10px);
 }
 .brand { font: 800 22px/1 var(--font-display); color: var(--primary); letter-spacing: -0.02em; }
@@ -62,7 +62,7 @@ a { color: var(--primary); text-decoration: none; }
 }
 .nav a .ico { font-size: 20px; line-height: 1; }
 .nav a[aria-current='page'] { color: var(--primary); background: var(--primary-soft); }
-.sheet-wrap { padding: 8px 16px 32px; }
+.sheet-wrap { padding: 8px calc(16px + env(safe-area-inset-right)) 32px calc(16px + env(safe-area-inset-left)); }
 .sheet { max-width: 760px; margin: 0 auto; }
 @media (min-width: 900px) and (hover: hover) and (pointer: fine) {
   .app { padding-bottom: 0; display: grid; grid-template-columns: 240px 1fr; }
@@ -171,7 +171,7 @@ textarea.input { min-height: 90px; resize: vertical; }
 .back { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; margin: 8px 0; }
 
 /* ---------- pages publiques ---------- */
-.public { min-height: 100vh; display: flex; flex-direction: column; }
+.public { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .public-top { display: flex; align-items: center; justify-content: space-between; padding: calc(16px + env(safe-area-inset-top)) 20px 8px; }
 .public-main { flex: 1; width: 100%; max-width: 520px; margin: 0 auto; padding: 12px 20px 40px; }
 .landing-hero {
@@ -390,7 +390,7 @@ a.choice { color: var(--text); }
 }
 
 /* ---------- ecrans de connexion / inscription ---------- */
-.auth { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+.auth { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
 .auth-haut {
   display: flex; justify-content: space-between; align-items: center;
   padding: calc(18px + env(safe-area-inset-top)) 22px 64px;
@@ -806,10 +806,10 @@ html.ordi .grille-tuiles > .grande-tuile:last-child:nth-child(odd) { grid-column
 .nav .nav-marque, .nav .nav-ordi, .nav .nav-plus-texte { display: none; }
 /* Ces regles s'appliquent quand <html> porte la classe « ordi » : ordinateur
    (grand ecran + souris), ou apercu force depuis le Profil. */
-html.ordi .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'nav top' 'nav main'; align-items: start; padding-bottom: 0; }
-html.ordi .topbar { grid-area: top; padding: 16px 40px; }
+html.ordi .app { display: grid; grid-template-columns: calc(240px + env(safe-area-inset-left)) minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'nav top' 'nav main'; align-items: start; padding-bottom: 0; }
+html.ordi .topbar { grid-area: top; padding: 16px calc(40px + env(safe-area-inset-right)) 16px 40px; }
 html.ordi .topbar > .brand { visibility: hidden; }
-html.ordi .nav { grid-area: nav; position: sticky; top: 0; inset: auto; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; padding: 24px 14px; border-top: 0; border-right: 1px solid var(--line); box-shadow: none; background: #0b0d12; }
+html.ordi .nav { grid-area: nav; position: sticky; top: 0; inset: auto; height: 100vh; height: 100dvh; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; padding: 24px 14px 24px calc(14px + env(safe-area-inset-left)); border-top: 0; border-right: 1px solid var(--line); box-shadow: none; background: #0b0d12; }
 html.ordi .nav .nav-marque { display: block; order: 0; font: 800 26px/1 var(--font-display); color: var(--text); padding: 2px 12px 24px; letter-spacing: -0.02em; }
 html.ordi .nav .nav-marque span { color: #2f6bff; }
 html.ordi .nav a { order: var(--rang, 2); flex-direction: row; justify-content: flex-start; gap: 12px; min-width: 0; padding: 10px 12px; border-radius: 10px; font: 600 15px/1.2 var(--font-body); }
@@ -819,7 +819,7 @@ html.ordi .nav a[aria-current='page']::after { display: none; }
 html.ordi .nav .nav-ordi { display: flex; order: var(--rang, 3); }
 html.ordi .nav-plus { order: 1; width: 100%; height: 44px; margin: 0 0 16px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 html.ordi .nav .nav-plus-texte { display: inline; font: 700 14px/1 var(--font-body); }
-html.ordi .sheet-wrap { grid-area: main; padding: 8px 40px 48px; }
+html.ordi .sheet-wrap { grid-area: main; padding: 8px calc(40px + env(safe-area-inset-right)) 48px 40px; }
 html.ordi .sheet { max-width: 1100px; }
 html.ordi .grille-tuiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 html.ordi .grille-tuiles.quatre { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -1692,12 +1692,6 @@ html.ordi .df-hero-pied span { flex-direction: column; justify-content: flex-sta
 
 button.back { display: inline-flex; align-items: center; gap: 4px; margin: 2px 0 10px; padding: 0; border: 0; background: none; color: var(--lien); font: 700 14px/1.2 var(--font-body); cursor: pointer; }
 
-/* Application installee sur iPhone, theme clair : si la page passe encore sous la barre d'etat (heure ecrite
-   en blanc par iOS), une bande sombre la garde lisible. Avec la barre claire, cette hauteur vaut 0 : rien ne s'affiche. */
-html[data-theme='light'] body::before {
-  content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #07080b; z-index: 9998; pointer-events: none;
-}
-
 /* Import d'eleves : comparaison avec les eleves deja inscrits */
 .imp-bilan { margin: 0 0 12px; padding: 14px 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
 .imp-bilan > b { display: block; font: 700 16px/1.3 var(--font-display); margin-bottom: 6px; }
@@ -1998,3 +1992,8 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
 }
 
 html.ordi .mc-present { justify-self: start; width: auto; padding-left: 32px; padding-right: 32px; }
+
+/* Version ordinateur sur un telephone ou une tablette (« Version pour ordinateur » du navigateur, ou apercu) :
+   en paysage, iOS peut laisser de chaque cote une marge (encoche) peinte de la couleur de la page. La barre
+   laterale prend cette meme couleur : l'ecran parait occupe d'un bord a l'autre, sans bandes. */
+html.ordi.ordi-tactile .nav, html.ordi.ordi-tactile[data-theme='light'] .nav { background: var(--bg); }

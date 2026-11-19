@@ -29,10 +29,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Sùkûl" />
-    <!-- iPhone, application installee : la page passe sous la barre d'etat. iOS ne dessine donc plus sa propre
-         bande derriere l'heure et la batterie (c'est elle qui s'eclaircissait au lancement). Ce reglage est
-         enregistre par l'iPhone au moment ou l'icone est ajoutee a l'ecran d'accueil. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Pas de reglage « apple-mobile-web-app-status-bar-style » : depuis iOS 26, le mode « black-translucent »
+         fait dessiner par l'iPhone un voile flou par-dessus le haut de l'application (la bande qui s'eclaircit
+         au lancement). Sans ce reglage, iOS peint la barre d'etat de la couleur de la page : l'application
+         occupe tout l'ecran, d'un seul tenant. Pris en compte quand l'icone est ajoutee a l'ecran d'accueil. -->
     <meta name="description" content="Sùkûl : notes, absences, annonces et scolarité pour les parents, élèves, enseignants et établissements du Cameroun." />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#07080b" />
@@ -46,21 +46,18 @@
           var fond = clair ? '#f3f5fa' : '#07080b'
           var h = document.documentElement
           h.setAttribute('data-theme', clair ? 'light' : 'dark')
-          // Ecran de demarrage aux couleurs du telephone, comme l'image de demarrage d'iOS (qui suit toujours
-          // le reglage du telephone) : aucun changement de couleur a l'ouverture. Si le theme choisi est
-          // different, l'ecran de demarrage s'efface en douceur sur l'application a la fin.
+          // Application installee : ecran de demarrage aux couleurs du telephone, comme l'image de demarrage
+          // d'iOS (qui suit toujours le reglage du telephone). Dans le navigateur, pas d'ecran de demarrage :
+          // la page s'affiche directement dans les couleurs du theme, sans passage du noir au blanc.
+          var installee = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
           var ecranSombre = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-          var fondDemarrage = ecranSombre ? '#07080b' : '#f3f5fa'
-          h.setAttribute('data-demarrage', ecranSombre ? 'sombre' : 'clair')
+          var fondDemarrage = installee ? (ecranSombre ? '#07080b' : '#f3f5fa') : fond
+          h.setAttribute('data-demarrage', installee ? (ecranSombre ? 'sombre' : 'clair') : 'aucun')
           h.style.background = fondDemarrage
           h.style.colorScheme = clair ? 'light' : 'dark'
           document.querySelector('meta[name="theme-color"]').setAttribute('content', fondDemarrage)
-          // iPhone, application installee : en clair, barre d'etat claire avec l'heure en noir, de la couleur
-          // de la page ; en sombre, la page passe sous la barre d'etat (heure en blanc)
-          document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').setAttribute('content', clair ? 'default' : 'black-translucent')
           // Couleurs gardees par l'iPhone quand l'icone est ajoutee a l'ecran d'accueil : fond de l'application
-          // avant son premier affichage et barre d'etat au lancement. Elles suivent le reglage du telephone,
-          // comme l'image de demarrage d'iOS (sinon une bande claire apparait en haut au lancement).
+          // avant son premier affichage. Elles suivent le reglage du telephone, comme l'image de demarrage d'iOS.
           if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
         } catch (e) {}
       })()
@@ -74,6 +71,7 @@
       html[data-theme='light'], html[data-theme='light'] body { background: #f3f5fa; }
       #demarrage { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 9999; background: #07080b; transition: opacity 0.35s ease; }
       html[data-demarrage='clair'] #demarrage { background: #f3f5fa; }
+      html[data-demarrage='aucun'] #demarrage { display: none; }
       #demarrage img.clair, html[data-demarrage='clair'] #demarrage img.sombre { display: none !important; }
       html[data-demarrage='clair'] #demarrage img.clair { display: block !important; }
       #demarrage .bloc { position: absolute; left: 50%; top: 50%; width: 260px; transform: translate(-50%, -50%); transition: opacity 0.2s ease; }
@@ -104,6 +102,8 @@
       ;(function () {
         var el = document.getElementById('demarrage')
         if (!el) return
+        // Dans le navigateur : pas d'ecran de demarrage
+        if (document.documentElement.getAttribute('data-demarrage') === 'aucun') return el.remove()
         var bloc = el.children[0]
         var signe = el.children[1]
         function caler() {

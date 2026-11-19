@@ -23,6 +23,7 @@ export function appliquerVersionOrdi() {
     // Sur iPhone, « Version pour ordinateur » du navigateur affiche la version ordinateur de Sùkûl
     const force = ordiForce() || (versionOrdiDuNavigateur() && petitEcran())
     document.documentElement.classList.toggle('ordi', force || Boolean(mq?.matches))
+    document.documentElement.classList.toggle('ordi-tactile', force && !mq?.matches)
     // Apercu sur telephone : la page est dessinee comme sur un ecran d'ordinateur, puis reduite
     const meta = document.querySelector('meta[name="viewport"]')
     if (meta) {
