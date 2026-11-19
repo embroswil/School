@@ -808,10 +808,10 @@ function Reglages() {
 export default function Scolarite() {
   const { user } = useAuth()
   const etablissement = user.role === 'principal'
-  // Onglet demande dans l'adresse (#/scolarite?onglet=encaisser), par ex. depuis le bouton « + » ou l'accueil
+  // Onglet demande dans l'adresse (#/scolarite?onglet=frais). L'encaissement a sa propre page (#/encaisser).
   const [onglet, setOnglet] = useState(() => {
     const o = new URLSearchParams(window.location.hash.split('?')[1] || '').get('onglet')
-    return ['suivi', 'encaisser', 'confirmer', 'frais'].includes(o) ? o : 'suivi'
+    return ['suivi', 'confirmer', 'frais'].includes(o) ? o : 'suivi'
   })
   const aConfirmer = useApi(etablissement ? '/api/scolarite/ordres?statut=paye,litige' : null)
   const nb = aConfirmer.data?.length || 0
@@ -828,7 +828,6 @@ export default function Scolarite() {
       <div className="segments" role="tablist">
         {[
           ['suivi', 'Suivi'],
-          ['encaisser', 'Encaisser'],
           ['confirmer', 'À confirmer'],
           ['frais', 'Frais'],
         ].map(([k, t]) => (
@@ -839,9 +838,18 @@ export default function Scolarite() {
         ))}
       </div>
       {onglet === 'suivi' && <Comptabilite />}
-      {onglet === 'encaisser' && <Paiements />}
       {onglet === 'confirmer' && <AConfirmer />}
       {onglet === 'frais' && <Frais />}
+    </>
+  )
+}
+
+// Encaissement au guichet : page a part, ouverte depuis la barre du bas
+export function Encaisser() {
+  return (
+    <>
+      <h1 className="page-title">Encaisser</h1>
+      <Paiements />
     </>
   )
 }

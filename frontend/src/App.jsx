@@ -23,7 +23,7 @@ import Notifications from './pages/Notifications.jsx'
 import Messages from './pages/Messages.jsx'
 import Conversation from './pages/Conversation.jsx'
 import Actualites from './pages/Actualites.jsx'
-import Scolarite from './pages/Scolarite.jsx'
+import Scolarite, { Encaisser } from './pages/Scolarite.jsx'
 import ImportEleves from './pages/ImportEleves.jsx'
 import ImportEnseignants from './pages/ImportEnseignants.jsx'
 import Administrateurs from './pages/Administrateurs.jsx'
@@ -112,6 +112,7 @@ function Pages({ path }) {
   const suiviMatch = path.match(/^\/suivi\/(\d+)$/)
   if (suiviMatch) return reserve(['parent', 'student'].includes(user.role), <Suivi key={suiviMatch[1]} id={Number(suiviMatch[1])} />)
   if (path.split('?')[0] === '/scolarite') return reserve(user.role !== 'teacher', <Scolarite key={path} />)
+  if (path === '/encaisser') return reserve(user.role === 'principal', <Encaisser />)
   if (path === '/import-eleves') return reserve(gestion, <ImportEleves />)
   if (path === '/import-enseignants') return reserve(user.role === 'principal', <ImportEnseignants />)
   if (path === '/import-emplois') return reserve(user.role === 'principal', <ImportEmplois />)

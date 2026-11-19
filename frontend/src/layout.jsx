@@ -18,7 +18,7 @@ const NAV = {
   ],
   principal: [
     ['/', IcAccueil, 'Accueil'],
-    ['/eleves', IcEleves, 'Élèves'],
+    ['/encaisser', IcBillets, 'Encaisser'],
     ['+', IcPlus, 'Ajouter'],
     ['/messages', IcMessages, 'Messages'],
     ['/compte', IcProfil, 'Profil'],
@@ -46,6 +46,7 @@ const NAV = {
 // Sur ordinateur, la barre laterale montre aussi ces raccourcis
 const NAV_ORDI = {
   principal: [
+    ['/eleves', IcEleves, 'Élèves'],
     ['/scolarite', IcCarte, 'Scolarité'],
     ['/comptabilite', IcGraphique, 'Comptabilité'],
     ['/presence-enseignants', IcEcole, 'Enseignants'],
@@ -86,6 +87,7 @@ const TITRES = {
   '/confidentialite': 'Confidentialité',
   '/conditions': 'Conditions',
   '/scolarite': 'Scolarité',
+  '/encaisser': 'Encaisser',
   '/import-eleves': 'Importer des élèves',
   '/import-enseignants': 'Liste des enseignants',
   '/administrateurs': 'Administrateurs',
@@ -121,7 +123,7 @@ const TITRES = {
 const ACTIONS = [
   ['/info', IcMegaphone, 'Informer', 'Info, cours, photos'],
   ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
-  ['/scolarite?onglet=encaisser', IcBillets, 'Encaisser', 'Paiement au guichet'],
+  ['/encaisser', IcBillets, 'Encaisser', 'Paiement au guichet'],
   ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
   ['/discipline', IcBouclier, 'Discipline', 'Procès-verbal, sanctions'],
 ]
