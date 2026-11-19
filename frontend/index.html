@@ -29,45 +29,41 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Sùkûl" />
-    <!-- Pas de reglage « apple-mobile-web-app-status-bar-style » : depuis iOS 26, le mode « black-translucent »
-         fait dessiner par l'iPhone un voile flou par-dessus le haut de l'application (la bande qui s'eclaircit
-         au lancement). Sans ce reglage, iOS peint la barre d'etat de la couleur de la page : l'application
-         occupe tout l'ecran, d'un seul tenant. Pris en compte quand l'icone est ajoutee a l'ecran d'accueil. -->
+    <!-- Pas de reglage « apple-mobile-web-app-status-bar-style » : l'iPhone peint alors la barre d'etat de la
+         couleur « theme-color » (ecrite plus bas, celle du theme de l'application). Pris en compte quand
+         l'icone est ajoutee a l'ecran d'accueil. -->
     <meta name="description" content="Sùkûl : notes, absences, annonces et scolarité pour les parents, élèves, enseignants et établissements du Cameroun." />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <!-- Couleur de la barre d'etat, fixee dans la page des le depart (aucun script ne la change pendant le
-         lancement : chaque changement fait rejouer a l'iPhone une animation de la barre d'etat). -->
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#07080b" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5fa" />
     <script>
-      // Theme choisi (clair ou sombre), pose avant l'affichage. Tant qu'aucun theme n'est choisi, l'application
-      // suit le reglage du telephone, comme l'ecran de demarrage d'iOS : pas de passage du noir au blanc.
+      // Theme de l'application (choisi, sinon celui du telephone), pose avant tout affichage.
+      // Barre d'etat, ecran de demarrage et page ont toujours LA MEME couleur : celle du theme de l'application.
+      // L'iPhone retient la couleur de la barre d'etat d'une ouverture a l'autre et anime tout changement :
+      // si le lancement prenait une autre couleur (celle du telephone) que l'application (theme choisi),
+      // la barre passait du clair au sombre a chaque ouverture (la bande grise en haut).
       ;(function () {
+        var fond = '#07080b'
         try {
           var t = localStorage.getItem('sukul-theme')
-          var clair = t === 'clair' || t === 'sombre' ? t === 'clair' : !(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
-          var fond = clair ? '#f3f5fa' : '#07080b'
+          var ecranSombre = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+          var clair = t === 'clair' || t === 'sombre' ? t === 'clair' : !ecranSombre
+          fond = clair ? '#f3f5fa' : '#07080b'
           var h = document.documentElement
           h.setAttribute('data-theme', clair ? 'light' : 'dark')
-          // Application installee : ecran de demarrage aux couleurs du telephone, comme l'image de demarrage
-          // d'iOS (qui suit toujours le reglage du telephone). Dans le navigateur, pas d'ecran de demarrage :
-          // la page s'affiche directement dans les couleurs du theme, sans passage du noir au blanc.
+          // Application installee : ecran de demarrage aux couleurs du theme. Dans le navigateur : aucun.
           var installee = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-          var ecranSombre = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-          var fondDemarrage = installee ? (ecranSombre ? '#07080b' : '#f3f5fa') : fond
-          h.setAttribute('data-demarrage', installee ? (ecranSombre ? 'sombre' : 'clair') : 'aucun')
-          h.style.background = fondDemarrage
+          h.setAttribute('data-demarrage', installee ? (clair ? 'clair' : 'sombre') : 'aucun')
+          h.style.background = fond
           h.style.colorScheme = clair ? 'light' : 'dark'
-          // Navigateur, theme choisi different du telephone : la barre prend la couleur du theme
-          if (!installee && fond !== (ecranSombre ? '#07080b' : '#f3f5fa')) {
-            document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
-              m.setAttribute('content', fond)
-            })
-          }
-          // Couleurs gardees par l'iPhone quand l'icone est ajoutee a l'ecran d'accueil : fond de l'application
-          // avant son premier affichage. Elles suivent le reglage du telephone, comme l'image de demarrage d'iOS.
-          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
+          // Image de demarrage de l'iPhone et couleurs gardees a l'installation : celles du theme aussi
+          document.querySelectorAll('link[rel="apple-touch-startup-image"]').forEach(function (l) {
+            var imageClaire = l.getAttribute('href').indexOf('-clair') > 0
+            if (imageClaire !== clair) l.parentNode.removeChild(l)
+            else l.setAttribute('media', l.getAttribute('media').replace(/ and \(prefers-color-scheme: (light|dark)\)/, ''))
+          })
+          if (!clair) document.querySelector('link[rel="manifest"]').setAttribute('href', '/manifest-sombre.webmanifest')
         } catch (e) {}
+        // Couleur de la barre d'etat ecrite une seule fois, directement avec sa valeur definitive
+        document.write('<meta name="theme-color" content="' + fond + '" />')
       })()
     </script>
     <title>Sùkûl – la vie scolaire, simplement</title>
