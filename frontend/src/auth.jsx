@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { api, session } from './api.js'
+import { api, renewSession, session } from './api.js'
 
 const AuthContext = createContext(null)
 
@@ -55,6 +55,11 @@ export function AuthProvider({ children }) {
     window.scrollTo(0, 0)
   }
 
+  // Profil relu depuis le serveur (ex. enseignant accepte par un etablissement)
+  async function actualiser() {
+    if (await renewSession()) setUser(session.get()?.user ?? null)
+  }
+
   async function logout() {
     const refreshToken = session.get()?.refreshToken
     try {
@@ -67,7 +72,7 @@ export function AuthProvider({ children }) {
     window.location.hash = '/'
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, signup, majUser, changerEspace }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, logout, signup, majUser, changerEspace, actualiser }}>{children}</AuthContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

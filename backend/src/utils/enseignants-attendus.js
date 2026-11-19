@@ -127,8 +127,9 @@ const reconnaitre = async (ecole, userId, nom, prenom) => {
   const { rows } = await db.query("SELECT * FROM enseignants_attendus WHERE school_id = $1 AND nom_cle = $2", [ecole, k]);
   const a = rows[0];
   if (!a) return null;
-  await db.query("UPDATE users SET status = 'active', updated_at = NOW() WHERE id = $1", [userId]);
-  await db.query("UPDATE teacher_requests SET status = 'approved', decided_at = NOW() WHERE user_id = $1 AND status = 'pending'", [userId]);
+  // l'enseignant inscrit sans etablissement est rattache a celui-ci
+  await db.query("UPDATE users SET status = 'active', school_id = COALESCE(school_id, $2), updated_at = NOW() WHERE id = $1", [userId, ecole]);
+  await db.query("UPDATE teacher_requests SET status = 'approved', decided_at = NOW() WHERE user_id = $1 AND school_id = $2 AND status = 'pending'", [userId, ecole]);
   await db.query("UPDATE enseignants_attendus SET user_id = $2 WHERE id = $1", [a.id, userId]);
   await affecter(userId, ecole, decouper(a.matieres), decouper(a.classes), a.principal_de);
   return a;

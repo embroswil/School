@@ -11,6 +11,10 @@ router.post("/", ctrl.inscription); // publique
 // Parent : enfants declares a l'inscription (relies ou pas encore retrouves)
 router.get("/mes-enfants", authenticate, authorize("parent"), ctrl.mesEnfants);
 
+// Enseignant : rejoindre un etablissement une fois connecte
+router.get("/mes-etablissements", authenticate, authorize("teacher"), ctrl.mesEtablissements);
+router.post("/rejoindre", authenticate, authorize("teacher"), ctrl.rejoindre);
+
 // Validation des enseignants (administrateur de l'etablissement ou de la plateforme)
 router.get("/enseignants", authenticate, authorize("admin"), ctrl.listeEnseignants);
 router.post("/enseignants/:id/valider", authenticate, authorize("admin"), ctrl.validerEnseignant);

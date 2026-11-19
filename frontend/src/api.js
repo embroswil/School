@@ -116,7 +116,8 @@ export class ApiError extends Error {
 
 let refreshing = null
 
-async function renewSession() {
+// Nouvelle session depuis le serveur (profil a jour : etablissement rattache, role…)
+export async function renewSession() {
   const current = session.get()
   if (!current?.refreshToken) return false
   try {

@@ -1,52 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
-import { ChampMotDePasse, Field, Note } from '../ui.jsx'
-import { ChoixLangue } from '../i18n.jsx'
+import { ChampMotDePasse, Field, Note, PageAuth } from '../ui.jsx'
+import { IcCasquette, IcChevron, IcEcole, IcFamille, IcProf } from '../icones.jsx'
 import { VerificationEmail } from './CodeEmail.jsx'
 
 const PROFILS = [
-  { id: 'parent', ico: '👨‍👩‍👧', titre: 'Parent, tuteur ou donateur', texte: 'Je suis la scolarité d’un enfant, ou je paie la scolarité d’un élève.' },
-  { id: 'student', ico: '🎒', titre: 'Élève', texte: 'Je consulte mes notes et les infos de ma classe.' },
-  { id: 'teacher', ico: '👩‍🏫', titre: 'Enseignant', texte: 'Je publie les notes et je fais l’appel. Compte validé par l’établissement.' },
+  { id: 'parent', Icone: IcFamille, titre: 'Parent', texte: 'Suivre la scolarité de mes enfants' },
+  { id: 'student', Icone: IcCasquette, titre: 'Élève', texte: 'Mes notes et la vie de ma classe' },
+  { id: 'teacher', Icone: IcProf, titre: 'Enseignant', texte: 'Mes cours, l’appel et les notes' },
 ]
 const TYPES = { maternelle: 'Maternelle', primaire: 'École primaire', college: 'Collège', lycee: 'Lycée' }
 export const LIENS = [['pere', 'Père'], ['mere', 'Mère'], ['tuteur', 'Tuteur / tutrice'], ['oncle_tante', 'Oncle / tante'], ['grand_parent', 'Grand-parent'], ['frere_soeur', 'Frère / sœur'], ['autre', 'Autre proche']]
 
+// Creation d'un compte : 1) profil, 2) etablissement (eleve seulement), 3) informations, puis code recu par e-mail.
+// Le parent retrouve ses enfants une fois connecte ; l'enseignant rejoint son ou ses etablissements une fois connecte.
 export default function Signup() {
   const { login, signup } = useAuth()
-  const [confirmation, setConfirmation] = useState('')
   const [accepte, setAccepte] = useState(false)
-  const [etape, setEtape] = useState(1)
+  const [etape, setEtape] = useState('profil')
   const [role, setRole] = useState('')
   const [ecoles, setEcoles] = useState(null)
   const [recherche, setRecherche] = useState('')
   const [ecole, setEcole] = useState(null)
-  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', classe: '', dateNaissance: '', matieres: '', diplome: '', experience: '', message: '' })
-  // Enseignant : matieres et classes de l'etablissement choisi
-  const [structure, setStructure] = useState(null)
-  const [matiereIds, setMatiereIds] = useState([])
-  const [classeIds, setClasseIds] = useState([])
-  useEffect(() => {
-    if (role !== 'teacher' || !ecole) return
-    setStructure(null)
-    api
-      .get(`/api/schools/${ecole.id}/structure`)
-      .then((r) => setStructure(r.data))
-      .catch(() => setStructure({ matieres: [], classes: [] }))
-  }, [role, ecole])
-  const basculer = (setter) => (id) => setter((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]))
+  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', classe: '' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [fini, setFini] = useState(null)
-  const [aVerifier, setAVerifier] = useState(null) // compte cree, email a confirmer
+  const [aVerifier, setAVerifier] = useState(null) // compte cree, e-mail a confirmer
 
   useEffect(() => {
+    if (role !== 'student' || ecoles) return
     api
       .get('/api/schools/public')
       .then((r) => setEcoles(r.data || []))
       .catch(() => setEcoles([]))
-  }, [])
+  }, [role, ecoles])
 
   const filtrees = useMemo(() => {
     const q = recherche.trim().toLowerCase()
@@ -54,6 +42,13 @@ export default function Signup() {
   }, [ecoles, recherche])
 
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
+  const eleve = role === 'student'
+  const parcours = eleve ? ['profil', 'ecole', 'infos'] : ['profil', 'infos']
+  const precedente = () => {
+    const i = parcours.indexOf(etape)
+    if (i <= 0) window.history.length > 1 ? window.history.back() : (window.location.hash = '/')
+    else setEtape(parcours[i - 1])
+  }
 
   async function envoyer(e) {
     e.preventDefault()
@@ -61,283 +56,151 @@ export default function Signup() {
       setError('Acceptez les conditions d’utilisation et la politique de confidentialité pour continuer.')
       return
     }
-    if (f.password !== confirmation) {
-      setError('Les deux mots de passe ne correspondent pas.')
-      return
-    }
     setError('')
     setBusy(true)
     try {
-      const donnees = {
-        role,
-        schoolId: role === 'parent' ? undefined : ecole.id,
-        ...f,
-        matiereIds: role === 'teacher' ? matiereIds : undefined,
-        classeIds: role === 'teacher' ? classeIds : undefined,
-      }
-      const res = await signup(donnees)
-      setAVerifier({ message: res.message, ...(res.data || {}) })
+      const res = await signup({ role, schoolId: eleve ? ecole.id : undefined, ...f })
+      setAVerifier(res.data || {})
     } catch (err) {
       setError(err.message)
     }
     setBusy(false)
   }
 
-  // Compte cree : confirmation de l'email par le code recu
-  if (aVerifier && !fini) {
+  // Compte cree : confirmation obligatoire de l'adresse e-mail par le code recu
+  if (aVerifier) {
     return (
-      <div className="auth">
-        <header className="auth-haut">
-          <span className="brand" style={{ color: '#fff' }}>
-            Sùkûl<span>.</span>
-          </span>
-        </header>
-        <main className="auth-main">
-          <div className="card">
+      <PageAuth onRetour={() => setAVerifier(null)}>
+        <div className="card">
           <VerificationEmail
             email={aVerifier.identifiant || f.email.trim().toLowerCase()}
             canal={aVerifier.canal}
             destination={aVerifier.destination}
             onConfirme={async () => {
-              if (role === 'teacher') {
-                setFini(aVerifier.message)
-                return
-              }
-              await login(aVerifier.identifiant || f.email, f.password)
+              await login(aVerifier.identifiant || f.email.trim(), f.password)
               window.location.hash = '/'
             }}
           />
-          </div>
-        </main>
-      </div>
+        </div>
+      </PageAuth>
     )
   }
 
-  if (fini) {
+  const pied = (
+    <>
+      Déjà un compte ? <a href="#/connexion">Se connecter</a>
+    </>
+  )
+
+  if (etape === 'profil') {
     return (
-      <div className="public">
-        <main className="public-main" style={{ paddingTop: 60, textAlign: 'center' }}>
-          <div style={{ fontSize: 56 }}>⏳</div>
-          <h1 className="page-title">Demande envoyée</h1>
-          <p className="lede">{fini}</p>
-          <a className="btn" href="#/">
-            Retour à l’accueil
-          </a>
-        </main>
-      </div>
-    )
-  }
-
-  return (
-    <div className="auth">
-      <header className="auth-haut">
-        <a className="brand" href="#/" style={{ color: '#fff' }}>
-          Sùkûl<span>.</span>
-        </a>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <ChoixLangue />
-          <a href="#/connexion">Se connecter</a>
-        </span>
-      </header>
-      <main className="auth-main">
-        <div className="card">
-        <div className="steps" aria-hidden="true">
-          {[1, 2, 3].map((n) => (
-            <span key={n} className={n <= etape ? 'on' : ''} />
+      <PageAuth titre="Créer un compte" sousTitre="Choisissez votre profil." etapes={parcours.length} etape={1} onRetour={precedente} pied={pied}>
+        <div className="ea-choix">
+          {PROFILS.map(({ id, Icone, titre, texte }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={role === id}
+              onClick={() => {
+                setRole(id)
+                setEtape(id === 'student' ? 'ecole' : 'infos')
+              }}
+            >
+              <span className="ea-choix-ico">
+                <Icone size={20} />
+              </span>
+              <span className="ea-choix-texte">
+                <b>{titre}</b>
+                <small>{texte}</small>
+              </span>
+              <IcChevron size={16} className="ea-choix-fleche" />
+            </button>
           ))}
         </div>
+        <p className="ea-note">
+          Vous dirigez un établissement ? <a href="#/inscrire-etablissement">Inscrivez-le</a>
+        </p>
+      </PageAuth>
+    )
+  }
 
-        {etape === 1 && (
-          <>
-            <h1 className="page-title">Créer un compte</h1>
-            <p className="lede">Qui êtes-vous ?</p>
-            <div className="choices">
-              {PROFILS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="choice"
-                  aria-pressed={role === p.id}
-                  onClick={() => {
-                    setRole(p.id)
-                    // Le parent choisit l'etablissement et l'enfant une fois connecte
-                    setEtape(p.id === 'parent' ? 3 : 2)
-                  }}
-                >
-                  <span className="ico">{p.ico}</span>
-                  <span>
-                    <b>{p.titre}</b>
-                    <span className="muted">{p.texte}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {etape === 2 && (
-          <>
-            <button type="button" className="back btn-quiet" style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0 }} onClick={() => setEtape(1)}>
-              ← Retour
+  if (etape === 'ecole') {
+    return (
+      <PageAuth titre="Votre établissement" sousTitre="Où êtes-vous inscrit cette année ?" etapes={3} etape={2} onRetour={precedente} pied={pied}>
+        <input className="input ea-recherche" placeholder="Rechercher par nom ou par ville" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
+        {ecoles === null && <p className="muted">Chargement…</p>}
+        {ecoles && filtrees.length === 0 && <p className="muted">Aucun établissement trouvé.</p>}
+        <div className="ea-choix">
+          {filtrees.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              aria-pressed={ecole?.id === e.id}
+              onClick={() => {
+                setEcole(e)
+                setEtape('infos')
+              }}
+            >
+              <span className="ea-choix-ico" style={e.photo ? { backgroundImage: `url(${e.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                {!e.photo && <IcEcole size={20} />}
+              </span>
+              <span className="ea-choix-texte">
+                <b data-brut>{e.name}</b>
+                <small>{[TYPES[e.type], e.city].filter(Boolean).join(' · ')}</small>
+              </span>
+              <IcChevron size={16} className="ea-choix-fleche" />
             </button>
-            <h1 className="page-title">Votre établissement</h1>
-            <p className="lede">
-              {role === 'parent' ? 'Choisissez l’établissement de votre enfant.' : 'Choisissez votre établissement.'}
-            </p>
-            <div className="searchbar">
-              <input className="input" placeholder="Rechercher par nom ou par ville" value={recherche} onChange={(e) => setRecherche(e.target.value)} />
-            </div>
-            {ecoles === null && <p className="muted">Chargement…</p>}
-            {ecoles && filtrees.length === 0 && (
-              <p className="muted">Aucun établissement trouvé. Il doit d’abord être ajouté par l’administration de Sùkûl.</p>
-            )}
-            <div className="choices">
-              {filtrees.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  className="choice"
-                  aria-pressed={ecole?.id === e.id}
-                  onClick={() => {
-                    setEcole(e)
-                    setEtape(3)
-                  }}
-                >
-                  <span className="ico" style={e.photo ? { backgroundImage: `url(${e.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
-                    {e.photo ? '' : '🏫'}
-                  </span>
-                  <span>
-                    <b>{e.name}</b>
-                    <span className="muted">
-                      {TYPES[e.type] || ''}
-                      {e.city ? ` · ${e.city}` : ''}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {etape === 3 && (
-          <form onSubmit={envoyer}>
-            <button type="button" className="back" style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0 }} onClick={() => setEtape(role === 'parent' ? 1 : 2)}>
-              ← Retour
-            </button>
-            <h1 className="page-title">Vos informations</h1>
-            <p className="lede">
-              {role === 'parent'
-                ? 'Une fois connecté, vous retrouverez votre enfant dans son établissement, ou vous pourrez payer la scolarité de n’importe quel élève.'
-                : ecole?.name}
-              {role === 'teacher' && ' · votre compte sera validé par l’établissement'}
-            </p>
-
-            <div className="card">
-              <div className="grid2">
-                <Field label="Prénom">
-                  <input className="input" value={f.firstName} onChange={maj('firstName')} required />
-                </Field>
-                <Field label="Nom">
-                  <input className="input" value={f.lastName} onChange={maj('lastName')} required />
-                </Field>
-              </div>
-              {/* Code de confirmation par email (WhatsApp plus tard, une fois l'API activee) */}
-              <Field label="Adresse e-mail">
-                <input className="input" type="email" autoComplete="email" value={f.email} onChange={maj('email')} required />
-              </Field>
-              <Field label="Téléphone">
-                <input className="input" type="tel" autoComplete="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} />
-              </Field>
-              <Field label="Mot de passe (8 caractères minimum)">
-                <ChampMotDePasse autoComplete="new-password" minLength={8} value={f.password} onChange={maj('password')} />
-                <span className="force-mdp" aria-hidden="true">
-                  {[0, 1, 2, 3].map((n) => {
-                    const p = f.password
-                    const score = (p.length >= 8) + (p.length >= 12) + (/[A-Z]/.test(p) && /[a-z]/.test(p)) + (/\d/.test(p) || /[^A-Za-z0-9]/.test(p))
-                    return <span key={n} style={n < score ? { background: ['#e5484d', '#f5a524', '#3b82f6', '#16a34a'][score - 1] } : undefined} />
-                  })}
-                </span>
-              </Field>
-              <Field label="Confirmer le mot de passe">
-                <ChampMotDePasse
-                  autoComplete="new-password"
-                  minLength={8}
-                  value={confirmation}
-                  onChange={(e) => setConfirmation(e.target.value)}
-                  invalide={Boolean(confirmation) && confirmation !== f.password}
-                />
-                {confirmation && confirmation !== f.password && (
-                  <span style={{ color: 'var(--danger)', fontSize: 13 }}>Les mots de passe ne correspondent pas</span>
-                )}
-              </Field>
-              <label className="check" style={{ fontSize: 14 }}>
-                <input type="checkbox" checked={accepte} onChange={(e) => setAccepte(e.target.checked)} />
-                <span>
-                  J’accepte les <a href="#/conditions" target="_blank">conditions d’utilisation</a> et la{' '}
-                  <a href="#/confidentialite" target="_blank">politique de confidentialité</a>.
-                </span>
-              </label>
-            </div>
-
-            {role === 'student' && (
-              <div className="card">
-                <div className="grid2">
-                  <Field label="Classe">
-                    <input className="input" placeholder="ex. 3e A" value={f.classe} onChange={maj('classe')} required />
-                  </Field>
-                  <Field label="Date de naissance">
-                    <input className="input" type="date" value={f.dateNaissance} onChange={maj('dateNaissance')} />
-                  </Field>
-                </div>
-              </div>
-            )}
-
-            {role === 'teacher' && (
-              <>
-                <h2 className="section-title">Ce que vous enseignez</h2>
-                {!structure && <p className="muted">Chargement…</p>}
-                {structure && (
-                  <div className="card">
-                    <span className="field-label">Matière(s)</span>
-                    <div className="chips">
-                      {structure.matieres.map((m) => (
-                        <button key={m.id} type="button" className="chip" aria-pressed={matiereIds.includes(m.id)} onClick={() => basculer(setMatiereIds)(m.id)}>
-                          {m.name}
-                        </button>
-                      ))}
-                    </div>
-                    <span className="field-label">Vos classes</span>
-                    {structure.classes.length === 0 ? (
-                      <p className="muted" style={{ fontSize: 14 }}>
-                        L’établissement n’a pas encore créé ses classes : vous pourrez les choisir plus tard.
-                      </p>
-                    ) : (
-                      <div className="chips">
-                        {structure.classes.map((c) => (
-                          <button key={c.id} type="button" className="chip" aria-pressed={classeIds.includes(c.id)} onClick={() => basculer(setClasseIds)(c.id)}>
-                            {c.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <p className="muted" style={{ fontSize: 13 }}>
-                      {matiereIds.length} matière(s) · {classeIds.length} classe(s) choisie(s)
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-
-            <Note>{error}</Note>
-            <button className="btn btn-block" type="submit" disabled={busy} style={{ marginTop: 8 }}>
-              {busy ? 'Création du compte…' : 'Créer mon compte'}
-            </button>
-          </form>
-        )}
+          ))}
         </div>
-        <p className="auth-securite">🔒 Connexion chiffrée · vos données restent privées</p>
-      </main>
-      <footer className="auth-pied">Sùkûl by Embroswil · © {new Date().getFullYear()}</footer>
-    </div>
+      </PageAuth>
+    )
+  }
+
+  const profil = PROFILS.find((p) => p.id === role)
+  return (
+    <PageAuth
+      titre="Vos informations"
+      sousTitre={eleve && ecole ? `Élève · ${ecole.name}` : profil?.titre}
+      etapes={parcours.length}
+      etape={parcours.length}
+      onRetour={precedente}
+      pied={pied}
+    >
+      <form className="card" onSubmit={envoyer}>
+        <div className="grid2">
+          <Field label="Prénom">
+            <input className="input" autoComplete="given-name" value={f.firstName} onChange={maj('firstName')} required />
+          </Field>
+          <Field label="Nom">
+            <input className="input" autoComplete="family-name" value={f.lastName} onChange={maj('lastName')} required />
+          </Field>
+        </div>
+        {eleve && (
+          <Field label="Classe">
+            <input className="input" placeholder="ex. 3e A" value={f.classe} onChange={maj('classe')} required />
+          </Field>
+        )}
+        <Field label="Adresse e-mail">
+          <input className="input" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={f.email} onChange={maj('email')} required />
+        </Field>
+        <Field label="Téléphone">
+          <input className="input" type="tel" autoComplete="tel" placeholder="6 XX XX XX XX" value={f.phone} onChange={maj('phone')} />
+        </Field>
+        <Field label="Mot de passe">
+          <ChampMotDePasse autoComplete="new-password" minLength={8} placeholder="8 caractères minimum" value={f.password} onChange={maj('password')} />
+        </Field>
+        <label className="check ea-conditions">
+          <input type="checkbox" checked={accepte} onChange={(e) => setAccepte(e.target.checked)} />
+          <span>
+            J’accepte les <a href="#/conditions" target="_blank">conditions d’utilisation</a> et la{' '}
+            <a href="#/confidentialite" target="_blank">politique de confidentialité</a>.
+          </span>
+        </label>
+        <Note>{error}</Note>
+        <button className="btn btn-block" type="submit" disabled={busy}>
+          {busy ? 'Création du compte…' : 'Créer mon compte'}
+        </button>
+      </form>
+    </PageAuth>
   )
 }

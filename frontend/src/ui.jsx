@@ -84,38 +84,44 @@ export function BoutonRetour({ vers = '/', libelle = '' }) {
   )
 }
 
-// Mise en page des ecrans de connexion, d'inscription et de mot de passe oublie
-export function PageAuth({ titre, sousTitre, retour, children, pied }) {
+// Mise en page des ecrans de connexion, d'inscription, de code et de mot de passe oublie :
+// en-tete sobre (fleche de retour, logo, langue), titre, contenu, lien de bas de page.
+// onRetour : etape precedente d'un parcours ; par defaut, la page precedente (sinon l'accueil).
+export function PageAuth({ titre, sousTitre, onRetour, etapes, etape, children, pied }) {
+  const retour = onRetour || (() => (window.history.length > 1 ? window.history.back() : (window.location.hash = '/')))
   return (
-    <div className="auth">
-      <header className="auth-haut">
-        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BoutonRetour libelle="Retour" />
-          <a className="brand" href="#/" style={{ color: '#fff' }}>
-            Sùkûl<span>.</span>
-          </a>
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <ChoixLangue />
-          {retour}
-        </span>
-      </header>
-      <main className="auth-main">
-        <div className="auth-entete">
-          <h1>{titre}</h1>
-          {sousTitre && <p>{sousTitre}</p>}
-        </div>
-        {children}
-        {pied && <div className="auth-pied-lien">{pied}</div>}
-        <p className="auth-securite">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
-            <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+    <div className="ea">
+      <header className="ea-haut">
+        <button type="button" className="ea-retour" aria-label="Retour" onClick={retour}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" />
           </svg>
-          Connexion chiffrée · vos données restent privées
-        </p>
+        </button>
+        <a className="brand ea-marque" href="#/">
+          Sùkûl<span>.</span>
+        </a>
+        <ChoixLangue />
+      </header>
+      <main className="ea-main">
+        {etapes > 1 && (
+          <div className="ea-etapes" aria-hidden="true">
+            {Array.from({ length: etapes }, (_, i) => (
+              <span key={i} className={i < etape ? 'on' : ''} />
+            ))}
+          </div>
+        )}
+        {titre && <h1 className="ea-titre">{titre}</h1>}
+        {sousTitre && <p className="ea-sous">{sousTitre}</p>}
+        {children}
+        {pied && <p className="ea-pied">{pied}</p>}
       </main>
-      <footer className="auth-pied">Sùkûl by Embroswil · © {new Date().getFullYear()}</footer>
+      <footer className="ea-bas">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+          <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+        </svg>
+        Connexion chiffrée · Sùkûl by Embroswil
+      </footer>
     </div>
   )
 }

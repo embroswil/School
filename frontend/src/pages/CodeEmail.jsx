@@ -174,7 +174,18 @@ export default function MotDePasseOublie() {
   }
 
   return (
-    <PageAuth titre={titres[etape]} sousTitre={sousTitres[etape]} retour={<a href="#/connexion">Se connecter</a>}>
+    <PageAuth
+      titre={titres[etape]}
+      sousTitre={sousTitres[etape]}
+      onRetour={etape === 2 ? () => setEtape(1) : undefined}
+      pied={
+        etape !== 3 && (
+          <>
+            Vous vous en souvenez ? <a href="#/connexion">Se connecter</a>
+          </>
+        )
+      }
+    >
       {etape === 1 && (
         <form className="card" onSubmit={demander}>
           <Field label="Adresse e-mail">

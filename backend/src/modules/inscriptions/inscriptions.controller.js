@@ -53,8 +53,9 @@ const inscription = async (req, res, next) => {
     const b = req.body || {};
     const role = ROLES.includes(b.role) ? b.role : null;
     if (!role) throw new ApiError(400, "Choisissez votre profil : parent, élève ou enseignant");
-    // Le parent (ou donateur) s'inscrit sans etablissement
-    const schoolId = role === "parent" && !b.schoolId ? null : parseId(b.schoolId);
+    // Le parent et l'enseignant s'inscrivent sans etablissement : le parent retrouve ses enfants une fois
+    // connecte, l'enseignant rejoint son ou ses etablissements une fois connecte
+    const schoolId = role === "student" ? parseId(b.schoolId) : null;
     const WA = require("../../utils/whatsapp");
     let email = texte(b.email, 255).toLowerCase();
     const prenom = texte(b.firstName);
@@ -75,36 +76,18 @@ const inscription = async (req, res, next) => {
     if (typeof b.password !== "string" || b.password.length < 8 || b.password.length > 72) {
       throw new ApiError(400, "Mot de passe : 8 caractères minimum");
     }
-    // Un parent (ou donateur) s'inscrit sans etablissement : il trouvera ses enfants une fois connecte
-    let nomEcole = "";
-    if (role !== "parent") {
-      const ecole = await q("SELECT id, name FROM schools WHERE id = $1 AND is_active = true", [schoolId]);
+    // Seul l'eleve choisit son etablissement a l'inscription
+    if (role === "student") {
+      const ecole = await q("SELECT id FROM schools WHERE id = $1 AND is_active = true", [schoolId]);
       if (!ecole.rows[0]) throw new ApiError(404, "Établissement introuvable");
-      nomEcole = ecole.rows[0].name;
     }
     if ((await q("SELECT 1 FROM users WHERE email = $1", [email])).rows[0]) {
       throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».");
     }
-    // Enseignant : ses matieres et ses classes, choisies dans celles de l'etablissement
-    let matieresChoisies = [];
-    let classesChoisies = [];
-    if (role === "teacher") {
-      const ids = (v) => (Array.isArray(v) ? v.map((x) => parseInt(x, 10)).filter((x) => x > 0) : []);
-      matieresChoisies = (
-        await q("SELECT id, name FROM subjects WHERE id = ANY($1) AND school_id = $2 ORDER BY name", [ids(b.matiereIds), schoolId])
-      ).rows;
-      if (!matieresChoisies.length) throw new ApiError(400, "Choisissez la ou les matières que vous enseignez");
-      const annee = await assurerAnneeScolaire(schoolId);
-      classesChoisies = (
-        await q("SELECT id, name FROM classes WHERE id = ANY($1) AND academic_year_id = $2 ORDER BY name", [ids(b.classeIds), annee.id])
-      ).rows;
-      const nbClasses = (await q("SELECT COUNT(*)::int AS n FROM classes WHERE academic_year_id = $1", [annee.id])).rows[0].n;
-      if (nbClasses > 0 && !classesChoisies.length) throw new ApiError(400, "Choisissez les classes dans lesquelles vous enseignez");
-    }
     if (role === "student" && !texte(b.classe)) throw new ApiError(400, "Indiquez votre classe");
 
     await q("BEGIN");
-    const statut = role === "teacher" ? "pending" : "active";
+    const statut = "active";
     const hash = await bcrypt.hash(b.password, 10);
     // Eleve deja importe par l'etablissement (meme prenom et nom) : il reprend sa fiche
     const importe =
@@ -130,7 +113,7 @@ const inscription = async (req, res, next) => {
       const u = await q(
         `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, school_id, status)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [email, hash, role, prenom, nom, texte(b.phone, 30) || null, role === "parent" ? null : schoolId, statut]
+        [email, hash, role, prenom, nom, texte(b.phone, 30) || null, schoolId, statut]
       );
       userId = u.rows[0].id;
     }
@@ -183,30 +166,7 @@ const inscription = async (req, res, next) => {
       }
     }
 
-    if (role === "teacher") {
-      await q(
-        `INSERT INTO teacher_requests (school_id, user_id, subjects, subject_ids, class_ids)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [
-          schoolId,
-          userId,
-          matieresChoisies.map((m) => m.name).join(", ").slice(0, 1000),
-          matieresChoisies.map((m) => m.id),
-          classesChoisies.map((c) => c.id),
-        ]
-      );
-    }
     await q("COMMIT");
-
-    // Enseignant present dans la liste de l'etablissement : compte valide et classes affectees tout de suite
-    let reconnu = false;
-    if (role === "teacher") {
-      try {
-        reconnu = Boolean(await require("../../utils/enseignants-attendus").reconnaitre(schoolId, userId, nom, prenom));
-      } catch (_) {
-        reconnu = false;
-      }
-    }
 
     // Code de verification de l'adresse email
     let codeEnvoye = false;
@@ -219,25 +179,10 @@ const inscription = async (req, res, next) => {
       // l'inscription reste valable ; un nouveau code pourra etre demande
     }
 
-    if (role === "teacher" && !reconnu) {
-      await notifierEtablissement(schoolId, {
-        title: "Nouvel enseignant à valider",
-        message: `${prenom} ${nom} (${matieresChoisies.map((m) => m.name).join(", ")}) a créé un compte enseignant.`,
-        type: "account",
-        priority: "high",
-        data: { lien: "/enseignants" },
-      }).catch(() => {});
-    }
-
     res.status(201).json({
       success: true,
-      message:
-        role === "teacher" && reconnu
-          ? `Compte créé. Vous figurez dans la liste de ${nomEcole} : votre compte est validé et vos classes sont déjà affectées.`
-          : role === "teacher"
-          ? `Compte créé. ${nomEcole} doit valider votre compte enseignant avant votre première connexion.`
-          : "Compte créé. Vous pouvez vous connecter.",
-      data: { role, enAttente: role === "teacher" && !reconnu, reconnu, enfantsRelies, codeEnvoye, canal: envoi?.canal || null, destination: envoi?.destination || null, identifiant: email.endsWith("@tel.school") ? texte(b.phone, 30) : email },
+      message: "Compte créé. Confirmez votre adresse e-mail avec le code reçu.",
+      data: { role, enfantsRelies, codeEnvoye, canal: envoi?.canal || null, destination: envoi?.destination || null, identifiant: email.endsWith("@tel.school") ? texte(b.phone, 30) : email },
     });
   } catch (e) {
     try {
@@ -291,7 +236,8 @@ const chargerDemande = async (id) => {
 const validerEnseignant = async (req, res, next) => {
   try {
     const d = await chargerDemande(parseId(req.params.id));
-    await db.query("UPDATE users SET status = 'active', updated_at = NOW() WHERE id = $1", [d.user_id]);
+    // L'enseignant inscrit sans etablissement est rattache a celui qui le valide
+    await db.query("UPDATE users SET status = 'active', school_id = COALESCE(school_id, $2), updated_at = NOW() WHERE id = $1", [d.user_id, d.school_id]);
     // Affectations choisies par l'enseignant : chaque matiere dans chaque classe
     // (sans retirer un collegue deja affecte a la meme matiere dans la meme classe)
     if (d.subject_ids?.length && d.class_ids?.length) {
@@ -319,12 +265,80 @@ const refuserEnseignant = async (req, res, next) => {
   try {
     const d = await chargerDemande(parseId(req.params.id));
     const motif = texte((req.body || {}).motif, 500) || null;
-    await db.query("UPDATE users SET status = 'rejected', updated_at = NOW() WHERE id = $1", [d.user_id]);
+    // Un enseignant inscrit sans etablissement garde son compte (il peut rejoindre un autre etablissement)
+    await db.query("UPDATE users SET status = 'rejected', updated_at = NOW() WHERE id = $1 AND school_id = $2", [d.user_id, d.school_id]);
     await db.query(
       `UPDATE teacher_requests SET status = 'rejected', decision_reason = $2, decided_by = $3, decided_at = NOW() WHERE id = $1`,
       [d.id, motif, req.user.id]
     );
     res.json({ success: true, message: "Demande refusée" });
+  } catch (e) {
+    next(e);
+  }
+};
+
+// Enseignant : rejoindre un etablissement une fois connecte (choix des matieres et des classes).
+// Si son nom figure dans la liste des enseignants fournie par l'etablissement, il est accepte tout de suite ;
+// sinon l'etablissement valide la demande.
+// GET /api/inscriptions/mes-etablissements
+const mesEtablissements = async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT tr.id, tr.status, tr.created_at, tr.decision_reason, s.id AS school_id, s.name AS ecole, s.city
+       FROM teacher_requests tr JOIN schools s ON s.id = tr.school_id
+       WHERE tr.user_id = $1 ORDER BY tr.created_at DESC`,
+      [req.user.id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+};
+
+// POST /api/inscriptions/rejoindre { schoolId, matiereIds, classeIds }
+const rejoindre = async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const schoolId = parseId(b.schoolId);
+    const ecole = (await db.query("SELECT id, name FROM schools WHERE id = $1 AND is_active = true", [schoolId])).rows[0];
+    if (!ecole) throw new ApiError(404, "Établissement introuvable");
+    const moi = (await db.query("SELECT id, first_name, last_name, school_id FROM users WHERE id = $1", [req.user.id])).rows[0];
+    if (moi.school_id === schoolId) throw new ApiError(400, "Vous faites déjà partie de cet établissement");
+    const deja = await db.query("SELECT 1 FROM teacher_requests WHERE user_id = $1 AND school_id = $2 AND status = 'pending'", [req.user.id, schoolId]);
+    if (deja.rows[0]) throw new ApiError(409, "Votre demande est déjà en attente auprès de cet établissement");
+    const ids = (v) => (Array.isArray(v) ? v.map((x) => parseInt(x, 10)).filter((x) => x > 0) : []);
+    const matieres = (await db.query("SELECT id, name FROM subjects WHERE id = ANY($1) AND school_id = $2 ORDER BY name", [ids(b.matiereIds), schoolId])).rows;
+    if (!matieres.length) throw new ApiError(400, "Choisissez la ou les matières que vous enseignez");
+    const annee = await assurerAnneeScolaire(schoolId);
+    const classes = (await db.query("SELECT id, name FROM classes WHERE id = ANY($1) AND academic_year_id = $2 ORDER BY name", [ids(b.classeIds), annee.id])).rows;
+    const nbClasses = (await db.query("SELECT COUNT(*)::int AS n FROM classes WHERE academic_year_id = $1", [annee.id])).rows[0].n;
+    if (nbClasses > 0 && !classes.length) throw new ApiError(400, "Choisissez les classes dans lesquelles vous enseignez");
+    await db.query(
+      `INSERT INTO teacher_requests (school_id, user_id, subjects, subject_ids, class_ids) VALUES ($1, $2, $3, $4, $5)`,
+      [schoolId, req.user.id, matieres.map((m) => m.name).join(", ").slice(0, 1000), matieres.map((m) => m.id), classes.map((c) => c.id)]
+    );
+    let reconnu = false;
+    try {
+      reconnu = Boolean(await require("../../utils/enseignants-attendus").reconnaitre(schoolId, req.user.id, moi.last_name, moi.first_name));
+    } catch (_) {
+      reconnu = false;
+    }
+    if (!reconnu) {
+      await notifierEtablissement(schoolId, {
+        title: "Nouvel enseignant à valider",
+        message: `${moi.first_name} ${moi.last_name} (${matieres.map((m) => m.name).join(", ")}) souhaite rejoindre l’établissement.`,
+        type: "account",
+        priority: "high",
+        data: { lien: "/enseignants" },
+      }).catch(() => {});
+    }
+    res.status(201).json({
+      success: true,
+      data: { reconnu },
+      message: reconnu
+        ? `Vous figurez dans la liste de ${ecole.name} : vous êtes accepté et vos classes sont affectées.`
+        : `Demande envoyée à ${ecole.name}. Vous serez prévenu dès sa validation.`,
+    });
   } catch (e) {
     next(e);
   }
@@ -344,4 +358,4 @@ const mesEnfants = async (req, res, next) => {
   }
 };
 
-module.exports = { inscription, listeEnseignants, validerEnseignant, refuserEnseignant, mesEnfants };
+module.exports = { inscription, listeEnseignants, validerEnseignant, refuserEnseignant, mesEnfants, mesEtablissements, rejoindre };

@@ -46,12 +46,17 @@ requestAnimationFrame(() => setTimeout(retirer, Math.max(200, 1200 - performance
 // Une discrete annonce propose plutot la mise a jour, que l'utilisateur lance quand il le souhaite.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (e) => {
-    if (e.data?.type !== 'nouvelle-version' || document.querySelector('.annonce-maj')) return
-    const a = document.createElement('button')
-    a.type = 'button'
-    a.className = 'annonce annonce-maj'
-    a.innerHTML = '<span>Nouvelle version de Sùkûl disponible</span><b>Mettre à jour</b>'
-    a.addEventListener('click', () => window.location.reload())
+    if (e.data?.type !== 'nouvelle-version' || document.querySelector('.maj-dispo')) return
+    const a = document.createElement('div')
+    a.className = 'maj-dispo'
+    a.setAttribute('role', 'status')
+    a.innerHTML =
+      '<span class="maj-ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg></span>' +
+      '<span class="maj-texte"><b>Nouvelle version</b><small>Sùkûl a été amélioré : chargez la dernière version.</small></span>' +
+      '<button type="button" class="maj-btn">Mettre à jour</button>' +
+      '<button type="button" class="maj-fermer" aria-label="Plus tard">×</button>'
+    a.querySelector('.maj-btn').addEventListener('click', () => window.location.reload())
+    a.querySelector('.maj-fermer').addEventListener('click', () => a.remove())
     setTimeout(() => document.body.appendChild(a), 1500)
   })
 }

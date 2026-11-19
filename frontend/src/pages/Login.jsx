@@ -33,7 +33,6 @@ export default function Login() {
     <PageAuth
       titre="Connexion"
       sousTitre="Accédez à votre espace Sùkûl."
-      retour={<a href="#/inscription">Créer un compte</a>}
       pied={
         <>
           Pas encore de compte ? <a href="#/inscription">Créer un compte</a>
@@ -47,10 +46,8 @@ export default function Login() {
         <Field label="Mot de passe">
           <ChampMotDePasse value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
-        <p style={{ textAlign: 'right', margin: '-4px 0 14px' }}>
-          <a href="#/mot-de-passe-oublie" style={{ fontWeight: 700, fontSize: 14 }}>
-            Mot de passe oublié ?
-          </a>
+        <p className="ea-lien-droite">
+          <a href="#/mot-de-passe-oublie">Mot de passe oublié ?</a>
         </p>
         <Note>{error}</Note>
         <button className="btn btn-block" type="submit" disabled={busy}>

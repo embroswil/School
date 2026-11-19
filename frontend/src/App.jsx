@@ -5,7 +5,7 @@ import { usePath } from './router.js'
 import Shell from './layout.jsx'
 import Secours from './Secours.jsx'
 import PremierTheme from './PremierTheme.jsx'
-import { Annonces } from './ui.jsx'
+import { Annonces, PageAuth } from './ui.jsx'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
@@ -18,6 +18,7 @@ import Schools from './pages/Schools.jsx'
 import SchoolFiche from './pages/SchoolFiche.jsx'
 import TeacherRequests from './pages/TeacherRequests.jsx'
 import SchoolSignup from './pages/SchoolSignup.jsx'
+import RejoindreEtablissement from './pages/RejoindreEtablissement.jsx'
 import Students from './pages/Students.jsx'
 import Notifications from './pages/Notifications.jsx'
 import Messages from './pages/Messages.jsx'
@@ -115,29 +116,22 @@ function ConfirmationObligatoire() {
     api.post('/api/codes/verification/envoyer', { email: user.email }, { auth: false }).catch(() => {})
   }, [user, envoye])
   return (
-    <div className="auth">
-      <header className="auth-haut">
-        <span className="brand" style={{ color: '#fff' }}>
-          Sùkûl<span>.</span>
-        </span>
-      </header>
-      <main className="auth-main">
-        <div className="card">
-          <VerificationEmail
-            email={user.email}
-            onConfirme={async () => {
-              majUser({ emailVerifie: true })
-              window.location.hash = '/'
-            }}
-          />
-          <p style={{ textAlign: 'center', marginTop: 14 }}>
-            <button type="button" onClick={logout} className="muted" style={{ border: 0, background: 'none', cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}>
-              Se déconnecter
-            </button>
-          </p>
-        </div>
-      </main>
-    </div>
+    <PageAuth onRetour={logout}>
+      <div className="card">
+        <VerificationEmail
+          email={user.email}
+          onConfirme={async () => {
+            majUser({ emailVerifie: true })
+            window.location.hash = '/'
+          }}
+        />
+      </div>
+      <p className="ea-pied">
+        <button type="button" className="ea-lien" onClick={logout}>
+          Se déconnecter
+        </button>
+      </p>
+    </PageAuth>
   )
 }
 
@@ -147,6 +141,8 @@ function Pages({ path }) {
   const reserve = (ok, page) =>
     ok ? page : <Message title="Accès réservé">Cette page est réservée à l’administration.</Message>
 
+  // Enseignant pas encore rattache a un etablissement : il le rejoint d'abord (son profil reste accessible)
+  if (user.role === 'teacher' && !user.schoolId && path !== '/compte') return <RejoindreEtablissement />
   if (path === '/') return <Home />
   if (path === '/compte') return <Account />
   if (path === '/verifier-email') return <VerifierEmailConnecte />
