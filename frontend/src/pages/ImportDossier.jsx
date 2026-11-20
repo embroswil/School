@@ -250,7 +250,7 @@ export default function ImportDossier() {
             <small>
               {iPhone
                 ? 'Dans l’app Fichiers : appui long sur le dossier › Compresser, puis choisissez le fichier .zip.'
-                : 'Élèves, enseignants, emplois du temps, cahiers d’appel, frais, paiements, comptabilité, discipline, communiqués…'}
+                : 'Élèves, enseignants, emplois du temps, cahiers d’appel, frais, paiements, discipline, communiqués…'}
             </small>
             {!iPhone && (
               <button type="button" className="btn btn-block" onClick={() => champDossier.current?.click()}>

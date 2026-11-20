@@ -397,9 +397,6 @@ export default function Comptabilite() {
       )}
 
       <p className="suivi-liens">
-        <a className="lien-discret" href="#/comptabilite">
-          Comptabilité de l’établissement
-        </a>
         <button type="button" className="lien-discret" onClick={exporter}>
           Exporter en Excel
         </button>

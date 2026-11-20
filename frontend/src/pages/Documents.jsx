@@ -35,7 +35,6 @@ const DESTINATIONS = {
   emploi_du_temps: ['/import-emplois', 'Emploi du temps', 'Ajouter aux emplois du temps', true],
   frais: ['/scolarite?onglet=frais', 'Frais de scolarité', 'Mettre à jour les frais', true],
   discipline: ['/discipline', 'Discipline', 'Enregistrer les sanctions', false],
-  comptabilite: ['/comptabilite', 'Budget et comptabilité', 'Ajouter à la comptabilité', false, true],
   notes_nominatives: [null, 'Notes d’élèves', null, false],
 }
 const CATEGORIE_DE = { emploi_du_temps: 'emploi', frais: 'scolarite', comptabilite: 'administration' }
@@ -57,7 +56,6 @@ const sansAccents = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u0
 function reconnaitre(nom, texte) {
   const t = sansAccents(`${nom}\n${String(texte || '').slice(0, 8000)}`)
   if (/journal des encaissements|etat de recouvrement|situation (de la )?scolarite|situation par eleve|encaissements et situation/.test(t)) return { nature: 'interne', categorie: 'scolarite' }
-  if (/\.(xlsx|xls|csv|ods)\b/.test(sansAccents(nom)) && /budget|journal des depenses|comptabilite|tresorerie/.test(t)) return { nature: 'comptabilite' }
   if (/service des enseignants|heures \/ semaine|heures supplementaires|budget|comptabilite|journal des depenses|tresorerie|absences des enseignants|bilan par enseignant/.test(t))
     return { nature: 'interne', categorie: 'administration' }
   if (/cahier.d.appel|feuille.d.appel|feuille de presence/.test(t)) return { nature: 'cahier_appel' }

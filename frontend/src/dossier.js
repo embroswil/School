@@ -119,7 +119,7 @@ export function role(chemin, texte) {
   }
   if (TABLEUR.includes(e)) {
     if ((/journal des (encaissements|paiements)/.test(t) || /n° de recu|numero de recu/.test(t)) && /matricule/.test(t) && /montant/.test(t)) return { role: 'paiements' }
-    if (/budget|journal des depenses|comptabilite|tresorerie/.test(t)) return { role: 'compta' }
+    if (/budget|journal des depenses|comptabilite|tresorerie/.test(t)) return { role: 'interne', categorie: 'administration' }
     if (/cahier d.appel|feuille d.appel/.test(t)) return { role: 'appel' }
     if (/emplois? du temps|emplois?-du-temps/.test(t)) return { role: 'emplois' }
     if (/sanction|conseil de discipline/.test(t) && /(eleve|classe|matricule)/.test(t)) return { role: 'discipline' }
