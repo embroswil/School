@@ -7,7 +7,7 @@ import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
 import { envoisEnAttente, envoyerAttente } from './horsligne.js'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier, IcChevron, IcClasses } from './icones.jsx'
 
 // Appels et notes gardes sur le telephone faute de reseau : rappel discret, envoi a la demande
 function EnvoisEnAttente() {
@@ -173,12 +173,75 @@ const ACTIONS = [
   ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
   ['/discipline', IcBouclier, 'Discipline', 'Procès-verbal, sanctions'],
 ]
-const ACTIONS_ENS = [
-  ['/mes-classes', IcAppel, 'Faire l’appel', 'Choisir la classe'],
-  ['/info', IcMegaphone, 'Informer', 'Info, cours, photos'],
-  ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
-  ['/mon-absence', IcCalendrier, 'Mon absence', 'Prévenir l’établissement'],
+
+// Bouton + de l'enseignant : le cours du moment, puis ses actions rangees par usage (liste, pas de tuiles)
+const GROUPES_ENS = [
+  [
+    'Communiquer',
+    [
+      ['/messages?nouveau=parents', IcMessages, 'Message aux parents', 'Une classe ou un élève'],
+      ['/info', IcMegaphone, 'Informer', 'Information, événement, photos'],
+      ['/document', IcFichier, 'Partager un document', 'PDF, photo, Excel…'],
+    ],
+  ],
+  [
+    'Organiser',
+    [
+      ['/info?genre=cours', IcPlus, 'Programmer un cours en plus', 'Hors emploi du temps'],
+      ['/mon-absence', IcCalendrier, 'Signaler une absence', 'Prévenir l’établissement'],
+      ['/mes-classes', IcEleves, 'Mes classes', 'Notes, devoirs, appel'],
+      ['/emploi', IcClasses, 'Emploi du temps', 'Ma semaine'],
+    ],
+  ],
 ]
+function ActionsEnseignant() {
+  const [v, setV] = useState(null)
+  useEffect(() => {
+    api
+      .get('/api/presence-enseignants/mes-cours')
+      .then((r) => setV(r.data))
+      .catch(() => {})
+  }, [])
+  const t = v?.maintenant || ''
+  const cours = (v?.cours || []).find((c) => c.debut <= t && t < c.fin)
+  return (
+    <>
+      {cours && (
+        <div className="act-cours">
+          <small>En cours · {`${cours.debut} – ${cours.fin}`}</small>
+          <b data-brut>{`${cours.classe} · ${cours.matiere || ''}`}</b>
+          <div>
+            <a className="btn" href={`#/classes/${cours.class_id}/appel`}>
+              <IcAppel size={17} /> {cours.appel ? 'Appel fait' : 'Faire l’appel'}
+            </a>
+            <a className="btn btn-quiet" href="#/mes-cours">
+              <IcCoche size={17} /> Cahier de textes
+            </a>
+          </div>
+        </div>
+      )}
+      {GROUPES_ENS.map(([titre, liste]) => (
+        <div key={titre} className="act-groupe">
+          <p>{titre}</p>
+          <div className="act-liste">
+            {liste.map(([to, Icone, t2, st]) => (
+              <a key={to} href={`#${to}`}>
+                <span className="act-ico">
+                  <Icone size={19} />
+                </span>
+                <span className="act-texte">
+                  <b>{t2}</b>
+                  <small>{st}</small>
+                </span>
+                <IcChevron size={15} />
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
 
 export default function Shell({ path, children }) {
   const { user } = useAuth()
@@ -265,9 +328,12 @@ export default function Shell({ path, children }) {
         <div className="voile" onClick={() => setActions(false)}>
           <div className="feuille" onClick={(e) => e.stopPropagation()}>
             <div className="feuille-poignee" />
-            <p className="feuille-titre">Actions rapides</p>
+            <p className="feuille-titre">{user.role === 'teacher' ? 'Que voulez-vous faire ?' : 'Actions rapides'}</p>
+            {user.role === 'teacher' ? (
+              <ActionsEnseignant />
+            ) : (
             <div className="tuiles tuiles-actions">
-              {(user.role === 'teacher' ? ACTIONS_ENS : ACTIONS).map(([to, Icone, t, st]) => (
+              {ACTIONS.map(([to, Icone, t, st]) => (
                 <a key={to} className="tuile" href={`#${to}`}>
                   <span className="tuile-ico">
                     <Icone size={22} />
@@ -277,6 +343,7 @@ export default function Shell({ path, children }) {
                 </a>
               ))}
             </div>
+            )}
           </div>
         </div>
       )}

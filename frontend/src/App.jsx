@@ -162,7 +162,7 @@ function Pages({ path }) {
   if (path === '/emplois') return reserve(user.role === 'principal', <EmploisDuTemps />)
   if (path === '/import-absences') return reserve(user.role === 'principal', <ImportAbsences />)
   if (path === '/administrateurs') return reserve(user.role === 'principal', <Administrateurs />)
-  if (path === '/messages') return <Messages />
+  if (path.split('?')[0] === '/messages') return <Messages key={path} />
   const convMatch = path.match(/^\/messages\/(\d+)$/)
   if (convMatch) return <Conversation key={convMatch[1]} id={Number(convMatch[1])} />
   if (path === '/etablissements') return reserve(user.role === 'admin', <Schools />)

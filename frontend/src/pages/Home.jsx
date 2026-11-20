@@ -564,30 +564,10 @@ function EspaceEnseignant() {
   // la frise : cours de l'emploi du temps et cours supplementaires, dans l'ordre des heures
   const elements = vue ? [...vue.cours.map((c) => ({ h: c.debut, c })), ...(vue.supplementaires || []).map((x) => ({ h: x.heure, x }))].sort((a, b) => a.h.localeCompare(b.h)) : []
 
-  const raccourcis = [
-    ['#/mes-classes', IcEleves, 'Mes classes'],
-    ['#/info?genre=cours', IcPlus, 'Cours en plus'],
-    ['#/emploi', IcClasses, 'Emploi du temps'],
-    ['#/info', IcMegaphone, 'Informer'],
-    ['#/document', IcFichier, 'Document'],
-    ['#/mon-absence', IcCalendrier, 'Mon absence'],
-  ]
 
   return (
     <div className="ens-accueil">
       <EnTeteEnseignant />
-      <section className="ens-raccourcis" aria-label="Raccourcis">
-        <div className="ens-raccourcis-liste">
-          {raccourcis.map(([href, Icone, titre]) => (
-            <a key={href} href={href}>
-              <span>
-                <Icone size={21} />
-              </span>
-              <b>{titre}</b>
-            </a>
-          ))}
-        </div>
-      </section>
       <section className="ens-agenda">
         {joursCours.length > 0 && (
           <div className="ens-semaine" role="tablist" aria-label="Choisir un jour">
