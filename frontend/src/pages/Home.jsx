@@ -8,7 +8,7 @@ import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -390,15 +390,17 @@ function ChoixEtablissement() {
 }
 
 function EspaceEnseignant() {
-  const classes = useApi('/api/notes/mes-classes')
+  const { user } = useAuth()
   const jour = useApi('/api/presence-enseignants/mes-cours')
   const v = jour.data
   const liste = v?.cours || []
   const t = v?.maintenant || ''
   const maintenant = liste.find((c) => c.debut <= t && t < c.fin)
   const suivant = liste.find((c) => c.debut > t)
-  const nombre = liste.length
   const cours = maintenant || suivant
+  const confirmes = liste.filter((c) => c.confirme_le || c.etat === 'assure').length
+  const passes = liste.filter((c) => c.fin <= t)
+  const nonConfirmes = passes.filter((c) => !c.confirme_le && c.etat !== 'assure' && !c.absent).length
   const [confirmation, setConfirmation] = useState('')
   async function jeSuisEnCours() {
     setConfirmation('…')
@@ -410,85 +412,70 @@ function EspaceEnseignant() {
       setConfirmation(err.message)
     }
   }
+  const heureDe = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Douala' })
   return (
     <>
-      <section className="cours-moment">
+      <header className="ens-tete">
+        <h1>{`Bonjour, ${user.firstName}`}</h1>
+        <p data-brut>{user.schoolName || ''}</p>
+      </header>
+      <ChoixEtablissement />
+
+      <section className="ens-jour">
+        <div className="ens-jour-tete">
+          <span>{cours ? (maintenant ? 'En ce moment' : 'Prochain cours') : 'Ma journée'}</span>
+          <a href="#/mes-cours">Mes cours ›</a>
+        </div>
         {cours ? (
           <>
-            <span className="badge">{maintenant ? 'En ce moment' : 'Prochain cours'}</span>
-            <h2>
-              {cours.classe} · {cours.matiere}
-            </h2>
-            <p>
-              {cours.debut} – {cours.fin}
-              {cours.salle ? ` · salle ${cours.salle}` : ''}
-            </p>
-            {cours.confirme_le ? (
-              <p className="cours-confirme">{`✓ Présence confirmée à ${new Date(cours.confirme_le).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Douala' })}`}</p>
-            ) : (
-              confirmable(cours, v) && (
-                <button type="button" className="btn btn-block" disabled={confirmation === '…'} onClick={jeSuisEnCours}>
-                  {confirmation === '…' ? '…' : 'Je suis en cours'}
-                </button>
-              )
-            )}
-            {confirmation && confirmation !== '…' && <p className="cours-erreur">{confirmation}</p>}
-            <div className="cours-liens">
-              <a href={`#/classes/${cours.class_id}/appel`}>{cours.appel ? 'Appel fait' : 'Faire l’appel'}</a>
-              <a href="#/mes-cours">Cahier de textes</a>
+            <h2>{`${cours.classe} · ${cours.matiere || 'Cours'}`}</h2>
+            <p>{`${cours.debut} – ${cours.fin}${cours.salle ? ` · salle ${cours.salle}` : ''}`}</p>
+            <div className="ens-jour-action">
+              {cours.confirme_le ? (
+                <span className="ok">{`✓ Présence confirmée à ${heureDe(cours.confirme_le)}`}</span>
+              ) : (
+                confirmable(cours, v) && (
+                  <button type="button" className="btn" disabled={confirmation === '…'} onClick={jeSuisEnCours}>
+                    {confirmation === '…' ? '…' : 'Je suis en cours'}
+                  </button>
+                )
+              )}
+              {maintenant && <a href={`#/classes/${cours.class_id}/appel`}>{cours.appel ? 'Appel fait' : 'Faire l’appel'}</a>}
             </div>
+            {confirmation && confirmation !== '…' && <p className="cours-erreur">{confirmation}</p>}
           </>
         ) : (
           <>
-            <span className="badge">Aujourd’hui</span>
-            <h2>{nombre ? 'Vos cours du jour sont terminés' : 'Pas de cours aujourd’hui'}</h2>
-            <p>{v?.total ? 'Bonne fin de journée !' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</p>
-            {nombre > 0 && (
-              <div className="cours-liens">
-                <a href="#/mes-cours">Mes cours du jour et cahier de textes</a>
-              </div>
-            )}
+            <h2>{liste.length ? 'Journée terminée' : 'Pas de cours aujourd’hui'}</h2>
+            <p>{liste.length ? 'Pensez à compléter le cahier de textes de vos cours.' : v?.total ? 'Votre emploi du temps ne prévoit pas de cours ce jour.' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</p>
           </>
+        )}
+        {liste.length > 0 && (
+          <div className="ens-jour-chiffres">
+            <div>
+              <b>{liste.length}</b>
+              <small>Cours</small>
+            </div>
+            <div>
+              <b>{confirmes}</b>
+              <small>Confirmés</small>
+            </div>
+            <div>
+              <b>{nonConfirmes}</b>
+              <small>Non confirmés</small>
+            </div>
+          </div>
         )}
       </section>
 
-      <div className="grille-tuiles quatre">
+      <div className="grille-tuiles six">
+        <Tuile href="#/mes-cours" Icone={IcCoche} titre="Mes cours" texte="Présence, cahier de textes" />
+        <Tuile href="#/mes-classes" Icone={IcEleves} titre="Mes classes" texte="Notes, devoirs, appel" />
+        <Tuile href="#/emploi" Icone={IcClasses} titre="Emploi du temps" texte="Ma semaine" />
         <Tuile href="#/info" Icone={IcMegaphone} titre="Informer" texte="Info, cours supplémentaire, photos" />
         <Tuile href="#/document" Icone={IcFichier} titre="Document" texte="PDF, photo, Excel…" />
-        <Tuile href="#/emploi" Icone={IcClasses} titre="Emploi du temps" texte="Mes cours" />
-        <Tuile href="#/mon-absence" Icone={IcCoche} titre="Mon absence" texte="Prévenir l’établissement" />
+        <Tuile href="#/mon-absence" Icone={IcCalendrier} titre="Mon absence" texte="Prévenir l’établissement" />
       </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h2 className="section-title">Mes classes</h2>
-        <a href="#/mes-classes" style={{ fontWeight: 700, fontSize: 14 }}>
-          Modifier
-        </a>
-      </div>
-      {classes.data?.length === 0 && <Action href="#/mes-classes" Icone={IcClasses} titre="Choisir mes classes" texte="Indiquez vos matières et vos classes" />}
-      {classes.data?.length > 0 && (
-        <ul className="liste-eleves">
-          {classes.data.map((c) => (
-            <li key={c.id} style={{ padding: '10px 12px', gap: 6, flexWrap: 'wrap' }}>
-              <span className="nom" style={{ flex: '1 1 140px', minWidth: 0 }}>
-                <b>
-                  {c.name}
-                  {c.prof_principal ? ' · PP' : ''}
-                </b>
-                <small>
-                  {c.matieres.join(', ') || '—'} · {c.eleves} élèves
-                </small>
-              </span>
-              <a className="btn btn-quiet" style={{ padding: '7px 10px', fontSize: 13 }} href={`#/classes/${c.id}/notes`}>
-                Notes
-              </a>
-              <a className="btn btn-quiet" style={{ padding: '7px 10px', fontSize: 13 }} href={`#/classes/${c.id}/devoirs`}>
-                Devoirs
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
     </>
   )
 }
@@ -517,25 +504,11 @@ export default function Home() {
     <>
       <ChoixEspace />
       {user.role !== 'admin' && user.schoolId && <BandeauAbonnement role={user.role} />}
-      {user.role === 'teacher' && (
-      <section className="hero-card" style={{ marginTop: 8 }}>
-        <span className="badge">{ROLES[user.role] || user.role}</span>
-        <h2 style={{ marginTop: 12 }}>Bonjour, {user.firstName} 👋</h2>
-        <p>{user.schoolName || (user.role === 'admin' ? 'Tous les établissements' : '')}</p>
-      </section>
-      )}
       {user.role === 'admin' && <EspaceAdmin />}
       {user.role === 'principal' && <EspaceEtablissement />}
       {user.role === 'parent' && <EspaceParent />}
       {user.role === 'student' && <EspaceEleve />}
-      {user.role === 'teacher' && <ChoixEtablissement />}
       {user.role === 'teacher' && <EspaceEnseignant />}
-      {user.role === 'teacher' && (
-        <>
-          <h2 className="section-title">Informations</h2>
-          <Fil />
-        </>
-      )}
     </>
   )
 }

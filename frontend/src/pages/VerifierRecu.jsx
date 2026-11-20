@@ -1,8 +1,82 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { fcfa, MODES_PAIEMENT } from '../recus.js'
+import { lireCode128 } from '../code128.js'
 
 const date = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—')
+
+const camera = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
+
+// Lecture du code-barres (ou du QR code) par la camera, directement dans l'application.
+// Le detecteur du navigateur est utilise s'il existe ; sinon (iPhone) le code-barres est lu image par image.
+function Scanner({ onLu, onErreur }) {
+  const video = useRef(null)
+  const rappels = useRef({ onLu, onErreur })
+  rappels.current = { onLu, onErreur }
+  useEffect(() => {
+    let flux = null
+    let fini = false
+    const toile = document.createElement('canvas')
+    const ctx = toile.getContext('2d', { willReadFrequently: true })
+    const natif = 'BarcodeDetector' in window ? new window.BarcodeDetector({ formats: ['qr_code', 'code_128'] }) : null
+    ;(async () => {
+      try {
+        flux = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
+        if (fini) return
+        video.current.srcObject = flux
+        await video.current.play()
+        while (!fini) {
+          const v = video.current
+          let texte = null
+          if (v && v.videoWidth) {
+            if (natif) texte = (await natif.detect(v).catch(() => []))[0]?.rawValue || null
+            if (!texte) {
+              // bande centrale de l'image (la ou se trouve le cadre)
+              const w = Math.min(v.videoWidth, 1600)
+              const ech = w / v.videoWidth
+              const h = Math.round(v.videoHeight * ech * 0.4)
+              toile.width = w
+              toile.height = h
+              ctx.drawImage(v, 0, v.videoHeight * 0.3, v.videoWidth, v.videoHeight * 0.4, 0, 0, w, h)
+              const px = ctx.getImageData(0, 0, w, h).data
+              const gris = new Uint8Array(w * h)
+              for (let k = 0, p = 0; k < gris.length; k++, p += 4) gris[k] = (px[p] * 77 + px[p + 1] * 150 + px[p + 2] * 29) >> 8
+              texte = lireCode128(gris, w, h)
+            }
+          }
+          if (texte) {
+            fini = true
+            navigator.vibrate?.(60)
+            rappels.current.onLu(texte)
+            break
+          }
+          await new Promise((r) => setTimeout(r, 120))
+        }
+      } catch {
+        rappels.current.onErreur()
+      }
+    })()
+    return () => {
+      fini = true
+      flux?.getTracks().forEach((t) => t.stop())
+    }
+  }, [])
+  return (
+    <div className="verif-camera">
+      <video ref={video} playsInline muted autoPlay />
+      <span className="verif-cadre" aria-hidden="true" />
+      <p>Placez le code du reçu dans le cadre</p>
+    </div>
+  )
+}
+
+// Numero et code d'un texte scanne : lien du QR code (…/verifier/SK-…?c=CODE) ou numero seul (code-barres)
+function lireScan(t) {
+  const s = String(t || '').trim()
+  const m = s.match(/verifier\/([^?#\s]+)(?:\?c=([A-Za-z0-9]+))?/)
+  if (m) return { numero: decodeURIComponent(m[1]).toUpperCase(), code: (m[2] || '').toUpperCase() }
+  return { numero: s.toUpperCase(), code: '' }
+}
 
 // Situation de scolarite d'un eleve retrouve par son matricule : a-t-il paye ? que reste-t-il ?
 function Situation({ s }) {
@@ -73,7 +147,9 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
   const [situation, setSituation] = useState(null)
   const [erreur, setErreur] = useState('')
   const [busy, setBusy] = useState(false)
-  const [etat, setEtat] = useState(null) // recu verifie depuis son QR code
+  const [etat, setEtat] = useState(null) // recu verifie depuis son QR code ou son code-barres
+  const [scan, setScan] = useState(false)
+  const [refus, setRefus] = useState(false)
 
   async function chercher(matricule) {
     const m = matricule.trim()
@@ -89,23 +165,55 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
     }
     setBusy(false)
   }
+  // Recu scanne (QR code ou code-barres) : le recu est verifie, puis la situation de l'eleve s'affiche
+  async function verifierRecu(numero, code) {
+    setScan(false)
+    setBusy(true)
+    setErreur('')
+    setSituation(null)
+    setEtat(null)
+    try {
+      const r = await api.get(`/api/verifier/recus/${encodeURIComponent(numero)}${code ? `?c=${encodeURIComponent(code)}` : ''}`)
+      setEtat({ ok: r.data.codeOk !== false, recu: r.data })
+      const m = r.data.eleve?.matricule
+      if (m) setSituation((await api.get(`/api/verifier/eleves/${encodeURIComponent(m)}`).catch(() => ({ data: null }))).data)
+    } catch (err) {
+      setEtat({ ok: false, message: err.message })
+    }
+    setBusy(false)
+  }
+  // Texte scanne : lien du QR code d'un recu, numero de recu, ou matricule (carte d'eleve)
+  async function lu(texte) {
+    const l = lireScan(texte)
+    if (/verifier\//.test(String(texte)) || /^(SK|REC|LBR)?-?\d{4}-\d+$/i.test(l.numero)) return verifierRecu(l.numero, l.code)
+    setScan(false)
+    setBusy(true)
+    setErreur('')
+    setEtat(null)
+    try {
+      setSituation((await api.get(`/api/verifier/eleves/${encodeURIComponent(l.numero)}`)).data)
+      setBusy(false)
+    } catch {
+      setBusy(false)
+      verifierRecu(l.numero, l.code)
+    }
+  }
   useEffect(() => {
-    if (!numeroLien) return
-    ;(async () => {
-      try {
-        const r = await api.get(`/api/verifier/recus/${encodeURIComponent(numeroLien.toUpperCase())}${codeLien ? `?c=${encodeURIComponent(codeLien.toUpperCase())}` : ''}`)
-        setEtat({ ok: r.data.codeOk !== false, recu: r.data })
-      } catch (err) {
-        setEtat({ ok: false, message: err.message })
-      }
-    })()
+    if (numeroLien) verifierRecu(numeroLien.toUpperCase(), codeLien.toUpperCase())
   }, [numeroLien, codeLien])
 
   const r = etat?.recu
   return (
     <div className="verif">
       <h1 className="page-title">Vérifier un paiement</h1>
-      <p className="lede">Saisissez le matricule de l’élève : vous voyez aussitôt s’il a payé et ce qu’il reste à payer.</p>
+      <p className="lede">Scannez le reçu, ou saisissez le matricule de l’élève : vous voyez aussitôt s’il a payé et ce qu’il reste à payer.</p>
+      {scan && <Scanner onLu={lu} onErreur={() => (setScan(false), setRefus(true))} />}
+      {refus && !scan && <p className="muted verif-astuce">La caméra n’est pas disponible. Autorisez l’accès à la caméra pour Sùkûl dans les réglages du téléphone, ou saisissez le matricule.</p>}
+      {camera && !scan && (
+        <button type="button" className="btn btn-block verif-scanner" onClick={() => (setRefus(false), setScan(true))}>
+          Scanner un reçu
+        </button>
+      )}
       <form
         className="verif-saisie"
         onSubmit={(e) => {
@@ -113,7 +221,7 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
           chercher(saisie)
         }}
       >
-        <input className="input" value={saisie} onChange={(e) => setSaisie(e.target.value)} placeholder="Matricule de l’élève" autoComplete="off" autoCapitalize="characters" aria-label="Matricule de l’élève" autoFocus={!numeroLien} />
+        <input className="input" value={saisie} onChange={(e) => setSaisie(e.target.value)} placeholder="Matricule de l’élève" autoComplete="off" autoCapitalize="characters" aria-label="Matricule de l’élève" />
         <button type="submit" className="btn" disabled={busy || !saisie.trim()}>
           {busy ? '…' : 'Vérifier'}
         </button>
@@ -127,7 +235,6 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
           <small>{erreur}</small>
         </div>
       )}
-      {situation && <Situation s={situation} />}
 
       {etat && !r && (
         <div className="verif-resultat ko">
@@ -169,10 +276,10 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
           </div>
           <div className="verif-liens">
             <a href={`#/recus/${r.id}`}>Voir le reçu</a>
-            <a href={`#/releve/${r.eleve.id}`}>Relevé de l’élève</a>
           </div>
         </div>
       )}
+      {situation && <Situation s={situation} />}
     </div>
   )
 }

@@ -2275,3 +2275,63 @@ html.ordi .niveau-repli-tete:hover { border-color: var(--primary); }
 .notif-ligne time { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .notif-texte small { font-size: 13px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .notif-point { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--primary); }
+
+/* =====================================================================
+   Espace enseignant : sa propre couleur (vert sarcelle), distincte de celle de l'etablissement (bleu).
+   La classe espace-enseignant est posee sur <html> pour les comptes enseignants.
+   ===================================================================== */
+html.espace-enseignant {
+  --primary: #14a693; --primary-dark: #0e8273; --primary-soft: rgba(20, 166, 147, 0.16);
+  --lien: #3ed3bd; --lien-doux: #7fe3d4;
+}
+html.espace-enseignant[data-theme='light'] {
+  --primary: #0e9483; --primary-dark: #0b7568; --primary-soft: #dff5f1;
+  --lien: #0b7568; --lien-doux: #0e9483;
+}
+html.espace-enseignant .gt-ico { background: rgba(20, 166, 147, 0.14); }
+html.espace-enseignant .nav-plus { background: linear-gradient(135deg, #18b9a3, #0b7568); box-shadow: 0 8px 22px rgba(14, 148, 131, 0.35); }
+html.espace-enseignant.ordi .nav a[aria-current='page'] { background: rgba(20, 166, 147, 0.16); }
+html.espace-enseignant .interrupteur.on { background: #14a693; }
+html.espace-enseignant .choix-langue button[aria-pressed='true'] { background: #14a693; }
+html.espace-enseignant .avatar { background: linear-gradient(135deg, #18b9a3, #0b7568); }
+html.espace-enseignant .nav .nav-marque span, html.espace-enseignant .brand span { color: #14a693; }
+html.espace-enseignant :is(.hero-card, .profil-carte) { background: linear-gradient(140deg, #0b4f47 0%, #0e7a6c 55%, #14a693 100%); border: 0; box-shadow: none; }
+html.espace-enseignant[data-theme='light'] :is(.hero-card, .profil-carte) { background: linear-gradient(140deg, #0b7568 0%, #0e9483 50%, #22b8a2 100%); box-shadow: 0 12px 30px rgba(14, 148, 131, 0.28); }
+html.espace-enseignant[data-theme='light'] .profil-avatar-cam { border-color: #0e9483; color: #0b7568; }
+/* iPhone, theme clair : en-tete de la couleur de l'espace enseignant */
+html.barre-ios.espace-enseignant[data-theme='light'] body::before { background: #0b7568; }
+html.barre-ios.espace-enseignant[data-theme='light'] .topbar { background: #0b7568; --muted: #c9efe9; }
+
+/* Accueil de l'enseignant */
+.ens-tete { margin: 6px 2px 14px; }
+.ens-tete h1 { font: 800 26px/1.15 var(--font-display); margin: 0; }
+.ens-tete p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.ens-jour { padding: 16px 18px; margin: 0 0 14px; border-radius: 18px; color: #fff; background: linear-gradient(140deg, #0b4f47 0%, #0e7a6c 55%, #14a693 100%); }
+[data-theme='light'] .ens-jour { background: linear-gradient(140deg, #0b7568 0%, #0e9483 50%, #22b8a2 100%); box-shadow: 0 12px 28px rgba(14, 148, 131, 0.25); }
+.ens-jour-tete { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.ens-jour-tete span { font: 700 11.5px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+.ens-jour-tete a { color: #fff; font: 700 13px/1 var(--font-body); text-decoration: none; opacity: 0.95; }
+.ens-jour h2 { font: 800 20px/1.25 var(--font-display); margin: 10px 0 2px; color: #fff; }
+.ens-jour p { margin: 0; font-size: 14px; opacity: 0.9; }
+.ens-jour-action { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 12px; }
+.ens-jour-action .btn { background: #fff; color: #0b4f47; padding: 9px 16px; font-size: 14px; }
+.ens-jour-action a { color: #fff; font: 700 13.5px/1 var(--font-body); }
+.ens-jour-action .ok { font: 700 13.5px/1.2 var(--font-body); }
+.ens-jour-chiffres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
+.ens-jour-chiffres div { padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.14); }
+.ens-jour-chiffres b { display: block; font: 800 18px/1.1 var(--font-display); }
+.ens-jour-chiffres small { font-size: 11.5px; opacity: 0.9; }
+.grille-tuiles.six { grid-template-columns: repeat(2, 1fr); }
+html.ordi .grille-tuiles.six { grid-template-columns: repeat(3, 1fr); }
+/* Mes classes (enseignant) */
+.mcl-liste { list-style: none; margin: 0 0 10px; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.mcl-classe { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.mcl-classe:last-child { border-bottom: 0; }
+.mcl-nom { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.mcl-nom b { font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.mcl-nom em { font-style: normal; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--primary-soft); color: var(--lien); }
+.mcl-nom small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mcl-liens { flex: none; display: flex; gap: 14px; }
+.mcl-liens a { font: 700 13px/1 var(--font-body); color: var(--lien); text-decoration: none; }
+html.espace-enseignant.ordi[data-theme='light'] .nav a[aria-current='page'] { background: #dff5f1; color: #0b7568; }
+html.espace-enseignant.ordi:not([data-theme='light']) .nav a[aria-current='page'] { color: #fff; }

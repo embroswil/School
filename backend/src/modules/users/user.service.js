@@ -26,10 +26,10 @@ const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex"
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
-// Espace « parent » : un administrateur d'etablissement qui est aussi parent ou tuteur passe,
-// avec le meme compte, de l'espace de son etablissement a son espace parent (et inversement).
+// Espace « parent » : un administrateur d'etablissement ou un enseignant qui est aussi parent ou tuteur
+// passe, avec le meme compte, de son espace professionnel a son espace parent (et inversement).
 // Dans l'espace parent, il a exactement les droits d'un parent : rien de plus.
-const ROLES_AVEC_ESPACE_PARENT = ["principal"];
+const ROLES_AVEC_ESPACE_PARENT = ["principal", "teacher"];
 const espaceValide = (user, espace) => (espace === "parent" && ROLES_AVEC_ESPACE_PARENT.includes(user.role) ? "parent" : null);
 
 const toPublicUser = (u, espace = null) => ({

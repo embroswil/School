@@ -3,8 +3,8 @@ import { nomEcole } from './i18n.jsx'
 import { useAuth } from './auth.jsx'
 import { IcEcole, IcProfil } from './icones.jsx'
 
-// Administrateur d'etablissement aussi parent ou tuteur : un seul compte, deux espaces.
-// Ce selecteur passe de l'espace de l'etablissement a l'espace parent, et inversement.
+// Administrateur d'etablissement ou enseignant aussi parent ou tuteur : un seul compte, deux espaces.
+// Ce selecteur passe de l'espace professionnel a l'espace parent, et inversement.
 export function ChoixEspace() {
   const { user, changerEspace } = useAuth()
   const [busy, setBusy] = useState(false)
@@ -25,7 +25,7 @@ export function ChoixEspace() {
       <button type="button" role="tab" aria-selected={!parent} onClick={() => aller('etablissement')}>
         <IcEcole size={18} />
         <span>
-          <b>Établissement</b>
+          <b>{user.roleReel === 'teacher' ? 'Enseignant' : 'Établissement'}</b>
           <small data-brut>{nomEcole(user.etablissement) || '—'}</small>
         </span>
       </button>

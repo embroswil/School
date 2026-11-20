@@ -93,9 +93,10 @@ const NAV_ORDI = {
     ['/abonnement', IcCarte, 'Abonnement'],
   ],
   teacher: [
+    ['/mes-cours', IcCoche, 'Mes cours'],
+    ['/mes-classes', IcEleves, 'Mes classes'],
     ['/emploi', IcEcole, 'Emploi du temps'],
     ['/document', IcActus, 'Documents'],
-    ['/mes-cours', IcCoche, 'Mes cours'],
     ['/mon-absence', IcProfil, 'Mon absence'],
     ['/mes-etablissements', IcEcole, 'Mes établissements'],
   ],
@@ -176,6 +177,11 @@ export default function Shell({ path, children }) {
   const items = NAV[user.role] || NAV.parent
   const [compteurs, setCompteurs] = useState({ notifications: 0, messages: 0 })
   const [actions, setActions] = useState(false)
+  // espace enseignant : sa propre couleur (voir index.css)
+  useEffect(() => {
+    document.documentElement.classList.toggle('espace-enseignant', user.role === 'teacher')
+    return () => document.documentElement.classList.remove('espace-enseignant')
+  }, [user.role])
   useEffect(() => {
     setActions(false)
     api

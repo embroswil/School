@@ -55,7 +55,7 @@ const PARCOURS = {
   teacher: {
     '/': [
       { titre: 'Bienvenue sur Sùkûl !', texte: 'Je vais vous accompagner pendant vos premiers pas. Suivez-moi : cela ne prend que quelques secondes à chaque page.' },
-      { cible: '.cours-moment', titre: 'Votre cours du moment', texte: 'Confirmez d’un geste que vous êtes en cours, faites l’appel et remplissez le cahier de textes.' },
+      { cible: '.ens-jour', titre: 'Votre journée', texte: 'Le cours du moment : confirmez d’un geste que vous êtes en cours et faites l’appel.' },
       { cible: tuile('/info'), titre: 'Informer', texte: 'Prévenez vos élèves et leurs parents : information, cours supplémentaire, photos.' },
       { cible: tuile('/emploi'), action: true, titre: 'Emploi du temps', texte: 'Touchez « Emploi du temps » pour voir vos cours de la semaine.' },
     ],

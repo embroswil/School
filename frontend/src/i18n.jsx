@@ -392,6 +392,17 @@ const EN = {
   "Rappeler tous les parents en retard": "Remind all overdue parents",
   "Rappeler les parents en retard": "Remind overdue parents",
   "Relances automatiques": "Automatic reminders",
+  "Journée terminée": "Day over",
+  "Pensez à compléter le cahier de textes de vos cours.": "Remember to complete the lesson log of your classes.",
+  "Ma journée": "My day",
+  "Mes cours ›": "My lessons ›",
+  "Confirmés": "Confirmed",
+  "Non confirmés": "Not confirmed",
+  "Présence, cahier de textes": "Attendance, lesson log",
+  "Notes, devoirs, appel": "Grades, homework, roll call",
+  "Ma semaine": "My week",
+  "Mes matières et classes": "My subjects and classes",
+  "Scannez le reçu, ou saisissez le matricule de l’élève : vous voyez aussitôt s’il a payé et ce qu’il reste à payer.": "Scan the receipt, or enter the student ID: you instantly see whether the fees are paid and what remains to pay.",
   "Non confirmé": "Not confirmed",
   "Pendant le cours, confirmez que vous êtes en classe, puis notez ce qui a été fait.": "During the lesson, confirm you are in class, then note what was covered.",
   "Ce cours est terminé : la présence ne peut plus être confirmée.": "This lesson is over: attendance can no longer be confirmed.",
@@ -2099,7 +2110,6 @@ const EN = {
   "À vérifier": "To check",
   "Absent": "Absent",
   "Absence prévue": "Planned absence",
-  "Confirmés": "Confirmed",
   "Absents": "Absent",
   "Liste des absences": "Absence list",
   "Annuler le constat": "Cancel the record",
@@ -2214,6 +2224,7 @@ const MORCEAUX_NIVEAU = [
   [/^(\d+) à vérifier$/, '$1 to check'],
 ]
 const FORMULES = [
+  [/^Bonjour, (.+)$/, 'Hello, $1'],
   // resume d'un niveau (« 10 classe(s) · 640 élève(s) »)
   [/^\d+ (classe\(s\)|cours)( · .+)?$/, (t) => t.split(' · ').map((m) => MORCEAUX_NIVEAU.reduce((x, [re, r]) => x.replace(re, r), m)).join(' · ')],
   [/^Reste à payer : (.+)$/, 'Left to pay: $1'],
