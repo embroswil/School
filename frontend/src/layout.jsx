@@ -7,7 +7,7 @@ import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
 import { envoisEnAttente, envoyerAttente } from './horsligne.js'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier } from './icones.jsx'
 
 // Appels et notes gardes sur le telephone faute de reseau : rappel discret, envoi a la demande
 function EnvoisEnAttente() {
@@ -62,10 +62,10 @@ const NAV = {
     ['/messages', IcMessages, 'Messages'],
     ['/compte', IcProfil, 'Profil'],
   ],
+  // enseignant : Messages flotte en bas a droite (bulle), voir BulleMessages
   teacher: [
     ['/', IcAccueil, 'Accueil'],
-    ['/info', IcPlus, 'Informer'],
-    ['/messages', IcMessages, 'Messages'],
+    ['+', IcPlus, 'Actions'],
     ['/compte', IcProfil, 'Profil'],
   ],
   parent: [
@@ -95,9 +95,11 @@ const NAV_ORDI = {
   teacher: [
     ['/mes-cours', IcCoche, 'Mes cours'],
     ['/mes-classes', IcEleves, 'Mes classes'],
-    ['/emploi', IcEcole, 'Emploi du temps'],
-    ['/document', IcActus, 'Documents'],
-    ['/mon-absence', IcProfil, 'Mon absence'],
+    ['/emploi', IcCalendrier, 'Emploi du temps'],
+    ['/messages', IcMessages, 'Messages'],
+    ['/info', IcMegaphone, 'Informer'],
+    ['/document', IcFichier, 'Documents'],
+    ['/mon-absence', IcCalendrier, 'Mon absence'],
     ['/mes-etablissements', IcEcole, 'Mes établissements'],
   ],
   parent: [['/trouver-eleve', IcEleves, 'Trouver un élève']],
@@ -170,6 +172,12 @@ const ACTIONS = [
   ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
   ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
   ['/discipline', IcBouclier, 'Discipline', 'Procès-verbal, sanctions'],
+]
+const ACTIONS_ENS = [
+  ['/mes-classes', IcAppel, 'Faire l’appel', 'Choisir la classe'],
+  ['/info', IcMegaphone, 'Informer', 'Info, cours, photos'],
+  ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
+  ['/mon-absence', IcCalendrier, 'Mon absence', 'Prévenir l’établissement'],
 ]
 
 export default function Shell({ path, children }) {
@@ -259,7 +267,7 @@ export default function Shell({ path, children }) {
             <div className="feuille-poignee" />
             <p className="feuille-titre">Actions rapides</p>
             <div className="tuiles tuiles-actions">
-              {ACTIONS.map(([to, Icone, t, st]) => (
+              {(user.role === 'teacher' ? ACTIONS_ENS : ACTIONS).map(([to, Icone, t, st]) => (
                 <a key={to} className="tuile" href={`#${to}`}>
                   <span className="tuile-ico">
                     <Icone size={22} />
@@ -271,6 +279,13 @@ export default function Shell({ path, children }) {
             </div>
           </div>
         </div>
+      )}
+
+      {user.role === 'teacher' && !chemin.startsWith('/messages') && (
+        <a href="#/messages" className="bulle-messages" aria-label="Messages">
+          <IcMessages size={24} />
+          {compteurs.messages > 0 && <span className="pastille">{compteurs.messages}</span>}
+        </a>
       )}
 
       <div className="sheet-wrap">

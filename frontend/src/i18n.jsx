@@ -1170,6 +1170,8 @@ const EN = {
   "Expérience :": "Experience:",
   "FCFA encaissés": "FCFA collected",
   "Facultatif (cantine, transport, sortie…) : non compté dans les retards": "Optional (canteen, transport, outing…): not counted as late",
+  "Choisir la classe": "Choose the class",
+  "Actions": "Actions",
   "Faire l’appel": "Take the roll call",
   "Faire passer une information": "Share some information",
   "Faites défiler et touchez": "Scroll down and tap",
