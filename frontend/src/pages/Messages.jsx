@@ -42,7 +42,7 @@ export default function Messages() {
         <>
           {!ouvert ? (
             <button type="button" className="btn btn-block" onClick={() => setOuvert(true)} style={{ marginBottom: 16 }}>
-              ✏️ Nouveau message
+              Nouveau message
             </button>
           ) : (
             <form className="card" onSubmit={envoyer} style={{ marginBottom: 16 }}>

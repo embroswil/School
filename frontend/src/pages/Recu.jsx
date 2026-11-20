@@ -12,7 +12,7 @@ export default function Recu({ id }) {
     <>
       <div className="sans-impression" style={{ marginBottom: 12 }}>
         <button type="button" className="btn btn-block" onClick={() => window.print()}>
-          🖨️ Imprimer ou enregistrer en PDF
+          Imprimer ou enregistrer en PDF
         </button>
       </div>
       <article className="bulletin" style={{ fontSize: 14 }}>

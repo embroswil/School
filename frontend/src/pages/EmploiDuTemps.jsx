@@ -147,7 +147,7 @@ export default function EmploiDuTemps({ id }) {
         <>
           {d.data.modifiable && (
             <button type="button" className="btn btn-block" style={{ marginBottom: 14 }} onClick={() => setEdition(true)}>
-              ✏️ {d.data.creneaux.length ? 'Modifier l’emploi du temps' : 'Saisir l’emploi du temps'}
+              {d.data.creneaux.length ? 'Modifier l’emploi du temps' : 'Saisir l’emploi du temps'}
             </button>
           )}
           <GrilleEmploi creneaux={d.data.creneaux} />

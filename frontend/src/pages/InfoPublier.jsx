@@ -119,7 +119,7 @@ export default function InfoPublier() {
         </Field>
         <input ref={champ} type="file" hidden multiple accept="image/*" onChange={(e) => (setPhotos((l) => [...l, ...[...(e.target.files || [])]].slice(0, 6)), (e.target.value = ''))} />
         <button type="button" className="btn btn-quiet btn-block" onClick={() => champ.current?.click()}>
-          📷 {photos.length ? `${photos.length} photo(s) · en ajouter` : 'Ajouter des photos (facultatif)'}
+          {photos.length ? `${photos.length} photo(s) · en ajouter` : 'Ajouter des photos (facultatif)'}
         </button>
         {photos.length > 0 && (
           <div className="vignettes">

@@ -259,7 +259,7 @@ export default function OrdrePaiement({ id }) {
               }}
             />
             <button type="button" className="btn btn-quiet btn-block" onClick={() => fichier.current?.click()}>
-              {f.preuve ? '✓ Capture ajoutée (changer)' : '📷 Ajouter la capture du SMS (facultatif)'}
+              {f.preuve ? '✓ Capture ajoutée (changer)' : 'Ajouter la capture du SMS (facultatif)'}
             </button>
             {f.preuve && <img src={f.preuve} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 220, borderRadius: 12, marginTop: 8 }} />}
             <Note>{error}</Note>

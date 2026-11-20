@@ -228,22 +228,13 @@ export default function ClassNotes({ id }) {
           Consultation : les notes sont publiées par les enseignants de la classe.
         </div>
       )}
-      <div className="chips">
-        <button type="button" className="chip" aria-pressed={onglet === 'evaluations'} onClick={() => setOnglet('evaluations')}>
-          📝 Évaluations
-        </button>
-        {droits.resultats && (
-          <>
-            <button type="button" className="chip" aria-pressed={onglet === 'resultats'} onClick={() => setOnglet('resultats')}>
-              🏆 Résultats
-            </button>
-            <button type="button" className="chip" aria-pressed={onglet === 'coefficients'} onClick={() => setOnglet('coefficients')}>
-              ⚖️ Coefficients
-            </button>
-          </>
-        )}
+      <div className="segments" role="tablist">
+        {[['evaluations', 'Évaluations'], ...(droits.resultats ? [['resultats', 'Résultats'], ['coefficients', 'Coefficients']] : [])].map(([k, t]) => (
+          <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}>
+            {t}
+          </button>
+        ))}
       </div>
-
       {onglet === 'evaluations' && (
         <>
           {droits.saisie &&
