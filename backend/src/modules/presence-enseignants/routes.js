@@ -134,6 +134,31 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// GET /api/presence-enseignants/reglages : delai du rappel de presence (minutes apres le debut du cours ; null = aucun rappel)
+router.get("/reglages", async (req, res, next) => {
+  try {
+    reserveAdmin(req);
+    const r = (await db.query("SELECT rappel_presence_minutes FROM schools WHERE id = $1", [req.user.schoolId])).rows[0];
+    res.json({ success: true, data: { rappelMinutes: r ? r.rappel_presence_minutes : 15 } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// PUT /api/presence-enseignants/reglages { rappelMinutes }
+router.put("/reglages", async (req, res, next) => {
+  try {
+    reserveAdmin(req);
+    const v = req.body?.rappelMinutes;
+    const minutes = v === null ? null : Number.isInteger(v) && v >= 0 && v <= 90 ? v : undefined;
+    if (minutes === undefined) throw new ApiError(400, "Délai invalide (0 à 90 minutes)");
+    await db.query("UPDATE schools SET rappel_presence_minutes = $2 WHERE id = $1", [req.user.schoolId, minutes]);
+    res.json({ success: true, data: { rappelMinutes: minutes } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // POST /api/presence-enseignants/constat { classId, debut, date, etat: 'present' | 'absent' | '', note }
 // Constat de la direction (ronde du surveillant general ou du censeur) ; etat vide : annule le constat
 router.post("/constat", async (req, res, next) => {

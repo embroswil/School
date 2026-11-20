@@ -40,6 +40,42 @@ const signauxDe = (c) =>
   ].filter(Boolean)
 const SOURCE_ABSENCE = { enseignant: 'Signalée par l’enseignant', liste: 'Liste de l’établissement', direction: 'Marquée par la direction' }
 
+// Rappel de presence : combien de minutes apres le debut du cours l'enseignant qui n'a pas confirme est notifie
+const DELAIS = [[0, 'Dès le début du cours'], [5, '5 minutes après le début'], [10, '10 minutes après le début'], [15, '15 minutes après le début'], [20, '20 minutes après le début'], [30, '30 minutes après le début'], [45, '45 minutes après le début'], [null, 'Pas de rappel']]
+function RappelPresence() {
+  const r = useApi('/api/presence-enseignants/reglages')
+  const [valeur, setValeur] = useState(undefined)
+  const [etat, setEtat] = useState('')
+  const actuel = valeur !== undefined ? valeur : r.data ? r.data.rappelMinutes : 15
+  async function changer(e) {
+    const v = e.target.value === '' ? null : Number(e.target.value)
+    setValeur(v)
+    setEtat('')
+    try {
+      await api.put('/api/presence-enseignants/reglages', { rappelMinutes: v })
+      setEtat('Enregistré')
+    } catch (err) {
+      setEtat(err.message)
+    }
+  }
+  if (!r.data) return null
+  return (
+    <div className="pe-rappel">
+      <span>
+        <b>Rappel de présence aux enseignants</b>
+        <small>L’enseignant qui n’a pas encore confirmé son cours reçoit une notification pour le faire.{etat ? ` · ${etat}` : ''}</small>
+      </span>
+      <select className="input" value={actuel === null ? '' : actuel} onChange={changer} aria-label="Délai du rappel de présence">
+        {DELAIS.map(([v, t]) => (
+          <option key={t} value={v === null ? '' : v}>
+            {t}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 // Enseignants : la journee (cours, appels, absences) et la liste complete des enseignants.
 // Un seul bouton « Importer » pour la liste des enseignants (Excel, PDF, Word ou photo).
 export default function PresenceEnseignants() {
@@ -374,6 +410,7 @@ export default function PresenceEnseignants() {
         </>
       )}
 
+      {onglet === 'jour' && <RappelPresence />}
       {onglet === 'liste' && (
         <>
           {(equipe.loading || actifs.loading) && !membres.length && <p className="muted">Chargement…</p>}

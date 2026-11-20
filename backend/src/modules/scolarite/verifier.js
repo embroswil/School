@@ -11,6 +11,31 @@ const { codeRecu } = require("../../utils/recus");
 
 router.use(authenticate);
 
+// GET /api/verifier/eleves/:matricule : l'eleve a-t-il paye ? ce qui est paye et ce qui reste, frais par frais.
+// Le matricule est celui du dossier de l'etablissement (enregistre avec le numero de l'etablissement devant).
+router.get("/eleves/:matricule", async (req, res, next) => {
+  try {
+    const u = req.user;
+    if (!["principal", "admin"].includes(u.role)) throw new ApiError(403, "La vérification est réservée à l’administration de l’établissement.");
+    const m = String(req.params.matricule || "").trim().toUpperCase().replace(/\s+/g, "").slice(0, 60);
+    if (!m) throw new ApiError(400, "Saisissez le matricule de l’élève");
+    const { rows } = await db.query(
+      `SELECT u.id, sr.admission_number FROM users u JOIN student_records sr ON sr.student_id = u.id
+       WHERE u.role = 'student' AND ($2::int IS NULL OR u.school_id = $2)
+         AND (upper(replace(sr.admission_number, ' ', '')) = $1
+              OR upper(replace(regexp_replace(sr.admission_number, '^\\d+-', ''), ' ', '')) = $1)
+       ORDER BY (upper(sr.admission_number) = $1) DESC LIMIT 2`,
+      [m, u.role === "admin" ? null : u.schoolId]
+    );
+    if (!rows[0]) throw new ApiError(404, "Aucun élève de l’établissement n’a ce matricule.");
+    const { situationEleve } = require("./routes");
+    const s = await situationEleve(rows[0].id);
+    res.json({ success: true, data: { ...s, matricule: String(rows[0].admission_number || "").replace(/^\d+-/, "") } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // GET /api/verifier/recus/:numero[?c=CODE]
 router.get("/recus/:numero", async (req, res, next) => {
   try {

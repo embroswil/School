@@ -2193,3 +2193,50 @@ html.ordi .faq { max-width: 760px; }
 .envois-attente b { display: block; font-size: 15px; }
 .envois-attente small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
 .envois-attente .btn { flex: none; padding: 9px 16px; }
+/* Rappel de presence aux enseignants */
+.pe-rappel { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 18px 0 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+.pe-rappel b { display: block; font-size: 15px; }
+.pe-rappel small { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+.pe-rappel span { flex: 1 1 220px; }
+.pe-rappel select { flex: 1 1 240px; margin: 0; }
+/* Emploi du temps en tableau */
+.edt-cadre { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 16px; background: var(--card); margin-bottom: 14px; }
+.edt-table { width: 100%; min-width: 320px; border-collapse: collapse; table-layout: fixed; }
+.edt-table th, .edt-table td { border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); padding: 7px 3px; vertical-align: top; text-align: center; }
+.edt-table th { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; background: var(--bg); position: sticky; top: 0; }
+.edt-table th.auj { color: var(--primary); }
+.edt-table tr:last-child td { border-bottom: 0; }
+.edt-table .edt-heure { width: 46px; border-left: 0; position: sticky; left: 0; background: var(--card); z-index: 1; }
+.edt-table th.edt-heure { background: var(--bg); z-index: 2; }
+.edt-table td.edt-heure b { display: block; font-size: 12.5px; }
+.edt-table td.edt-heure small { display: block; font-size: 11px; color: var(--muted); }
+.edt-table td.auj { background: rgba(47, 107, 255, 0.05); }
+.edt-table td.en-cours { background: rgba(47, 107, 255, 0.14); box-shadow: inset 0 0 0 2px var(--primary); }
+.edt-c { display: block; }
+.edt-c + .edt-c { margin-top: 4px; }
+.edt-c b { display: block; font-size: 12px; line-height: 1.25; overflow-wrap: anywhere; }
+.edt-c small { display: block; font-size: 10.5px; line-height: 1.25; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.edt-pause td { padding: 3px 5px; font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; background: var(--bg); }
+.edt-pause td.edt-heure b, .edt-pause td.edt-heure small { display: inline; font-size: 10.5px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.edt-pause td.edt-heure small::before { content: '–'; }
+html.ordi .edt-table { min-width: 0; }
+html.ordi .edt-table th, html.ordi .edt-table td { padding: 10px 8px; }
+html.ordi .edt-c b { font-size: 13.5px; }
+html.ordi .edt-c small { font-size: 12px; }
+html.ordi .edt-table .edt-heure { width: 72px; }
+/* Scolarite : niveaux depliables */
+.tab-pro .tab-niveau { cursor: pointer; }
+.tab-niveau-nom { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.tab-niveau-nom small { font-weight: 500; color: var(--muted); font-size: 11.5px; }
+.tab-niveau-fleche { color: var(--muted); transition: transform .15s; flex: none; }
+.tab-niveau.ouvert .tab-niveau-fleche { transform: rotate(90deg); color: var(--primary); }
+/* Verification par matricule */
+.verif-resultat.attention .verif-sceau { background: #f79009; }
+.verif-resultat.neutre .verif-sceau { background: #98a2b3; }
+.verif-frais { width: 100%; margin-top: 12px; border-collapse: collapse; text-align: left; font-size: 14px; }
+.verif-frais th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.verif-frais td { padding: 8px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.verif-frais td small { display: block; font-size: 12px; color: var(--muted); }
+.verif-frais th:nth-child(n+2), .verif-frais td:nth-child(n+2) { text-align: right; white-space: nowrap; }
+.verif-frais td.rouge { color: var(--danger); font-weight: 700; }
+.verif-frais td.vert { color: #12b76a; font-weight: 700; }

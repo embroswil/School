@@ -327,7 +327,7 @@ function EspaceEtablissement() {
         <Tuile href="#/eleves" Icone={IcEleves} titre="Élèves" texte="Listes, classes, fiches" chiffre={d.eleves ?? '…'} />
         <Tuile href="#/presence-enseignants" Icone={IcProf} titre="Enseignants" texte="Présence et cours du jour" chiffre={d.enseignants ?? '…'} />
         <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
-        <Tuile href="#/verifier" Icone={IcScan} titre="Vérifier un reçu" texte="Scanner le code-barres" />
+        <Tuile href="#/verifier" Icone={IcScan} titre="Vérifier un paiement" texte="Par le matricule de l’élève" />
       </div>
     </>
   )

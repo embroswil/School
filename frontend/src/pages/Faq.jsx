@@ -44,7 +44,7 @@ const QUESTIONS = [
   ],
   [
     'Comment vérifier qu’un reçu est authentique ?',
-    'Scannez le QR code du reçu avec l’appareil photo du téléphone, ou utilisez « Vérifier un reçu » sur l’accueil de l’établissement : Sùkûl confirme s’il a bien été émis et qu’il n’a pas été modifié.',
+    'Scannez le QR code du reçu avec l’appareil photo du téléphone, Sùkûl confirme s’il a bien été émis et qu’il n’a pas été modifié. L’établissement peut aussi vérifier à tout moment, avec le matricule de l’élève, ce qui est payé et ce qui reste à payer (« Vérifier un paiement » sur l’accueil).',
   ],
 ]
 

@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { IcChevron } from '../icones.jsx'
 import { exporterExcel } from '../export.jsx'
 import { comparerClasses, niveauClasse } from '../classes.js'
 import { avisRelanceHtml, imprimer } from '../impression.js'
@@ -213,6 +214,7 @@ function niveauxDe(classes) {
 export default function Comptabilite() {
   const c = useApi('/api/scolarite/comptabilite')
   const [ouverte, setOuverte] = useState(null)
+  const [niveaux, setNiveaux] = useState({}) // niveaux deplies (6e, 5e…) : leurs classes s'affichent
   const [vue, setVue] = useState('classes')
   const [info, setInfo] = useState('')
   const [error, setError] = useState('')
@@ -306,8 +308,14 @@ export default function Comptabilite() {
               </thead>
               {niveauxDe(classes).map((n) => (
                 <tbody key={n.nom}>
-                  <tr className="tab-niveau">
-                    <td>{n.nom}</td>
+                  <tr className={`tab-niveau cliquable ${niveaux[n.nom] ? 'ouvert' : ''}`} onClick={() => setNiveaux((x) => ({ ...x, [n.nom]: !x[n.nom] }))} aria-expanded={Boolean(niveaux[n.nom])}>
+                    <td>
+                      <span className="tab-niveau-nom">
+                        <IcChevron size={14} className="tab-niveau-fleche" />
+                        {n.nom}
+                        <small>{`${n.classes.length} classe${n.classes.length > 1 ? 's' : ''}`}</small>
+                      </span>
+                    </td>
                     <td className="nombre col-ordi">{nb(n.classes.reduce((a, x) => a + Number(x.effectif), 0))}</td>
                     <td className="nombre col-ordi">{nb(n.attendu)}</td>
                     <td className="nombre col-ordi">{nb(n.encaisse)}</td>
@@ -315,7 +323,7 @@ export default function Comptabilite() {
                     <td className="nombre">{`${taux(n.encaisse, n.attendu)} %`}</td>
                     <td className="nombre">{nb(n.classes.reduce((a, x) => a + Number(x.en_retard), 0))}</td>
                   </tr>
-                  {n.classes.map((x) => {
+                  {niveaux[n.nom] && n.classes.map((x) => {
                     const tc = taux(x.encaisse, x.attendu)
                     return (
                       <tr key={x.classe} className="cliquable" onClick={() => setOuverte(x.classe)}>
@@ -349,7 +357,7 @@ export default function Comptabilite() {
               </tfoot>
             </table>
           </div>
-          <p className="tab-unite">Montants en FCFA · touchez une classe pour voir ses élèves</p>
+          <p className="tab-unite">Montants en FCFA · touchez un niveau pour voir ses classes, puis une classe pour voir ses élèves</p>
         </>
       )}
 

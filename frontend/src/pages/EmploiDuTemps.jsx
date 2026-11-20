@@ -11,47 +11,96 @@ const minutes = (h) => {
   return a * 60 + (b || 0)
 }
 
-// Affichage d'un emploi du temps : un jour a la fois (aujourd'hui par defaut), cours en cours mis en avant
+// Nom court d'une matiere, pour que le tableau tienne sur l'ecran d'un telephone
+const COURTES = { mathematiques: 'Maths', informatique: 'Info', 'physique-chimie': 'PCT', 'histoire-geographie': 'Hist-Géo', geographie: 'Géo', philosophie: 'Philo',
+  'sciences de la vie et de la terre': 'SVT', 'arts plastiques': 'Arts', 'education physique et sportive': 'EPS', 'education a la citoyennete et a la morale': 'ECM',
+  'langues et cultures nationales': 'LCN', litterature: 'Litt.', 'travaux manuels': 'TM', 'education artistique': 'Arts', economie: 'Éco' }
+const sansAcc = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+export function matiereCourte(nom) {
+  const n = String(nom || '').trim()
+  const sigle = n.match(/\(([A-ZÀ-Ü0-9.\- ]{2,8})\)\s*$/)
+  if (sigle) return sigle[1]
+  const k = sansAcc(n)
+  if (COURTES[k]) return COURTES[k]
+  if (n.length <= 10) return n
+  const mots = n.split(/[\s'’]+/).filter((m) => m && !/^(et|de|des|du|la|le|les|l|d|a|en)$/i.test(m))
+  if (mots.length > 1) return mots.map((m) => m[0].toUpperCase()).join('')
+  return `${n.slice(0, 6)}.`
+}
+const telephone = () => typeof window !== 'undefined' && window.innerWidth < 640 && !document.documentElement.classList.contains('ordi')
+
+// Affichage d'un emploi du temps en tableau : une colonne par jour, une ligne par horaire ;
+// les pauses (recreation) apparaissent entre deux horaires, le cours en cours est mis en avant.
 export function GrilleEmploi({ creneaux, avecClasse = false }) {
-  const jours = [1, 2, 3, 4, 5, 6].filter((j) => creneaux.some((c) => c.jour === j))
+  if (!creneaux.length) return <p className="muted">Aucun cours dans l’emploi du temps pour le moment.</p>
   const maintenant = new Date()
   const aujourdhui = maintenant.getDay()
-  const [jour, setJour] = useState(() => (jours.includes(aujourdhui) ? aujourdhui : jours[0]))
-  if (!creneaux.length) return <p className="muted">Aucun cours dans l’emploi du temps pour le moment.</p>
-  const actuel = jours.includes(jour) ? jour : jours[0]
   const m = maintenant.getHours() * 60 + maintenant.getMinutes()
-  const cours = creneaux.filter((c) => c.jour === actuel).sort((a, b) => minutes(a.debut) - minutes(b.debut))
+  const jours = [1, 2, 3, 4, 5, 6].filter((j) => j <= 5 || creneaux.some((c) => c.jour === j))
+  // horaires distincts de la semaine, dans l'ordre
+  const plages = [...new Map(creneaux.map((c) => [`${c.debut}-${c.fin}`, { debut: c.debut, fin: c.fin }])).values()].sort(
+    (a, b) => minutes(a.debut) - minutes(b.debut) || minutes(a.fin) - minutes(b.fin),
+  )
+  const lignes = []
+  plages.forEach((p, i) => {
+    const prec = plages[i - 1]
+    if (prec && minutes(p.debut) - minutes(prec.fin) >= 10) lignes.push({ pause: true, debut: prec.fin, fin: p.debut })
+    lignes.push(p)
+  })
+  const cellule = (j, p) => creneaux.filter((c) => c.jour === j && c.debut === p.debut && c.fin === p.fin)
+  const court = telephone()
   return (
-    <>
-      <div className="edt-jours" role="tablist">
-        {jours.map((j) => (
-          <button key={j} type="button" role="tab" aria-selected={j === actuel} onClick={() => setJour(j)}>
-            {COURTS[j]}
-            {j === aujourdhui && <i aria-hidden="true" />}
-          </button>
-        ))}
-      </div>
-      <p className="niveau-titre">{`${JOURS[actuel]}${actuel === aujourdhui ? ' · aujourd’hui' : ''} · ${cours.length} cours`}</p>
-      <ul className="edt-cours">
-        {cours.map((c) => {
-          const enCours = actuel === aujourdhui && m >= minutes(c.debut) && m < minutes(c.fin)
-          const qui = avecClasse ? c.classe : c.last_name ? `${c.first_name} ${c.last_name}` : ''
-          return (
-            <li key={c.id} className={enCours ? 'en-cours' : ''}>
-              <span className="edt-h">
-                <b>{c.debut}</b>
-                <small>{c.fin}</small>
-              </span>
-              <span className="edt-m">
-                <b>{c.matiere || 'Cours'}</b>
-                {(qui || c.salle) && <small>{[qui, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>}
-                {enCours && <em>En cours</em>}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-    </>
+    <div className="edt-cadre">
+      <table className="edt-table">
+        <thead>
+          <tr>
+            <th className="edt-heure">Heure</th>
+            {jours.map((j) => (
+              <th key={j} className={j === aujourdhui ? 'auj' : ''}>
+                {COURTS[j]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {lignes.map((p) =>
+            p.pause ? (
+              <tr key={`p${p.debut}`} className="edt-pause">
+                <td className="edt-heure">
+                  <b>{p.debut}</b>
+                  <small>{p.fin}</small>
+                </td>
+                <td colSpan={jours.length}>Pause</td>
+              </tr>
+            ) : (
+              <tr key={`${p.debut}-${p.fin}`}>
+                <td className="edt-heure">
+                  <b>{p.debut}</b>
+                  <small>{p.fin}</small>
+                </td>
+                {jours.map((j) => {
+                  const cours = cellule(j, p)
+                  const enCours = j === aujourdhui && m >= minutes(p.debut) && m < minutes(p.fin)
+                  return (
+                    <td key={j} className={`${j === aujourdhui ? 'auj' : ''} ${cours.length && enCours ? 'en-cours' : ''} ${cours.length ? '' : 'edt-vide'}`}>
+                      {cours.map((c) => {
+                        const qui = avecClasse ? c.classe : c.last_name ? `${c.first_name} ${c.last_name}` : ''
+                        return (
+                          <span key={c.id} className="edt-c">
+                            <b title={c.matiere || ''}>{court ? matiereCourte(c.matiere || 'Cours') : c.matiere || 'Cours'}</b>
+                            {(qui || c.salle) && <small>{[qui, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>}
+                          </span>
+                        )
+                      })}
+                    </td>
+                  )
+                })}
+              </tr>
+            ),
+          )}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

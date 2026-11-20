@@ -153,7 +153,7 @@ const TITRES = {
   '/releve': 'Relevé de scolarité',
   '/comptabilite': 'Comptabilité',
   '/dossier': 'Dossier de l’établissement',
-  '/verifier': 'Vérifier un reçu',
+  '/verifier': 'Vérifier un paiement',
   '/ordres': 'Paiement',
   '/trouver-eleve': 'Trouver un élève',
   '/payer': 'Payer la scolarité',

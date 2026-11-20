@@ -1,7 +1,8 @@
 // taches/rappel-cours.js
-// Au debut de chaque cours de l'emploi du temps, l'enseignant recoit une notification (et un « push »
-// sur son telephone) : « Cours de 07:30 · 6e A — confirmez que vous etes en cours ». Un seul geste
-// suffit, sans faire l'appel. Pas de rappel si l'enseignant a signale son absence ce jour-la.
+// Quelques minutes apres le debut de chaque cours (delai choisi par l'etablissement, 15 min par defaut),
+// l'enseignant qui n'a pas encore confirme sa presence recoit une notification (et un « push ») :
+// « Cours de 07:30 · 6e A — confirmez que vous etes en cours ». Un seul geste suffit, sans faire l'appel.
+// Pas de rappel si l'enseignant a deja confirme, si l'appel est fait, ou s'il a signale son absence.
 const db = require("../config/db");
 const logger = require("../utils/logger");
 
@@ -17,12 +18,17 @@ const rappeler = async () => {
               SELECT cr.school_id, cr.class_id, cr.debut, c.name AS classe, s.name AS matiere, cs.teacher_id, (SELECT t FROM m)::date AS d
               FROM creneaux cr JOIN classes c ON c.id = cr.class_id
               JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
+              JOIN schools sc ON sc.id = cr.school_id AND sc.rappel_presence_minutes IS NOT NULL
               JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id
               JOIN users u ON u.id = cs.teacher_id AND u.is_active
               LEFT JOIN subjects s ON s.id = cr.subject_id
               WHERE cr.jour = EXTRACT(ISODOW FROM (SELECT t FROM m))
-                AND cr.debut BETWEEN (SELECT t FROM m)::time AND ((SELECT t FROM m) + INTERVAL '5 minutes')::time
-                AND NOT EXISTS (SELECT 1 FROM absences_enseignants a WHERE a.teacher_id = cs.teacher_id AND a.date = (SELECT t FROM m)::date)),
+                -- moment du rappel = debut du cours + delai de l'etablissement (rattrape pendant 10 minutes)
+                AND (cr.debut + make_interval(mins => sc.rappel_presence_minutes)) BETWEEN ((SELECT t FROM m) - INTERVAL '10 minutes')::time AND (SELECT t FROM m)::time
+                AND (cr.debut + make_interval(mins => sc.rappel_presence_minutes)) < cr.fin
+                AND NOT EXISTS (SELECT 1 FROM absences_enseignants a WHERE a.teacher_id = cs.teacher_id AND a.date = (SELECT t FROM m)::date)
+                AND NOT EXISTS (SELECT 1 FROM appels ap WHERE ap.class_id = cr.class_id AND ap.date = (SELECT t FROM m)::date
+                                AND (ap.period_number = to_char(cr.debut, 'HH24MI')::int OR ap.period_number IS NULL))),
             nouveaux AS (
               INSERT INTO cours_suivi (school_id, class_id, date, debut, teacher_id, rappel_le)
               SELECT school_id, class_id, d, debut, teacher_id, NOW() FROM cours
