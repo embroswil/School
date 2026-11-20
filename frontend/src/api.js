@@ -25,13 +25,13 @@ function activerRelais() {
   if (relais || !surSukul()) return Promise.resolve(false)
   essaiRelais ??= (async () => {
     try {
-      await fetch(`${DIRECT}/health`, { cache: 'no-store', signal: AbortSignal.timeout(8000) })
+      await fetchAvecDelai(`${DIRECT}/health`, { cache: 'no-store' }, 8000)
       return false // le serveur repond directement : la panne est ailleurs
     } catch {
       /* serveur injoignable directement */
     }
     try {
-      await fetch('/api/joignable', { cache: 'no-store', signal: AbortSignal.timeout(15000) })
+      await fetchAvecDelai('/api/joignable', { cache: 'no-store' }, 15000)
       relais = true
       try {
         localStorage.setItem(CLE_RELAIS, '1')
@@ -116,16 +116,43 @@ export class ApiError extends Error {
 
 let refreshing = null
 
+// Une demande sans reponse ne doit jamais bloquer l'ecran : sur les reseaux mobiles, une connexion peut
+// mourir sans prevenir (le telephone attend alors indefiniment). Passe ce delai, la demande est abandonnee.
+const DELAI_LECTURE = 20000
+const DELAI_ENVOI = 120000 // lecture de documents par le serveur : peut prendre une minute
+function fetchAvecDelai(url, options, delai) {
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null
+  let minuterie
+  const limite = new Promise((_, non) => {
+    minuterie = setTimeout(() => {
+      ctrl?.abort()
+      non(Object.assign(new Error('delai'), { delai: true }))
+    }, delai)
+  })
+  // la reponse est lue entierement dans le delai (une connexion peut aussi se couper en cours de lecture)
+  const lecture = fetch(url, { ...options, signal: ctrl?.signal }).then(async (rep) => {
+    const texte = await rep.text()
+    const vide = [101, 204, 205, 304].includes(rep.status)
+    return new Response(vide ? null : texte, { status: rep.status, statusText: rep.statusText, headers: rep.headers })
+  })
+  return Promise.race([lecture, limite]).finally(() => clearTimeout(minuterie))
+}
+
 // Nouvelle session depuis le serveur (profil a jour : etablissement rattache, role…)
 export async function renewSession() {
   const current = session.get()
   if (!current?.refreshToken) return false
   try {
-    const res = await fetch(`${apiBase()}/api/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: current.refreshToken }),
-    })
+    let res
+    try {
+      res = await fetchAvecDelai(
+        `${apiBase()}/api/auth/refresh`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: current.refreshToken }) },
+        DELAI_LECTURE,
+      )
+    } catch {
+      return false // reseau : la session reste, on reessaiera plus tard
+    }
     if (!res.ok) throw new Error('refresh failed')
     const { data } = await res.json()
     session.set({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user })
@@ -137,7 +164,7 @@ export async function renewSession() {
   }
 }
 
-async function request(path, { method = 'GET', body, auth = true, retry = true } = {}) {
+async function request(path, { method = 'GET', body, auth = true, retry = true, delai, rejouable = method === 'GET' } = {}) {
   const current = session.get()
   // Langue de l'application : le serveur l'utilise pour les notifications, alertes et emails
   const headers = { 'Content-Type': 'application/json', 'X-Langue': langue }
@@ -148,26 +175,30 @@ async function request(path, { method = 'GET', body, auth = true, retry = true }
   // Sans reponse du tout, seules les lectures (GET) sont renvoyees : un envoi a peut-etre deja ete enregistre.
   for (let essai = 0; ; essai++) {
     let reseau = false
+    let coupe = false
     try {
-      res = await fetch(apiBase() + path, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-      })
-    } catch {
+      res = await fetchAvecDelai(
+        apiBase() + path,
+        { method, headers, body: body === undefined ? undefined : JSON.stringify(body) },
+        delai || (method === 'GET' ? DELAI_LECTURE : DELAI_ENVOI),
+      )
+    } catch (err) {
       reseau = true
+      coupe = Boolean(err?.delai)
       // reseau qui bloque l'adresse du serveur : on reessaie aussitot par sukul.site
       if (await activerRelais()) {
         essai--
         continue
       }
     }
-    const indisponible = reseau ? method === 'GET' : [502, 503].includes(res.status)
-    if (!indisponible || essai >= 2) {
+    const indisponible = reseau ? rejouable : [502, 503].includes(res.status)
+    // connexion coupee : un seul nouvel essai (une nouvelle connexion est ouverte), sans attendre
+    if (!indisponible || essai >= (coupe ? 1 : 2)) {
+      if (coupe) throw new ApiError('La connexion au serveur a été interrompue. Vérifiez votre connexion, puis réessayez.', 0)
       if (reseau) throw new ApiError('Le serveur ne répond pas pour le moment. Vérifiez votre connexion, puis réessayez dans une minute.', 0)
       break
     }
-    await new Promise((ok) => setTimeout(ok, 3000 * (essai + 1)))
+    if (!coupe) await new Promise((ok) => setTimeout(ok, 3000 * (essai + 1)))
   }
 
   if (res.status === 401 && auth && retry && current?.refreshToken) {

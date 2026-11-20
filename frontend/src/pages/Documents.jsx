@@ -60,7 +60,7 @@ function reconnaitre(nom, texte) {
   if (/\.(xlsx|xls|csv|ods)\b/.test(sansAccents(nom)) && /budget|journal des depenses|comptabilite|tresorerie/.test(t)) return { nature: 'comptabilite' }
   if (/service des enseignants|heures \/ semaine|heures supplementaires|budget|comptabilite|journal des depenses|tresorerie|absences des enseignants|bilan par enseignant/.test(t))
     return { nature: 'interne', categorie: 'administration' }
-  if (/cahier d.appel|feuille d.appel|feuille de presence/.test(t)) return { nature: 'cahier_appel' }
+  if (/cahier.d.appel|feuille.d.appel|feuille de presence/.test(t)) return { nature: 'cahier_appel' }
   if (/recapitulatif.{0,20}absences|absences des eleves/.test(t)) return { nature: 'interne', categorie: 'absences' }
   if (/enseignant|professeur|equipe pedagogique/.test(t) && /matiere/.test(t) && /classe/.test(t)) return { nature: 'liste_enseignants' }
   if (/matricule/.test(t) && /(date de naissance|nee? le|sexe)/.test(t)) return { nature: 'liste_eleves' }
@@ -322,12 +322,14 @@ export default function Documents() {
       if (nature === 'cahier_appel' && absences.length) {
         let ajoutees = 0
         let dejaLa = 0
+        let aVenir = 0
         for (let i = 0; i < absences.length; i += 2500) {
-          const r = (await api.post('/api/documents-ecole/absences/appliquer', { absences: absences.slice(i, i + 2500) })).data
+          const r = (await api.post('/api/documents-ecole/absences/appliquer', { absences: absences.slice(i, i + 2500) }, { rejouable: true })).data
           ajoutees += r?.ajoutees || 0
           dejaLa += r?.dejaLa || 0
+          aVenir += r?.aVenir || 0
         }
-        annoncer(`${ajoutees} absence(s) ajoutée(s)${dejaLa ? `, ${dejaLa} déjà enregistrée(s) par l’appel des enseignants (non modifiées)` : ''}.`)
+        annoncer(`${ajoutees} absence(s) ajoutée(s)${dejaLa ? `, ${dejaLa} déjà enregistrée(s) (non modifiées)` : ''}${aVenir ? `, ${aVenir} ignorée(s) car datée(s) de jours pas encore arrivés` : ''}.`)
       }
     } catch (err) {
       echecs.push(err.message)
@@ -597,6 +599,14 @@ export default function Documents() {
 
       {/* ---------- documents publies : par type, puis par mois ---------- */}
       {liste.loading && !liste.data && <p className="muted">Chargement…</p>}
+      {liste.error && !liste.data && (
+        <p className="error">
+          {liste.error}{' '}
+          <button type="button" className="lien-action" onClick={liste.reload}>
+            Réessayer
+          </button>
+        </p>
+      )}
       {liste.data && docs.length === 0 && items.length === 0 && (
         <button type="button" className="import-zone" onClick={() => champ.current?.click()}>
           <IcImport size={26} />

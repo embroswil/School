@@ -47,8 +47,8 @@ export default function ImportAbsences() {
     setBusy(true)
     setError('')
     try {
-      const r = (await api.post('/api/documents-ecole/absences/appliquer', { absences: lignes.filter((l) => l.trouve) })).data
-      setOk(`✓ ${r.ajoutees} absence(s) ajoutée(s)${r.dejaLa ? `, ${r.dejaLa} déjà enregistrée(s) par l’appel des enseignants (non modifiées)` : ''}.`)
+      const r = (await api.post('/api/documents-ecole/absences/appliquer', { absences: lignes.filter((l) => l.trouve) }, { rejouable: true })).data
+      setOk(`✓ ${r.ajoutees} absence(s) ajoutée(s)${r.dejaLa ? `, ${r.dejaLa} déjà enregistrée(s) (non modifiées)` : ''}${r.aVenir ? `, ${r.aVenir} ignorée(s) car datée(s) de jours pas encore arrivés` : ''}.`)
       setLignes(null)
     } catch (err) {
       setError(err.message)

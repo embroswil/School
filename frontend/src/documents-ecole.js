@@ -16,5 +16,6 @@ export async function lireDocumentEcole(fichier, route, extra = {}) {
     const env = await envoyer(fichier)
     corps = { url: env.url, mime: env.mime }
   }
-  return (await api.post(route, { ...corps, nom: fichier.name, ...extra })).data
+  // tableur ou texte : la lecture ne coute rien et peut etre relancee si la connexion se coupe
+  return (await api.post(route, { ...corps, nom: fichier.name, ...extra }, corps.texte ? { rejouable: true, delai: 60000 } : undefined)).data
 }

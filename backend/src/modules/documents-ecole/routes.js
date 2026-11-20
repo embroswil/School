@@ -187,31 +187,50 @@ Une ligne par élève absent et par date. Ignore les élèves présents. Si l'an
 router.post("/absences/appliquer", async (req, res, next) => {
   try {
     const ecole = ecoleDe(req);
-    const classes = await classesDe(ecole);
+    const classes = new Set((await classesDe(ecole)).map((c) => c.id));
     const annee = await assurerAnneeScolaire(ecole);
-    let ajoutees = 0;
-    let dejaLa = 0;
+    // Une absence ne peut pas etre enregistree pour un jour qui n'est pas encore arrive (heure du Cameroun)
+    const aujourdhui = new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10);
+    const lignes = [];
+    let aVenir = 0;
     for (const a of (Array.isArray(req.body?.absences) ? req.body.absences : []).slice(0, 3000)) {
-      const c = classes.find((k) => k.id === Number(a.classId));
-      if (!c || !/^\d{4}-\d{2}-\d{2}$/.test(String(a.date || ""))) continue;
+      const classId = Number(a.classId);
+      const studentId = Number(a.studentId);
+      const date = String(a.date || "");
+      if (!classes.has(classId) || !studentId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      if (date > aujourdhui) {
+        aVenir += 1;
+        continue;
+      }
       const h = heure(a.heure);
-      const periode = h ? Number(h.replace(":", "")) : null;
-      await db.query(
-        `INSERT INTO appels (class_id, date, period_number, marked_by) VALUES ($1, $2, $3, $4)
-         ON CONFLICT (class_id, date, COALESCE(period_number, -1)) DO NOTHING`,
-        [c.id, a.date, periode, req.user.id]
-      );
-      const conflit = periode === null ? "(student_id, class_id, date) WHERE period_number IS NULL" : "(student_id, class_id, date, period_number) WHERE period_number IS NOT NULL";
-      const r = await db.query(
-        `INSERT INTO attendance (student_id, class_id, academic_year_id, date, period_number, status, marked_by)
-         SELECT $1, $2, $3, $4, $5::int, 'absent', $6 WHERE EXISTS (SELECT 1 FROM class_students WHERE class_id = $2 AND student_id = $1 AND status = 'active')
-         ON CONFLICT ${conflit} DO NOTHING`,
-        [Number(a.studentId), c.id, annee.id, a.date, periode, req.user.id]
-      );
-      if (r.rowCount) ajoutees += 1;
-      else dejaLa += 1;
+      lignes.push({ s: studentId, c: classId, d: date, p: h ? Number(h.replace(":", "")) : null });
     }
-    res.json({ success: true, data: { ajoutees, dejaLa } });
+    let ajoutees = 0;
+    if (lignes.length) {
+      // tout en quelques requetes (et non deux par absence) : un long cahier d'appel s'enregistre en un instant
+      const donnees = JSON.stringify(lignes);
+      const source = "SELECT DISTINCT x.s, x.c, x.d, x.p FROM jsonb_to_recordset($1::jsonb) AS x(s int, c int, d date, p int)";
+      await db.query(
+        `INSERT INTO appels (class_id, date, period_number, marked_by) SELECT DISTINCT t.c, t.d, t.p, $2 FROM (${source}) t
+         ON CONFLICT (class_id, date, COALESCE(period_number, -1)) DO NOTHING`,
+        [donnees, req.user.id]
+      );
+      const inscrits = `FROM (${source}) t WHERE EXISTS (SELECT 1 FROM class_students cs WHERE cs.class_id = t.c AND cs.student_id = t.s AND cs.status = 'active')`;
+      const sansHeure = await db.query(
+        `INSERT INTO attendance (student_id, class_id, academic_year_id, date, period_number, status, marked_by)
+         SELECT t.s, t.c, $2, t.d, NULL, 'absent', $3 ${inscrits} AND t.p IS NULL
+         ON CONFLICT (student_id, class_id, date) WHERE period_number IS NULL DO NOTHING`,
+        [donnees, annee.id, req.user.id]
+      );
+      const parHeure = await db.query(
+        `INSERT INTO attendance (student_id, class_id, academic_year_id, date, period_number, status, marked_by)
+         SELECT t.s, t.c, $2, t.d, t.p, 'absent', $3 ${inscrits} AND t.p IS NOT NULL
+         ON CONFLICT (student_id, class_id, date, period_number) WHERE period_number IS NOT NULL DO NOTHING`,
+        [donnees, annee.id, req.user.id]
+      );
+      ajoutees = sansHeure.rowCount + parHeure.rowCount;
+    }
+    res.json({ success: true, data: { ajoutees, dejaLa: lignes.length - ajoutees, aVenir } });
   } catch (e) {
     next(e);
   }
