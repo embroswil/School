@@ -485,11 +485,6 @@ function EspaceEnseignant() {
               <a className="btn btn-quiet" style={{ padding: '7px 10px', fontSize: 13 }} href={`#/classes/${c.id}/devoirs`}>
                 Devoirs
               </a>
-              {c.prof_principal && (
-                <a className="btn btn-quiet" style={{ padding: '7px 10px', fontSize: 13 }} href={`#/classes/${c.id}/bulletins`}>
-                  Bulletins
-                </a>
-              )}
             </li>
           ))}
         </ul>

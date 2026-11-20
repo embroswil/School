@@ -28,7 +28,7 @@ export default function ConseilAnnuel({ id }) {
       const r = await api.put(`/api/notes/classes/${id}/decisions`, {
         decisions: Object.entries(dec).map(([studentId, v]) => ({ studentId: Number(studentId), ...v })),
       })
-      setOk(`${r.data.enregistrees} décision(s) enregistrée(s). Elles apparaissent sur le bulletin du 3e trimestre et chez les parents.`)
+      setOk(`${r.data.enregistrees} décision(s) enregistrée(s). Elles apparaissent chez les parents.`)
       d.reload()
     } catch (err) {
       setError(err.message)

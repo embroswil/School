@@ -220,7 +220,7 @@ export default function Abonnement() {
         </div>
       )}
       <p className="muted" style={{ fontSize: 12.5, margin: '14px 2px 0' }}>
-        L’abonnement comprend toutes les fonctions de Sùkûl pour tous vos élèves et enseignants : appel, notes et bulletins, scolarité, informations aux familles et assistance.
+        L’abonnement comprend toutes les fonctions de Sùkûl pour tous vos élèves et enseignants : appel, notes, scolarité, informations aux familles et assistance.
       </p>
     </>
   )

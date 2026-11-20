@@ -18,7 +18,7 @@ const GUIDES = {
     ['Faire l’appel', 'Sur la carte de la classe › Faire l’appel, heure par heure. Les parents des absents sont prévenus.'],
     ['Saisir les notes', 'Notes › Nouvelle évaluation (séquence), saisissez puis publiez : les parents les voient aussitôt.'],
     ['Donner un devoir', 'Sur la carte de la classe › Devoirs.'],
-    ['Professeur principal', 'Résultats, coefficients, bulletins trimestriels et conseil de fin d’année.'],
+    ['Professeur principal', 'Résultats, coefficients et conseil de fin d’année.'],
     ['Publier', 'Onglet Publier : photos et vidéos de la vie de la classe.'],
   ],
   parent: [

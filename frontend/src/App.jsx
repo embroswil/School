@@ -39,7 +39,6 @@ import Evaluation from './pages/Evaluation.jsx'
 import Appel from './pages/Appel.jsx'
 import Suivi, { MesNotes } from './pages/Suivi.jsx'
 import MesAffectations from './pages/MesAffectations.jsx'
-import Bulletins from './pages/Bulletins.jsx'
 import Devoirs from './pages/Devoirs.jsx'
 import EmploiDuTemps, { MonEmploi } from './pages/EmploiDuTemps.jsx'
 import ConseilAnnuel from './pages/ConseilAnnuel.jsx'
@@ -225,8 +224,7 @@ function Pages({ path }) {
   if (annuelMatch) return reserve(gestion || user.role === 'teacher', <ConseilAnnuel key={annuelMatch[1]} id={Number(annuelMatch[1])} />)
   const devoirsMatch = path.match(/^\/classes\/(\d+)\/devoirs$/)
   if (devoirsMatch) return reserve(gestion || user.role === 'teacher', <Devoirs key={devoirsMatch[1]} id={Number(devoirsMatch[1])} />)
-  const bulletinsMatch = path.match(/^\/classes\/(\d+)\/bulletins$/)
-  if (bulletinsMatch) return reserve(gestion || user.role === 'teacher', <Bulletins key={bulletinsMatch[1]} id={Number(bulletinsMatch[1])} />)
+  // Bulletins : mis de cote pour l'instant (pages/Bulletins.jsx gardee pour plus tard)
   const notesMatch = path.match(/^\/classes\/(\d+)\/notes$/)
   if (notesMatch) return reserve(gestion || user.role === 'teacher', <ClassNotes key={notesMatch[1]} id={Number(notesMatch[1])} />)
   const appelMatch = path.match(/^\/classes\/(\d+)\/appel$/)

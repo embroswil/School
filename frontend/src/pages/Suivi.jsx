@@ -117,14 +117,14 @@ export default function Suivi({ id }) {
   if (!e) return <Note>Élève non relié à votre compte.</Note>
   return (
     <>
-      <section className="hero-card" style={{ marginTop: 4 }}>
+      <section className="hero-card sans-impression" style={{ marginTop: 4 }}>
         <span className="badge">{e.classe || 'Classe non précisée'}</span>
         <h2 style={{ marginTop: 8 }}>
           {e.prenom} {e.nom}
         </h2>
         <p>{e.ecole}</p>
       </section>
-      <div className="chips" style={{ marginTop: 14 }}>
+      <div className="chips sans-impression" style={{ marginTop: 14 }}>
         <button type="button" className="chip" aria-pressed={onglet === 'notes'} onClick={() => setOnglet('notes')}>
           Notes
         </button>

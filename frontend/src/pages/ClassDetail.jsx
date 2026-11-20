@@ -80,7 +80,6 @@ export default function ClassDetail({ id }) {
 
       <h2 className="section-title">Suivi de la classe</h2>
       <Ligne Icone={IcCarte} titre="Résultats et classement" texte="Moyennes, rangs, taux de réussite" href={`#/classes/${id}/notes?onglet=resultats`} />
-      <Ligne Icone={IcActus} titre="Bulletins" texte="Bulletins trimestriels à imprimer ou en PDF" href={`#/classes/${id}/bulletins`} />
       <Ligne Icone={IcCarte} titre="Conseil de fin d’année" texte="Moyenne annuelle et décisions" href={`#/classes/${id}/annuel`} />
       <Ligne Icone={IcClasses} titre="Emploi du temps" texte="Cours de la semaine" href={`#/classes/${id}/emploi`} />
       <Ligne Icone={IcActus} titre="Évaluations" texte="Devoirs et notes publiés par les enseignants" href={`#/classes/${id}/notes`} />
@@ -172,7 +171,7 @@ export default function ClassDetail({ id }) {
       {ouvert === 'pp' && (
         <div className="card" style={{ marginTop: 10 }}>
           <p className="muted" style={{ fontSize: 14, marginBottom: 8 }}>
-            Il gère les coefficients, les résultats et les bulletins de la classe.
+            Il gère les coefficients et les résultats de la classe.
           </p>
           <select className="input" defaultValue={classe.class_teacher_id || ''} onChange={(e) => definirPP(e.target.value)}>
             <option value="">— Aucun —</option>
