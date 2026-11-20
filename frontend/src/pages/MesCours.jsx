@@ -17,8 +17,9 @@ const moins15 = (hhmm) => {
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
 }
 
-// Le cours peut etre confirme le jour meme, a partir de 15 minutes avant son debut
-export const confirmable = (c, v) => v && v.date === v.aujourdhui && !c.confirme_le && !c.absent && v.maintenant >= moins15(c.debut)
+// Le cours peut etre confirme le jour meme, de 15 minutes avant son debut jusqu'a sa fin
+export const confirmable = (c, v) => v && v.date === v.aujourdhui && !c.confirme_le && !c.absent && v.maintenant >= moins15(c.debut) && v.maintenant < c.fin
+const termine = (c, v) => v && (v.date < v.aujourdhui || v.maintenant >= c.fin)
 const commence = (c, v) => v && (v.date < v.aujourdhui || v.maintenant >= moins15(c.debut))
 
 export async function confirmerCours(c, date) {
@@ -56,31 +57,38 @@ function Cours({ c, v, onMaj }) {
     setBusy(false)
   }
 
+  const enCours = confirmable(c, v)
+  const confirme = c.confirme_le || c.etat === 'assure'
+  const statut = c.confirme_le
+    ? ['ok', `Présent · ${heureDe(c.confirme_le)}`]
+    : c.absent
+      ? ['alerte', 'Absent']
+      : c.etat === 'assure'
+        ? ['ok', 'Confirmé']
+        : termine(c, v)
+          ? ['gris', 'Non confirmé']
+          : enCours
+            ? null
+            : ['neutre', 'À venir']
   return (
-    <article className={`mc-cours ${c.confirme_le || c.etat === 'assure' ? 'fait' : ''}`}>
+    <article className={`mc-cours ${confirme ? 'fait' : ''} ${enCours ? 'maintenant' : ''}`}>
       <div className="mc-tete">
         <span className="mc-heure">
           <b>{c.debut}</b>
           <small>{c.fin}</small>
         </span>
         <span className="mc-titre">
-          <b>{`${c.classe} · ${c.matiere || 'Cours'}`}</b>
-          <small>{c.salle ? `Salle ${c.salle}` : ' '}</small>
+          <b>{c.classe}</b>
+          <small>{[c.matiere, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>
         </span>
-        {c.confirme_le ? (
-          <span className="etiquette ok">{`Présent · ${heureDe(c.confirme_le)}`}</span>
-        ) : c.absent ? (
-          <span className="etiquette alerte">Absent</span>
-        ) : c.etat === 'assure' ? (
-          <span className="etiquette ok">Confirmé</span>
-        ) : null}
+        {enCours ? (
+          <button type="button" className="btn mc-present" disabled={busy} onClick={confirmer}>
+            {busy ? '…' : 'Je suis en cours'}
+          </button>
+        ) : (
+          statut && <span className={`etiquette ${statut[0]}`}>{statut[1]}</span>
+        )}
       </div>
-
-      {confirmable(c, v) && (
-        <button type="button" className="btn btn-block mc-present" disabled={busy} onClick={confirmer}>
-          {busy ? '…' : 'Je suis en cours'}
-        </button>
-      )}
 
       {commence(c, v) && !c.absent && (
         <div className="mc-cahier">
@@ -105,10 +113,10 @@ function Cours({ c, v, onMaj }) {
           ) : (
             <div className="mc-liens">
               <button type="button" className="lien-action" onClick={() => setEdition(true)}>
-                {c.contenu ? 'Modifier le cahier de textes' : 'Remplir le cahier de textes'}
+                {c.contenu ? 'Modifier le cahier de textes' : 'Cahier de textes'}
               </button>
-              {v.date === v.aujourdhui && !c.appel && (
-                <a className="lien-action discret" href={`#/classes/${c.class_id}/appel`}>
+              {v.date === v.aujourdhui && !c.appel && !termine(c, v) && (
+                <a className="lien-action" href={`#/classes/${c.class_id}/appel`}>
                   Faire l’appel
                 </a>
               )}
@@ -133,7 +141,7 @@ export default function MesCours() {
   return (
     <>
       <h1 className="page-title">Mes cours</h1>
-      <p className="muted mc-intro">Confirmez d’un geste que vous êtes en cours, puis notez ce qui a été fait. L’appel reste conseillé, mais il n’est plus obligatoire pour confirmer votre présence.</p>
+      <p className="muted mc-intro">Pendant le cours, confirmez que vous êtes en classe, puis notez ce qui a été fait.</p>
       <div className="jour-nav">
         <button type="button" aria-label="Jour précédent" disabled={date <= decaler(auj, -14)} onClick={() => setDate(decaler(date, -1))}>
           <IcChevron size={18} style={{ transform: 'rotate(180deg)' }} />

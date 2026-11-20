@@ -1963,24 +1963,28 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
 
 /* ---------- Mes cours (enseignant) ---------- */
 .mc-intro { font-size: 13.5px; margin: -4px 0 12px; }
-.mc-liste { display: grid; gap: 8px; }
-.mc-cours { display: grid; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
-.mc-cours.fait { border-color: rgba(18, 183, 106, 0.4); }
+.mc-liste { display: grid; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.mc-cours { display: grid; gap: 6px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+.mc-cours:last-child { border-bottom: 0; }
+.mc-cours.maintenant { background: rgba(47, 107, 255, 0.07); box-shadow: inset 3px 0 0 var(--primary); }
 .mc-tete { display: flex; align-items: center; gap: 12px; }
-.mc-heure { flex: none; width: 46px; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
-.mc-heure b { font-size: 15px; }
+.mc-heure { flex: none; width: 42px; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.mc-heure b { font-size: 14px; }
 .mc-heure small { color: var(--muted); font-size: 12px; }
 .mc-titre { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.mc-titre b { font-size: 14.5px; }
-.mc-titre small { color: var(--muted); font-size: 12.5px; }
-.mc-present { padding: 13px; font-size: 15.5px; }
+.mc-titre b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-titre small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-tete .etiquette { flex: none; font-size: 11.5px; }
+.mc-present { flex: none; padding: 8px 12px; font-size: 13px; border-radius: 10px; }
 .mc-cahier { display: grid; gap: 8px; }
 .mc-cahier p { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--bg); font-size: 13.5px; }
 .mc-cahier p span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 2px; }
 .mc-boutons { display: flex; gap: 8px; }
 .mc-liens { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.mc-liens .lien-action { padding: 5px 11px; border-radius: 999px; background: rgba(47, 107, 255, 0.12); font-size: 12.5px; text-decoration: none; }
-.mc-liens .lien-action.discret { background: var(--bg); border: 1px solid var(--line); }
+.mc-cahier, .mc-liens { padding-left: 54px; }
+.mc-cahier .mc-liens { padding-left: 0; }
+.mc-liens { gap: 14px; }
+.mc-liens .lien-action { font-size: 12.5px; text-decoration: none; }
 .mc-appel { font-size: 12.5px; color: #12b76a; font-weight: 600; }
 .cours-confirme { font-weight: 700; color: #fff !important; background: rgba(255, 255, 255, 0.16); padding: 10px 12px; border-radius: 12px; margin: 0 0 10px !important; }
 .cours-erreur { background: rgba(255, 255, 255, 0.92); color: #b42318 !important; padding: 8px 10px; border-radius: 10px; font-size: 13px; margin-top: 8px !important; }
@@ -1991,7 +1995,7 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
   .pe-chiffres span { font-size: 11px; }
 }
 
-html.ordi .mc-present { justify-self: start; width: auto; padding-left: 32px; padding-right: 32px; }
+
 
 /* Version ordinateur sur un telephone ou une tablette (« Version pour ordinateur » du navigateur, ou apercu) :
    en paysage, iOS peut laisser de chaque cote une marge (encoche) peinte de la couleur de la page. La barre
@@ -2252,3 +2256,22 @@ html.ordi .edt-table .edt-heure { width: 72px; }
 .niveau-repli-corps { padding: 8px 0 6px; }
 .niveau-repli-corps .eleves-classes { margin: 0; }
 html.ordi .niveau-repli-tete:hover { border-color: var(--primary); }
+/* Notifications */
+.notifs ul { list-style: none; margin: 0 0 6px; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.notifs li { border-bottom: 1px solid var(--line); }
+.notifs li:last-child { border-bottom: 0; }
+.notifs li > a, .notifs li > div { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; color: inherit; text-decoration: none; }
+.notifs li.non-lue { background: rgba(47, 107, 255, 0.06); }
+.notif-ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; }
+.notif-ico.bleu { background: rgba(47, 107, 255, 0.14); color: var(--primary); }
+.notif-ico.vert { background: rgba(18, 183, 106, 0.14); color: #12b76a; }
+.notif-ico.orange { background: rgba(247, 144, 9, 0.14); color: #f79009; }
+.notif-ico.violet { background: rgba(124, 77, 255, 0.14); color: #7c4dff; }
+.notif-ico.rouge { background: rgba(240, 68, 56, 0.14); color: #f04438; }
+.notif-ico.gris { background: rgba(152, 162, 179, 0.16); color: var(--muted); }
+.notif-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.notif-ligne { display: flex; align-items: baseline; gap: 8px; }
+.notif-ligne b { flex: 1; min-width: 0; font-size: 14px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-ligne time { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.notif-texte small { font-size: 13px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.notif-point { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--primary); }

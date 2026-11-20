@@ -251,12 +251,13 @@ const monCours = async (req) => {
 };
 
 // POST /api/presence-enseignants/mes-cours/confirmer { classId, debut, date } : « je suis en cours »
-// Possible le jour meme, a partir de 15 minutes avant le debut du cours
+// Possible le jour meme, de 15 minutes avant le debut du cours jusqu'a sa fin
 router.post("/mes-cours/confirmer", async (req, res, next) => {
   try {
     const { cr, date, debut } = await monCours(req);
     if (date !== jourCameroun()) throw new ApiError(400, "La présence se confirme le jour du cours");
     if (heureCameroun() < decaler(debut, -15)) throw new ApiError(400, `Vous pourrez confirmer à partir de ${decaler(debut, -15)}`);
+    if (cr.fin && heureCameroun() >= cr.fin) throw new ApiError(400, "Ce cours est terminé : la présence ne peut plus être confirmée.");
     const r = await suivre(req.user.schoolId, cr.class_id, date, debut, req.user.id, { confirme_le: new Date() });
     res.json({ success: true, data: { confirme_le: r.rows[0].confirme_le } });
   } catch (e) {
