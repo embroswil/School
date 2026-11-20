@@ -188,7 +188,7 @@ function Pages({ path }) {
   if (path === '/absences') return reserve(['principal', 'admin'].includes(user.role), <AbsencesJour />)
   const infoMatch = path.match(/^\/infos\/(\d+)$/)
   if (infoMatch) return <InfoDetail key={infoMatch[1]} id={Number(infoMatch[1])} />
-  if (path === '/info') return reserve(['principal', 'teacher'].includes(user.role), <InfoPublier />)
+  if (path.split('?')[0] === '/info') return reserve(['principal', 'teacher'].includes(user.role), <InfoPublier />)
   if (path === '/presence-enseignants') return reserve(user.role === 'principal', <PresenceEnseignants />)
   if (path === '/mon-absence') return reserve(user.role === 'teacher', <MonAbsence />)
   if (path === '/mes-cours') return reserve(user.role === 'teacher', <MesCours />)

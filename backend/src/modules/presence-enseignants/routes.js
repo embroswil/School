@@ -230,7 +230,30 @@ router.get("/mes-cours", async (req, res, next) => {
     const total = (
       await db.query("SELECT COUNT(*)::int AS n FROM creneaux cr JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id WHERE cs.teacher_id = $1", [req.user.id])
     ).rows[0].n;
-    res.json({ success: true, data: { date, aujourdhui: jourCameroun(), maintenant: heureCameroun(), cours, absence: absence || null, total } });
+    // jours de la semaine (1 = lundi) ou l'enseignant a cours dans cet etablissement
+    const jours = (
+      await db.query(
+        `SELECT DISTINCT cr.jour FROM creneaux cr JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id
+         WHERE cs.teacher_id = $1 AND cr.school_id = $2 ORDER BY cr.jour`,
+        [req.user.id, ecole]
+      )
+    ).rows.map((r) => Number(r.jour));
+    // cours supplementaires programmes par l'enseignant (via « Faire passer une information »)
+    const supplementaires = (
+      await db.query(
+        `SELECT id, title AS titre, to_char(event_date, 'HH24:MI') AS heure, event_place AS lieu FROM publications
+         WHERE author_id = $1 AND school_id = $2 AND categorie = 'Cours supplémentaire' AND event_date::date = $3::date ORDER BY event_date`,
+        [req.user.id, ecole, date]
+      )
+    ).rows;
+    const joursSupp = (
+      await db.query(
+        `SELECT DISTINCT to_char(event_date, 'YYYY-MM-DD') AS d FROM publications
+         WHERE author_id = $1 AND school_id = $2 AND categorie = 'Cours supplémentaire' AND event_date::date BETWEEN $3::date AND $3::date + 60`,
+        [req.user.id, ecole, jourCameroun()]
+      )
+    ).rows.map((r) => r.d);
+    res.json({ success: true, data: { date, aujourdhui: jourCameroun(), maintenant: heureCameroun(), cours, absence: absence || null, total, jours, supplementaires, joursSupp } });
   } catch (e) {
     next(e);
   }

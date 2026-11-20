@@ -10,9 +10,15 @@ const quand = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', m
 export default function Messages() {
   const { user } = useAuth()
   const etablissement = user.role === 'principal'
+  const enseignant = user.role === 'teacher'
   const liste = useApi('/api/boite/messages')
   const [ouvert, setOuvert] = useState(false)
-  const [f, setF] = useState({ subject: '', body: '' })
+  const [f, setF] = useState({ subject: '', body: '', a: 'etablissement', classeId: '', eleveId: '' })
+  const [envoye, setEnvoye] = useState('')
+  // enseignant : ses classes, puis les eleves de la classe choisie
+  const classes = useApi(enseignant && f.a === 'parents' ? '/api/notes/mes-classes' : null)
+  const eleves = useApi(enseignant && f.a === 'parents' && f.classeId ? `/api/boite/destinataires?classe=${f.classeId}` : null)
+  const nbParents = (eleves.data || []).filter((x) => !f.eleveId || String(x.id) === f.eleveId).reduce((n, x) => n + x.parents, 0)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -22,7 +28,13 @@ export default function Messages() {
     setBusy(true)
     try {
       const r = await api.post('/api/boite/messages', f)
-      window.location.hash = `/messages/${r.data.id}`
+      if (r.data.id) window.location.hash = `/messages/${r.data.id}`
+      else {
+        setEnvoye(`Message envoyé à ${r.data.envoyes} parent${r.data.envoyes > 1 ? 's' : ''}.`)
+        setOuvert(false)
+        setF({ subject: '', body: '', a: 'etablissement', classeId: '', eleveId: '' })
+        liste.reload()
+      }
     } catch (err) {
       setError(err.message)
     }
@@ -35,8 +47,11 @@ export default function Messages() {
       <p className="lede">
         {etablissement
           ? 'Les messages des parents, des élèves et des enseignants de votre établissement.'
-          : `Écrivez à ${user.schoolName || 'votre établissement'} : une question, une absence, un document…`}
+          : enseignant
+            ? 'Écrivez à l’établissement ou aux parents de vos élèves.'
+            : `Écrivez à ${user.schoolName || 'votre établissement'} : une question, une absence, un document…`}
       </p>
+      {envoye && <Note kind="ok">{envoye}</Note>}
 
       {!etablissement && (
         <>
@@ -46,8 +61,56 @@ export default function Messages() {
             </button>
           ) : (
             <form className="card" onSubmit={envoyer} style={{ marginBottom: 16 }}>
+              {enseignant && (
+                <>
+                  <div className="field">
+                    <span className="field-label">Destinataire</span>
+                    <div className="segments" role="tablist" style={{ marginBottom: 0 }}>
+                      {[
+                        ['etablissement', 'L’établissement'],
+                        ['parents', 'Des parents'],
+                      ].map(([k, t]) => (
+                        <button key={k} type="button" role="tab" aria-selected={f.a === k} onClick={() => setF({ ...f, a: k })}>
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {f.a === 'parents' && (
+                    <>
+                      <Field label="Classe">
+                        <select className="input" value={f.classeId} onChange={(e) => setF({ ...f, classeId: e.target.value, eleveId: '' })} required>
+                          <option value="">Choisir la classe</option>
+                          {(classes.data || []).map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      {f.classeId && (
+                        <Field label="Parents de">
+                          <select className="input" value={f.eleveId} onChange={(e) => setF({ ...f, eleveId: e.target.value })}>
+                            <option value="">Toute la classe</option>
+                            {(eleves.data || []).map((x) => (
+                              <option key={x.id} value={x.id} disabled={!x.parents}>
+                                {`${x.last_name} ${x.first_name}${x.parents ? '' : ' (aucun parent inscrit)'}`}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      )}
+                      {f.classeId && eleves.data && (
+                        <p className="muted" style={{ margin: '-4px 0 12px', fontSize: 13 }}>
+                          {nbParents ? `${nbParents} parent${nbParents > 1 ? 's' : ''} recevr${nbParents > 1 ? 'ont' : 'a'} ce message, chacun en privé.` : 'Aucun parent inscrit pour l’instant.'}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
               <Field label="Objet">
-                <input className="input" placeholder="ex. Absence de mon enfant" value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })} required />
+                <input className="input" placeholder={enseignant ? (f.a === 'parents' ? 'ex. Devoir de mathématiques' : 'ex. Changement de salle') : 'ex. Absence de mon enfant'} value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })} required />
               </Field>
               <Field label="Message">
                 <textarea className="input" style={{ minHeight: 130 }} value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} required />
@@ -80,6 +143,9 @@ export default function Messages() {
                 </div>
                 <div className="row-sub">
                   {etablissement && ROLES[c.role] ? `${ROLES[c.role]} · ` : ''}
+                  {!etablissement && c.genre && (
+                    <span data-brut>{c.genre === 'parent' ? `Parent de ${c.eleve || '—'} · ` : c.genre === 'enseignant' ? `${c.avec} (enseignant) · ` : ''}</span>
+                  )}
                   {c.dernier}
                 </div>
               </div>

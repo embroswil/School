@@ -6,7 +6,8 @@ import { ReglagePush, installee } from '../push.jsx'
 import { ChampMotDePasse, Field, Note } from '../ui.jsx'
 import Recadreur from '../Recadreur.jsx'
 import { lancerDidacticiel } from '../Didacticiel.jsx'
-import { IcAide, IcCarte, IcChevron, IcCle, IcCloche, IcCrayon, IcPhoto, IcProfil, IcSortie, IcTheme } from '../icones.jsx'
+import { IcAide, IcCalendrier, IcCarte, IcChevron, IcCle, IcCloche, IcClasses, IcCrayon, IcEcole, IcEleves, IcFamille, IcPhoto, IcProfil, IcSortie, IcTheme } from '../icones.jsx'
+import { useApi } from '../hooks.js'
 import { changerTheme, lireTheme } from '../theme.js'
 
 const ROLES = {
@@ -195,9 +196,71 @@ function SuppressionCompte({ logout }) {
   )
 }
 
+const minutes = (hhmm) => {
+  const [h, m] = String(hhmm || '0:0').split(':').map(Number)
+  return h * 60 + m
+}
+
+// Profil de l'enseignant : sa fiche (matieres, classes, eleves, heures par semaine)
+function FicheEnseignant({ moi, avatar }) {
+  const classes = useApi('/api/notes/mes-classes')
+  const emploi = useApi('/api/vie-scolaire/emplois/moi')
+  const liste = classes.data || []
+  const matieres = [...new Set(liste.flatMap((c) => c.matieres || []))]
+  const eleves = liste.reduce((n, c) => n + (c.eleves || 0), 0)
+  const heures = Math.round(((emploi.data?.creneaux || []).reduce((n, c) => n + Math.max(0, minutes(c.fin) - minutes(c.debut)), 0) / 60) * 10) / 10
+  const principal = liste.filter((c) => c.prof_principal).map((c) => c.name)
+  return (
+    <section className="profil-ens">
+      <div className="profil-ens-tete">
+        {avatar}
+        <div className="profil-identite">
+          <h1 data-brut>
+            {moi.firstName} {moi.lastName}
+          </h1>
+          <p className="profil-poste">
+            Enseignant
+            {moi.schoolName && (
+              <>
+                {' · '}
+                <span data-brut>{nomEcole(moi.schoolName)}</span>
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+      {matieres.length > 0 && (
+        <div className="profil-ens-matieres">
+          {matieres.map((m) => (
+            <span key={m} data-brut>
+              {m}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="profil-ens-chiffres">
+        <div>
+          <b>{classes.data ? liste.length : '–'}</b>
+          <small>Classes</small>
+        </div>
+        <div>
+          <b>{classes.data ? eleves : '–'}</b>
+          <small>Élèves</small>
+        </div>
+        <div>
+          <b>{emploi.data ? `${String(heures).replace('.', ',')} h` : '–'}</b>
+          <small>Par semaine</small>
+        </div>
+      </div>
+      {principal.length > 0 && <p className="profil-ens-pp">{`Professeur principal : ${principal.join(', ')}`}</p>}
+    </section>
+  )
+}
+
 export default function Account() {
-  const { user, logout } = useAuth()
+  const { user, logout, changerEspace } = useAuth()
   const [moi, setMoi] = useState(user)
+  const [passage, setPassage] = useState(false)
   const [ouvert, setOuvert] = useState(null)
   const champPhoto = useRef(null)
   const [aRecadrer, setARecadrer] = useState(null)
@@ -234,36 +297,73 @@ export default function Account() {
     if (s2?.user) session.set({ ...s2, user: { ...s2.user, rapportQuotidien: v } })
   }
 
+  const avatar = (
+    <>
+      <button type="button" className="profil-avatar profil-avatar-btn" onClick={() => champPhoto.current?.click()} aria-label="Changer ma photo" title="Changer ma photo">
+        {moi.profilePicture ? <img src={moi.profilePicture} alt="" /> : initiales}
+        <span className="profil-avatar-cam" aria-hidden="true">
+          <IcPhoto size={14} />
+        </span>
+      </button>
+      <input ref={champPhoto} type="file" accept="image/*" hidden onChange={(e) => {
+        const f = e.target.files?.[0]
+        e.target.value = ''
+        if (f) setARecadrer(f)
+      }} />
+      {aRecadrer && <Recadreur fichier={aRecadrer} ratio={1} sortie={320} rond onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
+    </>
+  )
+
   return (
     <div className="profil">
-      <section className="profil-carte">
-        <button type="button" className="profil-avatar profil-avatar-btn" onClick={() => champPhoto.current?.click()} aria-label="Changer ma photo" title="Changer ma photo">
-          {moi.profilePicture ? <img src={moi.profilePicture} alt="" /> : initiales}
-          <span className="profil-avatar-cam" aria-hidden="true">
-            <IcPhoto size={14} />
-          </span>
-        </button>
-        <input ref={champPhoto} type="file" accept="image/*" hidden onChange={(e) => {
-          const f = e.target.files?.[0]
-          e.target.value = ''
-          if (f) setARecadrer(f)
-        }} />
-        {aRecadrer && <Recadreur fichier={aRecadrer} ratio={1} sortie={320} rond onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
-        <div className="profil-identite">
-          <h1 data-brut>
-            {moi.firstName} {moi.lastName}
-          </h1>
-          <p className="profil-poste">
-            {ROLES[moi.role] || moi.role}
-            {moi.schoolName && (
-              <>
-                {' · '}
-                <span data-brut>{nomEcole(moi.schoolName)}</span>
-              </>
-            )}
-          </p>
-        </div>
-      </section>
+      {moi.role === 'teacher' ? (
+        <FicheEnseignant moi={moi} avatar={avatar} />
+      ) : (
+        <section className="profil-carte">
+          {avatar}
+          <div className="profil-identite">
+            <h1 data-brut>
+              {moi.firstName} {moi.lastName}
+            </h1>
+            <p className="profil-poste">
+              {ROLES[moi.role] || moi.role}
+              {moi.schoolName && (
+                <>
+                  {' · '}
+                  <span data-brut>{nomEcole(moi.schoolName)}</span>
+                </>
+              )}
+            </p>
+          </div>
+        </section>
+      )}
+
+      {moi.role === 'teacher' && (
+        <>
+          <p className="groupe-titre">Enseignement</p>
+          <div className="liste-reglages">
+            <Reglage Icone={IcEleves} titre="Mes classes et matières" href="#/mes-classes" />
+            <Reglage Icone={IcClasses} titre="Emploi du temps" href="#/emploi" />
+            <Reglage Icone={IcCalendrier} titre="Mes absences" href="#/mon-absence" />
+            <Reglage Icone={IcEcole} titre="Mes établissements" href="#/mes-etablissements" />
+            <Reglage
+              Icone={IcFamille}
+              titre="Espace parent"
+              valeur={passage ? '…' : 'Mes enfants'}
+              onClick={async () => {
+                setPassage(true)
+                try {
+                  await changerEspace('parent')
+                  window.location.hash = '/'
+                } catch {
+                  // l'espace actuel reste affiche
+                }
+                setPassage(false)
+              }}
+            />
+          </div>
+        </>
+      )}
 
       <p className="groupe-titre">Compte</p>
       <div className="liste-reglages">
@@ -316,15 +416,6 @@ export default function Account() {
       <div className="liste-reglages">
         <Reglage Icone={IcTheme} titre="Thème" droite={<ChoixTheme />} />
       </div>
-
-      {moi.role === 'teacher' && (
-        <>
-          <p className="groupe-titre">Établissements</p>
-          <div className="liste-reglages">
-            <Reglage Icone={IcCarte} titre="Mes établissements" href="#/mes-etablissements" />
-          </div>
-        </>
-      )}
 
       {moi.role === 'principal' && (
         <>

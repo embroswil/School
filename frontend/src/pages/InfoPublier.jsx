@@ -37,7 +37,7 @@ export default function InfoPublier() {
   const { user } = useAuth()
   const classes = useApi(user.role === 'teacher' ? '/api/notes/mes-classes' : '/api/etablissement/classes')
   const champ = useRef(null)
-  const [f, setF] = useState({ genre: 'info', classeId: '', titre: '', texte: '', date: '', heure: '', lieu: '' })
+  const [f, setF] = useState({ genre: /genre=cours/.test(window.location.hash) ? 'cours' : 'info', classeId: '', titre: '', texte: '', date: '', heure: '', lieu: '' })
   const [photos, setPhotos] = useState([])
   const [etat, setEtat] = useState('')
   const [error, setError] = useState('')

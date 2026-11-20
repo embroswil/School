@@ -6,7 +6,7 @@ import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
-import { ChoixEspace, PasserParent } from '../espace.jsx'
+import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
 import { IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
@@ -398,19 +398,20 @@ const plusJours = (iso, n) => {
 }
 const fait = (c) => Boolean(c.confirme_le || c.etat === 'assure')
 
-// Anneau de progression : cours assures sur le total du jour
-function Anneau({ fait: f, total }) {
-  const r = 26
-  const p = 2 * Math.PI * r
-  const part = total ? f / total : 0
+// Un cours supplementaire (hors emploi du temps) sur la frise
+function PointSupp({ x }) {
   return (
-    <div className="ens-anneau" aria-label={`${f} cours assurés sur ${total}`}>
-      <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
-        <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="6" />
-        <circle cx="32" cy="32" r={r} fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${p * part} ${p}`} transform="rotate(-90 32 32)" />
-      </svg>
-      <b data-brut>{`${f}/${total}`}</b>
-    </div>
+    <li className="fr-cours supp">
+      <span className="fr-heure">
+        <b>{x.heure}</b>
+      </span>
+      <span className="fr-point" aria-hidden="true" />
+      <a className="fr-carte" href={`#/infos/${x.id}`}>
+        <b data-brut>{x.titre}</b>
+        {x.lieu && <small data-brut>{x.lieu}</small>}
+        <em className="fr-badge">Cours supplémentaire</em>
+      </a>
+    </li>
   )
 }
 
@@ -470,101 +471,117 @@ function PointFrise({ c, v, onMaj }) {
 }
 
 function EspaceEnseignant() {
-  const { user } = useAuth()
+  const { user, changerEspace } = useAuth()
   const jour = useApi('/api/presence-enseignants/mes-cours')
   const v = jour.data
   const auj = v?.aujourdhui || jourIso(new Date())
+  // calendrier : uniquement les jours ou l'enseignant a cours (emploi du temps ou cours supplementaire), 7 au plus
+  const joursCours = []
+  if (v) {
+    for (let i = 0; i < 28 && joursCours.length < 7; i++) {
+      const iso = plusJours(auj, i)
+      const isoDow = ((new Date(`${iso}T12:00:00`).getDay() + 6) % 7) + 1
+      if ((v.jours || []).includes(isoDow) || (v.joursSupp || []).includes(iso)) joursCours.push(iso)
+    }
+  }
   const [choisi, setChoisi] = useState(null)
-  const sel = choisi && choisi !== auj ? choisi : null
+  const actif = choisi || joursCours[0] || auj
+  const sel = actif !== auj ? actif : null
   const autre = useApi(sel ? `/api/presence-enseignants/mes-cours?date=${sel}` : null)
   const vue = sel ? autre.data : v
-  const liste = v?.cours || []
-  const t = v?.maintenant || ''
-  const assures = liste.filter(fait).length
-  const prochain = liste.find((c) => c.debut <= t && t < c.fin) || liste.find((c) => c.debut > t)
-  const semaine = Array.from({ length: 7 }, (_, i) => plusJours(auj, i))
   const date = (iso, o) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', o)
-  const resume = !v
-    ? ''
-    : !liste.length
-      ? 'Pas de cours aujourd’hui'
-      : prochain
-        ? `${prochain.debut <= t ? 'En cours' : 'Prochain cours'} : ${prochain.classe} à ${prochain.debut}`
-        : 'Journée terminée'
+  const assures = (v?.cours || []).filter(fait).length
+  const [passage, setPassage] = useState(false)
+  const espaceParent = user.peutChangerEspace || user.role === 'teacher'
+  // la frise : cours de l'emploi du temps et cours supplementaires, dans l'ordre des heures
+  const elements = vue ? [...vue.cours.map((c) => ({ h: c.debut, c })), ...(vue.supplementaires || []).map((x) => ({ h: x.heure, x }))].sort((a, b) => a.h.localeCompare(b.h)) : []
+
+  const raccourcis = [
+    ['#/mes-classes', IcEleves, 'Mes classes'],
+    ['#/info?genre=cours', IcPlus, 'Cours en plus'],
+    ['#/emploi', IcClasses, 'Emploi du temps'],
+    ['#/info', IcMegaphone, 'Informer'],
+    ['#/document', IcFichier, 'Document'],
+    ['#/mon-absence', IcCalendrier, 'Mon absence'],
+  ]
 
   return (
     <div className="ens-accueil">
-      <section className="ens-bandeau">
-        <div className="ens-bandeau-haut">
-          <span className="ens-date">{date(auj, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          <PasserParent />
-        </div>
-        <div className="ens-bandeau-corps">
-          <div>
-            <h1>{`Bonjour, ${user.firstName}`}</h1>
-            <p data-brut>{user.schoolName || ''}</p>
-            {resume && <p className="ens-resume">{resume}</p>}
-          </div>
-          {liste.length > 0 && <Anneau fait={assures} total={liste.length} />}
+      <section className="ens-raccourcis" aria-label="Raccourcis">
+        <div className="ens-raccourcis-liste">
+          {raccourcis.map(([href, Icone, titre]) => (
+            <a key={href} href={href}>
+              <span>
+                <Icone size={21} />
+              </span>
+              <b>{titre}</b>
+            </a>
+          ))}
+          {espaceParent && (
+            <button
+              type="button"
+              disabled={passage}
+              onClick={async () => {
+                setPassage(true)
+                try {
+                  await changerEspace('parent')
+                } catch {
+                  // l'espace actuel reste affiche
+                }
+                setPassage(false)
+              }}
+            >
+              <span>
+                <IcProfil size={21} />
+              </span>
+              <b>{passage ? '…' : 'Espace parent'}</b>
+            </button>
+          )}
         </div>
       </section>
       <ChoixEtablissement />
 
-      <div className="ens-colonnes">
-        <section className="ens-agenda">
+      <section className="ens-agenda">
+        {joursCours.length > 0 && (
           <div className="ens-semaine" role="tablist" aria-label="Choisir un jour">
-            {semaine.map((iso, i) => (
-              <button key={iso} type="button" role="tab" aria-selected={(sel || auj) === iso} onClick={() => setChoisi(iso)}>
-                <small>{i === 0 ? 'Auj.' : date(iso, { weekday: 'short' }).replace('.', '')}</small>
+            {joursCours.map((iso) => (
+              <button key={iso} type="button" role="tab" aria-selected={actif === iso} onClick={() => setChoisi(iso)}>
+                <small>{iso === auj ? 'Auj.' : date(iso, { weekday: 'short' }).replace('.', '')}</small>
                 <b>{date(iso, { day: 'numeric' })}</b>
               </button>
             ))}
           </div>
-          <div className="ens-agenda-tete">
-            <h2>{sel ? date(sel, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Ma journée'}</h2>
-            <a href="#/mes-cours" className="ens-agenda-lien">
-              <IcCalendrier size={15} />
-              <span>Mes cours</span>
-            </a>
+        )}
+        <div className="ens-agenda-tete">
+          <h2>
+            {sel ? date(sel, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Aujourd’hui'}
+            {!sel && v?.cours.length > 0 && <small>{`${assures}/${v.cours.length} assurés`}</small>}
+          </h2>
+          <a href="#/mes-cours" className="ens-agenda-lien">
+            <IcCalendrier size={15} />
+            <span>Mes cours</span>
+          </a>
+        </div>
+        {!vue && <p className="muted">Chargement…</p>}
+        {vue?.absence && <div className="note">{`Absence signalée ce jour${vue.absence.motif ? ` : ${vue.absence.motif}` : ''}.`}</div>}
+        {vue && elements.length === 0 && (
+          <div className="ens-repos">
+            <b>Aucun cours</b>
+            <small>{vue.total ? 'Votre emploi du temps ne prévoit pas de cours ce jour-là.' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</small>
           </div>
-          {!vue && <p className="muted">Chargement…</p>}
-          {vue?.absence && <div className="note">{`Absence signalée ce jour${vue.absence.motif ? ` : ${vue.absence.motif}` : ''}.`}</div>}
-          {vue && vue.cours.length === 0 && (
-            <div className="ens-repos">
-              <b>Aucun cours</b>
-              <small>{vue.total ? 'Votre emploi du temps ne prévoit pas de cours ce jour-là.' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</small>
-            </div>
-          )}
-          {vue && vue.cours.length > 0 && (
-            <ol className="frise">
-              {vue.cours.map((c) => (
+        )}
+        {elements.length > 0 && (
+          <ol className="frise">
+            {elements.map(({ c, x }) =>
+              c ? (
                 <PointFrise key={`${vue.date}-${c.class_id}-${c.debut}`} c={c} v={vue} onMaj={() => (sel ? autre.reload() : jour.reload())} />
-              ))}
-            </ol>
-          )}
-        </section>
-
-        <section className="ens-raccourcis">
-          <h2>Raccourcis</h2>
-          <div className="ens-raccourcis-liste">
-            {[
-              ['#/mes-classes', IcEleves, 'Mes classes'],
-              ['#/emploi', IcClasses, 'Emploi du temps'],
-              ['#/info', IcMegaphone, 'Informer'],
-              ['#/document', IcFichier, 'Document'],
-              ['#/mon-absence', IcCalendrier, 'Mon absence'],
-              ['#/mes-etablissements', IcEcole, 'Établissements'],
-            ].map(([href, Icone, titre]) => (
-              <a key={href} href={href}>
-                <span>
-                  <Icone size={21} />
-                </span>
-                <b>{titre}</b>
-              </a>
-            ))}
-          </div>
-        </section>
-      </div>
+              ) : (
+                <PointSupp key={`s${x.id}`} x={x} />
+              ),
+            )}
+          </ol>
+        )}
+      </section>
     </div>
   )
 }

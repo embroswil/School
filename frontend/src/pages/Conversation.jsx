@@ -32,6 +32,9 @@ export default function Conversation({ id }) {
   }
 
   const d = conv.data
+  // cote « ecole » : l'administrateur, ou l'enseignant dans une conversation avec un parent
+  const cote = d ? d.coteEcole ?? etablissement : etablissement
+  const nomEns = d?.enseignant ? `${d.enseignant.first_name} ${d.enseignant.last_name}` : ''
   return (
     <>
       <a className="back" href="#/messages">
@@ -44,7 +47,13 @@ export default function Conversation({ id }) {
           <h1 className="page-title" style={{ fontSize: 22 }}>
             {d.conversation.subject}
           </h1>
-          {etablissement && d.auteur && (
+          {(d.enseignant || d.eleve) && (
+            <p className="lede" style={{ marginBottom: 12 }}>
+              {cote ? `${d.auteur.first_name} ${d.auteur.last_name} · Parent` : `${nomEns} · Enseignant`}
+              {d.eleve ? ` · ${d.eleve.first_name} ${d.eleve.last_name}` : ''}
+            </p>
+          )}
+          {etablissement && !d.enseignant && d.auteur && (
             <p className="lede" style={{ marginBottom: 12 }}>
               {d.auteur.first_name} {d.auteur.last_name} · {ROLES[d.auteur.role] || ''}
               {d.auteur.phone && (
@@ -57,7 +66,7 @@ export default function Conversation({ id }) {
           )}
           <div style={{ display: 'grid', gap: 10 }}>
             {d.messages.map((m) => {
-              const moi = etablissement ? m.from_school : !m.from_school
+              const moi = cote ? m.from_school : !m.from_school
               return (
                 <div
                   key={m.id}
@@ -74,7 +83,7 @@ export default function Conversation({ id }) {
                 >
                   {m.body}
                   <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>
-                    {m.from_school ? 'Établissement' : `${m.first_name || ''}`} · {quand(m.created_at)}
+                    {m.from_school ? (d.enseignant ? nomEns : 'Établissement') : `${m.first_name || ''}`} · {quand(m.created_at)}
                   </div>
                 </div>
               )

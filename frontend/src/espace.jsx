@@ -40,28 +40,3 @@ export function ChoixEspace() {
   )
 }
 
-// Enseignant : bouton compact « Espace parent » dans l'en-tete de l'accueil
-export function PasserParent() {
-  const { user, changerEspace } = useAuth()
-  const [busy, setBusy] = useState(false)
-  if (!user?.peutChangerEspace || user.espace === 'parent') return null
-  return (
-    <button
-      type="button"
-      className="passer-parent"
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true)
-        try {
-          await changerEspace('parent')
-        } catch {
-          // l'espace actuel reste affiche
-        }
-        setBusy(false)
-      }}
-    >
-      <IcProfil size={15} />
-      <span>{busy ? '…' : 'Espace parent'}</span>
-    </button>
-  )
-}
