@@ -2164,3 +2164,18 @@ html.ordi .faq { max-width: 760px; }
 .tuto-titre { display: grid; gap: 2px; min-width: 0; }
 .tuto-titre small { color: var(--lien); font: 700 11.5px/1 var(--font-body); }
 .tuto-bulle { z-index: 4; }
+
+/* Avis de relance (impression A5) */
+.avis p { margin: 8px 0; font-size: 11px; line-height: 1.5; }
+.avis .avis-dest { margin-top: 12px; padding: 8px 10px; background: #f2f5ff; border-radius: 6px; }
+.avis-table tfoot td { padding: 6px 4px; border-top: 1.5px solid #101828; font-weight: 600; }
+.avis .bc-signatures { margin-top: 28px; }
+/* Relances des frais */
+.relances { margin: 0 0 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+.relances-ligne { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; border: 0; background: none; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.relances-ligne b { display: block; font-size: 15px; }
+.relances-ligne small, .relances > small { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+.relances > small { margin-top: 10px; }
+.relances-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.relances-actions .btn { flex: 1 1 200px; }
+.relances-ligne .interrupteur { flex: none; }

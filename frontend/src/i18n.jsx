@@ -391,6 +391,12 @@ const EN = {
   "Suivi": "Overview",
   "Rappeler tous les parents en retard": "Remind all overdue parents",
   "Rappeler les parents en retard": "Remind overdue parents",
+  "Relances automatiques": "Automatic reminders",
+  "3 jours avant chaque échéance, puis 1, 8 et 15 jours après, tant que les frais ne sont pas payés": "3 days before each due date, then 1, 8 and 15 days after, until the fees are paid",
+  "Rappeler maintenant": "Remind now",
+  "Imprimer les avis de relance": "Print reminder notices",
+  "Aucun élève en retard : aucun avis à imprimer.": "No overdue students: no notice to print.",
+  "Activer les relances automatiques ? Les parents seront prévenus 3 jours avant chaque échéance, puis 1, 8 et 15 jours après si les frais ne sont pas payés. Les parents déjà en retard recevront une première relance dans la journée.": "Turn on automatic reminders? Parents will be notified 3 days before each due date, then 1, 8 and 15 days after if the fees are not paid. Parents already overdue will receive a first reminder today.",
   "Par classe": "By class",
   "Par frais": "By fee",
   "Tous les élèves de la classe sont à jour.": "All students in the class are up to date.",
@@ -2165,6 +2171,8 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^Imprimer les avis \(([\d\s\u202f]+)\)$/, 'Print notices ($1)'],
+  [/^([\d\s\u202f]+) élève\(s\) relancé\(s\) ces 30 derniers jours$/, '$1 student(s) reminded in the last 30 days'],
   [/^Bienvenue, (.+)$/, 'Welcome, $1'],
   [/^(\d+) enseignant\(s\) trouvé\(s\)$/, '$1 teacher(s) found'],
   [/^Professeur principal · (.+)$/, 'Form tutor · $1'],

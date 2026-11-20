@@ -156,6 +156,38 @@ export function brouillardHtml(c) {
 </article>`
 }
 
+// Avis de relance : une page A5 par eleve en retard, a remettre a l'eleve pour ses parents.
+// d : donnees de /api/scolarite/avis-relance
+export function avisRelanceHtml(d) {
+  const e = d.ecole || {}
+  const aujourdhui = new Date().toISOString().slice(0, 10)
+  const jourCourt = (x) => new Date(`${String(x).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return d.eleves
+    .map((el, i) => {
+      const reste = el.frais.reduce((a, f) => a + Number(f.reste), 0)
+      return `
+<article class="bc avis">
+  <header class="bc-tete">
+    <div><b>${esc(e.nom || '')}</b><small>${esc([e.ville, e.telephone].filter(Boolean).join(' · '))}</small></div>
+    <div class="bc-titre"><b>AVIS DE RELANCE</b><span>${esc(jourLong(aujourdhui))}</span></div>
+  </header>
+  <p class="avis-dest">Aux parents de <b>${esc(el.nom)}</b>, élève en <b>${esc(el.classe)}</b>${d.annee ? ` · année scolaire ${esc(d.annee)}` : ''}</p>
+  <p>Madame, Monsieur,</p>
+  <p>Sauf erreur de notre part, les frais suivants n’ont pas été entièrement réglés à leur échéance :</p>
+  <table class="bc-table avis-table">
+    <thead><tr><th>Frais</th><th>Échéance</th><th>Montant</th><th>Payé</th><th>Reste</th></tr></thead>
+    <tbody>${el.frais
+      .map((f) => `<tr><td>${esc(f.nom)}</td><td>${esc(jourCourt(f.echeance))}</td><td>${esc(fcfa(f.montant))}</td><td>${esc(fcfa(f.paye))}</td><td><b>${esc(fcfa(f.reste))}</b></td></tr>`)
+      .join('')}</tbody>
+    <tfoot><tr><td colspan="4">Total restant à payer</td><td><b>${esc(fcfa(reste))}</b></td></tr></tfoot>
+  </table>
+  <p>Nous vous prions de bien vouloir régulariser cette situation dans les meilleurs délais, au guichet de l’établissement ou depuis l’application Sùkûl par Mobile Money. Si le paiement a déjà été effectué, merci de ne pas tenir compte de cet avis et de présenter votre reçu.</p>
+  <div class="bc-signatures"><span>L’intendant</span><span>Le chef d’établissement</span></div>
+</article>${i < d.eleves.length - 1 ? '<div class="saut-page"></div>' : ''}`
+    })
+    .join('')
+}
+
 // Imprime un document HTML au format voulu (ticket : 80 mm de large ; a5 ; a4)
 export function imprimer(html, format = 'a5') {
   let zone = document.getElementById('zone-impression')

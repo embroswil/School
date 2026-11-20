@@ -17,6 +17,7 @@ const start = async () => {
   require("./taches/push").demarrer();
   require("./taches/travaux").demarrer();
   require("./taches/rappel-cours").demarrer();
+  require("./taches/relances-frais").demarrer();
   const server = app.listen(env.port, "0.0.0.0", () => {
     logger.info(`Backend running on port ${env.port} (${env.nodeEnv})`);
   });

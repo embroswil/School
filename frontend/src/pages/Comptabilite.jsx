@@ -4,6 +4,7 @@ import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { exporterExcel } from '../export.jsx'
 import { comparerClasses, niveauClasse } from '../classes.js'
+import { avisRelanceHtml, imprimer } from '../impression.js'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const taux = (e, a) => (Number(a) > 0 ? Math.round((Number(e) / Number(a)) * 100) : 0)
@@ -19,10 +20,63 @@ function Barre({ valeur }) {
 }
 
 const nb = (n) => Number(n || 0).toLocaleString('fr-FR')
+
+// Avis de relance a imprimer (une page A5 par eleve en retard), pour une classe ou tout l'etablissement
+async function imprimerAvis(classe, setError) {
+  try {
+    const d = (await api.get(`/api/scolarite/avis-relance${classe ? `?classe=${encodeURIComponent(classe)}` : ''}`)).data
+    if (!d.eleves.length) return setError('Aucun élève en retard : aucun avis à imprimer.')
+    imprimer(avisRelanceHtml(d), 'a5')
+  } catch (err) {
+    setError(err.message)
+  }
+}
+
+// Relances des parents : automatiques (avant et apres chaque echeance), ou a la demande ; avis imprimables
+function Relances({ enRetard, onRappel, setError }) {
+  const r = useApi('/api/scolarite/relances')
+  const [auto, setAuto] = useState(null)
+  const actif = auto ?? r.data?.auto ?? false
+  async function basculer() {
+    const v = !actif
+    if (v && !window.confirm('Activer les relances automatiques ? Les parents seront prévenus 3 jours avant chaque échéance, puis 1, 8 et 15 jours après si les frais ne sont pas payés. Les parents déjà en retard recevront une première relance dans la journée.')) return
+    setAuto(v)
+    try {
+      await api.put('/api/scolarite/relances', { auto: v })
+    } catch (err) {
+      setAuto(!v)
+      setError(err.message)
+    }
+  }
+  return (
+    <div className="relances">
+      <button type="button" className="relances-ligne" onClick={basculer} disabled={!r.data}>
+        <span>
+          <b>Relances automatiques</b>
+          <small>3 jours avant chaque échéance, puis 1, 8 et 15 jours après, tant que les frais ne sont pas payés</small>
+        </span>
+        <span className={`interrupteur ${actif ? 'on' : ''}`} role="switch" aria-checked={actif}>
+          <i />
+        </span>
+      </button>
+      {r.data?.eleves30j > 0 && <small>{`${nb(r.data.eleves30j)} élève(s) relancé(s) ces 30 derniers jours`}</small>}
+      {enRetard > 0 && (
+        <div className="relances-actions">
+          <button type="button" className="btn btn-quiet" onClick={() => onRappel(null)}>
+            Rappeler maintenant
+          </button>
+          <button type="button" className="btn btn-quiet" onClick={() => imprimerAvis(null, setError)}>
+            {`Imprimer les avis (${nb(enRetard)})`}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 const STATUTS = { solde: ['À jour', 'ok'], partiel: ['Partiel', 'neutre'], retard: ['En retard', 'alerte'], rien: ['Rien payé', 'alerte'] }
 
 // Eleves d'une classe, en tableau : paye, reste et situation ; une ligne s'ouvre sur le detail des frais
-function DetailClasse({ ligne, onRetour, onRappel }) {
+function DetailClasse({ ligne, onRetour, onRappel, setError }) {
   const d = useApi(`/api/scolarite/comptabilite/eleves?classe=${encodeURIComponent(ligne.classe)}`)
   const [ouvert, setOuvert] = useState(null)
   const eleves = []
@@ -71,9 +125,14 @@ function DetailClasse({ ligne, onRetour, onRappel }) {
         </span>
       </div>
       {ligne.en_retard > 0 && (
-        <button type="button" className="btn btn-quiet btn-block tab-rappel" onClick={() => onRappel(ligne.classe)}>
-          {`Rappeler les parents en retard (${ligne.en_retard})`}
-        </button>
+        <div className="relances-actions tab-rappel">
+          <button type="button" className="btn btn-quiet" onClick={() => onRappel(ligne.classe)}>
+            {`Rappeler les parents en retard (${ligne.en_retard})`}
+          </button>
+          <button type="button" className="btn btn-quiet" onClick={() => imprimerAvis(ligne.classe, setError)}>
+            Imprimer les avis de relance
+          </button>
+        </div>
       )}
       {d.loading && <p className="muted">Chargement…</p>}
       {eleves.length > 0 && (
@@ -216,11 +275,7 @@ export default function Comptabilite() {
       </div>
       <Note kind="ok">{info}</Note>
       <Note>{error}</Note>
-      {t.enRetard > 0 && (
-        <button type="button" className="btn btn-quiet btn-block" style={{ marginBottom: 14 }} onClick={() => rappeler(null)}>
-          Rappeler tous les parents en retard
-        </button>
-      )}
+      <Relances enRetard={t.enRetard} onRappel={rappeler} setError={setError} />
 
       <div className="segments petit" role="tablist">
         <button type="button" role="tab" aria-selected={vue === 'classes'} onClick={() => setVue('classes')}>
@@ -232,7 +287,7 @@ export default function Comptabilite() {
       </div>
 
       {vue === 'classes' && ouverte && (
-        <DetailClasse ligne={classes.find((x) => x.classe === ouverte)} onRetour={() => setOuverte(null)} onRappel={rappeler} />
+        <DetailClasse ligne={classes.find((x) => x.classe === ouverte)} onRetour={() => setOuverte(null)} onRappel={rappeler} setError={setError} />
       )}
       {vue === 'classes' && !ouverte && (
         <>

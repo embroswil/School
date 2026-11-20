@@ -1135,6 +1135,68 @@ router.post("/relancer", async (req, res, next) => {
   }
 });
 
+// GET /api/scolarite/relances : reglage des relances automatiques et dernieres relances envoyees
+router.get("/relances", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const s = (await db.query("SELECT relances_auto, derniere_relance FROM schools WHERE id = $1", [ecole])).rows[0] || {};
+    const n = (
+      await db.query(
+        `SELECT COUNT(DISTINCT student_id)::int AS eleves, MAX(created_at) AS derniere FROM relances_frais
+         WHERE school_id = $1 AND created_at > NOW() - INTERVAL '30 days'`,
+        [ecole]
+      )
+    ).rows[0];
+    res.json({ success: true, data: { auto: Boolean(s.relances_auto), derniereManuelle: s.derniere_relance, eleves30j: n.eleves, derniereAuto: n.derniere } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// PUT /api/scolarite/relances { auto } : activer ou couper les relances automatiques
+router.put("/relances", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const auto = req.body?.auto === true;
+    await db.query("UPDATE schools SET relances_auto = $2 WHERE id = $1", [ecole, auto]);
+    res.json({ success: true, data: { auto } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// GET /api/scolarite/avis-relance[?classe=6e A] : eleves en retard et leurs frais echus, pour imprimer les avis
+router.get("/avis-relance", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const classe = texte(req.query.classe, 60) || null;
+    const s = (await db.query("SELECT name, city, telephone FROM schools WHERE id = $1", [ecole])).rows[0] || {};
+    const { rows } = await db.query(
+      `SELECT x.id, x.first_name, x.last_name, x.classe, x.frais, x.echeance, x.montant, x.paye, x.reste
+       FROM (${SQL_DU}) x WHERE x.en_retard AND ($3::text IS NULL OR x.classe = $3)
+       ORDER BY x.classe, x.last_name, x.first_name, x.echeance`,
+      [ecole, annee?.id || null, classe]
+    );
+    const eleves = [];
+    const idx = new Map();
+    for (const r of rows) {
+      if (!idx.has(r.id)) {
+        const e = { id: r.id, nom: `${r.last_name} ${r.first_name}`, classe: r.classe, frais: [] };
+        idx.set(r.id, e);
+        eleves.push(e);
+      }
+      idx.get(r.id).frais.push({ nom: r.frais, echeance: r.echeance, montant: r.montant, paye: r.paye, reste: r.reste });
+    }
+    res.json({ success: true, data: { ecole: { nom: s.name, ville: s.city, telephone: s.telephone }, annee: annee?.name || "", eleves } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // GET /api/scolarite/reversements : paiements en ligne encaisses par Sùkûl pour l'etablissement
 router.get("/reversements", async (req, res, next) => {
   try {
@@ -1158,5 +1220,6 @@ module.exports = router;
 module.exports.verifierPaiement = verifierPaiement;
 module.exports.situationEleve = situationEleve;
 module.exports.elevesAccessibles = elevesAccessibles;
+module.exports.SQL_DU = SQL_DU;
 module.exports.apresPaiement = apresPaiement;
 module.exports.moyensEcole = moyensEcole;
