@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApi } from '../hooks.js'
-import { Note } from '../ui.jsx'
+import { NiveauRepliable, Note, useNiveauxOuverts } from '../ui.jsx'
 import { IcChevron, IcImport } from '../icones.jsx'
 import { exporterExcel } from '../export.jsx'
 import { comparerClasses, niveauClasse } from '../classes.js'
@@ -21,6 +21,7 @@ const jourLisible = (jour) => {
 // Absences du jour dans tout l'etablissement (surveillant general, censeur).
 // Un seul bouton « Importer » : le cahier d'appel met a jour les absences.
 export default function AbsencesJour() {
+  const [niveauxOuverts, basculerNiveau] = useNiveauxOuverts('absences')
   const [date, setDate] = useState(aujourdhui())
   const [filtre, setFiltre] = useState('')
   const [classe, setClasse] = useState('')
@@ -93,8 +94,14 @@ export default function AbsencesJour() {
       {!classe &&
         !filtre.trim() &&
         niveaux.map((n) => (
-          <section className="eleves-niveau" key={n.nom}>
-            <h2>{n.nom}</h2>
+          <NiveauRepliable
+            key={n.nom}
+            nom={n.nom}
+            resume={`${n.classes.length} classe(s) · ${n.classes.reduce((t, c) => t + parClasse[c].length, 0)} absent(s)`}
+            alerte
+            ouvert={Boolean(niveauxOuverts[n.nom])}
+            onBasculer={() => basculerNiveau(n.nom)}
+          >
             <div className="eleves-classes">
               {n.classes.map((c) => (
                 <button type="button" key={c} onClick={() => setClasse(c)}>
@@ -103,7 +110,7 @@ export default function AbsencesJour() {
                 </button>
               ))}
             </div>
-          </section>
+          </NiveauRepliable>
         ))}
 
       {/* une classe, ou les resultats de la recherche */}

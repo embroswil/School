@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Note } from '../ui.jsx'
+import { NiveauRepliable, Note, useNiveauxOuverts } from '../ui.jsx'
 import { IcChevron, IcImport, IcPoubelle } from '../icones.jsx'
 import { demandeAppel } from './Appel.jsx'
 import { comparerClasses, niveauClasse } from '../classes.js'
@@ -79,6 +79,7 @@ function RappelPresence() {
 // Enseignants : la journee (cours, appels, absences) et la liste complete des enseignants.
 // Un seul bouton « Importer » pour la liste des enseignants (Excel, PDF, Word ou photo).
 export default function PresenceEnseignants() {
+  const [niveauxOuverts, basculerNiveau] = useNiveauxOuverts('enseignants-jour')
   const [onglet, setOnglet] = useState('jour')
   const [date, setDate] = useState(aujourdhui())
   const d = useApi(onglet === 'liste' ? null : `/api/presence-enseignants?date=${date}`)
@@ -313,8 +314,19 @@ export default function PresenceEnseignants() {
                     </button>
                   )}
                   {niveauxJ.map((n) => (
-                    <section className="eleves-niveau" key={n.nom}>
-                      <h2>{n.nom}</h2>
+                    <NiveauRepliable
+                      key={n.nom}
+                      nom={n.nom}
+                      resume={(() => {
+                        const cs = n.classes.flatMap((c) => coursParClasse.get(c))
+                        const abs = cs.filter((x) => x.etat === 'absent' || x.etat === 'absent_prevu').length
+                        const ver = cs.filter((x) => x.etat === 'a_verifier').length
+                        return [`${cs.length} cours`, abs && `${abs} absent(s)`, ver && `${ver} à vérifier`].filter(Boolean).join(' · ')
+                      })()}
+                      alerte={n.classes.some((c) => coursParClasse.get(c).some((x) => x.etat === 'absent' || x.etat === 'absent_prevu'))}
+                      ouvert={Boolean(niveauxOuverts[n.nom])}
+                      onBasculer={() => basculerNiveau(n.nom)}
+                    >
                       <div className="eleves-classes">
                         {n.classes.map((c) => {
                           const cs = coursParClasse.get(c)
@@ -328,7 +340,7 @@ export default function PresenceEnseignants() {
                           )
                         })}
                       </div>
-                    </section>
+                    </NiveauRepliable>
                   ))}
                 </>
               )}

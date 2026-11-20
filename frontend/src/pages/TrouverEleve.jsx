@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Field, Note } from '../ui.jsx'
+import { Field, NiveauRepliable, Note, useNiveauxOuverts } from '../ui.jsx'
 import { LIENS } from './Signup.jsx'
 
 // Une ligne d'eleve : « C'est mon enfant » (verifie) et « Payer sa scolarite » (libre)
@@ -74,6 +74,7 @@ function LigneEleve({ e, ouvert, onOuvrir, onRelie }) {
 const niveauDe = (nom) => String(nom).split(' ')[0]
 
 export default function TrouverEleve() {
+  const [niveauxOuverts, basculerNiveau] = useNiveauxOuverts('trouver-eleve')
   const [qEcole, setQEcole] = useState('')
   const ecoles = useApi(`/api/familles/ecoles?q=${encodeURIComponent(qEcole)}`)
   const [ecole, setEcole] = useState(null)
@@ -177,8 +178,7 @@ export default function TrouverEleve() {
           <p className="muted" style={{ fontSize: 14 }}>Ou choisissez la classe :</p>
           {!classes.data && <p className="muted">Chargement…</p>}
           {Object.entries(groupes).map(([niv, cl]) => (
-            <div key={niv}>
-              <p className="niveau-titre">{niv}</p>
+            <NiveauRepliable key={niv} nom={niv} resume={`${cl.length} classe(s)`} ouvert={Boolean(niveauxOuverts[niv])} onBasculer={() => basculerNiveau(niv)}>
               <div className="card" style={{ padding: 0 }}>
                 {cl.map((c) => (
                   <button key={c.id} type="button" className="classe-ligne" onClick={() => setClasse(c)}>
@@ -189,7 +189,7 @@ export default function TrouverEleve() {
                   </button>
                 ))}
               </div>
-            </div>
+            </NiveauRepliable>
           ))}
         </>
       )}

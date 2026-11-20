@@ -151,3 +151,41 @@ export function Annonces() {
     </div>
   )
 }
+
+// Niveaux depliables (6e, 5e… Tle) : sur les pages qui listent les classes, seuls les niveaux s'affichent ;
+// on touche un niveau pour voir ses classes. L'etat (ouvert / ferme) est garde pendant la visite.
+const lireNiveaux = (page) => {
+  try {
+    return JSON.parse(sessionStorage.getItem(`sukul-niveaux-${page}`) || '{}')
+  } catch {
+    return {}
+  }
+}
+export function useNiveauxOuverts(page) {
+  const [ouverts, setOuverts] = useState(() => lireNiveaux(page))
+  const basculer = (nom) =>
+    setOuverts((x) => {
+      const n = { ...x, [nom]: !x[nom] }
+      try {
+        sessionStorage.setItem(`sukul-niveaux-${page}`, JSON.stringify(n))
+      } catch {
+        /* stockage indisponible */
+      }
+      return n
+    })
+  return [ouverts, basculer]
+}
+export function NiveauRepliable({ nom, resume, alerte = false, ouvert, onBasculer, children }) {
+  return (
+    <section className={`niveau-repli ${ouvert ? 'ouvert' : ''}`}>
+      <button type="button" className="niveau-repli-tete" aria-expanded={ouvert} onClick={onBasculer}>
+        <b>{nom}</b>
+        {resume && <small className={alerte ? 'rouge' : ''}>{resume}</small>}
+        <svg className="niveau-repli-fleche" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </button>
+      {ouvert && <div className="niveau-repli-corps">{children}</div>}
+    </section>
+  )
+}

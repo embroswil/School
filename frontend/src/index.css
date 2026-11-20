@@ -2240,3 +2240,15 @@ html.ordi .edt-table .edt-heure { width: 72px; }
 .verif-frais th:nth-child(n+2), .verif-frais td:nth-child(n+2) { text-align: right; white-space: nowrap; }
 .verif-frais td.rouge { color: var(--danger); font-weight: 700; }
 .verif-frais td.vert { color: #12b76a; font-weight: 700; }
+/* Niveaux depliables (pages qui listent les classes) */
+.niveau-repli { margin-bottom: 8px; }
+.niveau-repli-tete { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.niveau-repli-tete b { font: 800 16px/1.2 var(--font-display); }
+.niveau-repli-tete small { flex: 1; text-align: right; color: var(--muted); font-size: 13px; }
+.niveau-repli-tete small.rouge { color: var(--danger); }
+.niveau-repli-fleche { flex: none; color: var(--muted); transition: transform .15s; }
+.niveau-repli.ouvert .niveau-repli-tete { border-color: var(--primary); }
+.niveau-repli.ouvert .niveau-repli-fleche { transform: rotate(90deg); color: var(--primary); }
+.niveau-repli-corps { padding: 8px 0 6px; }
+.niveau-repli-corps .eleves-classes { margin: 0; }
+html.ordi .niveau-repli-tete:hover { border-color: var(--primary); }

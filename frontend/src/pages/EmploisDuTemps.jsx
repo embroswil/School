@@ -1,10 +1,12 @@
 import { useApi } from '../hooks.js'
 import { IcImport } from '../icones.jsx'
 import { niveauClasse, trierClasses } from '../classes.js'
+import { NiveauRepliable, useNiveauxOuverts } from '../ui.jsx'
 
 // Emplois du temps de l'etablissement : chaque classe, regroupee par niveau, avec son nombre de cours.
 // Un seul bouton « Importer » (Excel, PDF, Word ou photo, une ou plusieurs classes).
 export default function EmploisDuTemps() {
+  const [niveauxOuverts, basculerNiveau] = useNiveauxOuverts('emplois')
   const classes = useApi('/api/etablissement/classes')
   const liste = trierClasses(classes.data || [])
   const sans = liste.filter((c) => !c.cours).length
@@ -35,8 +37,14 @@ export default function EmploisDuTemps() {
         </div>
       )}
       {niveaux.map((n) => (
-        <section className="eleves-niveau" key={n.nom}>
-          <h2>{n.nom}</h2>
+        <NiveauRepliable
+          key={n.nom}
+          nom={n.nom}
+          resume={`${n.classes.length} classe(s)${n.classes.some((c) => !c.cours) ? ` · ${n.classes.filter((c) => !c.cours).length} sans emploi du temps` : ''}`}
+          alerte={n.classes.some((c) => !c.cours)}
+          ouvert={Boolean(niveauxOuverts[n.nom])}
+          onBasculer={() => basculerNiveau(n.nom)}
+        >
           <div className="eleves-classes">
             {n.classes.map((c) => (
               <a key={c.id} href={`#/classes/${c.id}/emploi`} className={c.cours ? '' : 'sans-emploi'}>
@@ -45,7 +53,7 @@ export default function EmploisDuTemps() {
               </a>
             ))}
           </div>
-        </section>
+        </NiveauRepliable>
       ))}
     </>
   )

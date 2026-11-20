@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Note } from '../ui.jsx'
+import { Note, useNiveauxOuverts } from '../ui.jsx'
 import { IcChevron } from '../icones.jsx'
 import { exporterExcel } from '../export.jsx'
 import { comparerClasses, niveauClasse } from '../classes.js'
@@ -214,7 +214,7 @@ function niveauxDe(classes) {
 export default function Comptabilite() {
   const c = useApi('/api/scolarite/comptabilite')
   const [ouverte, setOuverte] = useState(null)
-  const [niveaux, setNiveaux] = useState({}) // niveaux deplies (6e, 5e…) : leurs classes s'affichent
+  const [niveaux, basculerNiveau] = useNiveauxOuverts('scolarite') // niveaux deplies (6e, 5e…) : leurs classes s'affichent
   const [vue, setVue] = useState('classes')
   const [info, setInfo] = useState('')
   const [error, setError] = useState('')
@@ -308,7 +308,7 @@ export default function Comptabilite() {
               </thead>
               {niveauxDe(classes).map((n) => (
                 <tbody key={n.nom}>
-                  <tr className={`tab-niveau cliquable ${niveaux[n.nom] ? 'ouvert' : ''}`} onClick={() => setNiveaux((x) => ({ ...x, [n.nom]: !x[n.nom] }))} aria-expanded={Boolean(niveaux[n.nom])}>
+                  <tr className={`tab-niveau cliquable ${niveaux[n.nom] ? 'ouvert' : ''}`} onClick={() => basculerNiveau(n.nom)} aria-expanded={Boolean(niveaux[n.nom])}>
                     <td>
                       <span className="tab-niveau-nom">
                         <IcChevron size={14} className="tab-niveau-fleche" />

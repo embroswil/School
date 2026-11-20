@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Note } from '../ui.jsx'
+import { NiveauRepliable, Note, useNiveauxOuverts } from '../ui.jsx'
 import { IcChevron, IcClasses, IcImport } from '../icones.jsx'
 import { useAuth } from '../auth.jsx'
 import { niveauClasse, trierClasses } from '../classes.js'
@@ -23,6 +23,7 @@ const nombre = (n) => Number(n || 0).toLocaleString('fr-FR')
 // Eleves de l'etablissement : classes regroupees par niveau, puis eleves de la classe choisie.
 // Les noms ne s'affichent qu'apres le choix d'une classe ou une recherche.
 export default function Students() {
+  const [niveauxOuverts, basculerNiveau] = useNiveauxOuverts('eleves')
   const { user } = useAuth()
   const [q, setQ] = useState(() => memoire().q || '')
   const [recherche, setRecherche] = useState(() => memoire().q || '')
@@ -200,11 +201,13 @@ export default function Students() {
             </a>
           )}
           {niveaux.map((n) => (
-            <section className="eleves-niveau" key={n.nom}>
-              <h2>
-                {n.nom}
-                <small>{nombre(n.classes.reduce((t, c) => t + (c.eleves || 0), 0))} élève(s)</small>
-              </h2>
+            <NiveauRepliable
+              key={n.nom}
+              nom={n.nom}
+              resume={`${n.classes.length} classe(s) · ${nombre(n.classes.reduce((t, c) => t + (c.eleves || 0), 0))} élève(s)`}
+              ouvert={Boolean(niveauxOuverts[n.nom])}
+              onBasculer={() => basculerNiveau(n.nom)}
+            >
               <div className="eleves-classes">
                 {n.classes.map((c) => (
                   <button type="button" key={c.id} onClick={() => ouvrir(c.id)}>
@@ -213,7 +216,7 @@ export default function Students() {
                   </button>
                 ))}
               </div>
-            </section>
+            </NiveauRepliable>
           ))}
           {classes.data && r && r.eleves === 0 && <p className="lede">Aucun élève pour l’instant. Importez vos listes de classe pour commencer.</p>}
           {classes.data && (

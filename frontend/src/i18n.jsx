@@ -2200,7 +2200,18 @@ export function nomEcole(nom) {
 const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomEcole(a))
 
 // Formules avec des nombres ou des noms
+const MORCEAUX_NIVEAU = [
+  [/^(\d+) classe\(s\)$/, '$1 class(es)'],
+  [/^([\d\s\u202f]+) élève\(s\)$/, '$1 student(s)'],
+  [/^(\d+) absent\(s\)$/, '$1 absent'],
+  [/^(\d+) sanction\(s\)$/, '$1 sanction(s)'],
+  [/^(\d+) sans emploi du temps$/, '$1 without timetable'],
+  [/^(\d+) cours$/, '$1 lesson(s)'],
+  [/^(\d+) à vérifier$/, '$1 to check'],
+]
 const FORMULES = [
+  // resume d'un niveau (« 10 classe(s) · 640 élève(s) »)
+  [/^\d+ (classe\(s\)|cours)( · .+)?$/, (t) => t.split(' · ').map((m) => MORCEAUX_NIVEAU.reduce((x, [re, r]) => x.replace(re, r), m)).join(' · ')],
   [/^Reste à payer : (.+)$/, 'Left to pay: $1'],
   [/^(\d+) minutes après le début$/, '$1 minutes after the start'],
   [/^(\d+) classes?$/, (_, n) => `${n} class${n > 1 ? 'es' : ''}`],

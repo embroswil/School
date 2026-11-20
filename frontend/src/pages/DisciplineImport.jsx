@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
-import { Note, annoncer } from '../ui.jsx'
+import { NiveauRepliable, Note, annoncer, useNiveauxOuverts } from '../ui.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
 import { useDepotPage } from '../depot.jsx'
 import CompteurIA from '../CompteurIA.jsx'
@@ -18,6 +18,7 @@ const GRAVITE = { observation: 'neutre', avertissement: 'neutre', retenue: 'neut
 // (proces-verbal, liste de sanctions, rapport) lu automatiquement puis verifie avant l'enregistrement.
 // Chaque parent concerne recoit un message detaille dans sa messagerie.
 export default function DisciplineImport() {
+  const [niveauxOuverts, basculerNiveau] = useNiveauxOuverts('discipline')
   const { user } = useAuth()
   const admin = ['principal', 'admin'].includes(user.role)
   const champ = useRef(null)
@@ -236,8 +237,13 @@ export default function DisciplineImport() {
 
           {vue === 'classes' && !classe &&
             niveaux.map((n) => (
-              <section className="eleves-niveau" key={n.nom}>
-                <h2>{n.nom}</h2>
+              <NiveauRepliable
+                key={n.nom}
+                nom={n.nom}
+                resume={`${n.classes.length} classe(s) · ${n.classes.reduce((t, c) => t + parClasse.get(c).length, 0)} sanction(s)`}
+                ouvert={Boolean(niveauxOuverts[n.nom])}
+                onBasculer={() => basculerNiveau(n.nom)}
+              >
                 <div className="eleves-classes">
                   {n.classes.map((c) => (
                     <button type="button" key={c} onClick={() => setClasse(c)}>
@@ -246,7 +252,7 @@ export default function DisciplineImport() {
                     </button>
                   ))}
                 </div>
-              </section>
+              </NiveauRepliable>
             ))}
           {vue === 'classes' && classe && (
             <>

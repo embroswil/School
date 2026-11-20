@@ -1,5 +1,6 @@
 import { useApi } from '../hooks.js'
-import { Note } from '../ui.jsx'
+import { Note, useNiveauxOuverts } from '../ui.jsx'
+import { IcChevron } from '../icones.jsx'
 import { comparerClasses, niveauClasse } from '../classes.js'
 import { fcfa, MODES_PAIEMENT } from '../recus.js'
 
@@ -19,6 +20,7 @@ function Barre({ valeur }) {
 
 // Detail d'un frais de scolarite : recouvrement, situation des eleves, mois, moyens de paiement, classes
 export default function DetailFrais({ id, onRetour }) {
+  const [niveauxOuverts, basculerNiveau] = useNiveauxOuverts('detail-frais')
   const d = useApi(`/api/scolarite/comptabilite/frais/${id}`)
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
@@ -171,15 +173,21 @@ export default function DetailFrais({ id, onRetour }) {
               </thead>
               {niveaux.map((n) => (
                 <tbody key={n.nom}>
-                  <tr className="tab-niveau">
-                    <td>{n.nom}</td>
+                  <tr className={`tab-niveau cliquable ${niveauxOuverts[n.nom] ? 'ouvert' : ''}`} onClick={() => basculerNiveau(n.nom)} aria-expanded={Boolean(niveauxOuverts[n.nom])}>
+                    <td>
+                      <span className="tab-niveau-nom">
+                        <IcChevron size={14} className="tab-niveau-fleche" />
+                        {n.nom}
+                        <small>{`${n.classes.length} classe${n.classes.length > 1 ? 's' : ''}`}</small>
+                      </span>
+                    </td>
                     <td className="nombre col-ordi">{nb(n.eleves)}</td>
                     <td className="nombre col-ordi">{nb(n.encaisse)}</td>
                     <td className="nombre">{nb(n.reste)}</td>
                     <td className="nombre">{`${taux(n.encaisse, n.attendu)} %`}</td>
                     <td className="nombre col-ordi">{nb(n.classes.reduce((t2, c) => t2 + c.rien, 0))}</td>
                   </tr>
-                  {n.classes.map((c) => {
+                  {niveauxOuverts[n.nom] && n.classes.map((c) => {
                     const tc = taux(c.encaisse, c.attendu)
                     return (
                       <tr key={c.classe}>
