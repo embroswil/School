@@ -3,10 +3,10 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { IcEcole, IcPlus } from '../icones.jsx'
+import { IcCalendrier, IcEcole, IcPlus } from '../icones.jsx'
 
 const ROLES = { parent: 'Parent', student: 'Élève', teacher: 'Enseignant' }
-const VIDE = { subject: '', body: '', a: 'etablissement', classeId: '', eleveId: '' }
+const VIDE = { subject: '', body: '', a: 'etablissement', classeId: '', eleveId: '', date: '', motif: '' }
 
 // Date courte : heure aujourd'hui, jour de la semaine cette semaine, sinon date
 const quand = (d) => {
@@ -58,9 +58,12 @@ export default function Messages() {
   const etablissement = user.role === 'principal'
   const enseignant = user.role === 'teacher'
   const liste = useApi('/api/boite/messages')
-  const auDepart = /nouveau=parents/.test(window.location.hash)
-  const [ouvert, setOuvert] = useState(auDepart)
-  const [f, setF] = useState(auDepart ? { ...VIDE, a: 'parents' } : VIDE)
+  const auDepart = (window.location.hash.match(/nouveau=(parents|absence)/) || [])[1]
+  const [ouvert, setOuvert] = useState(Boolean(auDepart))
+  const [f, setF] = useState(auDepart ? { ...VIDE, a: auDepart } : VIDE)
+  // enseignant : ses absences signalees (l'absence se signale depuis la messagerie)
+  const absences = useApi(enseignant ? '/api/presence-enseignants/miennes' : null)
+  const absence = f.a === 'absence'
   const [filtre, setFiltre] = useState('tous')
   const [envoye, setEnvoye] = useState('')
   const [error, setError] = useState('')
@@ -75,6 +78,15 @@ export default function Messages() {
     setError('')
     setBusy(true)
     try {
+      if (absence) {
+        await api.post('/api/presence-enseignants', { date: f.date, motif: f.motif })
+        setEnvoye('Absence signalée : l’administration est prévenue.')
+        setOuvert(false)
+        setF(VIDE)
+        absences.reload()
+        setBusy(false)
+        return
+      }
       const r = await api.post('/api/boite/messages', f)
       if (r.data.id) window.location.hash = `/messages/${r.data.id}`
       else {
@@ -131,6 +143,7 @@ export default function Messages() {
                 {[
                   ['etablissement', 'L’établissement'],
                   ['parents', 'Des parents'],
+                  ['absence', 'Signaler une absence'],
                 ].map(([k, t]) => (
                   <button key={k} type="button" role="tab" aria-selected={f.a === k} onClick={() => setF({ ...f, a: k })}>
                     {t}
@@ -168,6 +181,21 @@ export default function Messages() {
             </p>
           )}
 
+          {absence && (
+            <>
+              <div className="msg-champ">
+                <span>Date</span>
+                <input className="msg-saisie" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} required />
+              </div>
+              <div className="msg-champ">
+                <span>Motif</span>
+                <input className="msg-saisie" placeholder="Ex. : formation, maladie… (facultatif)" value={f.motif} onChange={(e) => setF({ ...f, motif: e.target.value })} />
+              </div>
+              <p className="msg-info">L’administration est prévenue tout de suite et peut organiser le remplacement.</p>
+            </>
+          )}
+          {!absence && (
+          <>
           <div className="msg-champ">
             <span>Objet</span>
             <input
@@ -179,13 +207,33 @@ export default function Messages() {
             />
           </div>
           <textarea className="msg-texte" placeholder="Votre message…" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} required />
+          </>
+          )}
           <Note>{error}</Note>
           <div className="msg-pied">
             <button className="btn" type="submit" disabled={busy || (enseignant && f.a === 'parents' && !nbParents)}>
-              {busy ? 'Envoi…' : 'Envoyer'}
+              {busy ? 'Envoi…' : absence ? 'Signaler' : 'Envoyer'}
             </button>
           </div>
         </form>
+      )}
+
+      {enseignant && absences.data?.length > 0 && (
+        <div className="msg-absences">
+          <p>Absences signalées</p>
+          {absences.data.map((a) => (
+            <div key={a.id}>
+              <IcCalendrier size={16} />
+              <span>
+                <b>{new Date(a.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</b>
+                <small>{a.motif || 'Sans motif'}</small>
+              </span>
+              <button type="button" className="lien-action" onClick={async () => (await api.delete(`/api/presence-enseignants/${a.id}`), absences.reload())}>
+                Annuler
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       {enseignant && tout.length > 0 && (

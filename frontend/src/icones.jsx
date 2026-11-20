@@ -50,3 +50,9 @@ export const IcImprimante = I(<><path d="M7 9V3.5h10V9" /><rect x="3" y="9" widt
 export const IcReglages = I(<><path d="M4 7h10" /><path d="M18 7h2" /><circle cx="16" cy="7" r="2" /><path d="M4 17h4" /><path d="M12 17h8" /><circle cx="10" cy="17" r="2" /></>)
 export const IcPoubelle = I(<><path d="M4 7h16" /><path d="M9 7V4.5h6V7" /><path d="M6.5 7l1 12.5h9l1-12.5" /><path d="M10 11v5" /><path d="M14 11v5" /></>)
 export const IcCalendrier = I(<><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" /><path d="M3.5 10h17" /><path d="M8 3v4" /><path d="M16 3v4" /></>)
+// Espace enseignant
+export const IcInfo = I(<><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5" /><path d="M12 7.6v.2" /></>)
+export const IcTrombone = I(<><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.1-8.1a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.4-7.4" /></>)
+export const IcHorlogePlus = I(<><path d="M20.4 13A8.5 8.5 0 1 1 11 3.6" /><path d="M11 7.5V12l3 2" /><path d="M18 3v6" /><path d="M15 6h6" /></>)
+export const IcTableauNoir = I(<><rect x="3" y="4" width="18" height="12" rx="1.8" /><path d="M8 20l2-4" /><path d="M16 20l-2-4" /><path d="M7 8.5h6" /><path d="M7 11.5h4" /></>)
+export const IcAppelListe = I(<><path d="M9 6h11" /><path d="M9 12h11" /><path d="M9 18h11" /><path d="M3.5 6l1.2 1.2L6.8 5" /><path d="M3.5 12l1.2 1.2 2.1-2.2" /><path d="M4 17.5h2" /></>)

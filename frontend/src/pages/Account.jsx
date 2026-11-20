@@ -344,7 +344,7 @@ export default function Account() {
           <div className="liste-reglages">
             <Reglage Icone={IcEleves} titre="Mes classes et matières" href="#/mes-classes" />
             <Reglage Icone={IcClasses} titre="Emploi du temps" href="#/emploi" />
-            <Reglage Icone={IcCalendrier} titre="Mes absences" href="#/mon-absence" />
+            <Reglage Icone={IcCalendrier} titre="Signaler une absence" valeur="Messagerie" href="#/messages?nouveau=absence" />
             <Reglage Icone={IcEcole} titre="Mes établissements" href="#/mes-etablissements" />
             <Reglage
               Icone={IcFamille}

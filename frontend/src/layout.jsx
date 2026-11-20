@@ -7,7 +7,7 @@ import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
 import { envoisEnAttente, envoyerAttente } from './horsligne.js'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier, IcChevron, IcClasses } from './icones.jsx'
+import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier, IcInfo, IcTrombone, IcHorlogePlus, IcTableauNoir, IcAppelListe } from './icones.jsx'
 
 // Appels et notes gardes sur le telephone faute de reseau : rappel discret, envoi a la demande
 function EnvoisEnAttente() {
@@ -99,7 +99,6 @@ const NAV_ORDI = {
     ['/messages', IcMessages, 'Messages'],
     ['/info', IcMegaphone, 'Informer'],
     ['/document', IcFichier, 'Documents'],
-    ['/mon-absence', IcCalendrier, 'Mon absence'],
     ['/mes-etablissements', IcEcole, 'Mes établissements'],
   ],
   parent: [['/trouver-eleve', IcEleves, 'Trouver un élève']],
@@ -174,25 +173,12 @@ const ACTIONS = [
   ['/discipline', IcBouclier, 'Discipline', 'Procès-verbal, sanctions'],
 ]
 
-// Bouton + de l'enseignant : le cours du moment, puis ses actions rangees par usage (liste, pas de tuiles)
-const GROUPES_ENS = [
-  [
-    'Communiquer',
-    [
-      ['/messages?nouveau=parents', IcMessages, 'Message aux parents', 'Une classe ou un élève'],
-      ['/info', IcMegaphone, 'Informer', 'Information, événement, photos'],
-      ['/document', IcFichier, 'Partager un document', 'PDF, photo, Excel…'],
-    ],
-  ],
-  [
-    'Organiser',
-    [
-      ['/info?genre=cours', IcPlus, 'Programmer un cours en plus', 'Hors emploi du temps'],
-      ['/mon-absence', IcCalendrier, 'Signaler une absence', 'Prévenir l’établissement'],
-      ['/mes-classes', IcEleves, 'Mes classes', 'Notes, devoirs, appel'],
-      ['/emploi', IcClasses, 'Emploi du temps', 'Ma semaine'],
-    ],
-  ],
+// Bouton + de l'enseignant : le cours du moment, puis 4 actions en petites tuiles (icones propres a l'enseignant)
+const ACTIONS_ENS = [
+  ['/info', IcInfo, 'Informer', 'Info, événement, photos'],
+  ['/document', IcTrombone, 'Document', 'PDF, photo, Excel…'],
+  ['/info?genre=cours', IcHorlogePlus, 'Cours en plus', 'Hors emploi du temps'],
+  ['/mes-classes', IcTableauNoir, 'Mes classes', 'Notes, devoirs, appel'],
 ]
 function ActionsEnseignant() {
   const [v, setV] = useState(null)
@@ -212,7 +198,7 @@ function ActionsEnseignant() {
           <b data-brut>{`${cours.classe} · ${cours.matiere || ''}`}</b>
           <div>
             <a className="btn" href={`#/classes/${cours.class_id}/appel`}>
-              <IcAppel size={17} /> {cours.appel ? 'Appel fait' : 'Faire l’appel'}
+              <IcAppelListe size={17} /> {cours.appel ? 'Appel fait' : 'Faire l’appel'}
             </a>
             <a className="btn btn-quiet" href="#/mes-cours">
               <IcCoche size={17} /> Cahier de textes
@@ -220,25 +206,17 @@ function ActionsEnseignant() {
           </div>
         </div>
       )}
-      {GROUPES_ENS.map(([titre, liste]) => (
-        <div key={titre} className="act-groupe">
-          <p>{titre}</p>
-          <div className="act-liste">
-            {liste.map(([to, Icone, t2, st]) => (
-              <a key={to} href={`#${to}`}>
-                <span className="act-ico">
-                  <Icone size={19} />
-                </span>
-                <span className="act-texte">
-                  <b>{t2}</b>
-                  <small>{st}</small>
-                </span>
-                <IcChevron size={15} />
-              </a>
-            ))}
-          </div>
-        </div>
-      ))}
+      <div className="act-tuiles">
+        {ACTIONS_ENS.map(([to, Icone, t2, st]) => (
+          <a key={to} href={`#${to}`}>
+            <span className="act-ico">
+              <Icone size={19} />
+            </span>
+            <b>{t2}</b>
+            <small>{st}</small>
+          </a>
+        ))}
+      </div>
     </>
   )
 }

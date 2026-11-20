@@ -453,16 +453,16 @@ function EnTeteEnseignant() {
   const attente = (d.data?.demandes || []).filter((x) => x.status === 'pending')
   const actuel = membres.find((m) => m.ouvert)
   return (
-    <div className="ens-entete">
+    <div className="ens-entete" role="group" aria-label="Établissement et espace parent">
       <button type="button" className="ens-etab" onClick={() => setFeuille(true)}>
         <span className="ens-entete-ico">
-          <IcEcole size={20} />
+          <IcEcole size={17} />
         </span>
         <span className="ens-entete-texte">
-          <small>{membres.length > 1 ? `${membres.length} établissements` : 'Mon établissement'}</small>
+          <small>{membres.length > 1 ? `${membres.length} établissements` : 'Établissement'}</small>
           <b data-brut>{actuel?.ecole || user.schoolName || '—'}</b>
         </span>
-        <IcChevron size={16} />
+        <IcChevron size={14} style={{ transform: 'rotate(90deg)' }} />
       </button>
       <button
         type="button"
@@ -479,13 +479,12 @@ function EnTeteEnseignant() {
         }}
       >
         <span className="ens-entete-ico">
-          <IcFamille size={20} />
+          <IcFamille size={17} />
         </span>
         <span className="ens-entete-texte">
-          <small>Espace parent</small>
-          <b>{busy === 'parent' ? '…' : 'Suivre mes enfants'}</b>
+          <small>Espace</small>
+          <b>{busy === 'parent' ? '…' : 'Parent'}</b>
         </span>
-        <IcChevron size={16} />
       </button>
 
       {feuille && (
