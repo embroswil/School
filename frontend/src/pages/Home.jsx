@@ -8,7 +8,7 @@ import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -362,33 +362,6 @@ function EspaceEleve() {
 
 // Accueil de l'enseignant : le cours du moment, 4 actions, ses classes, puis le fil
 // Enseignant dans plusieurs etablissements : l'etablissement ouvert, et les autres d'un geste
-function ChoixEtablissement() {
-  const { changerEtablissement } = useAuth()
-  const d = useApi('/api/inscriptions/mes-etablissements')
-  const [busy, setBusy] = useState(null)
-  const membres = d.data?.membres || []
-  if (membres.length < 2) return null
-  return (
-    <div className="choix-etab">
-      {membres.map((m) => (
-        <button
-          key={m.school_id}
-          type="button"
-          aria-pressed={m.ouvert}
-          disabled={busy !== null}
-          onClick={() => {
-            if (m.ouvert) return
-            setBusy(m.school_id)
-            changerEtablissement(m.school_id).catch(() => setBusy(null))
-          }}
-        >
-          <span data-brut>{busy === m.school_id ? '…' : m.ecole}</span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
 // --- Accueil de l'enseignant : un agenda (bandeau du jour, semaine, frise des cours, raccourcis) ---
 const jourIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const plusJours = (iso, n) => {
@@ -470,8 +443,105 @@ function PointFrise({ c, v, onMaj }) {
   )
 }
 
+// Enseignant : ses etablissements (changer, en rejoindre un autre) et son espace parent, en tete de l'accueil
+function EnTeteEnseignant() {
+  const { user, changerEspace, changerEtablissement } = useAuth()
+  const d = useApi('/api/inscriptions/mes-etablissements')
+  const [feuille, setFeuille] = useState(false)
+  const [busy, setBusy] = useState(null)
+  const membres = d.data?.membres || []
+  const attente = (d.data?.demandes || []).filter((x) => x.status === 'pending')
+  const actuel = membres.find((m) => m.ouvert)
+  return (
+    <div className="ens-entete">
+      <button type="button" className="ens-etab" onClick={() => setFeuille(true)}>
+        <span className="ens-entete-ico">
+          <IcEcole size={20} />
+        </span>
+        <span className="ens-entete-texte">
+          <small>{membres.length > 1 ? `${membres.length} établissements` : 'Mon établissement'}</small>
+          <b data-brut>{actuel?.ecole || user.schoolName || '—'}</b>
+        </span>
+        <IcChevron size={16} />
+      </button>
+      <button
+        type="button"
+        className="ens-parent"
+        disabled={busy === 'parent'}
+        onClick={async () => {
+          setBusy('parent')
+          try {
+            await changerEspace('parent')
+          } catch {
+            // l'espace actuel reste affiche
+          }
+          setBusy(null)
+        }}
+      >
+        <span className="ens-entete-ico">
+          <IcFamille size={20} />
+        </span>
+        <span className="ens-entete-texte">
+          <small>Espace parent</small>
+          <b>{busy === 'parent' ? '…' : 'Suivre mes enfants'}</b>
+        </span>
+        <IcChevron size={16} />
+      </button>
+
+      {feuille && (
+        <div className="voile" onClick={() => setFeuille(false)}>
+          <div className="feuille" onClick={(e) => e.stopPropagation()}>
+            <div className="feuille-poignee" />
+            <p className="feuille-titre">Mes établissements</p>
+            <ul className="ens-etabs">
+              {membres.map((m) => (
+                <li key={m.school_id}>
+                  <button
+                    type="button"
+                    aria-pressed={m.ouvert}
+                    disabled={busy !== null}
+                    onClick={() => {
+                      if (m.ouvert) return setFeuille(false)
+                      setBusy(m.school_id)
+                      changerEtablissement(m.school_id).catch(() => setBusy(null))
+                    }}
+                  >
+                    <span className="ens-entete-ico">
+                      <IcEcole size={18} />
+                    </span>
+                    <span className="ens-entete-texte">
+                      <b data-brut>{m.ecole}</b>
+                      <small data-brut>{busy === m.school_id ? 'Ouverture…' : m.ouvert ? 'Ouvert en ce moment' : m.city || ''}</small>
+                    </span>
+                    {m.ouvert && <IcCoche size={18} />}
+                  </button>
+                </li>
+              ))}
+              {attente.map((x) => (
+                <li key={`d${x.id}`}>
+                  <div className="ens-etabs-attente">
+                    <span className="ens-entete-ico">
+                      <IcEcole size={18} />
+                    </span>
+                    <span className="ens-entete-texte">
+                      <b data-brut>{x.ecole}</b>
+                      <small>En attente de validation</small>
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <a className="btn btn-block" href="#/mes-etablissements">
+              <IcPlus size={18} /> Rejoindre un autre établissement
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EspaceEnseignant() {
-  const { user, changerEspace } = useAuth()
   const jour = useApi('/api/presence-enseignants/mes-cours')
   const v = jour.data
   const auj = v?.aujourdhui || jourIso(new Date())
@@ -491,8 +561,6 @@ function EspaceEnseignant() {
   const vue = sel ? autre.data : v
   const date = (iso, o) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', o)
   const assures = (v?.cours || []).filter(fait).length
-  const [passage, setPassage] = useState(false)
-  const espaceParent = user.peutChangerEspace || user.role === 'teacher'
   // la frise : cours de l'emploi du temps et cours supplementaires, dans l'ordre des heures
   const elements = vue ? [...vue.cours.map((c) => ({ h: c.debut, c })), ...(vue.supplementaires || []).map((x) => ({ h: x.heure, x }))].sort((a, b) => a.h.localeCompare(b.h)) : []
 
@@ -507,6 +575,7 @@ function EspaceEnseignant() {
 
   return (
     <div className="ens-accueil">
+      <EnTeteEnseignant />
       <section className="ens-raccourcis" aria-label="Raccourcis">
         <div className="ens-raccourcis-liste">
           {raccourcis.map(([href, Icone, titre]) => (
@@ -517,30 +586,8 @@ function EspaceEnseignant() {
               <b>{titre}</b>
             </a>
           ))}
-          {espaceParent && (
-            <button
-              type="button"
-              disabled={passage}
-              onClick={async () => {
-                setPassage(true)
-                try {
-                  await changerEspace('parent')
-                } catch {
-                  // l'espace actuel reste affiche
-                }
-                setPassage(false)
-              }}
-            >
-              <span>
-                <IcProfil size={21} />
-              </span>
-              <b>{passage ? '…' : 'Espace parent'}</b>
-            </button>
-          )}
         </div>
       </section>
-      <ChoixEtablissement />
-
       <section className="ens-agenda">
         {joursCours.length > 0 && (
           <div className="ens-semaine" role="tablist" aria-label="Choisir un jour">
