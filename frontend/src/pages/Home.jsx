@@ -482,8 +482,8 @@ function EnTeteEnseignant() {
           <IcFamille size={17} />
         </span>
         <span className="ens-entete-texte">
-          <small>Espace</small>
-          <b>{busy === 'parent' ? '…' : 'Parent'}</b>
+          <small>Espace parent</small>
+          <b>{busy === 'parent' ? '…' : 'Mes enfants'}</b>
         </span>
       </button>
 
@@ -583,10 +583,6 @@ function EspaceEnseignant() {
             {sel ? date(sel, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Aujourd’hui'}
             {!sel && v?.cours.length > 0 && <small>{`${assures}/${v.cours.length} assurés`}</small>}
           </h2>
-          <a href="#/mes-cours" className="ens-agenda-lien">
-            <IcCalendrier size={15} />
-            <span>Mes cours</span>
-          </a>
         </div>
         {!vue && <p className="muted">Chargement…</p>}
         {vue?.absence && <div className="note">{`Absence signalée ce jour${vue.absence.motif ? ` : ${vue.absence.motif}` : ''}.`}</div>}

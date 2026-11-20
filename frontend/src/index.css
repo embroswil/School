@@ -2376,7 +2376,7 @@ html.ordi .ens-agenda { max-width: 820px; }
 .profil-ens-chiffres small { color: var(--muted); font-size: 12px; }
 .profil-ens-pp { margin: 12px 0 0; font-size: 13px; color: var(--muted); }
 /* Enseignant : en-tete de l'accueil, une barre fine en deux parties (etablissement | espace parent) */
-.ens-entete { display: grid; grid-template-columns: minmax(0, 1fr) auto; margin: 2px 0 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.ens-entete { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin: 2px 0 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
 .ens-entete > button { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 12px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .ens-entete > button + button { border-left: 1px solid var(--line); padding-right: 14px; }
 .ens-entete > button > svg:last-child { flex: none; color: var(--muted); }
@@ -2477,3 +2477,5 @@ html.ordi .msg-page { max-width: 820px; }
 .msg-absences b { font-size: 14px; }
 .msg-absences b::first-letter { text-transform: uppercase; }
 .msg-absences small { color: var(--muted); font-size: 12.5px; }
+.ens-entete-texte small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ens-entete > button { gap: 8px; padding: 8px 10px; }
