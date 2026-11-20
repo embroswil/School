@@ -6,7 +6,7 @@ import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
-import { ChoixEspace } from '../espace.jsx'
+import { ChoixEspace, PasserParent } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
 import { IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
@@ -389,94 +389,183 @@ function ChoixEtablissement() {
   )
 }
 
+// --- Accueil de l'enseignant : un agenda (bandeau du jour, semaine, frise des cours, raccourcis) ---
+const jourIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const plusJours = (iso, n) => {
+  const d = new Date(`${iso}T12:00:00`)
+  d.setDate(d.getDate() + n)
+  return jourIso(d)
+}
+const fait = (c) => Boolean(c.confirme_le || c.etat === 'assure')
+
+// Anneau de progression : cours assures sur le total du jour
+function Anneau({ fait: f, total }) {
+  const r = 26
+  const p = 2 * Math.PI * r
+  const part = total ? f / total : 0
+  return (
+    <div className="ens-anneau" aria-label={`${f} cours assurés sur ${total}`}>
+      <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+        <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="6" />
+        <circle cx="32" cy="32" r={r} fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${p * part} ${p}`} transform="rotate(-90 32 32)" />
+      </svg>
+      <b data-brut>{`${f}/${total}`}</b>
+    </div>
+  )
+}
+
+// Un cours sur la frise du jour
+function PointFrise({ c, v, onMaj }) {
+  const [msg, setMsg] = useState('')
+  const auj = v.date === v.aujourdhui
+  const t = v.maintenant
+  const enCours = auj && c.debut <= t && t < c.fin
+  const passe = v.date < v.aujourdhui || (auj && t >= c.fin)
+  const etat = c.absent ? 'absent' : fait(c) ? 'fait' : enCours ? 'maintenant' : passe ? 'manque' : 'avenir'
+  const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Douala' })
+  async function present() {
+    setMsg('…')
+    try {
+      await confirmerCours(c, v.date)
+      setMsg('')
+      onMaj()
+    } catch (err) {
+      setMsg(err.message)
+    }
+  }
+  return (
+    <li className={`fr-cours ${etat}`}>
+      <span className="fr-heure">
+        <b>{c.debut}</b>
+        <small>{c.fin}</small>
+      </span>
+      <span className="fr-point" aria-hidden="true">
+        {etat === 'fait' && <IcCoche size={12} />}
+      </span>
+      <div className="fr-carte">
+        <b>{c.classe}</b>
+        <small>{[c.matiere, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>
+        {etat === 'maintenant' && <em className="fr-badge">En cours</em>}
+        {etat === 'fait' && c.confirme_le && <em className="fr-note">{`Présence confirmée à ${heure(c.confirme_le)}`}</em>}
+        {etat === 'manque' && <em className="fr-note">Présence non confirmée</em>}
+        {etat === 'absent' && <em className="fr-note">Absence signalée</em>}
+        {(confirmable(c, v) || enCours) && (
+          <div className="fr-actions">
+            {confirmable(c, v) && (
+              <button type="button" className="btn" disabled={msg === '…'} onClick={present}>
+                {msg === '…' ? '…' : 'Je suis en cours'}
+              </button>
+            )}
+            {enCours && (
+              <a className="btn btn-quiet" href={`#/classes/${c.class_id}/appel`}>
+                {c.appel ? 'Appel fait' : 'Faire l’appel'}
+              </a>
+            )}
+          </div>
+        )}
+        {msg && msg !== '…' && <p className="cours-erreur">{msg}</p>}
+      </div>
+    </li>
+  )
+}
+
 function EspaceEnseignant() {
   const { user } = useAuth()
   const jour = useApi('/api/presence-enseignants/mes-cours')
   const v = jour.data
+  const auj = v?.aujourdhui || jourIso(new Date())
+  const [choisi, setChoisi] = useState(null)
+  const sel = choisi && choisi !== auj ? choisi : null
+  const autre = useApi(sel ? `/api/presence-enseignants/mes-cours?date=${sel}` : null)
+  const vue = sel ? autre.data : v
   const liste = v?.cours || []
   const t = v?.maintenant || ''
-  const maintenant = liste.find((c) => c.debut <= t && t < c.fin)
-  const suivant = liste.find((c) => c.debut > t)
-  const cours = maintenant || suivant
-  const confirmes = liste.filter((c) => c.confirme_le || c.etat === 'assure').length
-  const passes = liste.filter((c) => c.fin <= t)
-  const nonConfirmes = passes.filter((c) => !c.confirme_le && c.etat !== 'assure' && !c.absent).length
-  const [confirmation, setConfirmation] = useState('')
-  async function jeSuisEnCours() {
-    setConfirmation('…')
-    try {
-      await confirmerCours(cours, v.date)
-      jour.reload()
-      setConfirmation('')
-    } catch (err) {
-      setConfirmation(err.message)
-    }
-  }
-  const heureDe = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Douala' })
+  const assures = liste.filter(fait).length
+  const prochain = liste.find((c) => c.debut <= t && t < c.fin) || liste.find((c) => c.debut > t)
+  const semaine = Array.from({ length: 7 }, (_, i) => plusJours(auj, i))
+  const date = (iso, o) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', o)
+  const resume = !v
+    ? ''
+    : !liste.length
+      ? 'Pas de cours aujourd’hui'
+      : prochain
+        ? `${prochain.debut <= t ? 'En cours' : 'Prochain cours'} : ${prochain.classe} à ${prochain.debut}`
+        : 'Journée terminée'
+
   return (
-    <>
-      <header className="ens-tete">
-        <h1>{`Bonjour, ${user.firstName}`}</h1>
-        <p data-brut>{user.schoolName || ''}</p>
-      </header>
+    <div className="ens-accueil">
+      <section className="ens-bandeau">
+        <div className="ens-bandeau-haut">
+          <span className="ens-date">{date(auj, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+          <PasserParent />
+        </div>
+        <div className="ens-bandeau-corps">
+          <div>
+            <h1>{`Bonjour, ${user.firstName}`}</h1>
+            <p data-brut>{user.schoolName || ''}</p>
+            {resume && <p className="ens-resume">{resume}</p>}
+          </div>
+          {liste.length > 0 && <Anneau fait={assures} total={liste.length} />}
+        </div>
+      </section>
       <ChoixEtablissement />
 
-      <section className="ens-jour">
-        <div className="ens-jour-tete">
-          <span>{cours ? (maintenant ? 'En ce moment' : 'Prochain cours') : 'Ma journée'}</span>
-          <a href="#/mes-cours">Mes cours ›</a>
-        </div>
-        {cours ? (
-          <>
-            <h2>{`${cours.classe} · ${cours.matiere || 'Cours'}`}</h2>
-            <p>{`${cours.debut} – ${cours.fin}${cours.salle ? ` · salle ${cours.salle}` : ''}`}</p>
-            <div className="ens-jour-action">
-              {cours.confirme_le ? (
-                <span className="ok">{`✓ Présence confirmée à ${heureDe(cours.confirme_le)}`}</span>
-              ) : (
-                confirmable(cours, v) && (
-                  <button type="button" className="btn" disabled={confirmation === '…'} onClick={jeSuisEnCours}>
-                    {confirmation === '…' ? '…' : 'Je suis en cours'}
-                  </button>
-                )
-              )}
-              {maintenant && <a href={`#/classes/${cours.class_id}/appel`}>{cours.appel ? 'Appel fait' : 'Faire l’appel'}</a>}
-            </div>
-            {confirmation && confirmation !== '…' && <p className="cours-erreur">{confirmation}</p>}
-          </>
-        ) : (
-          <>
-            <h2>{liste.length ? 'Journée terminée' : 'Pas de cours aujourd’hui'}</h2>
-            <p>{liste.length ? 'Pensez à compléter le cahier de textes de vos cours.' : v?.total ? 'Votre emploi du temps ne prévoit pas de cours ce jour.' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</p>
-          </>
-        )}
-        {liste.length > 0 && (
-          <div className="ens-jour-chiffres">
-            <div>
-              <b>{liste.length}</b>
-              <small>Cours</small>
-            </div>
-            <div>
-              <b>{confirmes}</b>
-              <small>Confirmés</small>
-            </div>
-            <div>
-              <b>{nonConfirmes}</b>
-              <small>Non confirmés</small>
-            </div>
+      <div className="ens-colonnes">
+        <section className="ens-agenda">
+          <div className="ens-semaine" role="tablist" aria-label="Choisir un jour">
+            {semaine.map((iso, i) => (
+              <button key={iso} type="button" role="tab" aria-selected={(sel || auj) === iso} onClick={() => setChoisi(iso)}>
+                <small>{i === 0 ? 'Auj.' : date(iso, { weekday: 'short' }).replace('.', '')}</small>
+                <b>{date(iso, { day: 'numeric' })}</b>
+              </button>
+            ))}
           </div>
-        )}
-      </section>
+          <div className="ens-agenda-tete">
+            <h2>{sel ? date(sel, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Ma journée'}</h2>
+            <a href="#/mes-cours" className="ens-agenda-lien">
+              <IcCalendrier size={15} />
+              <span>Mes cours</span>
+            </a>
+          </div>
+          {!vue && <p className="muted">Chargement…</p>}
+          {vue?.absence && <div className="note">{`Absence signalée ce jour${vue.absence.motif ? ` : ${vue.absence.motif}` : ''}.`}</div>}
+          {vue && vue.cours.length === 0 && (
+            <div className="ens-repos">
+              <b>Aucun cours</b>
+              <small>{vue.total ? 'Votre emploi du temps ne prévoit pas de cours ce jour-là.' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</small>
+            </div>
+          )}
+          {vue && vue.cours.length > 0 && (
+            <ol className="frise">
+              {vue.cours.map((c) => (
+                <PointFrise key={`${vue.date}-${c.class_id}-${c.debut}`} c={c} v={vue} onMaj={() => (sel ? autre.reload() : jour.reload())} />
+              ))}
+            </ol>
+          )}
+        </section>
 
-      <div className="grille-tuiles six">
-        <Tuile href="#/mes-cours" Icone={IcCoche} titre="Mes cours" texte="Présence, cahier de textes" />
-        <Tuile href="#/mes-classes" Icone={IcEleves} titre="Mes classes" texte="Notes, devoirs, appel" />
-        <Tuile href="#/emploi" Icone={IcClasses} titre="Emploi du temps" texte="Ma semaine" />
-        <Tuile href="#/info" Icone={IcMegaphone} titre="Informer" texte="Info, cours supplémentaire, photos" />
-        <Tuile href="#/document" Icone={IcFichier} titre="Document" texte="PDF, photo, Excel…" />
-        <Tuile href="#/mon-absence" Icone={IcCalendrier} titre="Mon absence" texte="Prévenir l’établissement" />
+        <section className="ens-raccourcis">
+          <h2>Raccourcis</h2>
+          <div className="ens-raccourcis-liste">
+            {[
+              ['#/mes-classes', IcEleves, 'Mes classes'],
+              ['#/emploi', IcClasses, 'Emploi du temps'],
+              ['#/info', IcMegaphone, 'Informer'],
+              ['#/document', IcFichier, 'Document'],
+              ['#/mon-absence', IcCalendrier, 'Mon absence'],
+              ['#/mes-etablissements', IcEcole, 'Établissements'],
+            ].map(([href, Icone, titre]) => (
+              <a key={href} href={href}>
+                <span>
+                  <Icone size={21} />
+                </span>
+                <b>{titre}</b>
+              </a>
+            ))}
+          </div>
+        </section>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -502,7 +591,7 @@ export default function Home() {
   const { user } = useAuth()
   return (
     <>
-      <ChoixEspace />
+      {user.role !== 'teacher' && <ChoixEspace />}
       {user.role !== 'admin' && user.schoolId && <BandeauAbonnement role={user.role} />}
       {user.role === 'admin' && <EspaceAdmin />}
       {user.role === 'principal' && <EspaceEtablissement />}

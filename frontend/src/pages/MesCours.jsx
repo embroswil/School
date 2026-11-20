@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { IcChevron } from '../icones.jsx'
+import { IcCalendrier, IcChevron } from '../icones.jsx'
 
 const enChaine = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const decaler = (jour, n) => {
@@ -19,8 +19,8 @@ const moins15 = (hhmm) => {
 
 // Le cours peut etre confirme le jour meme, de 15 minutes avant son debut jusqu'a sa fin
 export const confirmable = (c, v) => v && v.date === v.aujourdhui && !c.confirme_le && !c.absent && v.maintenant >= moins15(c.debut) && v.maintenant < c.fin
-const termine = (c, v) => v && (v.date < v.aujourdhui || v.maintenant >= c.fin)
-const commence = (c, v) => v && (v.date < v.aujourdhui || v.maintenant >= moins15(c.debut))
+const termine = (c, v) => v && (v.date < v.aujourdhui || (v.date === v.aujourdhui && v.maintenant >= c.fin))
+const commence = (c, v) => v && (v.date < v.aujourdhui || (v.date === v.aujourdhui && v.maintenant >= moins15(c.debut)))
 
 export async function confirmerCours(c, date) {
   await api.post('/api/presence-enseignants/mes-cours/confirmer', { classId: c.class_id, debut: c.debut, date })
@@ -136,23 +136,33 @@ export default function MesCours() {
   const d = useApi(`/api/presence-enseignants/mes-cours?date=${date}`)
   const v = d.data
   const auj = v?.aujourdhui || enChaine(new Date())
-  const libelle = date === auj ? 'Aujourd’hui' : date === decaler(auj, -1) ? 'Hier' : new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  // de 14 jours en arriere (cahier de textes) a 60 jours en avant (prochains cours)
+  const min = decaler(auj, -14)
+  const max = decaler(auj, 60)
+  const libelle = date === auj ? 'Aujourd’hui' : date === decaler(auj, -1) ? 'Hier' : date === decaler(auj, 1) ? 'Demain' : new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <>
       <h1 className="page-title">Mes cours</h1>
       <p className="muted mc-intro">Pendant le cours, confirmez que vous êtes en classe, puis notez ce qui a été fait.</p>
       <div className="jour-nav">
-        <button type="button" aria-label="Jour précédent" disabled={date <= decaler(auj, -14)} onClick={() => setDate(decaler(date, -1))}>
+        <button type="button" aria-label="Jour précédent" disabled={date <= min} onClick={() => setDate(decaler(date, -1))}>
           <IcChevron size={18} style={{ transform: 'rotate(180deg)' }} />
         </button>
-        <label>
+        <label className="jour-nav-date">
+          <IcCalendrier size={17} />
           <span>{libelle}</span>
+          <input type="date" aria-label="Choisir un jour" value={date} min={min} max={max} onChange={(e) => e.target.value && setDate(e.target.value)} />
         </label>
-        <button type="button" aria-label="Jour suivant" disabled={date >= auj} onClick={() => setDate(decaler(date, 1))}>
+        <button type="button" aria-label="Jour suivant" disabled={date >= max} onClick={() => setDate(decaler(date, 1))}>
           <IcChevron size={18} />
         </button>
       </div>
+      {date !== auj && (
+        <button type="button" className="lien-action mc-retour" onClick={() => setDate(auj)}>
+          Revenir à aujourd’hui
+        </button>
+      )}
       <Note>{d.error}</Note>
       {!v && !d.error && <p className="muted">Chargement…</p>}
       {v?.absence && (
