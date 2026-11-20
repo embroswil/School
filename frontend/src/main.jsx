@@ -5,6 +5,7 @@ import App from './App.jsx'
 import { demarrerTraduction } from './i18n.jsx'
 import { appliquerVersionOrdi } from './ordinateur.jsx'
 import { appliquerTheme, suivreSysteme } from './theme.js'
+import { demarrerEnvoisAuto } from './horsligne.js'
 
 // Francais ou anglais (avant le premier affichage)
 demarrerTraduction()
@@ -12,6 +13,9 @@ appliquerVersionOrdi()
 // Theme sombre ou clair
 appliquerTheme(undefined, { pendantDemarrage: Boolean(document.getElementById('demarrage')) })
 suivreSysteme()
+
+// appels et notes gardes sans reseau : envoyes des que possible
+demarrerEnvoisAuto()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

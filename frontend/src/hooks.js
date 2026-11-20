@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, session } from './api.js'
+import { garderCopie, lireCopie } from './horsligne.js'
 
 // Dernieres reponses de l'API, gardees en memoire le temps de la visite.
 // En revenant sur une page, elle s'affiche tout de suite avec ces donnees,
@@ -31,10 +32,15 @@ export function useApi(path) {
     api.get(path).then(
       (res) => {
         garder(path, { data: res.data ?? null, meta: res.meta ?? null })
+        garderCopie(path, { data: res.data ?? null, meta: res.meta ?? null })
         if (live) setState({ key: done, data: res.data ?? null, meta: res.meta ?? null, error: '' })
       },
       (err) => {
-        if (live) setState({ key: done, data: null, meta: null, error: err.message })
+        // sans reseau : derniere version gardee sur le telephone (classes, appel, notes de l'enseignant)
+        const copie = err.status === 0 ? lireCopie(path) : null
+        if (!live) return
+        if (copie) setState({ key: done, data: copie.data, meta: copie.meta, error: '', horsLigne: copie.le })
+        else setState({ key: done, data: null, meta: null, error: err.message, horsLigne: null, sansReseau: err.status === 0 })
       },
     )
     return () => {
@@ -49,6 +55,8 @@ export function useApi(path) {
     data: !key ? null : enMemoire ? enMemoire.data : state.data,
     meta: !key ? null : enMemoire ? enMemoire.meta : state.meta,
     error: current ? state.error : '',
+    horsLigne: current ? state.horsLigne || null : null, // date de la copie affichee faute de reseau
+    sansReseau: current ? Boolean(state.sansReseau) : false,
     loading: key !== null && !current && !enMemoire,
     reload: () => setTick((t) => t + 1),
   }

@@ -392,6 +392,13 @@ const EN = {
   "Rappeler tous les parents en retard": "Remind all overdue parents",
   "Rappeler les parents en retard": "Remind overdue parents",
   "Relances automatiques": "Automatic reminders",
+  "Pas de réseau : liste gardée sur le téléphone. L’appel sera envoyé dès le retour du réseau.": "No network: list kept on the phone. The roll call will be sent as soon as the network is back.",
+  "Pas de réseau : notes gardées sur le téléphone, telles qu’à votre dernière connexion.": "No network: grades kept on the phone, as of your last connection.",
+  "Pas de réseau : l’appel est gardé sur le téléphone. Il sera envoyé automatiquement dès le retour du réseau.": "No network: the roll call is kept on the phone. It will be sent automatically as soon as the network is back.",
+  "Pas de réseau : les notes sont gardées sur le téléphone. Elles seront envoyées automatiquement dès le retour du réseau.": "No network: the grades are kept on the phone. They will be sent automatically as soon as the network is back.",
+  "Gardé sur le téléphone, envoyé dès le retour du réseau": "Kept on the phone, sent as soon as the network is back",
+  "1 envoi en attente": "1 pending upload",
+  "Pas de connexion Internet.": "No Internet connection.",
   "Résumé de la journée": "Daily summary",
   "Publiés aux familles": "Published to families",
   "Pas encore publiés": "Not published yet",
@@ -2177,6 +2184,7 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^(\d+) envois en attente$/, '$1 pending uploads'],
   [/^ · vu par ([\d\s\u202f]+) (personnes?)$/, (_, n, p) => ` · seen by ${n} ${p === 'personne' ? 'person' : 'people'}`],
   [/^Le (\d+ [^·]+) · parents et élèves les consultent dans Sùkûl$/, 'On $1 · parents and students view them in Sùkûl'],
   [/^(\d)(er|e) trimestre$/, (_, n) => `Term ${n}`],

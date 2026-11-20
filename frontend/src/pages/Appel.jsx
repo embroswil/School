@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { copieProche, mettreEnAttente, retirerAttente } from '../horsligne.js'
 
 // Seules les absences sont enregistrees
 const STATUTS = [
@@ -33,7 +34,28 @@ export default function Appel({ id }) {
   const [date, setDate] = useState(demande.date || aujourdhui())
   const [auto, setAuto] = useState(demande.periode === null) // choisir le cours en cours automatiquement
   const [periode, setPeriode] = useState(demande.periode) // heure du cours (ex. 730) ; null : la journee
-  const d = useApi(`/api/notes/appel/${id}?date=${date}${periode !== null ? `&periode=${periode}` : ''}`)
+  const chemin = `/api/notes/appel/${id}?date=${date}${periode !== null ? `&periode=${periode}` : ''}`
+  const enLigne = useApi(chemin)
+  // sans reseau et sans copie de ce jour : la liste de la classe gardee lors d'un appel precedent
+  const { data: donnees, sansReseau } = enLigne
+  const secours = useMemo(() => {
+    if (donnees || !sansReseau) return null
+    const p = copieProche(`/api/notes/appel/${id}?`)
+    if (!p?.data?.eleves) return null
+    const jourDe = (x) => new Date(`${x}T12:00:00`).getDay()
+    const datePrise = new URLSearchParams(p.path.split('?')[1]).get('date')
+    const memeJour = datePrise && jourDe(datePrise) === jourDe(date)
+    return {
+      le: p.le,
+      data: {
+        ...p.data,
+        faite: false,
+        eleves: p.data.eleves.map((e) => ({ ...e, status: null })),
+        cours: memeJour ? (p.data.cours || []).map((c) => ({ ...c, fait: false })) : [],
+      },
+    }
+  }, [donnees, sansReseau, id, date])
+  const d = secours ? { ...enLigne, data: secours.data, error: '', horsLigne: secours.le } : enLigne
   const [statuts, setStatuts] = useState({})
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
@@ -45,29 +67,35 @@ export default function Appel({ id }) {
 
   // Enseignant : selectionne d'office le cours en cours (ou le prochain non fait) de l'emploi du temps
   useEffect(() => {
-    if (!auto || !d.data?.modifiable || periode !== null || !d.data.cours?.length) return
+    // (pas pendant le chargement : la liste affichee est encore celle du jour precedent)
+    if (!auto || d.loading || !d.data?.modifiable || periode !== null || !d.data.cours?.length) return
     setAuto(false)
     const t = maintenantHHMM()
     const enCours = d.data.cours.find((c) => Number(c.debut.replace(':', '')) <= t && t < Number(c.fin.replace(':', '')))
     const suivant = d.data.cours.find((c) => !c.fait)
     const choix = enCours || suivant || d.data.cours[d.data.cours.length - 1]
     if (choix) setPeriode(choix.periode)
-  }, [d.data, auto, periode])
+  }, [d.data, d.loading, auto, periode])
 
   async function enregistrer() {
     setError('')
     setOk('')
     setBusy(true)
+    const corps = { date, periode, presences: Object.entries(statuts).map(([sid, statut]) => ({ studentId: Number(sid), statut })) }
+    const cle = `appel|${id}|${date}|${periode ?? 'jour'}`
     try {
-      const r = await api.put(`/api/notes/appel/${id}`, {
-        date,
-        periode,
-        presences: Object.entries(statuts).map(([sid, statut]) => ({ studentId: Number(sid), statut })),
-      })
+      const r = await api.put(`/api/notes/appel/${id}`, corps)
+      retirerAttente(cle) // un appel garde sans reseau ne doit pas remplacer celui-ci plus tard
       setOk(`Appel enregistré.${r.data.absentsSignales ? ` ${r.data.absentsSignales} absence(s) signalée(s) aux parents.` : ''}`)
       d.reload()
     } catch (err) {
-      setError(err.message)
+      if (err.status === 0) {
+        const cours = d.data?.cours?.find((c) => c.periode === periode)
+        const libelle = `Appel ${d.data?.classe || ''}${cours ? ` de ${cours.debut}` : ''}`.trim()
+        if (mettreEnAttente({ cle, path: `/api/notes/appel/${id}`, body: corps, libelle })) {
+          setOk('Pas de réseau : l’appel est gardé sur le téléphone. Il sera envoyé automatiquement dès le retour du réseau.')
+        } else setError(err.message)
+      } else setError(err.message)
     }
     setBusy(false)
   }
@@ -131,6 +159,8 @@ export default function Appel({ id }) {
             )}
         </p>
       )}
+      {d.horsLigne && <p className="hors-ligne">Pas de réseau : liste gardée sur le téléphone. L’appel sera envoyé dès le retour du réseau.</p>}
+      {d.error && !d.data && <Note>{d.error}</Note>}
       <Note>{error}</Note>
       <Note kind="ok">{ok}</Note>
       {d.loading && !d.data && <p className="muted">Chargement…</p>}

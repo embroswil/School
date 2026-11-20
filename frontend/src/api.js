@@ -174,6 +174,8 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
   // Le serveur peut etre en train de redemarrer (mise a jour) : on reessaie deux fois avant d'abandonner.
   // Sans reponse du tout, seules les lectures (GET) sont renvoyees : un envoi a peut-etre deja ete enregistre.
   for (let essai = 0; ; essai++) {
+    // telephone sans connexion (mode avion, plus de donnees) : inutile d'attendre
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new ApiError('Pas de connexion Internet.', 0)
     let reseau = false
     let coupe = false
     try {
@@ -218,7 +220,7 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
 export const api = {
   get: (path) => request(path),
   post: (path, body, options) => request(path, { method: 'POST', body: body ?? {}, ...options }),
-  put: (path, body) => request(path, { method: 'PUT', body: body ?? {} }),
+  put: (path, body, options) => request(path, { method: 'PUT', body: body ?? {}, ...options }),
   patch: (path, body) => request(path, { method: 'PATCH', body: body ?? {} }),
   delete: (path, body) => request(path, body ? { method: 'DELETE', body } : { method: 'DELETE' }),
 }

@@ -6,7 +6,46 @@ import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
+import { envoisEnAttente, envoyerAttente } from './horsligne.js'
 import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier } from './icones.jsx'
+
+// Appels et notes gardes sur le telephone faute de reseau : rappel discret, envoi a la demande
+function EnvoisEnAttente() {
+  const [n, setN] = useState(() => envoisEnAttente().length)
+  const [envoi, setEnvoi] = useState(false)
+  useEffect(() => {
+    const maj = () => setN(envoisEnAttente().length)
+    window.addEventListener('sukul-envois', maj)
+    window.addEventListener('online', maj)
+    window.addEventListener('offline', maj)
+    return () => {
+      window.removeEventListener('sukul-envois', maj)
+      window.removeEventListener('online', maj)
+      window.removeEventListener('offline', maj)
+    }
+  }, [])
+  if (!n) return null
+  return (
+    <div className="envois-attente" role="status">
+      <span>
+        <b>{n > 1 ? `${n} envois en attente` : '1 envoi en attente'}</b>
+        <small>Gardé sur le téléphone, envoyé dès le retour du réseau</small>
+      </span>
+      <button
+        type="button"
+        className="btn btn-quiet"
+        disabled={envoi}
+        onClick={async () => {
+          setEnvoi(true)
+          await envoyerAttente()
+          setEnvoi(false)
+        }}
+      >
+        {envoi ? 'Envoi…' : 'Envoyer'}
+      </button>
+    </div>
+  )
+}
 
 // Barre du bas selon le role. « + » ouvre les actions rapides de l'etablissement.
 const NAV = {
@@ -230,6 +269,7 @@ export default function Shell({ path, children }) {
 
       <div className="sheet-wrap">
         <main className="sheet">
+          <EnvoisEnAttente />
           {path === '/' && <BandeauInstallation />}
           {path === '/' && <EncartPush />}
           <SynchroPush />

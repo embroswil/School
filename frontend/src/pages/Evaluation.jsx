@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { mettreEnAttente, retirerAttente } from '../horsligne.js'
 import { exporterExcel } from '../export.jsx'
 
 // Saisie des notes d'une evaluation : une ligne par eleve
@@ -32,19 +33,24 @@ export default function Evaluation({ id }) {
     setError('')
     setOk('')
     setBusy(true)
+    const corps = {
+      notes: Object.entries(notes).map(([sid, n]) => ({
+        studentId: Number(sid),
+        note: n.absent || n.note === '' ? null : n.note.replace(',', '.'),
+        absent: n.absent,
+      })),
+      publiee: publier ? true : undefined,
+    }
+    const cle = `notes|${id}`
     try {
-      await api.put(`/api/notes/evaluations/${id}`, {
-        notes: Object.entries(notes).map(([sid, n]) => ({
-          studentId: Number(sid),
-          note: n.absent || n.note === '' ? null : n.note.replace(',', '.'),
-          absent: n.absent,
-        })),
-        publiee: publier ? true : undefined,
-      })
+      await api.put(`/api/notes/evaluations/${id}`, corps)
+      retirerAttente(cle)
       setOk('Notes enregistrées et publiées : parents et élèves sont notifiés, et le résumé apparaît dans le fil de l’établissement.')
       d.reload()
     } catch (err) {
-      setError(err.message)
+      if (err.status === 0 && mettreEnAttente({ cle, path: `/api/notes/evaluations/${id}`, body: corps, libelle: `Notes ${ev.matiere} · ${ev.classe}` })) {
+        setOk('Pas de réseau : les notes sont gardées sur le téléphone. Elles seront envoyées automatiquement dès le retour du réseau.')
+      } else setError(err.message)
     }
     setBusy(false)
   }
@@ -65,6 +71,7 @@ export default function Evaluation({ id }) {
         {ev.titre} · Séquence {ev.sequence} · noté sur {bareme} · {ev.publiee ? 'publiée' : 'brouillon'}
       </p>
 
+      {d.horsLigne && <p className="hors-ligne">Pas de réseau : notes gardées sur le téléphone, telles qu’à votre dernière connexion.</p>}
       {!modif && (
         <div className="note note-ok" style={{ fontWeight: 400 }}>
           Consultation : seules les enseignantes et enseignants de cette matière peuvent modifier ces notes.
