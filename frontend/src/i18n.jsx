@@ -392,6 +392,12 @@ const EN = {
   "Rappeler tous les parents en retard": "Remind all overdue parents",
   "Rappeler les parents en retard": "Remind overdue parents",
   "Relances automatiques": "Automatic reminders",
+  "Résumé de la journée": "Daily summary",
+  "Publiés aux familles": "Published to families",
+  "Pas encore publiés": "Not published yet",
+  "Une fois publiés, chaque parent et chaque élève voit son bulletin dans Sùkûl et en est prévenu.": "Once published, each parent and student sees their report card in Sùkûl and is notified.",
+  "Imprimer ou enregistrer en PDF": "Print or save as PDF",
+  "Aucun bulletin publié pour le moment. Vous serez prévenu dès que l’établissement publiera le bulletin du trimestre.": "No report card published yet. You will be notified as soon as the school publishes the term report card.",
   "3 jours avant chaque échéance, puis 1, 8 et 15 jours après, tant que les frais ne sont pas payés": "3 days before each due date, then 1, 8 and 15 days after, until the fees are paid",
   "Rappeler maintenant": "Remind now",
   "Imprimer les avis de relance": "Print reminder notices",
@@ -2171,6 +2177,9 @@ const ecoleEn = (a) => (/^votre établissement$/i.test(a) ? 'your school' : nomE
 
 // Formules avec des nombres ou des noms
 const FORMULES = [
+  [/^ · vu par ([\d\s\u202f]+) (personnes?)$/, (_, n, p) => ` · seen by ${n} ${p === 'personne' ? 'person' : 'people'}`],
+  [/^Le (\d+ [^·]+) · parents et élèves les consultent dans Sùkûl$/, 'On $1 · parents and students view them in Sùkûl'],
+  [/^(\d)(er|e) trimestre$/, (_, n) => `Term ${n}`],
   [/^Imprimer les avis \(([\d\s\u202f]+)\)$/, 'Print notices ($1)'],
   [/^([\d\s\u202f]+) élève\(s\) relancé\(s\) ces 30 derniers jours$/, '$1 student(s) reminded in the last 30 days'],
   [/^Bienvenue, (.+)$/, 'Welcome, $1'],

@@ -675,6 +675,7 @@ export default function Documents() {
                                   {jour(d.created_at)}
                                   {` · ${VISIBILITE[d.audience] || VISIBILITE.tous}`}
                                   {d.last_name && !d.mien ? ` · ${d.first_name} ${d.last_name}` : ''}
+                                  {d.audience !== 'interne' && d.vues > 0 ? ` · vu par ${d.vues.toLocaleString('fr-FR')} ${d.vues > 1 ? 'personnes' : 'personne'}` : ''}
                                 </small>
                               </span>
                               <span className="doc-actions">

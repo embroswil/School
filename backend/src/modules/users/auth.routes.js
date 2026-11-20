@@ -26,16 +26,19 @@ router.put("/me", authMiddleware.authenticate, async (req, res, next) => {
     if (typeof req.body?.notifEmail === "boolean") {
       await db.query("UPDATE users SET notif_email = $2 WHERE id = $1", [req.user.id, req.body.notifEmail]);
     }
+    if (typeof req.body?.rapportQuotidien === "boolean") {
+      await db.query("UPDATE users SET rapport_quotidien = $2 WHERE id = $1", [req.user.id, req.body.rapportQuotidien]);
+    }
     if (prenom === "" || nom === "") throw new ApiError(400, "Le prénom et le nom sont obligatoires");
     const { rows } = await db.query(
       `UPDATE users SET first_name = COALESCE($2, first_name), last_name = COALESCE($3, last_name),
          phone = CASE WHEN $4::text IS NULL THEN phone ELSE NULLIF($4, '') END, updated_at = NOW()
-       WHERE id = $1 RETURNING first_name, last_name, phone, notif_email`,
+       WHERE id = $1 RETURNING first_name, last_name, phone, notif_email, rapport_quotidien`,
       [req.user.id, prenom ?? null, nom ?? null, tel ?? null]
     );
     res.json({
       success: true,
-      data: { firstName: rows[0].first_name, lastName: rows[0].last_name, phone: rows[0].phone, notifEmail: rows[0].notif_email },
+      data: { firstName: rows[0].first_name, lastName: rows[0].last_name, phone: rows[0].phone, notifEmail: rows[0].notif_email, rapportQuotidien: rows[0].rapport_quotidien },
     });
   } catch (e) {
     next(e);

@@ -60,6 +60,7 @@ const toPublicUserReel = (u) => ({
   emailVerifie: u.email_verifie !== false || u.telephone_verifie === true,
   emailTechnique: /@(tel|inscrit)\.school$/.test(u.email || ""),
   notifEmail: u.notif_email !== false,
+  rapportQuotidien: u.rapport_quotidien !== false,
   status: u.status || "active",
 });
 

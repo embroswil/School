@@ -69,6 +69,15 @@ const lireMedias = (liste) => {
     .map((m) => ({ type: m.type, url: m.url, ...(m.nom ? { nom: String(m.nom).slice(0, 120) } : {}) }));
 };
 
+// Accuse de lecture : les parents et eleves qui ont vu une information (fil ou detail ouverts)
+const marquerVues = (u, ids) => {
+  if (!["parent", "student"].includes(u.role) || !ids.length) return;
+  db.query(
+    "INSERT INTO publication_vues (publication_id, user_id) SELECT unnest($1::int[]), $2 ON CONFLICT DO NOTHING",
+    [ids, u.id]
+  ).catch(() => {});
+};
+
 // GET /api/actualites?limite=20
 router.get("/", async (req, res, next) => {
   try {
@@ -126,6 +135,7 @@ router.get("/fil", async (req, res, next) => {
        ORDER BY p.created_at DESC LIMIT 20`,
       [choisies, miennes, avant, publicRole]
     );
+    marquerVues(req.user, rows.map((r) => r.id));
     const noms = miennes.length
       ? (await db.query("SELECT id, name FROM schools WHERE id = ANY($1) AND is_active ORDER BY name", [miennes])).rows
       : [];
@@ -289,7 +299,8 @@ router.get("/documents", async (req, res, next) => {
   try {
     if (!["principal", "teacher"].includes(req.user.role)) throw new ApiError(403, "Accès réservé");
     const { rows } = await db.query(
-      `SELECT p.id, p.title, p.categorie, p.audience, p.medias, p.created_at, p.author_id, u.first_name, u.last_name
+      `SELECT p.id, p.title, p.categorie, p.audience, p.medias, p.created_at, p.author_id, u.first_name, u.last_name,
+              (SELECT COUNT(*)::int FROM publication_vues v WHERE v.publication_id = p.id) AS vues
        FROM publications p LEFT JOIN users u ON u.id = p.author_id
        WHERE p.school_id = $1 AND p.source IN ('document', 'info', 'prive') ORDER BY p.created_at DESC LIMIT 100`,
       [req.user.schoolId]
@@ -317,6 +328,7 @@ router.get("/:id/detail", async (req, res, next) => {
     if (!p) {
       throw new ApiError(404, "Information introuvable");
     }
+    marquerVues(req.user, [p.id]);
     const { a_image, ...reste } = p;
     res.json({ success: true, data: { ...reste, image: a_image ? `/api/actualites/${p.id}/image` : null } });
   } catch (e) {

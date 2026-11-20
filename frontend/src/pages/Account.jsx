@@ -216,6 +216,7 @@ export default function Account() {
   const initiales = `${(moi.firstName || '?')[0]}${(moi.lastName || '')[0] || ''}`.toUpperCase()
   const emailReel = moi.email && !/@(tel|inscrit)\.school$/.test(moi.email)
   const emailActif = moi.notifEmail !== false
+  const rapportActif = moi.rapportQuotidien !== false
 
   async function basculerEmail() {
     const v = !emailActif
@@ -223,6 +224,14 @@ export default function Account() {
     setMoi((m) => ({ ...m, notifEmail: v }))
     const s2 = session.get()
     if (s2?.user) session.set({ ...s2, user: { ...s2.user, notifEmail: v } })
+  }
+
+  async function basculerRapport() {
+    const v = !rapportActif
+    await api.put('/api/auth/me', { rapportQuotidien: v })
+    setMoi((m) => ({ ...m, rapportQuotidien: v }))
+    const s2 = session.get()
+    if (s2?.user) session.set({ ...s2, user: { ...s2.user, rapportQuotidien: v } })
   }
 
   return (
@@ -283,6 +292,18 @@ export default function Account() {
             onClick={basculerEmail}
             droite={
               <span className={`interrupteur ${emailActif ? 'on' : ''}`} role="switch" aria-checked={emailActif}>
+                <i />
+              </span>
+            }
+          />
+        )}
+        {moi.role === 'parent' && (
+          <Reglage
+            Icone={IcCloche}
+            titre="Résumé de la journée"
+            onClick={basculerRapport}
+            droite={
+              <span className={`interrupteur ${rapportActif ? 'on' : ''}`} role="switch" aria-checked={rapportActif}>
                 <i />
               </span>
             }
