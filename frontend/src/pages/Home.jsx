@@ -8,7 +8,7 @@ import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -543,6 +543,72 @@ function EnTeteEnseignant() {
   )
 }
 
+// Accueil de l'enseignant, sous la journee : ce qu'il a a suivre
+function ASuivre() {
+  const r = useApi('/api/notes/mon-resume')
+  const d = r.data
+  if (!d) return null
+  const date = (iso, o) => new Date(`${String(iso).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', o)
+  const vide = !d.evaluations.length && !d.devoirs.length && !d.prochain && !d.messages
+  if (vide) return null
+  return (
+    <section className="ens-suivre">
+      <h2>À suivre</h2>
+      <div className="ens-suivre-grille">
+        {d.prochain && (
+          <a className="ens-suivre-carte" href="#/emploi">
+            <span className="ens-suivre-ico">
+              <IcCalendrier size={18} />
+            </span>
+            <span className="ens-suivre-texte">
+              <small>Prochain jour de cours</small>
+              <b>{date(d.prochain.date, { weekday: 'long', day: 'numeric', month: 'long' })}</b>
+              <span>{`${d.prochain.cours} cours · le premier à ${d.prochain.premier.debut} (${d.prochain.premier.classe})`}</span>
+            </span>
+          </a>
+        )}
+        {d.evaluations.map((e) => (
+          <a key={`e${e.id}`} className="ens-suivre-carte" href={`#/evaluations/${e.id}`}>
+            <span className="ens-suivre-ico violet">
+              <IcDocument size={18} />
+            </span>
+            <span className="ens-suivre-texte">
+              <small>Notes à terminer</small>
+              <b data-brut>{`${e.titre || 'Évaluation'} · ${e.classe}`}</b>
+              <span>{`${e.saisies} / ${e.effectif} notes saisies · non publiée`}</span>
+            </span>
+            <i className="ens-suivre-barre" style={{ '--p': `${e.effectif ? Math.round((e.saisies / e.effectif) * 100) : 0}%` }} />
+          </a>
+        ))}
+        {d.devoirs.map((x) => (
+          <a key={`d${x.id}`} className="ens-suivre-carte" href={`#/classes/${x.class_id}/devoirs`}>
+            <span className="ens-suivre-ico orange">
+              <IcCoche size={18} />
+            </span>
+            <span className="ens-suivre-texte">
+              <small>{`Devoir pour le ${date(x.pour_le, { weekday: 'long', day: 'numeric', month: 'long' })}`}</small>
+              <b data-brut>{x.titre}</b>
+              <span data-brut>{x.classe}</span>
+            </span>
+          </a>
+        ))}
+        {d.messages > 0 && (
+          <a className="ens-suivre-carte" href="#/messages">
+            <span className="ens-suivre-ico vert">
+              <IcMessagesHome size={18} />
+            </span>
+            <span className="ens-suivre-texte">
+              <small>Messages</small>
+              <b>{d.messages > 1 ? `${d.messages} messages non lus` : '1 message non lu'}</b>
+              <span>Parents et établissement</span>
+            </span>
+          </a>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function EspaceEnseignant() {
   const jour = useApi('/api/presence-enseignants/mes-cours')
   const v = jour.data
@@ -607,6 +673,7 @@ function EspaceEnseignant() {
           </ol>
         )}
       </section>
+      <ASuivre />
     </div>
   )
 }

@@ -546,6 +546,144 @@ const rangs = (liste, cle) => {
   return r;
 };
 
+// Bulletins d'une classe pour un trimestre (c : classe avec id, name, school_id, academic_year_id, class_teacher_id)
+const calculerBulletins = async (c, tri) => {
+  const seqs = [tri * 2 - 1, tri * 2];
+  const ecole = (await db.query("SELECT name, city, type, photo FROM schools WHERE id = $1", [c.school_id])).rows[0];
+  const annee = (await db.query("SELECT name FROM academic_years WHERE id = $1", [c.academic_year_id])).rows[0];
+  const terme = (await db.query("SELECT start_date, end_date FROM terms WHERE academic_year_id = $1 AND term_number = $2", [c.academic_year_id, tri])).rows[0];
+  const pp = c.class_teacher_id
+    ? (await db.query("SELECT first_name, last_name FROM users WHERE id = $1", [c.class_teacher_id])).rows[0]
+    : null;
+  // Matieres de la classe (avec enseignant et coefficient) ayant au moins une note
+  const matieres = (
+    await db.query(
+      `SELECT s.id, s.name, COALESCE(cs.coefficient, 2) AS coef, u.first_name, u.last_name
+       FROM subjects s
+       LEFT JOIN class_subjects cs ON cs.class_id = $1 AND cs.subject_id = s.id
+       LEFT JOIN users u ON u.id = cs.teacher_id
+       WHERE s.id IN (SELECT subject_id FROM evaluations WHERE class_id = $1 AND sequence = ANY($2))
+       ORDER BY s.name`,
+      [c.id, seqs]
+    )
+  ).rows;
+  // Moyenne de chaque eleve, par matiere et par sequence (sur 20)
+  const notes = (
+    await db.query(
+      `SELECT x.student_id, e.subject_id, e.sequence, AVG(x.note * 20 / e.bareme) AS moy
+       FROM notes_eleves x JOIN evaluations e ON e.id = x.evaluation_id
+       WHERE e.class_id = $1 AND e.sequence = ANY($2) AND x.note IS NOT NULL
+       GROUP BY x.student_id, e.subject_id, e.sequence`,
+      [c.id, seqs]
+    )
+  ).rows;
+  const eleves = (
+    await db.query(
+      `SELECT u.id, u.first_name, u.last_name, sr.admission_number, sr.date_of_birth, sr.gender,
+              (SELECT COUNT(*)::int FROM attendance a WHERE a.student_id = u.id AND a.status = 'absent'
+                 AND ($2::date IS NULL OR a.date BETWEEN $2 AND $3)) AS absences,
+              0 AS retards
+       FROM class_students cs JOIN users u ON u.id = cs.student_id
+       LEFT JOIN student_records sr ON sr.student_id = u.id
+       WHERE cs.class_id = $1 AND cs.status = 'active'
+       ORDER BY u.last_name, u.first_name`,
+      [c.id, terme?.start_date || null, terme?.end_date || null]
+    )
+  ).rows;
+  const cle = (e, s) => `${e}|${s}`;
+  const parEleveMatiere = new Map();
+  for (const n of notes) {
+    const k = cle(n.student_id, n.subject_id);
+    const v = parEleveMatiere.get(k) || {};
+    v[n.sequence] = Number(n.moy);
+    parEleveMatiere.set(k, v);
+  }
+  // Lignes par eleve
+  const bulletins = eleves.map((e) => {
+    let total = 0;
+    let coefs = 0;
+    const lignes = matieres.map((m) => {
+      const v = parEleveMatiere.get(cle(e.id, m.id)) || {};
+      const s1 = v[seqs[0]] ?? null;
+      const s2 = v[seqs[1]] ?? null;
+      const presentes = [s1, s2].filter((x) => x !== null);
+      const moyenne = presentes.length ? presentes.reduce((a, b) => a + b, 0) / presentes.length : null;
+      if (moyenne !== null) {
+        total += moyenne * Number(m.coef);
+        coefs += Number(m.coef);
+      }
+      return { matiereId: m.id, s1: arrondi(s1), s2: arrondi(s2), moyenne: arrondi(moyenne), coef: Number(m.coef), total: moyenne === null ? null : arrondi(moyenne * Number(m.coef)) };
+    });
+    return { ...e, lignes, totalPoints: arrondi(total), totalCoefs: coefs, moyenne: coefs ? arrondi(total / coefs) : null };
+  });
+  // Rangs : general et par matiere
+  const rg = rangs(bulletins, "moyenne");
+  const rangsMatiere = new Map(
+    matieres.map((m) => [
+      m.id,
+      rangs(
+        bulletins.map((b) => ({ id: b.id, v: b.lignes.find((l) => l.matiereId === m.id).moyenne })),
+        "v"
+      ),
+    ])
+  );
+  const moyennes = bulletins.map((b) => b.moyenne).filter((x) => x !== null);
+  const stats = {
+    effectif: eleves.length,
+    classes: moyennes.length,
+    moyenneClasse: moyennes.length ? arrondi(moyennes.reduce((a, b) => a + b, 0) / moyennes.length) : null,
+    plusHaute: moyennes.length ? Math.max(...moyennes) : null,
+    plusBasse: moyennes.length ? Math.min(...moyennes) : null,
+    reussite: moyennes.length ? Math.round((moyennes.filter((x) => x >= 10).length / moyennes.length) * 100) : null,
+  };
+  const appr = new Map(
+    (
+      await db.query("SELECT student_id, appreciation FROM appreciations_bulletin WHERE class_id = $1 AND trimestre = $2", [c.id, tri])
+    ).rows.map((r) => [r.student_id, r.appreciation])
+  );
+  for (const b of bulletins) {
+    b.rang = rg.get(b.id) || null;
+    b.appreciation = APPRECIATION(b.moyenne);
+    b.appreciationPP = appr.get(b.id) || "";
+    for (const l of b.lignes) {
+      l.rang = rangsMatiere.get(l.matiereId).get(b.id) || null;
+      l.appreciation = APPRECIATION(l.moyenne);
+    }
+  }
+  if (tri === 3) {
+    const [t1, t2] = await Promise.all([moyennesTrimestre(c.id, 1), moyennesTrimestre(c.id, 2)]);
+    const dec = new Map(
+      (await db.query("SELECT student_id, decision FROM decisions_annuelles WHERE class_id = $1", [c.id])).rows.map((r) => [r.student_id, r.decision])
+    );
+    for (const b of bulletins) {
+      const ts = [t1.get(b.id), t2.get(b.id), b.moyenne].filter((x) => x !== undefined && x !== null);
+      b.annuelle = ts.length ? arrondi(ts.reduce((x, y) => x + y, 0) / ts.length) : null;
+      b.decision = dec.get(b.id) ? DECISIONS[dec.get(b.id)] : null;
+    }
+  }
+  return {
+    ecole,
+    annee: annee?.name,
+    trimestre: tri,
+    sequences: seqs,
+    classe: c.name,
+    professeurPrincipal: pp ? `${pp.first_name} ${pp.last_name}` : null,
+    matieres: matieres.map((m) => ({ id: m.id, nom: m.name, coef: Number(m.coef), enseignant: m.last_name ? `${m.first_name} ${m.last_name}` : null })),
+    stats,
+    bulletins,
+  };
+};
+
+// Classe d'un bulletin (pour le suivi des parents et des eleves)
+const classeBulletin = async (classId) =>
+  (
+    await db.query(
+      `SELECT c.id, c.name, c.academic_year_id, c.class_teacher_id, ay.school_id FROM classes c
+       JOIN academic_years ay ON ay.id = c.academic_year_id WHERE c.id = $1`,
+      [classId]
+    )
+  ).rows[0] || null;
+
 // GET /api/notes/classes/:id/bulletins?trimestre=1
 // Bulletins de tous les eleves de la classe (professeur principal ou administration)
 router.get("/classes/:id/bulletins", async (req, res, next) => {
@@ -553,134 +691,53 @@ router.get("/classes/:id/bulletins", async (req, res, next) => {
     const c = await verifierClasse(req.user, entier(req.params.id));
     if (req.user.role === "teacher" && !c.estProfPrincipal) throw new ApiError(403, "Réservé au professeur principal de la classe");
     const tri = Math.min(3, Math.max(1, entier(req.query.trimestre) || 1));
-    const seqs = [tri * 2 - 1, tri * 2];
-    const ecole = (await db.query("SELECT name, city, type, photo FROM schools WHERE id = $1", [c.school_id])).rows[0];
-    const annee = (await db.query("SELECT name FROM academic_years WHERE id = $1", [c.academic_year_id])).rows[0];
-    const terme = (await db.query("SELECT start_date, end_date FROM terms WHERE academic_year_id = $1 AND term_number = $2", [c.academic_year_id, tri])).rows[0];
-    const pp = c.class_teacher_id
-      ? (await db.query("SELECT first_name, last_name FROM users WHERE id = $1", [c.class_teacher_id])).rows[0]
-      : null;
-    // Matieres de la classe (avec enseignant et coefficient) ayant au moins une note
-    const matieres = (
-      await db.query(
-        `SELECT s.id, s.name, COALESCE(cs.coefficient, 2) AS coef, u.first_name, u.last_name
-         FROM subjects s
-         LEFT JOIN class_subjects cs ON cs.class_id = $1 AND cs.subject_id = s.id
-         LEFT JOIN users u ON u.id = cs.teacher_id
-         WHERE s.id IN (SELECT subject_id FROM evaluations WHERE class_id = $1 AND sequence = ANY($2))
-         ORDER BY s.name`,
-        [c.id, seqs]
-      )
-    ).rows;
-    // Moyenne de chaque eleve, par matiere et par sequence (sur 20)
-    const notes = (
-      await db.query(
-        `SELECT x.student_id, e.subject_id, e.sequence, AVG(x.note * 20 / e.bareme) AS moy
-         FROM notes_eleves x JOIN evaluations e ON e.id = x.evaluation_id
-         WHERE e.class_id = $1 AND e.sequence = ANY($2) AND x.note IS NOT NULL
-         GROUP BY x.student_id, e.subject_id, e.sequence`,
-        [c.id, seqs]
-      )
-    ).rows;
-    const eleves = (
-      await db.query(
-        `SELECT u.id, u.first_name, u.last_name, sr.admission_number, sr.date_of_birth, sr.gender,
-                (SELECT COUNT(*)::int FROM attendance a WHERE a.student_id = u.id AND a.status = 'absent'
-                   AND ($2::date IS NULL OR a.date BETWEEN $2 AND $3)) AS absences,
-                0 AS retards
-         FROM class_students cs JOIN users u ON u.id = cs.student_id
-         LEFT JOIN student_records sr ON sr.student_id = u.id
-         WHERE cs.class_id = $1 AND cs.status = 'active'
-         ORDER BY u.last_name, u.first_name`,
-        [c.id, terme?.start_date || null, terme?.end_date || null]
-      )
-    ).rows;
-    const cle = (e, s) => `${e}|${s}`;
-    const parEleveMatiere = new Map();
-    for (const n of notes) {
-      const k = cle(n.student_id, n.subject_id);
-      const v = parEleveMatiere.get(k) || {};
-      v[n.sequence] = Number(n.moy);
-      parEleveMatiere.set(k, v);
+    const data = await calculerBulletins(c, tri);
+    const pub = (await db.query("SELECT publie_le FROM bulletins_publies WHERE class_id = $1 AND trimestre = $2", [c.id, tri])).rows[0];
+    res.json({ success: true, data: { ...data, peutApprecier: c.estProfPrincipal, publieLe: pub?.publie_le || null } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// PUT /api/notes/classes/:id/bulletins/publication { trimestre, publie } : les bulletins du trimestre deviennent
+// visibles (ou non) pour les parents et les eleves de la classe, qui sont prevenus a la publication
+router.put("/classes/:id/bulletins/publication", async (req, res, next) => {
+  try {
+    const c = await verifierClasse(req.user, entier(req.params.id));
+    if (req.user.role === "teacher" && !c.estProfPrincipal) throw new ApiError(403, "Réservé au professeur principal de la classe");
+    const tri = entier(req.body?.trimestre);
+    if (!(tri >= 1 && tri <= 3)) throw new ApiError(400, "Trimestre invalide");
+    if (req.body?.publie === false) {
+      await db.query("DELETE FROM bulletins_publies WHERE class_id = $1 AND trimestre = $2", [c.id, tri]);
+      return res.json({ success: true, data: { publieLe: null } });
     }
-    // Lignes par eleve
-    const bulletins = eleves.map((e) => {
-      let total = 0;
-      let coefs = 0;
-      const lignes = matieres.map((m) => {
-        const v = parEleveMatiere.get(cle(e.id, m.id)) || {};
-        const s1 = v[seqs[0]] ?? null;
-        const s2 = v[seqs[1]] ?? null;
-        const presentes = [s1, s2].filter((x) => x !== null);
-        const moyenne = presentes.length ? presentes.reduce((a, b) => a + b, 0) / presentes.length : null;
-        if (moyenne !== null) {
-          total += moyenne * Number(m.coef);
-          coefs += Number(m.coef);
-        }
-        return { matiereId: m.id, s1: arrondi(s1), s2: arrondi(s2), moyenne: arrondi(moyenne), coef: Number(m.coef), total: moyenne === null ? null : arrondi(moyenne * Number(m.coef)) };
-      });
-      return { ...e, lignes, totalPoints: arrondi(total), totalCoefs: coefs, moyenne: coefs ? arrondi(total / coefs) : null };
-    });
-    // Rangs : general et par matiere
-    const rg = rangs(bulletins, "moyenne");
-    const rangsMatiere = new Map(
-      matieres.map((m) => [
-        m.id,
-        rangs(
-          bulletins.map((b) => ({ id: b.id, v: b.lignes.find((l) => l.matiereId === m.id).moyenne })),
-          "v"
-        ),
-      ])
+    const r = await db.query(
+      `INSERT INTO bulletins_publies (class_id, trimestre, publie_par) VALUES ($1, $2, $3)
+       ON CONFLICT (class_id, trimestre) DO NOTHING RETURNING publie_le`,
+      [c.id, tri, req.user.id]
     );
-    const moyennes = bulletins.map((b) => b.moyenne).filter((x) => x !== null);
-    const stats = {
-      effectif: eleves.length,
-      classes: moyennes.length,
-      moyenneClasse: moyennes.length ? arrondi(moyennes.reduce((a, b) => a + b, 0) / moyennes.length) : null,
-      plusHaute: moyennes.length ? Math.max(...moyennes) : null,
-      plusBasse: moyennes.length ? Math.min(...moyennes) : null,
-      reussite: moyennes.length ? Math.round((moyennes.filter((x) => x >= 10).length / moyennes.length) * 100) : null,
-    };
-    const appr = new Map(
-      (
-        await db.query("SELECT student_id, appreciation FROM appreciations_bulletin WHERE class_id = $1 AND trimestre = $2", [c.id, tri])
-      ).rows.map((r) => [r.student_id, r.appreciation])
-    );
-    for (const b of bulletins) {
-      b.rang = rg.get(b.id) || null;
-      b.appreciation = APPRECIATION(b.moyenne);
-      b.appreciationPP = appr.get(b.id) || "";
-      for (const l of b.lignes) {
-        l.rang = rangsMatiere.get(l.matiereId).get(b.id) || null;
-        l.appreciation = APPRECIATION(l.moyenne);
-      }
-    }
-    if (tri === 3) {
-      const [t1, t2] = await Promise.all([moyennesTrimestre(c.id, 1), moyennesTrimestre(c.id, 2)]);
-      const dec = new Map(
-        (await db.query("SELECT student_id, decision FROM decisions_annuelles WHERE class_id = $1", [c.id])).rows.map((r) => [r.student_id, r.decision])
+    if (r.rows[0]) {
+      const libelle = tri === 1 ? "1er trimestre" : `${tri}e trimestre`;
+      const { rows } = await db.query(
+        `SELECT cs.student_id, u.first_name, l.parent_id FROM class_students cs JOIN users u ON u.id = cs.student_id
+         LEFT JOIN parent_student_links l ON l.student_id = cs.student_id
+         WHERE cs.class_id = $1 AND cs.status = 'active'`,
+        [c.id]
       );
-      for (const b of bulletins) {
-        const ts = [t1.get(b.id), t2.get(b.id), b.moyenne].filter((x) => x !== undefined && x !== null);
-        b.annuelle = ts.length ? arrondi(ts.reduce((x, y) => x + y, 0) / ts.length) : null;
-        b.decision = dec.get(b.id) ? DECISIONS[dec.get(b.id)] : null;
+      const eleves = new Set();
+      for (const x of rows) {
+        const lien = `/suivi/${x.student_id}?bulletin=${tri}`;
+        if (x.parent_id) {
+          await notifierUtilisateur(x.parent_id, { title: `Bulletin du ${libelle}`, message: `Le bulletin de ${x.first_name} (${c.name}) est disponible.`, type: "grade", data: { lien } }).catch(() => {});
+        }
+        if (!eleves.has(x.student_id)) {
+          eleves.add(x.student_id);
+          await notifierUtilisateur(x.student_id, { title: `Bulletin du ${libelle}`, message: `Votre bulletin (${c.name}) est disponible.`, type: "grade", data: { lien: `/notes?bulletin=${tri}` } }).catch(() => {});
+        }
       }
     }
-    res.json({
-      success: true,
-      data: {
-        ecole,
-        annee: annee?.name,
-        trimestre: tri,
-        sequences: seqs,
-        classe: c.name,
-        professeurPrincipal: pp ? `${pp.first_name} ${pp.last_name}` : null,
-        peutApprecier: c.estProfPrincipal,
-        matieres: matieres.map((m) => ({ id: m.id, nom: m.name, coef: Number(m.coef), enseignant: m.last_name ? `${m.first_name} ${m.last_name}` : null })),
-        stats,
-        bulletins,
-      },
-    });
+    const pub = (await db.query("SELECT publie_le FROM bulletins_publies WHERE class_id = $1 AND trimestre = $2", [c.id, tri])).rows[0];
+    res.json({ success: true, data: { publieLe: pub?.publie_le || null } });
   } catch (e) {
     next(e);
   }
@@ -894,6 +951,59 @@ router.get("/mes-classes", async (req, res, next) => {
   }
 });
 
+// GET /api/notes/mon-resume : ce que l'enseignant doit suivre (notes a terminer, devoirs, prochain jour de cours, messages)
+router.get("/mon-resume", async (req, res, next) => {
+  try {
+    if (req.user.role !== "teacher") throw new ApiError(403, "Réservé aux enseignants");
+    const moi = req.user.id;
+    const ecole = req.user.schoolId;
+    const evaluations = (
+      await db.query(
+        `SELECT e.id, e.titre, e.sequence, c.name AS classe, s.name AS matiere,
+                (SELECT COUNT(*)::int FROM notes_eleves n WHERE n.evaluation_id = e.id AND (n.note IS NOT NULL OR n.absent)) AS saisies,
+                (SELECT COUNT(*)::int FROM class_students x WHERE x.class_id = e.class_id AND x.status = 'active') AS effectif
+         FROM evaluations e JOIN classes c ON c.id = e.class_id LEFT JOIN subjects s ON s.id = e.subject_id
+         WHERE e.created_by = $1 AND e.school_id = $2 AND NOT e.publiee ORDER BY e.date_eval DESC NULLS LAST LIMIT 4`,
+        [moi, ecole]
+      )
+    ).rows;
+    const jour = new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10);
+    const devoirs = (
+      await db.query(
+        `SELECT d.id, d.titre, d.pour_le, d.class_id, c.name AS classe FROM devoirs d JOIN classes c ON c.id = d.class_id
+         WHERE d.teacher_id = $1 AND d.school_id = $2 AND d.pour_le >= $3::date ORDER BY d.pour_le LIMIT 4`,
+        [moi, ecole, jour]
+      )
+    ).rows;
+    // prochain jour de cours (apres aujourd'hui), d'apres l'emploi du temps
+    const creneaux = (
+      await db.query(
+        `SELECT cr.jour, to_char(cr.debut, 'HH24:MI') AS debut, c.name AS classe FROM creneaux cr
+         JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id JOIN classes c ON c.id = cr.class_id
+         WHERE cs.teacher_id = $1 AND cr.school_id = $2 ORDER BY cr.debut`,
+        [moi, ecole]
+      )
+    ).rows;
+    let prochain = null;
+    for (let i = 1; i <= 7 && !prochain; i++) {
+      const d = new Date(`${jour}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + i);
+      const iso = ((d.getUTCDay() + 6) % 7) + 1;
+      const liste = creneaux.filter((x) => Number(x.jour) === iso);
+      if (liste.length) prochain = { date: d.toISOString().slice(0, 10), cours: liste.length, premier: liste[0] };
+    }
+    const messages = (
+      await db.query(
+        "SELECT COUNT(*)::int AS n FROM conversations WHERE (user_id = $1 AND unread_user) OR (teacher_id = $1 AND unread_school)",
+        [moi]
+      )
+    ).rows[0].n;
+    res.json({ success: true, data: { evaluations, devoirs, prochain, messages } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // GET /api/notes/mes-affectations : matieres et classes choisies + toutes celles de l'etablissement
 router.get("/mes-affectations", async (req, res, next) => {
   try {
@@ -930,6 +1040,24 @@ router.put("/mes-affectations", async (req, res, next) => {
     const mat = (await db.query("SELECT id FROM subjects WHERE id = ANY($1) AND school_id = $2", [ids(req.body?.matiereIds), req.user.schoolId])).rows.map((r) => r.id);
     const cls = (await db.query("SELECT id FROM classes WHERE id = ANY($1) AND academic_year_id = $2", [ids(req.body?.classeIds), annee.id])).rows.map((r) => r.id);
     if (!mat.length || !cls.length) throw new ApiError(400, "Choisissez au moins une matière et une classe");
+    // Un enseignant ne peut pas etre dans deux classes a la meme heure (d'apres les emplois du temps)
+    const conflits = (
+      await db.query(
+        `SELECT cr.jour, to_char(cr.debut, 'HH24:MI') AS debut, string_agg(DISTINCT c.name, ' et ' ORDER BY c.name) AS classes
+         FROM creneaux cr JOIN classes c ON c.id = cr.class_id
+         LEFT JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id AND cs.academic_year_id = $3
+         WHERE cr.class_id = ANY($1) AND cr.subject_id = ANY($2) AND (cs.teacher_id IS NULL OR cs.teacher_id = $4)
+         GROUP BY cr.jour, cr.debut HAVING COUNT(DISTINCT cr.class_id) > 1 ORDER BY cr.jour, cr.debut LIMIT 3`,
+        [cls, mat, annee.id, req.user.id]
+      )
+    ).rows;
+    if (conflits.length) {
+      const JOURS = ["", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+      throw new ApiError(
+        409,
+        `Ces classes ont cours en même temps : ${conflits.map((x) => `${x.classes} (${JOURS[x.jour]} ${x.debut})`).join(" ; ")}. Retirez l’une d’elles ou vérifiez l’emploi du temps avec l’établissement.`
+      );
+    }
     // Retire les affectations abandonnees, puis ajoute les nouvelles
     await db.query(
       `UPDATE class_subjects SET teacher_id = NULL
@@ -952,3 +1080,5 @@ router.put("/mes-affectations", async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.calculerBulletins = calculerBulletins;
+module.exports.classeBulletin = classeBulletin;

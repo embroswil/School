@@ -27,7 +27,7 @@ export async function precharger() {
   fait = cle
   const communs = ['/api/boite/messages', '/api/boite/notifications']
   if (u.role === 'teacher') {
-    await Promise.all([...communs, '/api/presence-enseignants/mes-cours', `/api/presence-enseignants/mes-cours?date=${jour()}`, '/api/vie-scolaire/emplois/moi', '/api/inscriptions/mes-etablissements'].map(garder))
+    await Promise.all([...communs, '/api/notes/mon-resume', '/api/presence-enseignants/mes-cours', `/api/presence-enseignants/mes-cours?date=${jour()}`, '/api/vie-scolaire/emplois/moi', '/api/inscriptions/mes-etablissements'].map(garder))
     const classes = (await garder('/api/notes/mes-classes')) || []
     for (const c of classes.slice(0, 20)) {
       // une classe apres l'autre : le reseau reste disponible pour l'utilisateur

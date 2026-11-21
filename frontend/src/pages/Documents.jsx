@@ -163,6 +163,65 @@ const VIDE = { titre: '', categorie: 'autre', description: '', audience: 'tous',
 
 // Documents de l'etablissement : ajout (lecture et classement automatiques), puis liste publiee
 // rangee par type de document et par mois.
+// Documents vus par l'enseignant : ses documents d'abord, puis ceux de l'etablissement, en liste de cartes
+function DocsEnseignant({ docs, retirer }) {
+  const [onglet, setOnglet] = useState('miens')
+  const [q, setQ] = useState('')
+  const miens = docs.filter((d) => d.mien)
+  const ecole = docs.filter((d) => !d.mien)
+  const t = sansAccent(q.trim())
+  const liste = (onglet === 'miens' ? miens : ecole).filter((d) => !t || sansAccent(`${d.title} ${d.categorie}`).includes(t))
+  return (
+    <div className="docs-ens">
+      <div className="docs-ens-onglets" role="tablist">
+        {[
+          ['miens', 'Mes documents', miens.length],
+          ['ecole', 'De l’établissement', ecole.length],
+        ].map(([k, l, n]) => (
+          <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}>
+            {l}
+            <small>{n}</small>
+          </button>
+        ))}
+      </div>
+      <input className="input docs-recherche" type="search" placeholder="Rechercher" value={q} onChange={(e) => setQ(e.target.value)} />
+      {liste.length === 0 && (
+        <p className="muted docs-ens-vide">{onglet === 'miens' ? 'Vous n’avez pas encore ajouté de document. Touchez « Ajouter » : fiche d’exercices, sujet, cours…' : 'Aucun document de l’établissement.'}</p>
+      )}
+      <div className="docs-ens-liste">
+        {liste.map((d) => {
+          const f = Array.isArray(d.medias) ? d.medias[0] : null
+          return (
+            <article key={d.id} className="docs-ens-carte">
+              <span className="doc-badge">{ETIQUETTE(f?.nom || d.title || '', f?.type || 'document')}</span>
+              <div className="docs-ens-texte">
+                <b data-brut>{d.title}</b>
+                <small>
+                  {[d.categorie, jour(d.created_at), onglet === 'ecole' && d.last_name ? `${d.first_name} ${d.last_name}` : '', d.audience !== 'interne' && d.vues > 0 ? `vu par ${d.vues.toLocaleString('fr-FR')}` : '']
+                    .filter(Boolean)
+                    .join(' · ')}
+                </small>
+              </div>
+              <div className="docs-ens-actions">
+                {f?.url && (
+                  <a className="btn btn-quiet" href={f.url} target="_blank" rel="noreferrer">
+                    Ouvrir
+                  </a>
+                )}
+                {d.mien && (
+                  <button type="button" className="lien-action discret" onClick={() => retirer(d.id)}>
+                    Retirer
+                  </button>
+                )}
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function Documents() {
   const { user } = useAuth()
   const champ = useRef(null)
@@ -612,7 +671,8 @@ export default function Documents() {
           <small>Communiqués, calendriers, emplois du temps, frais, résultats… en PDF, Word, Excel, photo ou vidéo. Chaque document est lu et classé automatiquement.</small>
         </button>
       )}
-      {docs.length > 0 && (
+      {docs.length > 0 && user.role === 'teacher' && <DocsEnseignant docs={docs} retirer={retirer} />}
+      {docs.length > 0 && user.role !== 'teacher' && (
         <>
           {!dansDossier && <input className="input docs-recherche" type="search" placeholder="Rechercher un document" value={q} onChange={(e) => setQ(e.target.value)} />}
 
