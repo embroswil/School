@@ -4,6 +4,7 @@ import { Note } from '../ui.jsx'
 import { ListeDevoirs } from './Devoirs.jsx'
 import { AgendaEleve } from './EmploiDuTemps.jsx'
 import Discipline from './Discipline.jsx'
+import { IcAppel, IcBouclier, IcCalendrier, IcCoche, IcGraphique } from '../icones.jsx'
 
 const n20 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : '')
@@ -134,41 +135,45 @@ export default function Suivi({ id }) {
   if (eleves.error) return <Note>{eleves.error}</Note>
   if (!eleves.data) return <p className="muted">Chargement…</p>
   if (!e) return <Note>Élève non relié à votre compte.</Note>
+  const r = e.resultat
+  // toutes les rubriques visibles d'un coup : chacune avec son chiffre cle ; la rubrique ouverte s'affiche dessous
+  const RUBRIQUES = [
+    ['notes', IcGraphique, 'Notes', r ? n20(r.moyenne) : '—', r ? `Séq. ${r.sequence}${r.rang ? ` · ${r.rang === 1 ? "1er" : `${r.rang}e`}/${r.sur}` : ""}` : 'Pas encore de notes'],
+    ['presences', IcAppel, 'Absences', String(e.absencesMois ?? 0), 'Ce mois-ci'],
+    ['devoirs', IcCoche, 'Devoirs', String(e.devoirs ?? 0), 'À faire'],
+    ['emploi', IcCalendrier, 'Emploi du temps', '', 'Jour par jour'],
+    ['discipline', IcBouclier, 'Discipline', '', 'Sanctions et observations'],
+  ]
   return (
-    <>
-      <section className="hero-card sans-impression" style={{ marginTop: 4 }}>
-        <span className="badge">{e.classe || 'Classe non précisée'}</span>
-        <h2 style={{ marginTop: 8 }}>
-          {e.prenom} {e.nom}
-        </h2>
-        <p>{e.ecole}</p>
+    <div className="sv-page">
+      <header className="sv-tete sans-impression">
+        <span className="sv-avatar">{`${(e.prenom || '?')[0]}${(e.nom || '')[0] || ''}`}</span>
+        <span className="sv-qui">
+          <b data-brut>{`${e.prenom} ${e.nom}`}</b>
+          <small data-brut>{[e.classe || 'Classe non précisée', e.ecole].filter(Boolean).join(' · ')}</small>
+        </span>
+      </header>
+      <nav className="sv-rubriques sans-impression" aria-label="Rubriques">
+        {RUBRIQUES.map(([k, Icone, titre, chiffre, detail]) => (
+          <button key={k} type="button" className={`sv-rubrique ${k}`} aria-pressed={onglet === k} onClick={() => setOnglet(k)}>
+            <span className="sv-rubrique-haut">
+              <Icone size={18} />
+              {chiffre && <b>{chiffre}</b>}
+            </span>
+            <span className="sv-rubrique-titre">{titre}</span>
+            <small>{detail}</small>
+          </button>
+        ))}
+      </nav>
+      <section className="sv-contenu">
+        <h2 className="sv-contenu-titre">{RUBRIQUES.find((x) => x[0] === onglet)[2]}</h2>
+        {onglet === 'notes' && <Notes id={id} />}
+        {onglet === 'presences' && <Presences id={id} />}
+        {onglet === 'devoirs' && <DevoirsEleve id={id} />}
+        {onglet === 'emploi' && <EmploiEleve id={id} />}
+        {onglet === 'discipline' && <Discipline eleveId={id} />}
       </section>
-      <div className="chips sans-impression" style={{ marginTop: 14 }}>
-        <button type="button" className="chip" aria-pressed={onglet === 'notes'} onClick={() => setOnglet('notes')}>
-          Notes
-        </button>
-        <button type="button" className="chip" aria-pressed={onglet === 'presences'} onClick={() => setOnglet('presences')}>
-          Absences
-        </button>
-        <button type="button" className="chip" aria-pressed={onglet === 'devoirs'} onClick={() => setOnglet('devoirs')}>
-          Devoirs
-        </button>
-        <button type="button" className="chip" aria-pressed={onglet === 'emploi'} onClick={() => setOnglet('emploi')}>
-          Emploi du temps
-        </button>
-        <button type="button" className="chip" aria-pressed={onglet === 'discipline'} onClick={() => setOnglet('discipline')}>
-          Discipline
-        </button>
-        <a className="chip" href="#/scolarite">
-          Scolarité ›
-        </a>
-      </div>
-      {onglet === 'notes' && <Notes id={id} />}
-      {onglet === 'presences' && <Presences id={id} />}
-      {onglet === 'devoirs' && <DevoirsEleve id={id} />}
-      {onglet === 'emploi' && <EmploiEleve id={id} />}
-      {onglet === 'discipline' && <Discipline eleveId={id} />}
-    </>
+    </div>
   )
 }
 

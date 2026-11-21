@@ -2868,3 +2868,22 @@ html.espace-parent:not(.ordi) .nav a .ico { background: none; }
 .fr-cours.passe .fr-carte { opacity: 0.6; }
 .agenda-eleve { margin-top: 4px; }
 .sco-feuille-frais { margin: 0; font: 600 15px/1.3 var(--font-body); }
+
+/* ---------------------------------------------------------------- Suivi d'un enfant : toutes les rubriques visibles */
+.sv-page { max-width: 760px; }
+.sv-tete { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+.sv-avatar { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 700 16px/1 var(--font-body); background: linear-gradient(135deg, var(--primary), #5b3df5); }
+.sv-qui { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sv-qui b { font: 700 19px/1.2 var(--font-display); }
+.sv-qui small { color: var(--muted); font-size: 13px; }
+.sv-rubriques { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+.sv-rubrique { grid-column: span 2; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sv-rubrique.emploi, .sv-rubrique.discipline { grid-column: span 3; }
+.sv-rubrique-haut { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--lien, var(--primary)); }
+.sv-rubrique-haut b { color: var(--text); font: 700 18px/1 var(--font-body); font-variant-numeric: tabular-nums; }
+.sv-rubrique-titre { font: 600 13.5px/1.2 var(--font-body); }
+.sv-rubrique small { width: 100%; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-rubrique[aria-pressed='true'] { border-color: var(--primary); background: var(--primary-soft); }
+.sv-contenu-titre { margin: 0 2px 10px; font: 700 12px/1.2 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+html.ordi .sv-rubriques { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+html.ordi .sv-rubrique, html.ordi .sv-rubrique.emploi, html.ordi .sv-rubrique.discipline { grid-column: span 1; }
