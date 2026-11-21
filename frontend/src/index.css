@@ -2769,10 +2769,11 @@ input[type='date'].input, input[type='time'].input { min-width: 0; width: 100%; 
    Barre du bas en capsule flottante (l'element ouvert s'affiche avec son nom), Messages en bulle,
    accueil centre sur les enfants : une carte de couleur par enfant, ses dernieres notes, puis les informations. */
 html.espace-parent:not(.ordi) .nav {
-  left: 16px; right: 16px; bottom: calc(10px + env(safe-area-inset-bottom)); width: auto; height: 62px; padding: 6px;
+  /* tout en bas de l'ecran, opaque : le contenu ne passe pas dessous */
+  left: 0; right: 0; bottom: 0; width: auto; height: auto; padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
   display: flex; justify-content: space-between; align-items: center; gap: 6px;
-  border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--card) 92%, transparent);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; background: var(--bg);
+  backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
 }
 html.espace-parent:not(.ordi) .nav a { flex: 1; height: 50px; min-width: 0; flex-direction: row; justify-content: center; gap: 8px; border-radius: 999px; padding: 0 12px; font-size: 13.5px; }
 html.espace-parent:not(.ordi) .nav a > span:last-child { display: none; }
@@ -2780,8 +2781,9 @@ html.espace-parent:not(.ordi) .nav a[aria-current='page'] { flex: 1.6; backgroun
 html.espace-parent:not(.ordi) .nav a[aria-current='page'] svg { color: #fff; }
 html.espace-parent:not(.ordi) .nav a[aria-current='page'] > span:last-child { display: inline; font-weight: 700; }
 html.espace-parent:not(.ordi) .nav a[aria-current='page']::after { display: none; }
-html.espace-parent .bulle-messages { bottom: calc(84px + env(safe-area-inset-bottom)); }
-html.espace-parent .sheet-wrap { padding-bottom: 96px; }
+html.espace-parent .bulle-messages { bottom: calc(82px + env(safe-area-inset-bottom)); }
+html.espace-parent .sheet-wrap { padding-bottom: 24px; }
+html.espace-parent:not(.ordi) .app { padding-bottom: calc(74px + env(safe-area-inset-bottom)); }
 
 .par-accueil { display: grid; gap: 22px; }
 .par-titre { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
