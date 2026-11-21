@@ -126,85 +126,61 @@ function Situation() {
             )}
             <div className="sco-solde">
               <div className="sco-solde-haut">
-                <span>
+                <span className="sco-anneau" style={{ '--p': pct }} aria-label={`${pct} % payé`}>
+                  <svg viewBox="0 0 36 36" aria-hidden="true">
+                    <circle cx="18" cy="18" r="15.5" className="fond" />
+                    <circle cx="18" cy="18" r="15.5" className="plein" strokeDasharray={`${(pct * 97.4) / 100} 97.4`} />
+                  </svg>
+                  <b>{`${pct} %`}</b>
+                </span>
+                <span className="sco-solde-texte">
                   <small>Reste à payer</small>
                   <b>{fcfa(s.reste)}</b>
+                  {s.reste === 0 ? <em className="sco-etat ok">À jour</em> : s.enRetard ? <em className="sco-etat retard">En retard</em> : <em className="sco-etat">{`${fcfa(s.paye)} payés`}</em>}
                 </span>
-                {s.reste === 0 ? <em className="sco-etat ok">À jour</em> : s.enRetard ? <em className="sco-etat retard">En retard</em> : null}
               </div>
-              <i className="sco-barre" style={{ '--p': `${pct}%` }} />
-              <small className="sco-solde-bas">{`${fcfa(s.paye)} payés sur ${fcfa(total)}`}</small>
               {aPayer.length > 0 && enLigne && (
                 <button type="button" className="btn btn-block sco-payer" onClick={() => ouvrir(s, aPayer[0])}>
                   Payer
                 </button>
               )}
+              {aPayer.length > 0 && !enLigne && <p className="sco-aide">Paiement au guichet de l’établissement.</p>}
             </div>
 
             {s.frais.length === 0 && <p className="muted">L’établissement n’a pas encore publié ses frais.</p>}
             {s.frais.length > 0 && (
-              <>
-                <h3 className="sco-titre">Frais</h3>
-                <ul className="sco-liste">
-                  {s.frais.map((f) => {
-                    const retard = f.reste > 0 && f.obligatoire && f.echeance && String(f.echeance).slice(0, 10) < auj
-                    const contenu = (
-                      <>
-                        <span className="sco-frais-texte">
-                          <b data-brut>{f.nom}</b>
-                          {(f.echeance || !f.obligatoire) && <small>{[f.echeance ? `Avant le ${jour(f.echeance)}` : '', !f.obligatoire ? 'Facultatif' : ''].filter(Boolean).join(' · ')}</small>}
-                        </span>
-                        {f.reste === 0 ? (
-                          <em className="sco-etat ok">Payé</em>
-                        ) : (
-                          <span className={`sco-montant ${retard ? 'retard' : ''}`}>
-                            <b>{fcfa(f.reste)}</b>
-                            {f.reste < f.montant && <small>{`sur ${fcfa(f.montant)}`}</small>}
-                          </span>
-                        )}
-                      </>
-                    )
-                    return (
-                      <li key={f.id}>
-                        {f.reste > 0 && enLigne ? (
-                          <button type="button" onClick={() => ouvrir(s, f)}>
-                            {contenu}
-                            <IcChevron size={15} />
-                          </button>
-                        ) : (
-                          <div>{contenu}</div>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-                {!enLigne && aPayer.length > 0 && <p className="sco-aide">Paiement au guichet de l’établissement.</p>}
-              </>
+              <div className="sco-tuiles">
+                {s.frais.map((f) => {
+                  const retard = f.reste > 0 && f.obligatoire && f.echeance && String(f.echeance).slice(0, 10) < auj
+                  const payable = f.reste > 0 && enLigne
+                  const Tag = payable ? 'button' : 'div'
+                  return (
+                    <Tag key={f.id} type={payable ? 'button' : undefined} className={`sco-tuile ${f.reste === 0 ? 'paye' : retard ? 'retard' : ''}`} onClick={payable ? () => ouvrir(s, f) : undefined}>
+                      <b className="sco-tuile-nom" data-brut>{f.nom}</b>
+                      <span className="sco-tuile-montant">{f.reste === 0 ? 'Payé' : fcfa(f.reste)}</span>
+                      <small>{f.reste === 0 ? fcfa(f.montant) : retard ? 'En retard' : f.echeance ? `Avant le ${jour(f.echeance).replace(/ \d{4}$/, '')}` : !f.obligatoire ? 'Facultatif' : 'À payer'}</small>
+                    </Tag>
+                  )
+                })}
+              </div>
             )}
 
             {s.paiements.length > 0 && (
               <>
-                <div className="sco-titre-ligne">
-                  <h3 className="sco-titre">Paiements</h3>
-                  <a href={`#/releve/${s.eleve.id}`}>Relevé de l’année</a>
-                </div>
-                <ul className="sco-liste">
+                <h3 className="sco-titre">Reçus</h3>
+                <div className="sco-recus">
                   {s.paiements.map((p) => (
-                    <li key={p.id}>
-                      <a href={`#/recus/${p.id}`}>
-                        <span className="sco-frais-texte">
-                          <b data-brut>{p.frais}</b>
-                          <small>{`${jour(p.created_at)} · ${MODES[p.mode] || ''}`}</small>
-                        </span>
-                        <span className="sco-montant">
-                          <b>{fcfa(p.montant)}</b>
-                          <small>Reçu</small>
-                        </span>
-                        <IcChevron size={15} />
-                      </a>
-                    </li>
+                    <a key={p.id} className="sco-recu" href={`#/recus/${p.id}`}>
+                      <b>{fcfa(p.montant)}</b>
+                      <small data-brut>{p.frais}</small>
+                      <small>{jour(p.created_at)}</small>
+                    </a>
                   ))}
-                </ul>
+                  <a className="sco-recu releve" href={`#/releve/${s.eleve.id}`}>
+                    <b>Relevé</b>
+                    <small>de l’année</small>
+                  </a>
+                </div>
               </>
             )}
           </section>

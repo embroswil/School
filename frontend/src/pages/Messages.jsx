@@ -89,7 +89,10 @@ export default function Messages() {
         setBusy(false)
         return
       }
-      const r = await envoyerOuGarder({ cle: `message-${Date.now()}`, path: '/api/boite/messages', body: f, libelle: `Message « ${f.subject} »` })
+      // pas d'objet a saisir : la conversation prend le debut du message
+      const premier = f.body.trim().split(/\n/)[0]
+      const subject = premier.length > 60 ? `${premier.slice(0, 57).trim()}…` : premier
+      const r = await envoyerOuGarder({ cle: `message-${Date.now()}`, path: '/api/boite/messages', body: { ...f, subject }, libelle: `Message « ${subject} »` })
       if (r.attente) {
         setEnvoye('Pas de réseau : message gardé sur le téléphone, envoyé dès le retour de la connexion.')
         setOuvert(false)
@@ -132,10 +135,11 @@ export default function Messages() {
       {ouvert && (
         <form className="msg-redaction" onSubmit={envoyer}>
           <div className="msg-redaction-tete">
-            <b>Nouveau message</b>
             <button type="button" className="lien-action" onClick={() => setOuvert(false)}>
               Annuler
             </button>
+            <b>Nouveau message</b>
+            <span aria-hidden="true" />
           </div>
 
           <div className="msg-champ">
@@ -196,31 +200,30 @@ export default function Messages() {
               <p className="msg-info">L’administration est prévenue tout de suite et peut organiser le remplacement.</p>
             </>
           )}
-          {!absence && (
-          <>
-          <div className="msg-champ">
-            <span>Objet</span>
-            <input
-              className="msg-saisie"
-              placeholder={enseignant ? (f.a === 'parents' ? 'ex. Devoir de mathématiques' : 'ex. Changement de salle') : 'ex. Absence de mon enfant'}
-              value={f.subject}
-              onChange={(e) => setF({ ...f, subject: e.target.value })}
-              required
-            />
-          </div>
-          <textarea className="msg-texte" placeholder="Votre message…" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} required />
-          </>
+          {absence ? (
+            <>
+              <Note>{error}</Note>
+              <div className="msg-pied">
+                <button className="btn" type="submit" disabled={busy}>
+                  {busy ? 'Envoi…' : 'Signaler'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Note>{error}</Note>
+              <div className="ig-saisie msg-ecrire">
+                <textarea rows={1} placeholder="Message…" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} required autoFocus />
+                <button type="submit" disabled={busy || !f.body.trim() || (enseignant && f.a === 'parents' && !nbParents)}>
+                  {busy ? '…' : 'Envoyer'}
+                </button>
+              </div>
+            </>
           )}
-          <Note>{error}</Note>
-          <div className="msg-pied">
-            <button className="btn" type="submit" disabled={busy || (enseignant && f.a === 'parents' && !nbParents)}>
-              {busy ? 'Envoi…' : absence ? 'Signaler' : 'Envoyer'}
-            </button>
-          </div>
         </form>
       )}
 
-      {enseignant && absences.data?.length > 0 && (
+      {!ouvert && enseignant && absences.data?.length > 0 && (
         <div className="msg-absences">
           <p>Absences signalées</p>
           {absences.data.map((a) => (
@@ -238,7 +241,7 @@ export default function Messages() {
         </div>
       )}
 
-      {enseignant && tout.length > 0 && (
+      {!ouvert && enseignant && tout.length > 0 && (
         <div className="msg-filtres" role="tablist">
           {[
             ['tous', `Tous${nonLus ? ` (${nonLus})` : ''}`],
@@ -253,13 +256,13 @@ export default function Messages() {
       )}
 
       {liste.loading && !liste.data && <p className="muted">Chargement…</p>}
-      {liste.data && visibles.length === 0 && (
+      {!ouvert && liste.data && visibles.length === 0 && (
         <div className="vide">
           <b>Aucun message</b>
           <small>{etablissement ? 'Les messages des familles et des enseignants apparaîtront ici.' : 'Vos échanges apparaîtront ici.'}</small>
         </div>
       )}
-      {visibles.length > 0 && (
+      {!ouvert && visibles.length > 0 && (
         <div className="ig-liste">
           {visibles.map((c) => (
             <Ligne key={c.id} c={c} etablissement={etablissement} />
