@@ -177,19 +177,30 @@ router.get("/eleves/:id/presences", async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     await verifierAcces(req.user, id);
+    // annee scolaire en cours : chaque absence avec l'heure du cours, la matiere et l'enseignant (emploi du temps)
     const { rows } = await db.query(
-      `SELECT a.date, a.status, c.name AS classe FROM attendance a JOIN classes c ON c.id = a.class_id
-       WHERE a.student_id = $1 AND a.status = 'absent' ORDER BY a.date DESC LIMIT 200`,
+      `SELECT a.date, a.status, a.period_number, a.remarks, c.name AS classe,
+              COALESCE(s1.name, s2.name) AS matiere, to_char(cr.debut, 'HH24:MI') AS debut, to_char(cr.fin, 'HH24:MI') AS fin,
+              NULLIF(trim(COALESCE(t.first_name, '') || ' ' || COALESCE(t.last_name, '')), '') AS enseignant
+       FROM attendance a JOIN classes c ON c.id = a.class_id
+       JOIN academic_years ay ON ay.id = a.academic_year_id AND ay.is_current
+       LEFT JOIN subjects s1 ON s1.id = a.subject_id
+       LEFT JOIN LATERAL (SELECT x.debut, x.fin, x.subject_id FROM creneaux x WHERE x.class_id = a.class_id AND x.jour = EXTRACT(ISODOW FROM a.date)::int
+                          AND a.period_number IS NOT NULL AND to_char(x.debut, 'HH24MI')::int = a.period_number LIMIT 1) cr ON true
+       LEFT JOIN subjects s2 ON s2.id = cr.subject_id
+       LEFT JOIN class_subjects cs ON cs.class_id = a.class_id AND cs.subject_id = COALESCE(a.subject_id, cr.subject_id)
+       LEFT JOIN users t ON t.id = cs.teacher_id
+       WHERE a.student_id = $1 AND a.status IN ('absent', 'excused', 'late')
+       ORDER BY a.date DESC, a.period_number DESC NULLS LAST LIMIT 400`,
       [id]
     );
-    const total = (
-      await db.query(
-        `SELECT COUNT(*) FILTER (WHERE status = 'absent')::int AS absences, 0 AS retards,
-                0 AS justifiees, COUNT(*)::int AS jours
-         FROM attendance WHERE student_id = $1`,
-        [id]
-      )
-    ).rows[0];
+    const total = {
+      absences: rows.filter((r) => r.status !== "late").length,
+      justifiees: rows.filter((r) => r.status === "excused").length,
+      nonJustifiees: rows.filter((r) => r.status === "absent").length,
+      retards: rows.filter((r) => r.status === "late").length,
+      jours: new Set(rows.filter((r) => r.status !== "late").map((r) => String(r.date).slice(0, 10))).size,
+    };
     res.json({ success: true, data: { ...total, evenements: rows } });
   } catch (e) {
     next(e);
