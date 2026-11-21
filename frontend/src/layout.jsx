@@ -192,8 +192,16 @@ const ACTIONS_ENS = [
   ['/info?genre=cours', IcHorlogePlus, 'Cours en plus', 'Hors emploi du temps'],
   ['/mes-classes', IcTableauNoir, 'Mes classes', 'Notes, devoirs, appel'],
 ]
+// Le cours mis en avant : celui en cours, sinon le prochain du jour, sinon le dernier du jour,
+// sinon le premier du prochain jour de cours (jamais de bloc vide)
+const plusJoursIso = (iso, n) => {
+  const d = new Date(`${iso}T12:00:00`)
+  d.setDate(d.getDate() + n)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 function ActionsEnseignant() {
   const [v, setV] = useState(null)
+  const [suite, setSuite] = useState(null)
   useEffect(() => {
     api
       .get('/api/presence-enseignants/mes-cours')
@@ -201,20 +209,66 @@ function ActionsEnseignant() {
       .catch(() => {})
   }, [])
   const t = v?.maintenant || ''
-  const cours = (v?.cours || []).find((c) => c.debut <= t && t < c.fin)
+  const duJour = [...(v?.cours || [])].sort((x, y) => x.debut.localeCompare(y.debut))
+  const enCours = duJour.find((c) => c.debut <= t && t < c.fin)
+  const prochain = duJour.find((c) => c.debut > t)
+  const dernier = [...duJour].reverse().find((c) => c.fin <= t)
+  const aujourdhui = enCours || prochain || dernier
+  // aucun cours aujourd'hui : premier cours du prochain jour de cours
+  useEffect(() => {
+    if (!v || aujourdhui || !v.aujourdhui) return
+    let jour = null
+    for (let i = 1; i <= 14 && !jour; i++) {
+      const iso = plusJoursIso(v.aujourdhui, i)
+      const dow = ((new Date(`${iso}T12:00:00`).getDay() + 6) % 7) + 1
+      if ((v.jours || []).includes(dow) || (v.joursSupp || []).includes(iso)) jour = iso
+    }
+    if (!jour) return
+    api
+      .get(`/api/presence-enseignants/mes-cours?date=${jour}`)
+      .then((r) => {
+        const c = [...(r.data?.cours || [])].sort((x, y) => x.debut.localeCompare(y.debut))[0]
+        if (c) setSuite({ ...c, jour })
+      })
+      .catch(() => {})
+  }, [v, aujourdhui])
+  const cours = aujourdhui || suite
+  const etiquette = enCours
+    ? 'En cours'
+    : prochain
+      ? 'Prochain cours'
+      : dernier
+        ? 'Dernier cours'
+        : suite
+          ? 'Prochain cours'
+          : ''
+  const leJour = !aujourdhui && suite ? ` · ${new Date(`${suite.jour}T12:00:00`).toLocaleDateString(langue === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')}` : ''
   return (
     <>
       {cours && (
         <div className="act-cours">
-          <small>En cours · {`${cours.debut} – ${cours.fin}`}</small>
+          <small data-brut>{`${traduire(etiquette)}${leJour} · ${cours.debut} – ${cours.fin}`}</small>
           <b data-brut>{`${cours.classe} · ${cours.matiere || ''}`}</b>
           <div>
-            <a className="btn" href={`#/classes/${cours.class_id}/appel`}>
-              <IcAppelListe size={17} /> {cours.appel ? 'Appel fait' : 'Faire l’appel'}
-            </a>
-            <a className="btn btn-quiet" href="#/mes-cours">
-              <IcCoche size={17} /> Cahier de textes
-            </a>
+            {aujourdhui ? (
+              <>
+                <a className="btn" href={`#/classes/${cours.class_id}/appel`}>
+                  <IcAppelListe size={17} /> {cours.appel ? 'Appel fait' : 'Faire l’appel'}
+                </a>
+                <a className="btn btn-quiet" href="#/mes-cours">
+                  <IcCoche size={17} /> Cahier de textes
+                </a>
+              </>
+            ) : (
+              <>
+                <a className="btn" href={`#/classes/${cours.class_id}/devoirs`}>
+                  <IcAppelListe size={17} /> Devoirs
+                </a>
+                <a className="btn btn-quiet" href={`#/classes/${cours.class_id}/notes`}>
+                  <IcCoche size={17} /> Notes
+                </a>
+              </>
+            )}
           </div>
         </div>
       )}

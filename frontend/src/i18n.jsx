@@ -1340,6 +1340,7 @@ const EN = {
   "Reçus": "Receipts",
   "de l’année": "for the year",
   "Info, consigne, photos": "Note, instruction, photos",
+  "Dernier cours": "Last lesson",
   "Demain": "Tomorrow",
   "Revenir à aujourd’hui": "Back to today",
   "Choisir un jour": "Choose a day",
