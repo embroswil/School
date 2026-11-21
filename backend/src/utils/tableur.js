@@ -47,7 +47,9 @@ function feuilles(texte) {
   const fin = () => {
     const t = bloc.join("\n");
     if (t.trim()) {
-      const tableau = t.includes(" | ") && !t.includes(",") ? t.split("\n").map((l) => l.split(" | ")) : lireCsv(t);
+      // texte « | » (Word, PDF lus sur le telephone) ou CSV (Excel)
+      const pipes = t.split("\n").filter((l) => l.includes(" | ")).length;
+      const tableau = pipes >= 2 && (!t.includes(",") || pipes >= t.split("\n").filter((l) => l.includes(",")).length / 2) ? t.split("\n").map((l) => l.split(" | ")) : lireCsv(t);
       res.push({ nom, lignes: tableau.map((l) => l.map((c) => String(c ?? "").trim())).filter((l) => l.some(Boolean)) });
     }
     bloc = [];

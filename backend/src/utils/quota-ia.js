@@ -46,7 +46,12 @@ const reserver = async (ecole, userId, type, poids) => {
  * Lit un document avec l'IA en comptant la lecture sur le plafond de l'etablissement de l'utilisateur.
  * Si la lecture echoue, elle n'est pas comptee.
  */
+// L'IA ne lit que les photos et les documents scannes (ou ecrits a la main). Un document qui a du texte
+// (Excel, Word, PDF) est lu sans IA ; si sa mise en page n'est pas reconnue, on le dit.
+const NON_RECONNU =
+  "Mise en page non reconnue dans ce document. Vérifiez qu’il a une ligne d’en-tête (Nom, Classe…), envoyez le fichier Excel, ou prenez-le en photo.";
 const lireAvecQuota = async (req, type, args) => {
+  if (!(args.images?.length || args.pdfs?.length)) throw new ApiError(422, NON_RECONNU);
   const ecole = req.user?.schoolId;
   if (!ecole) return lireDocument(args); // administrateur de la plateforme : pas de plafond
   const poids = Math.max(1, (args.images?.length || 0) + (args.pdfs?.length || 0));

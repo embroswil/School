@@ -231,7 +231,8 @@ router.post("/documents/analyser", async (req, res, next) => {
     const repli = { categorie: devinerCategorie(nom), titre: nom.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim(), resume: "", ia: false };
     const mimeLu = String(req.body?.mime || "");
     // Seuls les PDF et les photos sont lus ; Word, Excel, PowerPoint : classes d'apres leur nom
-    if (!process.env.ANTHROPIC_API_KEY || !url.startsWith(prefixePublic()) || !(mimeLu === "application/pdf" || mimeLu.startsWith("image/"))) return res.json({ success: true, data: repli });
+    // L'IA ne lit que les photos et les PDF scannes : un document dont le texte a ete lu sur l'appareil (lu) est classe d'apres son nom
+    if (req.body?.lu || !process.env.ANTHROPIC_API_KEY || !url.startsWith(prefixePublic()) || !(mimeLu === "application/pdf" || mimeLu.startsWith("image/"))) return res.json({ success: true, data: repli });
     const r = await fetch(url);
     const buf = Buffer.from(await r.arrayBuffer());
     if (!r.ok || buf.length > 15 * 1024 * 1024) return res.json({ success: true, data: repli });

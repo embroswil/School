@@ -10,6 +10,7 @@ import { preparerDocument } from '../lecture-fichier.js'
 import Comptabilite from './Comptabilite.jsx'
 import { envoyer } from './Documents.jsx'
 import { useDepotPage } from '../depot.jsx'
+import { textePdf } from '../documents-ecole.js'
 import CompteurIA from '../CompteurIA.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
@@ -340,8 +341,10 @@ function Frais() {
   async function lireUnDocument(fichier, pre) {
     setLecture(`${pre}Envoi du document…`)
     let corps
+    let texte
     if (/\.(xlsx|xls|csv)$/i.test(fichier.name)) corps = { texte: await texteDuTableur(fichier) }
     else if (/\.docx$/i.test(fichier.name)) corps = { texte: (await preparerDocument([fichier])).texte }
+    else if (/\.pdf$/i.test(fichier.name) && (texte = await textePdf(fichier))) corps = { texte }
     else {
       const env = await envoyer(fichier)
       corps = { url: env.url, mime: env.mime }

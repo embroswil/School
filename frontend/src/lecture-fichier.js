@@ -135,34 +135,80 @@ const pagesPdfEnImages = async (doc) => {
   return images
 }
 
-const lirePdf = async (fichier) => {
+// Texte d'un PDF, rangee par rangee : les morceaux a la meme hauteur forment une ligne ; deux morceaux
+// proches (un mot en gras dans une phrase) restent dans la meme cellule, un grand ecart separe deux colonnes.
+export async function lignesPdf(fichier) {
   const pdfjs = await import('pdfjs-dist')
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
   const doc = await pdfjs.getDocument({ data: await fichier.arrayBuffer() }).promise
   const lignes = []
-  for (let p = 1; p <= doc.numPages; p++) {
+  for (let p = 1; p <= Math.min(doc.numPages, 30); p++) {
     const page = await doc.getPage(p)
     const contenu = await page.getTextContent()
-    // Regroupe les morceaux de texte par ligne (meme hauteur), puis en colonnes
     const parLigne = new Map()
     for (const it of contenu.items) {
       if (!it.str?.trim()) continue
       const y = Math.round(it.transform[5] / 3)
       if (!parLigne.has(y)) parLigne.set(y, [])
-      parLigne.get(y).push({ x: it.transform[4], s: it.str.trim() })
+      parLigne.get(y).push({ x: it.transform[4], l: it.width || 0, h: Math.abs(it.transform[3]) || 10, s: it.str })
     }
+    const rangees = []
     ;[...parLigne.entries()]
       .sort((a, b) => b[0] - a[0])
-      .forEach(([, morceaux]) => lignes.push(morceaux.sort((a, b) => a.x - b.x).map((m) => m.s)))
+      .forEach(([, morceaux]) => {
+        const cellules = []
+        let fin = null
+        for (const m of morceaux.sort((a, b) => a.x - b.x)) {
+          const ecart = fin === null ? Infinity : m.x - fin
+          if (ecart < m.h * 0.9 && cellules.length) {
+            const c = cellules[cellules.length - 1]
+            c.s += `${ecart > m.h * 0.12 && !/\s$/.test(c.s) ? ' ' : ''}${m.s}`
+          } else cellules.push({ x: m.x, s: m.s })
+          fin = m.x + m.l
+        }
+        const propres = cellules.map((c) => ({ x: c.x, s: c.s.replace(/\s+/g, ' ').trim() })).filter((c) => c.s)
+        if (propres.length) rangees.push(propres)
+      })
+    // Tableau : les colonnes de la rangee la plus remplie servent de reperes ; une cellule vide reste a sa place
+    const reperes = rangees.reduce((m, r) => (r.length > m.length ? r : m), []).map((c) => c.x)
+    for (const r of rangees) {
+      if (reperes.length < 3 || r.length < 2 || r.length >= reperes.length) {
+        lignes.push(r.map((c) => c.s))
+        continue
+      }
+      const l = reperes.map(() => '')
+      for (const c of r) {
+        let k = 0
+        reperes.forEach((x, i) => {
+          if (Math.abs(x - c.x) < Math.abs(reperes[k] - c.x)) k = i
+        })
+        l[k] = l[k] ? `${l[k]} ${c.s}` : c.s
+      }
+      lignes.push(l)
+    }
   }
+  return { lignes, doc }
+}
+// Lignes -> texte (une ligne par rangee, colonnes separees par « | »), lisible par les lecteurs de tableaux du serveur
+export const texteDesLignes = (lignes) => lignes.map((l) => l.join(' | ')).join('\n')
+
+const lirePdf = async (fichier) => {
+  const { lignes, doc } = await lignesPdf(fichier)
   const eleves = versEleves(lignes)
-  // PDF scanne (aucun texte) : lecture des pages par l'IA
-  if (eleves.length === 0) return lireParIA(await pagesPdfEnImages(doc))
-  return eleves
+  if (eleves.length) return eleves
+  // PDF scanne (aucun texte) : lecture des pages par l'IA ; PDF avec texte : la mise en page n'est pas reconnue
+  if (lignes.length < 3) return lireParIA(await pagesPdfEnImages(doc))
+  throw new Error('Liste non reconnue dans ce PDF : il faut une colonne « Nom » (ou « Noms et prénoms »). Envoyez le fichier Excel, ou une photo de la liste.')
 }
 
 // ---------- Word (.docx) ----------
 // Un fichier .docx est une archive ZIP : on y lit « word/document.xml » avec les outils du navigateur.
+// Rangees d'un document Word (.docx) : tableaux et paragraphes
+export async function lignesWord(fichier) {
+  if (/\.doc$/i.test(fichier.name)) throw new Error('Ancien format Word (.doc) : enregistrez le fichier en .docx ou en PDF, puis réessayez.')
+  return lignesDocx(await lireEntreeZip(await fichier.arrayBuffer(), 'word/document.xml'))
+}
+
 const lireEntreeZip = async (tampon, chemin) => {
   const o = new Uint8Array(tampon)
   const v = new DataView(tampon)
@@ -230,10 +276,8 @@ const lireWord = async (fichier) => {
   const lignes = lignesDocx(await lireEntreeZip(await fichier.arrayBuffer(), 'word/document.xml'))
   const eleves = versEleves(lignes)
   if (eleves.length) return eleves
-  // Mise en page non reconnue : lecture du texte par l'IA
-  const texte = lignes.map((l) => l.join(' | ')).join('\n')
-  if (texte.trim().length < 20) throw new Error('Ce document Word ne contient pas de texte lisible.')
-  return (await api.post('/api/etablissement/lire-images', { texte })).data || []
+  // Mise en page non reconnue : pas de lecture par l'IA pour un document qui a du texte
+  throw new Error('Liste non reconnue dans ce document Word : il faut une colonne « Nom » (ou « Noms et prénoms »). Envoyez le fichier Excel, ou une photo de la liste.')
 }
 
 // Le type du fichier est reconnu automatiquement : Excel/CSV, PDF, Word ou photo
@@ -255,14 +299,9 @@ export async function preparerDocument(fichiers) {
   for (const f of liste.slice(0, 8)) {
     const nom = f.name.toLowerCase()
     if (nom.endsWith('.pdf')) {
-      const pdfjs = await import('pdfjs-dist')
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
-      const doc = await pdfjs.getDocument({ data: await f.arrayBuffer() }).promise
-      let t = ''
-      for (let p = 1; p <= Math.min(doc.numPages, 15); p++) {
-        const c = await (await doc.getPage(p)).getTextContent()
-        t += c.items.map((i) => i.str).join(' ') + '\n'
-      }
+      // PDF avec texte : lu ici, rangee par rangee (tableaux compris) ; PDF scanne : images des pages (IA)
+      const { lignes, doc } = await lignesPdf(f)
+      const t = texteDesLignes(lignes)
       if (t.replace(/\s/g, '').length > 80) texte += `\n${t}`
       else images.push(...(await pagesPdfEnImages(doc)))
     } else if (/\.(xlsx|xls|csv|ods)$/.test(nom)) {

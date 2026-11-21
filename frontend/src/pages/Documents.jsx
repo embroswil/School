@@ -373,7 +373,7 @@ export default function Documents() {
           }
         }
         let a = null
-        if (!vu) a = (await api.post('/api/actualites/documents/analyser', { url: envoye.url, mime: envoye.mime, nom: envoye.nom }).catch(() => ({ data: null }))).data
+        if (!vu) a = (await api.post('/api/actualites/documents/analyser', { url: envoye.url, mime: envoye.mime, nom: envoye.nom, lu: texte.replace(/\s/g, '').length > 80 }).catch(() => ({ data: null }))).data
         if (a && DESTINATIONS[a.nature]) {
           maj(id, { etape: 'pret', analyse: { nature: a.nature }, categorie: CATEGORIE_DE[a.nature] || 'autre' })
           continue

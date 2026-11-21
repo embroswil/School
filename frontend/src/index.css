@@ -2755,3 +2755,4 @@ button.doc-dossier { align-items: flex-start; }
 .doc-import-ok { display: grid; gap: 6px; }
 .doc-import-ok b { font-size: 14px; }
 .doc-import-ok small { color: var(--muted); font-size: 12.5px; }
+.doc-import .input, .doc-import .btn { width: 100%; }

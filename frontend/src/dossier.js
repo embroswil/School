@@ -6,7 +6,7 @@
 import { api } from './api.js'
 import { lireListeEleves, preparerDocument } from './lecture-fichier.js'
 import { envoyer } from './pages/Documents.jsx'
-import { lireTableur as lireEnseignants } from './pages/ImportEnseignants.jsx'
+import { lireEnseignantsDocument } from './pages/ImportEnseignants.jsx'
 
 const sans = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’']/g, "'").toLowerCase()
 const ext = (nom) => (String(nom).match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase()
@@ -149,7 +149,7 @@ async function texteDe(f) {
       const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' })
       return wb.SheetNames.map((n) => `Feuille « ${n} »\n${XLSX.utils.sheet_to_csv(wb.Sheets[n])}`).join('\n\n')
     }
-    if (e === 'pdf' || e === 'docx') return ((await preparerDocument([f])).texte || '').slice(0, 12000)
+    if (e === 'pdf' || e === 'docx') return ((await preparerDocument([f])).texte || '').slice(0, 60000)
   } catch {
     /* fichier illisible : reconnu par son nom */
   }
@@ -201,9 +201,11 @@ async function photoBandeau(f) {
   }
 }
 
-// Donnees d'un document a lire par le serveur : texte (tableurs, Word) ou fichier envoye (PDF, photo)
+// Donnees d'un document a lire par le serveur : texte (tableurs, Word, PDF avec texte), lu sans IA ;
+// seuls les photos et les PDF scannes sont envoyes en fichier (lecture par l'IA)
 async function lisible(x) {
-  if (x.texte && (TABLEUR.includes(ext(x.nom)) || ext(x.nom) === 'docx')) return { texte: x.texte, nom: x.nom }
+  const pdfTexte = ext(x.nom) === 'pdf' && String(x.texte || '').replace(/\s/g, '').length > 80
+  if (x.texte && (TABLEUR.includes(ext(x.nom)) || ext(x.nom) === 'docx' || pdfTexte)) return { texte: x.texte, nom: x.nom }
   const env = await envoyer(x.fichier)
   return { url: env.url, mime: env.mime, nom: x.nom }
 }
@@ -236,8 +238,7 @@ async function preparer(analyse, roles, onPas) {
     onPas('Lecture de la liste des enseignants')
     let lignes = []
     for (const x of profs) {
-      if (TABLEUR.includes(ext(x.nom))) lignes = lignes.concat(await lireEnseignants(x.fichier))
-      else lignes = lignes.concat((await api.post('/api/etablissement/enseignants/lire', await preparerDocument([x.fichier]))).data || [])
+      lignes = lignes.concat(await lireEnseignantsDocument(x.fichier))
     }
     if (lignes.length) ajouter('enseignants', 'Liste des enseignants', { enseignants: lignes })
   }

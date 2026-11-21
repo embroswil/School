@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { Note } from '../ui.jsx'
 import { useDepotPage } from '../depot.jsx'
-import { preparerDocument } from '../lecture-fichier.js'
+import { lignesPdf, lignesWord, preparerDocument, texteDesLignes } from '../lecture-fichier.js'
 import { IcImport } from '../icones.jsx'
 import CompteurIA from '../CompteurIA.jsx'
 
@@ -19,34 +19,53 @@ const CHAMPS = {
 }
 const sans = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 
+// Rangees (tableur, PDF ou Word) -> enseignants, d'apres la ligne d'en-tete
+function versEnseignants(rows) {
+  const lignes = []
+  const h = rows.findIndex((r) => r.some((c) => [...CHAMPS.nom, ...CHAMPS.complet].includes(sans(c))))
+  if (h < 0) return lignes
+  const cols = {}
+  rows[h].forEach((c, i) => {
+    const k = Object.keys(CHAMPS).find((champ) => CHAMPS[champ].includes(sans(c)))
+    if (k && cols[k] === undefined) cols[k] = i
+  })
+  for (const r of rows.slice(h + 1)) {
+    const v = (k) => (cols[k] === undefined ? '' : String(r[cols[k]] ?? '').trim())
+    let nom = v('nom')
+    let prenom = v('prenom')
+    if (!nom && v('complet')) {
+      const mots = v('complet').split(/\s+/)
+      nom = mots[0]
+      prenom = mots.slice(1).join(' ')
+    }
+    if (!nom) continue
+    lignes.push({ nom, prenom, matieres: v('matieres'), classes: v('classes'), principalDe: v('principalDe'), telephone: v('telephone'), email: v('email') })
+  }
+  return lignes
+}
+
 export async function lireTableur(fichier) {
   const XLSX = await import('xlsx')
   const wb = XLSX.read(await fichier.arrayBuffer(), { type: 'array' })
-  const lignes = []
-  for (const nom of wb.SheetNames) {
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[nom], { header: 1, defval: '' })
-    // ligne d'en-tete : la premiere qui contient une colonne « nom »
-    const h = rows.findIndex((r) => r.some((c) => [...CHAMPS.nom, ...CHAMPS.complet].includes(sans(c))))
-    if (h < 0) continue
-    const cols = {}
-    rows[h].forEach((c, i) => {
-      const k = Object.keys(CHAMPS).find((champ) => CHAMPS[champ].includes(sans(c)))
-      if (k && cols[k] === undefined) cols[k] = i
-    })
-    for (const r of rows.slice(h + 1)) {
-      const v = (k) => (cols[k] === undefined ? '' : String(r[cols[k]] ?? '').trim())
-      let nom = v('nom')
-      let prenom = v('prenom')
-      if (!nom && v('complet')) {
-        const mots = v('complet').split(/\s+/)
-        nom = mots[0]
-        prenom = mots.slice(1).join(' ')
-      }
-      if (!nom) continue
-      lignes.push({ nom, prenom, matieres: v('matieres'), classes: v('classes'), principalDe: v('principalDe'), telephone: v('telephone'), email: v('email') })
-    }
-  }
+  let lignes = []
+  for (const nom of wb.SheetNames) lignes = lignes.concat(versEnseignants(XLSX.utils.sheet_to_json(wb.Sheets[nom], { header: 1, defval: '' })))
   return lignes
+}
+
+// Tout document : Excel, PDF et Word lus sur le telephone ; seules les photos et les PDF scannes passent par l'IA
+export async function lireEnseignantsDocument(fichier) {
+  if (/\.(xlsx|xls|csv|ods)$/i.test(fichier.name)) return lireTableur(fichier)
+  let rows = null
+  if (/\.pdf$/i.test(fichier.name)) {
+    const r = (await lignesPdf(fichier)).lignes
+    if (texteDesLignes(r).replace(/\s/g, '').length > 80) rows = r
+  } else if (/\.docx?$/i.test(fichier.name)) rows = await lignesWord(fichier)
+  if (rows) {
+    const l = versEnseignants(rows)
+    if (!l.length) throw new Error('Liste non reconnue : il faut une colonne « Nom » (ou « Noms et prénoms »). Envoyez le fichier Excel, ou une photo de la liste.')
+    return l
+  }
+  return (await api.post('/api/etablissement/enseignants/lire', await preparerDocument([fichier]))).data || []
 }
 
 export default function ImportEnseignants() {
@@ -68,13 +87,7 @@ export default function ImportEnseignants() {
     setLecture(true)
     try {
       let l = []
-      const tableurs = fichiers.filter((f) => /\.(xlsx|xls|csv|ods)$/i.test(f.name))
-      const autres = fichiers.filter((f) => !tableurs.includes(f))
-      for (const f of tableurs) l = l.concat(await lireTableur(f))
-      if (autres.length) {
-        const doc = await preparerDocument(autres)
-        l = l.concat((await api.post('/api/etablissement/enseignants/lire', doc)).data || [])
-      }
+      for (const f of fichiers) l = l.concat(await lireEnseignantsDocument(f))
       if (!l.length) throw new Error('Aucun enseignant trouvé dans ce document.')
       setNom(fichiers.length > 1 ? `${fichiers.length} fichiers` : fichiers[0].name)
       setLignes(l)
