@@ -599,9 +599,13 @@ export default function Documents() {
       )}
       <input ref={champDossier} type="file" hidden webkitdirectory="" directory="" multiple onChange={choisir} />
       {user.role === 'principal' && (
-        <a className="doc-dossier" href="#/dossier">
-          <b>Ajouter tout un dossier</b>
-          <small>Chaque fichier est reconnu et rangé au bon endroit</small>
+        <a className="dr-ajout-dossier" href="#/dossier">
+          <IcImport size={17} />
+          <span>
+            <b>Ajouter tout un dossier</b>
+            <small>Chaque fichier est reconnu et rangé au bon endroit</small>
+          </span>
+          <IcChevron size={15} />
         </a>
       )}
       <input ref={champ} type="file" hidden multiple accept={`${ACCEPT},.zip,application/zip`} onChange={choisir} />
@@ -848,22 +852,42 @@ export default function Documents() {
         <>
           {!dansDossier && <input className="input docs-recherche" type="search" placeholder="Rechercher un document" value={q} onChange={(e) => setQ(e.target.value)} />}
 
-          {/* dossiers par type */}
+          {/* recents, puis dossiers par type (comme un gestionnaire de fichiers) */}
           {!dansDossier && !recherche && (
-            <div className="docs-dossiers">
-              {types.map((g) => {
-                const ds = dossiers.get(g)
-                return (
-                  <button key={g} type="button" className="doc-dossier" onClick={() => ouvrirDossier(g)}>
-                    <Dossier groupe={g} />
-                    <b>{g}</b>
-                    <small>
-                      {ds.length} {ds.length > 1 ? 'documents' : 'document'}
-                    </small>
-                  </button>
-                )
-              })}
-            </div>
+            <>
+              <h2 className="dr-titre">Récents</h2>
+              <div className="dr-recents">
+                {docs.slice(0, 8).map((d) => {
+                  const f = Array.isArray(d.medias) ? d.medias[0] : null
+                  return (
+                    <a key={d.id} className="dr-recent" href={f?.url} target="_blank" rel="noreferrer">
+                      <span className="dr-recent-haut">
+                        <Dossier groupe={groupeDe(d.categorie)} taille={34} />
+                        <span className="doc-badge">{ETIQUETTE(f?.nom || d.title || '', f?.type || 'document')}</span>
+                      </span>
+                      <b data-brut>{d.title}</b>
+                      <small>{`${d.categorie || 'Document'} · ${jour(d.created_at)}`}</small>
+                    </a>
+                  )
+                })}
+              </div>
+              <h2 className="dr-titre">Dossiers</h2>
+              <div className="dr-dossiers">
+                {types.map((g) => {
+                  const ds = dossiers.get(g)
+                  return (
+                    <button key={g} type="button" className="dr-dossier" onClick={() => ouvrirDossier(g)}>
+                      <Dossier groupe={g} taille={40} />
+                      <span className="dr-dossier-texte">
+                        <b>{g}</b>
+                        <small>{`${ds.length} ${ds.length > 1 ? 'documents' : 'document'} · ${jour(ds[0].created_at)}`}</small>
+                      </span>
+                      <IcChevron size={16} />
+                    </button>
+                  )
+                })}
+              </div>
+            </>
           )}
 
           {/* contenu d'un dossier, ou resultats de la recherche */}

@@ -4,18 +4,21 @@ import { envoyerOuGarder } from '../horsligne.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { IcCalendrier, IcEcole, IcPlus } from '../icones.jsx'
+import { IcCalendrier, IcCrayon, IcEcole } from '../icones.jsx'
 
 const ROLES = { parent: 'Parent', student: 'Élève', teacher: 'Enseignant' }
 const VIDE = { subject: '', body: '', a: 'etablissement', classeId: '', eleveId: '', date: '', motif: '' }
 
-// Date courte : heure aujourd'hui, jour de la semaine cette semaine, sinon date
+// Temps ecoule, court (facon messagerie) : « 5 min », « 3 h », « 2 j », puis la date
 const quand = (d) => {
-  const x = new Date(d)
-  const ecart = (Date.now() - x.getTime()) / 864e5
-  if (x.toDateString() === new Date().toDateString()) return x.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  if (ecart < 6) return x.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')
-  return x.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  const mn = Math.round((Date.now() - new Date(d).getTime()) / 60000)
+  if (mn < 1) return 'maintenant'
+  if (mn < 60) return `${mn} min`
+  const h = Math.round(mn / 60)
+  if (h < 24) return `${h} h`
+  const j = Math.round(h / 24)
+  if (j < 7) return `${j} j`
+  return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 const initiales = (t) =>
   String(t || '?')
@@ -26,30 +29,27 @@ const initiales = (t) =>
     .join('')
     .toUpperCase()
 
-// Une conversation de la liste : avatar, interlocuteur, objet, dernier message
+// Une conversation : grand avatar, interlocuteur, dernier message et temps ecoule, point bleu si non lu
 function Ligne({ c, etablissement }) {
-  const nom = etablissement ? `${c.first_name} ${c.last_name}` : c.genre === 'parent' ? c.avec : c.genre === 'enseignant' ? c.avec : c.avec || 'Établissement'
-  const detail = etablissement ? ROLES[c.role] || '' : c.genre === 'parent' ? `Parent de ${c.eleve || '—'}` : c.genre === 'enseignant' ? 'Enseignant' : 'Établissement'
+  const nom = etablissement ? `${c.first_name} ${c.last_name}` : c.genre === 'parent' || c.genre === 'enseignant' ? c.avec : c.avec || 'Établissement'
+  const detail = etablissement ? ROLES[c.role] || '' : c.genre === 'parent' ? `Parent de ${c.eleve || '—'}` : c.genre === 'enseignant' ? 'Enseignant' : ''
   const ecole = !etablissement && (!c.genre || c.genre === 'etablissement')
   return (
-    <a className={`msg-ligne ${c.non_lu ? 'non-lu' : ''}`} href={`#/messages/${c.id}`}>
-      <span className={`msg-avatar ${ecole ? 'ecole' : c.genre === 'parent' ? 'parent' : ''}`} aria-hidden="true">
-        {ecole ? <IcEcole size={18} /> : initiales(nom)}
+    <a className={`ig-ligne ${c.non_lu ? 'non-lu' : ''}`} href={`#/messages/${c.id}`}>
+      <span className={`ig-avatar ${ecole ? 'ecole' : c.genre === 'parent' ? 'parent' : ''}`} aria-hidden="true">
+        {ecole ? <IcEcole size={22} /> : initiales(nom)}
       </span>
-      <span className="msg-corps">
-        <span className="msg-haut">
+      <span className="ig-corps">
+        <span className="ig-nom">
           <b data-brut>{nom}</b>
-          <time>{quand(c.updated_at)}</time>
+          {detail && <small data-brut>{detail}</small>}
         </span>
-        <span className="msg-objet">
-          <span data-brut>{c.subject}</span>
-          {detail && <small>{` · ${detail}`}</small>}
-        </span>
-        <span className="msg-apercu" data-brut>
-          {c.dernier}
+        <span className="ig-apercu">
+          <span data-brut>{c.dernier || c.subject}</span>
+          <time>{` · ${quand(c.updated_at)}`}</time>
         </span>
       </span>
-      {c.non_lu && <i className="msg-point" aria-label="Non lu" />}
+      {c.non_lu && <i className="ig-point" aria-label="Non lu" />}
     </a>
   )
 }
@@ -66,6 +66,7 @@ export default function Messages() {
   const absences = useApi(enseignant ? '/api/presence-enseignants/miennes' : null)
   const absence = f.a === 'absence'
   const [filtre, setFiltre] = useState('tous')
+  const [q, setQ] = useState('')
   const [envoye, setEnvoye] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -107,23 +108,25 @@ export default function Messages() {
   }
 
   const tout = liste.data || []
-  const visibles = tout.filter((c) => filtre === 'tous' || (filtre === 'parents' ? c.genre === 'parent' : c.genre !== 'parent'))
+  const tq = q.trim().toLowerCase()
+  const visibles = tout
+    .filter((c) => filtre === 'tous' || (filtre === 'parents' ? c.genre === 'parent' : c.genre !== 'parent'))
+    .filter((c) => !tq || `${c.avec || ''} ${c.first_name || ''} ${c.last_name || ''} ${c.subject || ''} ${c.eleve || ''}`.toLowerCase().includes(tq))
   const nonLus = tout.filter((c) => c.non_lu).length
 
   return (
     <div className="msg-page">
-      <div className="msg-entete">
-        <div>
-          <h1 className="page-title">Messages</h1>
-          {etablissement && <p className="muted">Parents, élèves et enseignants de votre établissement.</p>}
-        </div>
+      <div className="msg-entete ig-entete">
+        <h1 className="page-title">Messages</h1>
         {!etablissement && !ouvert && (
-          <button type="button" className="btn msg-nouveau" onClick={() => (setOuvert(true), setEnvoye(''))}>
-            <IcPlus size={17} />
-            <span>Nouveau</span>
+          <button type="button" className="ig-nouveau" aria-label="Nouveau message" onClick={() => (setOuvert(true), setEnvoye(''))}>
+            <IcCrayon size={22} />
           </button>
         )}
       </div>
+      {!ouvert && tout.length > 3 && (
+        <input className="ig-recherche" type="search" placeholder="Rechercher" value={q} onChange={(e) => setQ(e.target.value)} />
+      )}
       {envoye && <Note kind="ok">{envoye}</Note>}
 
       {ouvert && (
@@ -257,7 +260,7 @@ export default function Messages() {
         </div>
       )}
       {visibles.length > 0 && (
-        <div className="msg-liste">
+        <div className="ig-liste">
           {visibles.map((c) => (
             <Ligne key={c.id} c={c} etablissement={etablissement} />
           ))}
