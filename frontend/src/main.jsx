@@ -44,23 +44,25 @@ const retirer = () => {
 }
 requestAnimationFrame(() => setTimeout(retirer, Math.max(200, 1200 - performance.now())))
 
-// Nouvelle version en ligne : l'application s'ouvre tout de suite avec la copie gardee sur l'appareil,
-// et la version en ligne est gardee pour la prochaine ouverture. On ne recharge jamais la page de soi-meme :
-// sur iPhone, chaque chargement d'une page dans l'application installee fait clignoter la barre d'etat.
-// Une discrete annonce propose plutot la mise a jour, que l'utilisateur lance quand il le souhaite.
+// Nouvelle version en ligne : mise a jour discrete, sans annonce.
+// La version en ligne est deja gardee par le service worker pour la prochaine ouverture. En plus, elle est
+// chargee pendant que l'application est en arriere-plan (l'utilisateur ne voit rien, et sur iPhone la barre
+// d'etat ne clignote pas), sauf si une saisie est en cours sur la page : rien n'est jamais perdu.
 if ('serviceWorker' in navigator) {
+  let nouvelle = false
+  // texte saisi sur la page (formulaire, message, note…) : on attend, la mise a jour se fera plus tard
+  const saisieEnCours = () =>
+    [...document.querySelectorAll('textarea, input:not([type]), input[type="text"], input[type="number"], input[type="email"], input[type="tel"]')].some(
+      (el) => !el.readOnly && !el.disabled && el.value.trim() !== '',
+    ) || Boolean(document.querySelector('[contenteditable="true"]:not(:empty)'))
+  const appliquer = () => {
+    if (nouvelle && document.visibilityState === 'hidden' && !saisieEnCours()) window.location.reload()
+  }
   navigator.serviceWorker.addEventListener('message', (e) => {
-    if (e.data?.type !== 'nouvelle-version' || document.querySelector('.maj-dispo')) return
-    const a = document.createElement('div')
-    a.className = 'maj-dispo'
-    a.setAttribute('role', 'status')
-    a.innerHTML =
-      '<span class="maj-ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg></span>' +
-      '<span class="maj-texte"><b>Nouvelle version</b><small>Sùkûl a été amélioré : chargez la dernière version.</small></span>' +
-      '<button type="button" class="maj-btn">Mettre à jour</button>' +
-      '<button type="button" class="maj-fermer" aria-label="Plus tard">×</button>'
-    a.querySelector('.maj-btn').addEventListener('click', () => window.location.reload())
-    a.querySelector('.maj-fermer').addEventListener('click', () => a.remove())
-    setTimeout(() => document.body.appendChild(a), 1500)
+    if (e.data?.type !== 'nouvelle-version') return
+    nouvelle = true
+    appliquer()
   })
+  document.addEventListener('visibilitychange', appliquer)
 }
+
