@@ -1339,6 +1339,7 @@ const EN = {
   "Envoyé dès le retour du réseau": "Sent when the network is back",
   "Reçus": "Receipts",
   "de l’année": "for the year",
+  "Info, consigne, photos": "Note, instruction, photos",
   "Demain": "Tomorrow",
   "Revenir à aujourd’hui": "Back to today",
   "Choisir un jour": "Choose a day",

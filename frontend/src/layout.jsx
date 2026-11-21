@@ -187,7 +187,7 @@ const ACTIONS = [
 
 // Bouton + de l'enseignant : le cours du moment, puis 4 actions en petites tuiles (icones propres a l'enseignant)
 const ACTIONS_ENS = [
-  ['/info', IcInfo, 'Informer', 'Info, événement, photos'],
+  ['/info', IcInfo, 'Informer', 'Info, consigne, photos'],
   ['/document', IcTrombone, 'Document', 'PDF, photo, Excel…'],
   ['/info?genre=cours', IcHorlogePlus, 'Cours en plus', 'Hors emploi du temps'],
   ['/mes-classes', IcTableauNoir, 'Mes classes', 'Notes, devoirs, appel'],
