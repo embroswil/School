@@ -3075,3 +3075,13 @@ html.ordi .sco-tuiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ens-menu .ens-etabs button[aria-pressed='true'] { background: var(--primary-soft); }
 .ens-menu-ajout { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px; border-radius: 12px; background: var(--card-2, var(--bg)); color: var(--lien, var(--primary)); font: 600 14px/1 var(--font-body); text-decoration: none; }
 html.ordi .ens-entete-zone { max-width: 620px; }
+
+/* Frise des cours : cartes plus aerees, meme hauteur que les cours deja confirmes (3 lignes) */
+.fr-cours { padding-bottom: 12px; }
+.fr-cours::before { top: 22px; }
+.fr-heure { padding-top: 15px; }
+.fr-point { margin-top: 18px; }
+.fr-cours.fait .fr-point { margin-top: 16px; }
+.fr-carte { padding: 15px 16px; min-height: 92px; justify-content: center; gap: 5px; border-radius: 16px; }
+.fr-carte > b { font-size: 16px; }
+.fr-carte > small { font-size: 13.5px; }
