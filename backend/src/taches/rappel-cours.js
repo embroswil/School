@@ -5,6 +5,7 @@
 // Pas de rappel si l'enseignant a deja confirme, si l'appel est fait, ou s'il a signale son absence.
 const db = require("../config/db");
 const logger = require("../utils/logger");
+const { creerJeton } = require("../utils/jeton-presence");
 
 let enCours = false;
 const rappeler = async () => {
@@ -35,18 +36,19 @@ const rappeler = async () => {
               ON CONFLICT (class_id, date, debut) DO UPDATE SET rappel_le = NOW()
                 WHERE cours_suivi.rappel_le IS NULL AND cours_suivi.confirme_le IS NULL
               RETURNING class_id, debut)
-       SELECT k.teacher_id, k.class_id, k.classe, k.matiere, to_char(k.debut, 'HH24:MI') AS debut, to_char(k.d, 'YYYY-MM-DD') AS date
+       SELECT k.teacher_id, k.school_id, k.class_id, k.classe, k.matiere, to_char(k.debut, 'HH24:MI') AS debut, to_char(k.d, 'YYYY-MM-DD') AS date
        FROM nouveaux n JOIN cours k ON k.class_id = n.class_id AND k.debut = n.debut`
     );
     for (const r of rows) {
       // Notification « a valider » : un geste confirme la presence (bouton sur Android, toucher la notification sur iPhone)
-      const confirmer = { classId: r.class_id, debut: r.debut, date: r.date };
+      const confirmer = { classId: r.class_id, debut: r.debut, date: r.date, classe: r.classe,
+        jeton: creerJeton({ teacherId: r.teacher_id, schoolId: r.school_id, classId: r.class_id, date: r.date, debut: r.debut }) };
       await db.query(
         `INSERT INTO notifications (user_id, title, message, type, data) VALUES ($1, $2, $3, 'attendance', $4)`,
         [
           r.teacher_id,
-          `Confirmez votre présence · ${r.classe}`,
-          `Cours de ${r.debut} · ${r.matiere || "Cours"}. Touchez pour confirmer que vous êtes en cours.`,
+          `Êtes-vous en cours ? ${r.classe} · ${r.debut}`,
+          `${r.matiere || "Cours"} : confirmez votre présence.`,
           JSON.stringify({ lien: `/mes-cours?confirmer=${r.class_id}-${r.debut.replace(":", "")}-${r.date}`, confirmer }),
         ]
       );

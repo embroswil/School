@@ -95,7 +95,8 @@ self.addEventListener('push', (e) => {
     m = { title: 'Sùkûl', body: e.data ? e.data.text() : '' }
   }
   // Presence en cours : notification « a valider », qui reste affichee (ecran verrouille compris)
-  // jusqu'a ce que l'enseignant reponde. Android : bouton « Je suis en cours ». iPhone : toucher la notification.
+  // jusqu'a ce que l'enseignant reponde. Android : boutons Oui / Non dans la notification. iPhone (les applications
+  // web n'y ont pas de boutons) : toucher la notification ouvre Sùkûl sur la question Oui / Non.
   const valider = m.type === 'attendance' && m.confirmer
   e.waitUntil(
     self.registration.showNotification(m.title || 'Sùkûl', {
@@ -106,17 +107,51 @@ self.addEventListener('push', (e) => {
       renotify: Boolean(valider),
       requireInteraction: Boolean(valider),
       vibrate: valider ? [300, 120, 300, 120, 300] : undefined,
-      actions: valider ? [{ action: 'present', title: 'Je suis en cours' }, { action: 'ouvrir', title: 'Ouvrir' }] : undefined,
+      actions: valider ? [{ action: 'oui', title: 'Oui, je suis en cours' }, { action: 'non', title: 'Non' }] : undefined,
       data: { lien: m.lien || '/notifications', confirmer: m.confirmer || null },
     }),
   )
 })
 
+// Reponse Oui / Non donnee depuis la notification (ecran verrouille compris, Android) : envoyee directement
+// au serveur avec le jeton de la notification, sans ouvrir Sùkûl. Sans reseau : Sùkûl s'ouvre et garde la reponse.
+async function repondre(n, reponse) {
+  const c = n.data?.confirmer
+  try {
+    const r = await fetch('/api/presence-enseignants/notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jeton: c.jeton, reponse }),
+    })
+    const corps = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(corps.message || 'refus')
+    await self.registration.showNotification(reponse === 'oui' ? 'Présence confirmée' : 'Absence signalée', {
+      body: reponse === 'oui' ? `${c.classe || 'Cours'} · ${c.debut} : merci, votre présence est enregistrée.` : `${c.classe || 'Cours'} · ${c.debut} : l’établissement est prévenu.`,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: n.tag,
+    })
+    return true
+  } catch (_) {
+    return false
+  }
+}
+
 // Toucher la notification ouvre Sùkûl a la bonne page
 self.addEventListener('notificationclick', (e) => {
   e.notification.close()
-  // « Je suis en cours » (ou toucher une notification de presence) : Sùkûl s'ouvre et confirme aussitot,
-  // ou garde la confirmation sur le telephone s'il n'y a pas de reseau.
+  const c = e.notification.data?.confirmer
+  if ((e.action === 'oui' || e.action === 'non') && c?.jeton) {
+    e.waitUntil(
+      repondre(e.notification, e.action).then((ok) => {
+        if (ok) return null
+        // pas de reseau (ou notification expiree) : Sùkûl s'ouvre sur le cours, avec la reponse choisie
+        return self.clients.openWindow(`/#${e.notification.data.lien}&reponse=${e.action}`)
+      }),
+    )
+    return
+  }
+  // Toucher la notification de presence : Sùkûl s'ouvre sur la question Oui / Non.
   const lien = e.notification.data?.lien || '/'
   const url = `/#${lien}`
   e.waitUntil(

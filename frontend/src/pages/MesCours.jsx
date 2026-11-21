@@ -19,6 +19,61 @@ const moins15 = (hhmm) => {
 
 // Le cours peut etre confirme le jour meme, de 15 minutes avant son debut jusqu'a sa fin
 export const confirmable = (c, v) => v && v.date === v.aujourdhui && !c.confirme_le && !c.absent && v.maintenant >= moins15(c.debut) && v.maintenant < c.fin
+// Question « Etes-vous en cours ? » (ouverte depuis la notification de presence) : Oui / Non
+function Question({ c, v, reponseInitiale, onFini }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const auto = useRef(false)
+  async function repondre(reponse) {
+    setBusy(true)
+    setError('')
+    try {
+      if (reponse === 'oui') {
+        const attente = await confirmerCours(c, v.date)
+        onFini(attente ? 'Présence gardée sur le téléphone : envoyée dès le retour du réseau.' : 'Présence confirmée. Merci !')
+      } else {
+        const r = await envoyerOuGarder({
+          cle: `pas-en-cours-${c.class_id}-${v.date}-${c.debut}`,
+          path: '/api/presence-enseignants/mes-cours/reponse',
+          body: { classId: c.class_id, debut: c.debut, date: v.date, reponse: 'non' },
+          libelle: `Pas en cours ${c.classe}`,
+        })
+        onFini(r.attente ? 'Réponse gardée sur le téléphone : envoyée dès le retour du réseau.' : 'C’est noté : l’établissement est prévenu.')
+      }
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(false)
+  }
+  useEffect(() => {
+    if (reponseInitiale && !auto.current) {
+      auto.current = true
+      repondre(reponseInitiale)
+    }
+  }, [reponseInitiale]) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="voile mc-question-voile">
+      <div className="feuille mc-question" role="dialog" aria-label="Êtes-vous en cours ?">
+        <div className="feuille-poignee" />
+        <p className="mc-question-titre">Êtes-vous en cours ?</p>
+        <p className="mc-question-cours">
+          <b>{c.classe}</b>
+          <span>{`${c.matiere || ''} · ${c.debut} – ${c.fin}${c.salle ? ` · Salle ${c.salle}` : ''}`}</span>
+        </p>
+        {error && <p className="cours-erreur">{error}</p>}
+        <div className="mc-question-boutons">
+          <button type="button" className="btn mc-oui" disabled={busy} onClick={() => repondre('oui')}>
+            {busy ? '…' : 'Oui, je suis en cours'}
+          </button>
+          <button type="button" className="btn btn-quiet mc-non" disabled={busy} onClick={() => repondre('non')}>
+            Non
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const termine = (c, v) => v && (v.date < v.aujourdhui || (v.date === v.aujourdhui && v.maintenant >= c.fin))
 const commence = (c, v) => v && (v.date < v.aujourdhui || (v.date === v.aujourdhui && v.maintenant >= moins15(c.debut)))
 
@@ -42,19 +97,12 @@ const presenceEnAttente = (c, date) => {
 }
 
 // Un cours de l'enseignant : confirmation « je suis en cours » et cahier de textes
-function Cours({ c, v, onMaj, demande }) {
+function Cours({ c, v, onMaj }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [edition, setEdition] = useState(false)
   const [texte, setTexte] = useState(c.contenu || '')
   const [attente, setAttente] = useState(() => presenceEnAttente(c, v?.date))
-  // ouvert depuis la notification « Confirmez votre presence » : confirme d'un geste
-  const auto = useRef(false)
-  useEffect(() => {
-    if (!demande || auto.current || demande !== `${c.class_id}-${c.debut.replace(':', '')}-${v?.date}`) return
-    auto.current = true
-    if (confirmable(c, v) && !attente) confirmer()
-  }, [])
 
   async function confirmer() {
     setBusy(true)
@@ -166,12 +214,17 @@ function Cours({ c, v, onMaj, demande }) {
 export default function MesCours() {
   // ?confirmer=classe-HHMM-date : ouvert depuis la notification de presence
   const [demande] = useState(() => (window.location.hash.match(/confirmer=([\d]+-\d{4}-\d{4}-\d{2}-\d{2})/) || [])[1] || '')
+  const [reponseInitiale] = useState(() => (window.location.hash.match(/reponse=(oui|non)/) || [])[1] || '')
+  const [question, setQuestion] = useState(Boolean(demande))
+  const [fini, setFini] = useState('')
   const [date, setDate] = useState(() => (demande ? demande.slice(-10) : enChaine(new Date())))
   const enLigne = useApi(`/api/presence-enseignants/mes-cours?date=${date}`)
   // sans reseau : la journee gardee par l'accueil (meme jour) si cette page n'a pas encore de copie
   const accueil = enLigne.sansReseau && !enLigne.data ? lireCopie('/api/presence-enseignants/mes-cours') : null
   const d = accueil?.data?.date === date ? { ...enLigne, data: accueil.data, error: '' } : enLigne
   const v = d.data
+  // le cours de la notification, s'il peut encore etre confirme
+  const coursDemande = question && v ? v.cours.find((c) => `${c.class_id}-${c.debut.replace(':', '')}-${v.date}` === demande && !c.confirme_le && !c.absent) : null
   const auj = v?.aujourdhui || enChaine(new Date())
   // de 14 jours en arriere (cahier de textes) a 60 jours en avant (prochains cours)
   const min = decaler(auj, -14)
@@ -181,6 +234,22 @@ export default function MesCours() {
   return (
     <>
       <h1 className="page-title">Mes cours</h1>
+      {fini && <Note kind="ok">{fini}</Note>}
+      {coursDemande && (confirmable(coursDemande, v) || reponseInitiale === 'non') && (
+        <Question
+          c={coursDemande}
+          v={v}
+          reponseInitiale={reponseInitiale}
+          onFini={(m) => {
+            setQuestion(false)
+            setFini(m)
+            d.reload()
+          }}
+        />
+      )}
+      {coursDemande && !confirmable(coursDemande, v) && reponseInitiale !== 'non' && termine(coursDemande, v) && (
+        <Note>Ce cours est terminé : la présence ne peut plus être confirmée.</Note>
+      )}
       <p className="muted mc-intro">Pendant le cours, confirmez que vous êtes en classe, puis notez ce qui a été fait.</p>
       <div className="jour-nav">
         <button type="button" aria-label="Jour précédent" disabled={date <= min} onClick={() => setDate(decaler(date, -1))}>
@@ -214,7 +283,7 @@ export default function MesCours() {
       {v && v.cours.length > 0 && (
         <div className="mc-liste">
           {v.cours.map((c) => (
-            <Cours key={`${c.class_id}-${c.debut}-${date}-${c.contenu || ''}`} c={c} v={v} onMaj={() => d.reload()} demande={demande} />
+            <Cours key={`${c.class_id}-${c.debut}-${date}-${c.contenu || ''}`} c={c} v={v} onMaj={() => d.reload()} />
           ))}
         </div>
       )}

@@ -14,6 +14,20 @@ const ApiError = require("../../utils/ApiError");
 const { authenticate } = require("../../middlewares/auth.middleware");
 const { notifierEtablissement } = require("../../utils/notifier");
 
+// POST /api/presence-enseignants/notification { jeton, reponse: 'oui' | 'non' }
+// Reponse donnee directement depuis la notification (sans ouvrir Sùkûl ni etre connecte) : le jeton signe
+// de la notification identifie l'enseignant et le cours.
+router.post("/notification", async (req, res, next) => {
+  try {
+    const j = require("../../utils/jeton-presence").lireJeton(req.body?.jeton);
+    if (!j) throw new ApiError(401, "Notification expirée : ouvrez Sùkûl pour confirmer.");
+    const r = await repondrePresence({ teacherId: j.t, schoolId: j.s, classId: j.c, date: j.d, debut: j.h }, req.body?.reponse === "non" ? "non" : "oui");
+    res.json({ success: true, data: r });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.use(authenticate);
 const entier = (v) => parseInt(v, 10);
 // Date et heure au Cameroun (UTC+1, sans heure d'ete)
@@ -295,6 +309,47 @@ router.post("/mes-cours/confirmer", async (req, res, next) => {
     }
     const r = await suivre(req.user.schoolId, cr.class_id, date, debut, req.user.id, { confirme_le: differe ? le : new Date() });
     res.json({ success: true, data: { confirme_le: r.rows[0].confirme_le } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Oui : presence confirmee (pendant le cours). Non : l'enseignant signale qu'il n'est pas en cours ;
+// l'administration est prevenue tout de suite.
+async function repondrePresence({ teacherId, schoolId, classId, date, debut }, reponse) {
+  const cr = (await db.query(SQL_COURS("AND cs.teacher_id = $3 AND cr.class_id = $4 AND cr.debut = $5::time"), [schoolId, date, teacherId, classId, debut])).rows[0];
+  if (!cr) throw new ApiError(404, "Ce cours n’est plus dans votre emploi du temps");
+  if (date !== jourCameroun()) throw new ApiError(400, "Ce cours n’est pas aujourd’hui");
+  if (reponse === "oui") {
+    if (heureCameroun() < decaler(debut, -15)) throw new ApiError(400, `Vous pourrez confirmer à partir de ${decaler(debut, -15)}`);
+    if (cr.fin && heureCameroun() >= cr.fin) throw new ApiError(400, "Ce cours est terminé : la présence ne peut plus être confirmée.");
+    const r = await suivre(schoolId, classId, date, debut, teacherId, { confirme_le: new Date() });
+    return { reponse, confirme_le: r.rows[0].confirme_le, classe: cr.classe, debut };
+  }
+  await suivre(schoolId, classId, date, debut, teacherId, {
+    confirme_le: null,
+    constat: "absent",
+    constat_par: teacherId,
+    constat_le: new Date(),
+    constat_source: "enseignant",
+    constat_note: "Signalé par l’enseignant",
+  });
+  const u = (await db.query("SELECT first_name, last_name FROM users WHERE id = $1", [teacherId])).rows[0] || {};
+  await notifierEtablissement(schoolId, {
+    title: "Enseignant pas en cours",
+    message: `${u.first_name || ""} ${u.last_name || ""} signale qu’il n’est pas en cours : ${cr.classe || ""} à ${debut}.`.replace(/\s+/g, " "),
+    type: "attendance",
+    data: { lien: "/presence-enseignants" },
+  }).catch(() => {});
+  return { reponse, classe: cr.classe, debut };
+}
+
+// POST /api/presence-enseignants/mes-cours/reponse { classId, debut, date, reponse } : Oui / Non depuis Sùkûl
+router.post("/mes-cours/reponse", async (req, res, next) => {
+  try {
+    const { cr, date, debut } = await monCours(req);
+    const r = await repondrePresence({ teacherId: req.user.id, schoolId: req.user.schoolId, classId: cr.class_id, date, debut }, req.body?.reponse === "non" ? "non" : "oui");
+    res.json({ success: true, data: r });
   } catch (e) {
     next(e);
   }

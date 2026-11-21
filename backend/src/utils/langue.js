@@ -80,6 +80,9 @@ const EXPRESSIONS = [
   ["Décision de l’arbitrage Sùkûl", "Sùkûl arbitration decision"],
   [" par Orange Money", " via Orange Money"],
   [" par MTN MoMo", " via MTN MoMo"],
+  ["Êtes-vous en cours ?", "Are you in class?"],
+  [": confirmez votre présence.", ": confirm your presence."],
+  ["signale qu’il n’est pas en cours :", "reports not being in class:"],
 ]
 const JOURS = { lundi: "Monday", mardi: "Tuesday", mercredi: "Wednesday", jeudi: "Thursday", vendredi: "Friday", samedi: "Saturday", dimanche: "Sunday" }
 const MOIS = {
