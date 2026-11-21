@@ -7,7 +7,8 @@ import { preparerDocument } from '../lecture-fichier.js'
 import { lireDocumentEcole } from '../documents-ecole.js'
 import CompteurIA from '../CompteurIA.jsx'
 import { Field, Note, annoncer } from '../ui.jsx'
-import { IcChevron, IcImport } from '../icones.jsx'
+import { IcChevron, IcImport, IcPoubelle } from '../icones.jsx'
+import { fichiersDuChoix } from '../dossier.js'
 
 // Categories (memes cles que le serveur)
 // [cle, libelle enregistre, nom du groupe dans la liste]
@@ -107,6 +108,7 @@ const ETIQUETTE = (nom, type) => {
   if (type === 'video') return 'VIDÉO'
   return { pdf: 'PDF', doc: 'WORD', docx: 'WORD', xls: 'EXCEL', xlsx: 'EXCEL', ppt: 'PPT', pptx: 'PPT', csv: 'CSV', txt: 'TXT' }[e] || 'FICHIER'
 }
+const iPhone = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
 const ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,video/*'
 
 export async function envoyer(fichier) {
@@ -178,57 +180,45 @@ const VIDE = { titre: '', categorie: 'autre', description: '', audience: 'tous',
 
 // Documents de l'etablissement : ajout (lecture et classement automatiques), puis liste publiee
 // rangee par type de document et par mois.
-// Documents vus par l'enseignant : ses documents d'abord, puis ceux de l'etablissement, en liste de cartes
+// Documents de l'enseignant : seulement les siens, en grille, avec filtre par type
+const PUBLIC_COURT = { tous: 'Tout le monde', parents: 'Parents', eleves: 'Élèves', enseignants: 'Enseignants', interne: 'Privé' }
 function DocsEnseignant({ docs, retirer }) {
-  const [onglet, setOnglet] = useState('miens')
   const [q, setQ] = useState('')
-  const miens = docs.filter((d) => d.mien)
-  const ecole = docs.filter((d) => !d.mien)
+  const [type, setType] = useState('')
+  const types = [...new Set(docs.map((d) => groupeDe(d.categorie)))]
   const t = sansAccent(q.trim())
-  const liste = (onglet === 'miens' ? miens : ecole).filter((d) => !t || sansAccent(`${d.title} ${d.categorie}`).includes(t))
+  const liste = docs.filter((d) => (!type || groupeDe(d.categorie) === type) && (!t || sansAccent(`${d.title} ${d.categorie}`).includes(t)))
   return (
     <div className="docs-ens">
-      <div className="docs-ens-onglets" role="tablist">
-        {[
-          ['miens', 'Mes documents', miens.length],
-          ['ecole', 'De l’établissement', ecole.length],
-        ].map(([k, l, n]) => (
-          <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}>
-            {l}
-            <small>{n}</small>
-          </button>
-        ))}
-      </div>
       <input className="input docs-recherche" type="search" placeholder="Rechercher" value={q} onChange={(e) => setQ(e.target.value)} />
-      {liste.length === 0 && (
-        <p className="muted docs-ens-vide">{onglet === 'miens' ? 'Vous n’avez pas encore ajouté de document. Touchez « Ajouter » : fiche d’exercices, sujet, cours…' : 'Aucun document de l’établissement.'}</p>
+      {types.length > 1 && (
+        <div className="docs-ens-filtres" role="tablist">
+          {['', ...types].map((g) => (
+            <button key={g || 'tout'} type="button" role="tab" aria-selected={type === g} onClick={() => setType(g)}>
+              {g || 'Tout'}
+            </button>
+          ))}
+        </div>
       )}
-      <div className="docs-ens-liste">
+      {liste.length === 0 && <p className="muted docs-ens-vide">Aucun document ne correspond à la recherche.</p>}
+      <div className="docs-ens-grille">
         {liste.map((d) => {
           const f = Array.isArray(d.medias) ? d.medias[0] : null
+          const g = groupeDe(d.categorie)
           return (
-            <article key={d.id} className="docs-ens-carte">
-              <span className="doc-badge">{ETIQUETTE(f?.nom || d.title || '', f?.type || 'document')}</span>
-              <div className="docs-ens-texte">
+            <article key={d.id} className="docs-ens-tuile">
+              <a className="docs-ens-lien" href={f?.url} target="_blank" rel="noreferrer" aria-label={`Ouvrir ${d.title}`}>
+                <span className="docs-ens-haut">
+                  <Dossier groupe={g} taille={40} />
+                  <span className="doc-badge">{ETIQUETTE(f?.nom || d.title || '', f?.type || 'document')}</span>
+                </span>
                 <b data-brut>{d.title}</b>
-                <small>
-                  {[d.categorie, jour(d.created_at), onglet === 'ecole' && d.last_name ? `${d.first_name} ${d.last_name}` : '', d.audience !== 'interne' && d.vues > 0 ? `vu par ${d.vues.toLocaleString('fr-FR')}` : '']
-                    .filter(Boolean)
-                    .join(' · ')}
-                </small>
-              </div>
-              <div className="docs-ens-actions">
-                {f?.url && (
-                  <a className="btn btn-quiet" href={f.url} target="_blank" rel="noreferrer">
-                    Ouvrir
-                  </a>
-                )}
-                {d.mien && (
-                  <button type="button" className="lien-action discret" onClick={() => retirer(d.id)}>
-                    Retirer
-                  </button>
-                )}
-              </div>
+                <small>{`${d.categorie} · ${jour(d.created_at)}`}</small>
+                <small className="docs-ens-public">{`${PUBLIC_COURT[d.audience] || 'Tout le monde'}${d.vues > 0 && d.audience !== 'interne' ? ` · vu par ${d.vues.toLocaleString('fr-FR')}` : ''}`}</small>
+              </a>
+              <button type="button" className="docs-ens-retirer" aria-label={`Retirer ${d.title}`} onClick={() => retirer(d.id)}>
+                <IcPoubelle size={15} />
+              </button>
             </article>
           )
         })}
@@ -240,6 +230,7 @@ function DocsEnseignant({ docs, retirer }) {
 export default function Documents() {
   const { user } = useAuth()
   const champ = useRef(null)
+  const champDossier = useRef(null)
   const liste = useApi('/api/actualites/documents')
   const [items, setItems] = useState([])
   const [etat, setEtat] = useState('')
@@ -273,8 +264,11 @@ export default function Documents() {
   const retirerItem = (id) => setItems((l) => l.filter((x) => x.id !== id))
 
   async function choisir(e) {
-    const choix = [...(e.target.files || [])].slice(0, 10)
+    const bruts = [...(e.target.files || [])]
     e.target.value = ''
+    // un dossier (ou un .zip) est developpe : chaque fichier est lu et classe
+    const choix = (await fichiersDuChoix(bruts).catch(() => bruts)).filter((f) => /\.(pdf|docx?|xlsx?|pptx?|csv|txt|jpe?g|png|webp|heic|mp4|mov|webm|m4v)$/i.test(f.name)).slice(0, 40)
+    if (bruts.length && !choix.length) setError('Aucun fichier utilisable dans ce choix : PDF, Word, Excel, PowerPoint, photo ou vidéo.')
     if (!choix.length) return
     setError('')
     setOk('')
@@ -479,7 +473,9 @@ export default function Documents() {
   }
 
   // Liste publiee : un dossier par type de document ; dans un dossier, les documents par mois
-  const docs = [...(liste.data || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  const docs = [...(liste.data || [])]
+    .filter((d) => user.role !== 'teacher' || (d.mien && Array.isArray(d.medias) && d.medias[0]?.url))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   const dossiers = new Map()
   for (const d of docs) {
     const g = groupeDe(d.categorie)
@@ -506,19 +502,26 @@ export default function Documents() {
       <div className="page-tete">
         <div>
           <h1 className="page-title">Documents</h1>
-          {liste.data && <p className="muted">{docs.length ? `${docs.length} document(s) publié(s)` : 'Aucun document publié'}</p>}
+          {liste.data && <p className="muted">{docs.length ? `${docs.length} document(s) ${user.role === 'teacher' ? 'ajouté(s)' : 'publié(s)'}` : user.role === 'teacher' ? 'Vos fiches, cours, sujets et progressions' : 'Aucun document publié'}</p>}
         </div>
         <button type="button" className="btn bouton-icone" onClick={() => champ.current?.click()} disabled={Boolean(etat)}>
           <IcImport size={18} /> Ajouter
         </button>
       </div>
+      {user.role === 'teacher' && !items.length && (
+        <button type="button" className="doc-dossier" onClick={() => (iPhone ? champ : champDossier).current?.click()} disabled={Boolean(etat)}>
+          <b>Ajouter tout un dossier</b>
+          <small>{iPhone ? 'Dans l’app Fichiers : appui long sur le dossier › Compresser, puis choisissez le fichier .zip' : 'Choisissez le dossier (ou un .zip) : chaque fichier est reconnu et classé'}</small>
+        </button>
+      )}
+      <input ref={champDossier} type="file" hidden webkitdirectory="" directory="" multiple onChange={choisir} />
       {user.role === 'principal' && (
         <a className="doc-dossier" href="#/dossier">
           <b>Ajouter tout un dossier</b>
           <small>Chaque fichier est reconnu et rangé au bon endroit</small>
         </a>
       )}
-      <input ref={champ} type="file" hidden multiple accept={ACCEPT} onChange={choisir} />
+      <input ref={champ} type="file" hidden multiple accept={`${ACCEPT},.zip,application/zip`} onChange={choisir} />
       <CompteurIA discret />
       <Note kind="ok">{ok}</Note>
       <Note>{error}</Note>
@@ -700,7 +703,7 @@ export default function Documents() {
         <button type="button" className="import-zone" onClick={() => champ.current?.click()}>
           <IcImport size={26} />
           <b>Ajouter vos premiers documents</b>
-          <small>Communiqués, calendriers, emplois du temps, frais, résultats… en PDF, Word, Excel, photo ou vidéo. Chaque document est lu et classé automatiquement.</small>
+          <small>{user.role === 'teacher' ? 'Cours, fiches d’exercices, sujets, progressions… en PDF, Word, Excel, photo ou vidéo. Chaque document est lu et classé automatiquement.' : 'Communiqués, calendriers, emplois du temps, frais, résultats… en PDF, Word, Excel, photo ou vidéo. Chaque document est lu et classé automatiquement.'}</small>
         </button>
       )}
       {docs.length > 0 && user.role === 'teacher' && <DocsEnseignant docs={docs} retirer={retirer} />}
