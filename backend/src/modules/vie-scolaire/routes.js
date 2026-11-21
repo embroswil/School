@@ -288,14 +288,6 @@ router.post("/sanctions/lire", async (req, res, next) => {
   try {
     const u = req.user;
     if (!["principal", "admin", "teacher"].includes(u.role)) throw new ApiError(403, "Accès réservé");
-    const tableau = req.body?.texte ? require("../../utils/tableur").sanctions(String(req.body.texte)) : null;
-    const donnees = tableau || await require("../../utils/quota-ia").lireAvecQuota(req, "discipline", {
-      images: Array.isArray(req.body?.images) ? req.body.images : [],
-      texte: req.body?.texte || "",
-      consigne: `Ce document provient d'un établissement scolaire camerounais : procès-verbal de conseil de discipline, liste de sanctions, rapport du surveillant, billet d'avertissement, etc. (imprimé ou écrit à la main).
-Extrais chaque sanction ou observation concernant un élève. Pour chacune : nom (nom complet de l'élève tel qu'écrit), classe (si indiquée, ex. "3e All"), type (un parmi : observation, avertissement, blame, retenue, convocation_parents, exclusion_temporaire, exclusion_definitive — choisis le plus proche), motif (court, en français), date (AAAA-MM-JJ si présente, sinon vide), dureeJours (nombre de jours pour une exclusion ou une retenue, sinon null).
-Format : {"entrees": [{"nom":"","classe":"","type":"","motif":"","date":"","dureeJours":null}]}`,
-    });
     const ecole = u.role === "admin" ? null : u.schoolId;
     const eleves = (
       await db.query(
@@ -306,6 +298,18 @@ Format : {"entrees": [{"nom":"","classe":"","type":"","motif":"","date":"","dure
         [ecole]
       )
     ).rows;
+    const tableur = require("../../utils/tableur");
+    const texte = String(req.body?.texte || "");
+    // 1. tableau (Excel, Word) ; 2. rapport redige avec texte (PDF, Word) : sans IA ; 3. photo ou scan : IA
+    const tableau = texte ? tableur.sanctions(texte) : null;
+    const redige = !tableau && texte.replace(/\s/g, "").length > 80 ? tableur.sanctionsRedigees(texte, eleves) : null;
+    const donnees = tableau || redige || await require("../../utils/quota-ia").lireAvecQuota(req, "discipline", {
+      images: Array.isArray(req.body?.images) ? req.body.images : [],
+      texte,
+      consigne: `Ce document provient d'un établissement scolaire camerounais : procès-verbal de conseil de discipline, liste de sanctions, rapport du surveillant, billet d'avertissement, etc. (imprimé ou écrit à la main).
+Extrais chaque sanction ou observation concernant un élève. Pour chacune : nom (nom complet de l'élève tel qu'écrit), classe (si indiquée, ex. "3e All"), type (un parmi : observation, avertissement, blame, retenue, convocation_parents, exclusion_temporaire, exclusion_definitive — choisis le plus proche), motif (court, en français), date (AAAA-MM-JJ si présente, sinon vide), dureeJours (nombre de jours pour une exclusion ou une retenue, sinon null).
+Format : {"entrees": [{"nom":"","classe":"","type":"","motif":"","date":"","dureeJours":null}]}`,
+    });
     const TYPESOK = Object.keys(TYPES);
     const entrees = (Array.isArray(donnees.entrees) ? donnees.entrees : []).slice(0, 200).map((x) => {
       const trouve = retrouverEleve(eleves, x.nom, x.classe);

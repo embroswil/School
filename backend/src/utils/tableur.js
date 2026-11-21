@@ -365,4 +365,75 @@ function comptabilite(texte) {
   return postes.length || operations.length || paiements.length ? { postes, operations, paiements } : null;
 }
 
-module.exports = { feuilles, emplois, absences, absencesEnseignants, frais, sanctions, comptabilite, dateIso };
+// Rapport ou proces-verbal redige (PDF avec texte, Word) : sans IA. Les eleves de l'etablissement dont le nom
+// figure dans le texte sont retrouves ; la sanction est lue dans la derniere phrase qui les cite avec une sanction,
+// le motif dans les premieres phrases qui les citent (les faits).
+const MOIS_FR = { janvier: 1, fevrier: 2, mars: 3, avril: 4, mai: 5, juin: 6, juillet: 7, aout: 8, septembre: 9, octobre: 10, novembre: 11, decembre: 12 };
+const GRAVITE = [
+  [/exclusion definitive|renvoi definitif|exclu(e)? definitivement/, "exclusion_definitive"],
+  [/exclusion|exclu(e)?\b|mise a pied/, "exclusion_temporaire"],
+  [/blame/, "blame"],
+  [/avertissement (ecrit|de conduite|de travail)|avertissement\b(?! oral)/, "avertissement"],
+  [/convocation des parents|parents? convoques?|convoquer les parents/, "convocation_parents"],
+  [/retenue|consigne\b|heures? de colle/, "retenue"],
+  [/observation (ecrite|de conduite)|observation\b/, "observation"],
+];
+function sanctionsRedigees(texte, eleves) {
+  const brut = String(texte || "").replace(/\s+/g, " ");
+  const plat = sansAccent(brut);
+  const phrases = plat.split(/(?<=[.;!?])\s+/).map((p) => p.trim()).filter(Boolean);
+  const dl = plat.match(/(\d{1,2})(?:er)? (janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre) (20\d{2})/);
+  const dn = plat.match(/(\d{1,2})\/(\d{1,2})\/(20\d{2})/);
+  const date = dl
+    ? `${dl[3]}-${String(MOIS_FR[dl[2]]).padStart(2, "0")}-${dl[1].padStart(2, "0")}`
+    : dn
+      ? `${dn[3]}-${dn[2].padStart(2, "0")}-${dn[1].padStart(2, "0")}`
+      : "";
+  const res = [];
+  // noms presents dans le texte ; un nom contenu dans un nom plus long au meme endroit (« AMADOU Souleymanou »
+  // dans « AMADOU Souleymanou Ousmane ») n'est pas retenu
+  const trouves = [];
+  for (const e of eleves) {
+    const cles = [`${e.last_name} ${e.first_name}`, `${e.first_name} ${e.last_name}`].map((x) => sansAccent(x).replace(/\s+/g, " ")).filter((k) => k.length > 5);
+    const pos = [];
+    for (const k of cles) for (let i = plat.indexOf(k); i >= 0; i = plat.indexOf(k, i + 1)) if (!/[a-z]/.test(plat[i + k.length] || "") && !/[a-z]/.test(plat[i - 1] || "")) pos.push([i, i + k.length, k]);
+    if (pos.length) trouves.push({ e, pos });
+  }
+  const couvert = (a, b) => b.pos.some(([d, f]) => d <= a[0] && a[1] <= f && f - d > a[1] - a[0]);
+  for (const { e, pos } of trouves) {
+    const libres = pos.filter((p) => !trouves.some((t) => t.e !== e && couvert(p, t)));
+    if (!libres.length) continue;
+    const cles = [libres[0][2]];
+    const cle = cles.find((k) => plat.includes(k));
+    // sanction : ce qui suit le nom, jusqu'a la fin de la phrase (la derniere mention avec une sanction l'emporte)
+    let type = null;
+    let duree = null;
+    let convoques = false;
+    for (let i = plat.indexOf(cle); i >= 0; i = plat.indexOf(cle, i + 1)) {
+      const suite = plat.slice(i + cle.length, i + cle.length + 200).split(/[.;!?](\s|$)/)[0].replace(/avertissements? oraux?/g, "");
+      const g = GRAVITE.find(([r]) => r.test(suite));
+      if (g) {
+        type = g[1];
+        duree = Number((suite.match(/(\d+)\s*jours?/) || [])[1]) || null;
+        convoques = type !== "convocation_parents" && /convocation des parents|parents? convoques?/.test(suite);
+      }
+    }
+    if (!type) continue;
+    // motif : les phrases de faits qui citent l'eleve (pas la ligne « NOM : sanction »), dans la casse du document
+    const faits = phrases
+      .filter((p) => p.includes(cle) && !p.includes(`${cle} :`))
+      .slice(0, 2)
+      .map((p) => (p.includes("faits ") ? p.slice(p.lastIndexOf("faits ") + 6) : p));
+    const motif = faits
+      .map((p) => {
+        const i = sansAccent(brut).indexOf(p.slice(0, 40));
+        return i >= 0 ? brut.slice(i, i + p.length) : p;
+      })
+      .join(" ")
+      .slice(0, 380) + (convoques ? " Convocation des parents." : "");
+    res.push({ nom: `${e.last_name} ${e.first_name}`, classe: e.classe || "", type, motif, date, dureeJours: duree });
+  }
+  return res.length ? { entrees: res } : null;
+}
+
+module.exports = { feuilles, emplois, absences, absencesEnseignants, frais, sanctions, sanctionsRedigees, comptabilite, dateIso };
