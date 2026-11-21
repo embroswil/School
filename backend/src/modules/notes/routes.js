@@ -978,7 +978,7 @@ router.get("/mon-resume", async (req, res, next) => {
     // prochain jour de cours (apres aujourd'hui), d'apres l'emploi du temps
     const creneaux = (
       await db.query(
-        `SELECT cr.jour, to_char(cr.debut, 'HH24:MI') AS debut, c.name AS classe FROM creneaux cr
+        `SELECT cr.jour, to_char(cr.debut, 'HH24:MI') AS debut, to_char(cr.fin, 'HH24:MI') AS fin, cr.class_id, c.name AS classe FROM creneaux cr
          JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id JOIN classes c ON c.id = cr.class_id
          WHERE cs.teacher_id = $1 AND cr.school_id = $2 ORDER BY cr.debut`,
         [moi, ecole]
@@ -998,7 +998,22 @@ router.get("/mon-resume", async (req, res, next) => {
         [moi]
       )
     ).rows[0].n;
-    res.json({ success: true, data: { evaluations, devoirs, prochain, messages } });
+    // la semaine type : cours et heures par jour, classes et eleves suivis
+    const min = (h) => { const [a, b] = String(h || "0:0").split(":").map(Number); return a * 60 + b; };
+    const semaine = [1, 2, 3, 4, 5, 6].map((j) => {
+      const l = creneaux.filter((x) => Number(x.jour) === j);
+      return { jour: j, cours: l.length, minutes: l.reduce((s, x) => s + Math.max(0, min(x.fin) - min(x.debut)), 0) };
+    });
+    const totaux = (
+      await db.query(
+        `WITH mes AS (SELECT DISTINCT cs.class_id FROM class_subjects cs JOIN classes c ON c.id = cs.class_id
+                        JOIN academic_years a ON a.id = c.academic_year_id WHERE cs.teacher_id = $1 AND a.school_id = $2)
+         SELECT (SELECT COUNT(*)::int FROM mes) AS classes,
+                (SELECT COUNT(DISTINCT x.student_id)::int FROM class_students x WHERE x.status = 'active' AND x.class_id IN (SELECT class_id FROM mes)) AS eleves`,
+        [moi, ecole]
+      )
+    ).rows[0];
+    res.json({ success: true, data: { evaluations, devoirs, prochain, messages, semaine, classes: totaux.classes, eleves: totaux.eleves } });
   } catch (e) {
     next(e);
   }
