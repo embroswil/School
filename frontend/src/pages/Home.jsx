@@ -371,35 +371,31 @@ const plusJours = (iso, n) => {
 }
 const fait = (c) => Boolean(c.confirme_le || c.etat === 'assure')
 
-// Un cours supplementaire (hors emploi du temps) dans l'agenda
+// Un cours supplementaire (hors emploi du temps) sur la frise
 function PointSupp({ x }) {
   return (
-    <li className="ag-ligne supp">
-      <span className="ag-heure">
+    <li className="fr-cours supp">
+      <span className="fr-heure">
         <b>{x.heure}</b>
       </span>
-      <a className="ag-corps" href={`#/infos/${x.id}`}>
-        <span className="ag-titre">
-          <b data-brut>{x.titre}</b>
-          <em className="ag-etat supp">Supplémentaire</em>
-        </span>
+      <span className="fr-point" aria-hidden="true" />
+      <a className="fr-carte" href={`#/infos/${x.id}`}>
+        <b data-brut>{x.titre}</b>
         {x.lieu && <small data-brut>{x.lieu}</small>}
+        <em className="fr-badge">Cours supplémentaire</em>
       </a>
     </li>
   )
 }
 
-const ETATS = { fait: 'Assuré', maintenant: 'En cours', manque: 'Non confirmé', absent: 'Absent', avenir: 'À venir', confirmer: 'À confirmer' }
-
-// Un cours dans l'agenda du jour
+// Un cours sur la frise du jour
 function PointFrise({ c, v, onMaj }) {
   const [msg, setMsg] = useState('')
   const auj = v.date === v.aujourdhui
   const t = v.maintenant
   const enCours = auj && c.debut <= t && t < c.fin
   const passe = v.date < v.aujourdhui || (auj && t >= c.fin)
-  const aConfirmer = confirmable(c, v)
-  const etat = c.absent ? 'absent' : fait(c) ? 'fait' : enCours ? 'maintenant' : aConfirmer ? 'confirmer' : passe ? 'manque' : 'avenir'
+  const etat = c.absent ? 'absent' : fait(c) ? 'fait' : enCours ? 'maintenant' : passe ? 'manque' : 'avenir'
   const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Douala' })
   async function present() {
     setMsg('…')
@@ -414,24 +410,26 @@ function PointFrise({ c, v, onMaj }) {
     }
   }
   return (
-    <li className={`ag-ligne ${etat}`}>
-      <span className="ag-heure">
+    <li className={`fr-cours ${etat}`}>
+      <span className="fr-heure">
         <b>{c.debut}</b>
         <small>{c.fin}</small>
       </span>
-      <div className="ag-corps">
-        <span className="ag-titre">
-          <b>{c.classe}</b>
-          <em className={`ag-etat ${etat}`}>{msg === 'attente' ? 'En attente' : ETATS[etat]}</em>
-        </span>
+      <span className="fr-point" aria-hidden="true">
+        {etat === 'fait' && <IcCoche size={12} />}
+      </span>
+      <div className="fr-carte">
+        <b>{c.classe}</b>
         <small>{[c.matiere, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>
-        {etat === 'fait' && c.confirme_le && <small className="ag-detail">{`Présence confirmée à ${heure(c.confirme_le)}`}</small>}
-        {msg === 'attente' && <small className="ag-detail">Présence gardée sur le téléphone, envoyée dès le retour du réseau.</small>}
-        {(aConfirmer || enCours) && msg !== 'attente' && (
-          <div className="ag-actions">
-            {aConfirmer && (
+        {etat === 'maintenant' && <em className="fr-badge">En cours</em>}
+        {etat === 'fait' && c.confirme_le && <em className="fr-note">{`Présence confirmée à ${heure(c.confirme_le)}`}</em>}
+        {etat === 'manque' && <em className="fr-note">Présence non confirmée</em>}
+        {etat === 'absent' && <em className="fr-note">Absence signalée</em>}
+        {(confirmable(c, v) || enCours) && msg !== 'attente' && (
+          <div className="fr-actions">
+            {confirmable(c, v) && (
               <button type="button" className="btn" disabled={msg === '…'} onClick={present}>
-                {msg === '…' ? '…' : 'Confirmer ma présence'}
+                {msg === '…' ? '…' : 'Je suis en cours'}
               </button>
             )}
             {enCours && (
@@ -441,6 +439,7 @@ function PointFrise({ c, v, onMaj }) {
             )}
           </div>
         )}
+        {msg === 'attente' && <em className="fr-note">Présence gardée sur le téléphone : envoyée dès le retour du réseau</em>}
         {msg && msg !== '…' && msg !== 'attente' && <p className="cours-erreur">{msg}</p>}
       </div>
     </li>
@@ -544,77 +543,88 @@ function EnTeteEnseignant() {
   )
 }
 
-// Accueil de l'enseignant, sous la journee : ce qu'il a a suivre, puis sa semaine
-const duree = (m) => (m % 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m / 60} h`)
-const NOMS_JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
-
-function Rangee({ href, Icone, ton, titre, texte, progression }) {
-  return (
-    <a className="ens-rangee" href={href}>
-      <span className={`ens-rangee-ico ${ton || ''}`}>
-        <Icone size={17} />
-      </span>
-      <span className="ens-rangee-texte">
-        <b data-brut>{titre}</b>
-        <small data-brut>{texte}</small>
-        {progression !== undefined && <i className="ens-rangee-barre" style={{ '--p': `${progression}%` }} />}
-      </span>
-      <IcChevron size={15} />
-    </a>
-  )
-}
-
-function ASuivre({ d }) {
+// Accueil de l'enseignant, sous la journee : ce qu'il a a suivre
+function ASuivre() {
+  const r = useApi('/api/notes/mon-resume')
+  const d = r.data
+  if (!d) return null
   const date = (iso, o) => new Date(`${String(iso).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', o)
-  const lignes = [
-    ...d.evaluations.map((e) => (
-      <Rangee
-        key={`e${e.id}`}
-        href={`#/evaluations/${e.id}`}
-        Icone={IcDocument}
-        ton="violet"
-        titre={`${e.titre || 'Évaluation'} · ${e.classe}`}
-        texte={`Notes : ${e.saisies} / ${e.effectif} saisies · non publiée`}
-        progression={e.effectif ? Math.round((e.saisies / e.effectif) * 100) : 0}
-      />
-    )),
-    ...d.devoirs.map((x) => (
-      <Rangee key={`d${x.id}`} href={`#/classes/${x.class_id}/devoirs`} Icone={IcCoche} ton="orange" titre={x.titre} texte={`${x.classe} · pour le ${date(x.pour_le, { weekday: 'long', day: 'numeric', month: 'long' })}`} />
-    )),
-    d.messages > 0 && (
-      <Rangee key="m" href="#/messages" Icone={IcMessagesHome} ton="vert" titre={d.messages > 1 ? `${d.messages} messages non lus` : '1 message non lu'} texte="Parents et établissement" />
-    ),
-    d.prochain && (
-      <Rangee
-        key="p"
-        href="#/emploi"
-        Icone={IcCalendrier}
-        titre={`Prochain jour de cours : ${date(d.prochain.date, { weekday: 'long', day: 'numeric', month: 'long' })}`}
-        texte={`${d.prochain.cours} cours · premier à ${d.prochain.premier.debut} en ${d.prochain.premier.classe}`}
-      />
-    ),
-  ].filter(Boolean)
-  if (!lignes.length) return null
+  const vide = !d.evaluations.length && !d.devoirs.length && !d.prochain && !d.messages
+  if (vide) return null
   return (
-    <section className="ens-bloc">
-      <h2 className="ens-label">À suivre</h2>
-      <div className="ens-carte ens-liste">{lignes}</div>
+    <section className="ens-suivre">
+      <h2>À suivre</h2>
+      <div className="ens-suivre-grille">
+        {d.prochain && (
+          <a className="ens-suivre-carte" href="#/emploi">
+            <span className="ens-suivre-ico">
+              <IcCalendrier size={18} />
+            </span>
+            <span className="ens-suivre-texte">
+              <small>Prochain jour de cours</small>
+              <b>{date(d.prochain.date, { weekday: 'long', day: 'numeric', month: 'long' })}</b>
+              <span>{`${d.prochain.cours} cours · le premier à ${d.prochain.premier.debut} (${d.prochain.premier.classe})`}</span>
+            </span>
+          </a>
+        )}
+        {d.evaluations.map((e) => (
+          <a key={`e${e.id}`} className="ens-suivre-carte" href={`#/evaluations/${e.id}`}>
+            <span className="ens-suivre-ico violet">
+              <IcDocument size={18} />
+            </span>
+            <span className="ens-suivre-texte">
+              <small>Notes à terminer</small>
+              <b data-brut>{`${e.titre || 'Évaluation'} · ${e.classe}`}</b>
+              <span>{`${e.saisies} / ${e.effectif} notes saisies · non publiée`}</span>
+            </span>
+            <i className="ens-suivre-barre" style={{ '--p': `${e.effectif ? Math.round((e.saisies / e.effectif) * 100) : 0}%` }} />
+          </a>
+        ))}
+        {d.devoirs.map((x) => (
+          <a key={`d${x.id}`} className="ens-suivre-carte" href={`#/classes/${x.class_id}/devoirs`}>
+            <span className="ens-suivre-ico orange">
+              <IcCoche size={18} />
+            </span>
+            <span className="ens-suivre-texte">
+              <small>{`Devoir pour le ${date(x.pour_le, { weekday: 'long', day: 'numeric', month: 'long' })}`}</small>
+              <b data-brut>{x.titre}</b>
+              <span data-brut>{x.classe}</span>
+            </span>
+          </a>
+        ))}
+        {d.messages > 0 && (
+          <a className="ens-suivre-carte" href="#/messages">
+            <span className="ens-suivre-ico vert">
+              <IcMessagesHome size={18} />
+            </span>
+            <span className="ens-suivre-texte">
+              <small>Messages</small>
+              <b>{d.messages > 1 ? `${d.messages} messages non lus` : '1 message non lu'}</b>
+              <span>Parents et établissement</span>
+            </span>
+          </a>
+        )}
+      </div>
     </section>
   )
 }
 
-function MaSemaine({ d, auj }) {
-  const semaine = d.semaine || []
+// Accueil de l'enseignant, en bas les jours ou il a peu de cours : sa semaine en un coup d'oeil
+const duree = (m) => (m % 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m / 60} h`)
+const NOMS_JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+function MaSemaine({ auj }) {
+  const r = useApi('/api/notes/mon-resume')
+  const semaine = r.data?.semaine || []
   const total = semaine.reduce((s, j) => s + j.cours, 0)
   if (!total) return null
   const minutes = semaine.reduce((s, j) => s + j.minutes, 0)
   const max = Math.max(...semaine.map((j) => j.minutes), 1)
   const ajd = ((new Date(`${auj}T12:00:00`).getDay() + 6) % 7) + 1
   return (
-    <section className="ens-bloc">
-      <h2 className="ens-label">Ma semaine</h2>
-      <div className="ens-carte">
-        <div className="ens-chiffres">
+    <section className="ens-suivre ens-sem">
+      <h2>Ma semaine</h2>
+      <div className="ens-sem-carte">
+        <div className="ens-sem-chiffres">
           <div>
             <b>{total}</b>
             <small>Cours</small>
@@ -624,15 +634,15 @@ function MaSemaine({ d, auj }) {
             <small>Heures</small>
           </div>
           <a href="#/mes-classes">
-            <b>{d.classes}</b>
+            <b>{r.data.classes}</b>
             <small>Classes</small>
           </a>
           <div>
-            <b>{d.eleves}</b>
+            <b>{r.data.eleves}</b>
             <small>Élèves</small>
           </div>
         </div>
-        <ul className="ens-jours">
+        <ul className="ens-sem-jours">
           {semaine.map((j) => (
             <li key={j.jour} className={j.jour === ajd ? 'auj' : ''}>
               <span>{NOMS_JOURS[j.jour - 1]}</span>
@@ -641,7 +651,7 @@ function MaSemaine({ d, auj }) {
             </li>
           ))}
         </ul>
-        <a className="ens-carte-pied" href="#/emploi">
+        <a className="ens-sem-pied" href="#/emploi">
           Voir l’emploi du temps <IcChevron size={14} />
         </a>
       </div>
@@ -651,7 +661,6 @@ function MaSemaine({ d, auj }) {
 
 function EspaceEnseignant() {
   const jour = useApi('/api/presence-enseignants/mes-cours')
-  const resume = useApi('/api/notes/mon-resume')
   const v = jour.data
   const auj = v?.aujourdhui || jourIso(new Date())
   // calendrier : uniquement les jours ou l'enseignant a cours (emploi du temps ou cours supplementaire), 7 au plus
@@ -669,28 +678,16 @@ function EspaceEnseignant() {
   const autre = useApi(sel ? `/api/presence-enseignants/mes-cours?date=${sel}` : null)
   const vue = sel ? autre.data : v
   const date = (iso, o) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', o)
-  const assures = (vue?.cours || []).filter(fait).length
-  const nb = vue?.cours.length || 0
-  // l'agenda : cours de l'emploi du temps et cours supplementaires, dans l'ordre des heures
+  const assures = (v?.cours || []).filter(fait).length
+  // la frise : cours de l'emploi du temps et cours supplementaires, dans l'ordre des heures
   const elements = vue ? [...vue.cours.map((c) => ({ h: c.debut, c })), ...(vue.supplementaires || []).map((x) => ({ h: x.heure, x }))].sort((a, b) => a.h.localeCompare(b.h)) : []
+
 
   return (
     <div className="ens-accueil">
       <EnTeteEnseignant />
-      <section className="ens-carte ens-agenda">
-        <header className="ens-agenda-tete">
-          <div>
-            <small>{date(actif, { weekday: 'long', day: 'numeric', month: 'long' })}</small>
-            <h2>{sel ? 'Programme du jour' : 'Aujourd’hui'}</h2>
-          </div>
-          {nb > 0 && (
-            <span className="ens-compteur" style={{ '--p': `${Math.round((assures / nb) * 100)}%` }}>
-              <b>{`${assures}/${nb}`}</b>
-              <small>{sel && actif > auj ? 'à venir' : 'assurés'}</small>
-            </span>
-          )}
-        </header>
-        {joursCours.length > 1 && (
+      <section className="ens-agenda">
+        {joursCours.length > 0 && (
           <div className="ens-semaine" role="tablist" aria-label="Choisir un jour">
             {joursCours.map((iso) => (
               <button key={iso} type="button" role="tab" aria-selected={actif === iso} onClick={() => setChoisi(iso)}>
@@ -700,16 +697,22 @@ function EspaceEnseignant() {
             ))}
           </div>
         )}
-        {!vue && <p className="muted ens-agenda-vide">Chargement…</p>}
+        <div className="ens-agenda-tete">
+          <h2>
+            {sel ? date(sel, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Aujourd’hui'}
+            {!sel && v?.cours.length > 0 && <small>{`${assures}/${v.cours.length} assurés`}</small>}
+          </h2>
+        </div>
+        {!vue && <p className="muted">Chargement…</p>}
         {vue?.absence && <div className="note">{`Absence signalée ce jour${vue.absence.motif ? ` : ${vue.absence.motif}` : ''}.`}</div>}
         {vue && elements.length === 0 && (
-          <div className="ens-agenda-vide">
+          <div className="ens-repos">
             <b>Aucun cours</b>
             <small>{vue.total ? 'Votre emploi du temps ne prévoit pas de cours ce jour-là.' : 'Votre emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.'}</small>
           </div>
         )}
         {elements.length > 0 && (
-          <ol className="agenda">
+          <ol className="frise">
             {elements.map(({ c, x }) =>
               c ? (
                 <PointFrise key={`${vue.date}-${c.class_id}-${c.debut}`} c={c} v={vue} onMaj={() => (sel ? autre.reload() : jour.reload())} />
@@ -720,12 +723,8 @@ function EspaceEnseignant() {
           </ol>
         )}
       </section>
-      {resume.data && (
-        <div className="ens-colonnes">
-          <ASuivre d={resume.data} />
-          <MaSemaine d={resume.data} auj={auj} />
-        </div>
-      )}
+      <ASuivre />
+      {vue && elements.length < 4 && <MaSemaine auj={auj} />}
     </div>
   )
 }
