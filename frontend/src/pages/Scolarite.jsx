@@ -5,7 +5,7 @@ import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { ListeOrdres } from './OrdrePaiement.jsx'
 import StatutScolarite from './StatutScolarite.jsx'
-import { IcCalendrier, IcCrayon, IcImport, IcPlus, IcPoubelle } from '../icones.jsx'
+import { IcCalendrier, IcChevron, IcCrayon, IcImport, IcPlus, IcPoubelle } from '../icones.jsx'
 import { preparerDocument } from '../lecture-fichier.js'
 import Comptabilite from './Comptabilite.jsx'
 import { envoyer } from './Documents.jsx'
@@ -90,149 +90,187 @@ function Situation() {
     }
   }
 
+  const auj = new Date().toISOString().slice(0, 10)
+  const ouvrir = (s, f) => {
+    if (!(s.moyens?.enLigne || s.moyens?.orange || s.moyens?.mtn)) return
+    setPaiement({ eleve: s.eleve, frais: f, moyens: s.moyens, moyen: s.moyens.enLigne ? 'enligne' : s.moyens.orange ? 'orange_money' : 'mtn_momo' })
+    setMontant(String(f.reste))
+    setError('')
+  }
+
   return (
-    <>
+    <div className="sco-page">
       <Note kind="ok">{info}</Note>
-      <Note>{error}</Note>
+      {!paiement && <Note>{error}</Note>}
       <ListeOrdres statut="a_payer,paye,litige" />
-      {situation.loading && <p className="muted">Chargement…</p>}
+      {situation.loading && !situation.data && <p className="muted">Chargement…</p>}
       {situation.data?.length === 0 && (
         <div className="vide">
           <b>Aucun enfant relié</b>
-          <small>Ajoutez votre enfant depuis l’accueil pour voir sa scolarité et la payer.</small>
+          <small>Ajoutez votre enfant pour voir sa scolarité et la payer.</small>
           <a href="#/trouver-eleve">Ajouter mon enfant</a>
         </div>
       )}
-      {situation.data?.map((s) => (
-        <section key={s.eleve.id} style={{ marginBottom: 22 }}>
-          <div className="hero-card" style={{ padding: 18 }}>
-            <span className="badge">{s.eleve.classe || 'Classe non précisée'}</span>
-            <h2 style={{ marginTop: 8, fontSize: 21 }}>
-              {s.eleve.prenom} {s.eleve.nom}
-            </h2>
-            <div style={{ marginTop: 8 }}>
-              <StatutScolarite statut={s.statut} reste={s.resteObligatoire} enRetard={s.enRetard} grand />
+      {situation.data?.map((s) => {
+        const total = s.frais.reduce((n, f) => n + Number(f.montant || 0), 0)
+        const pct = total ? Math.min(100, Math.round((Number(s.paye || 0) / total) * 100)) : 0
+        const enLigne = s.moyens?.enLigne || s.moyens?.orange || s.moyens?.mtn
+        const aPayer = s.frais.filter((f) => f.reste > 0)
+        return (
+          <section key={s.eleve.id} className="sco-enfant">
+            {situation.data.length > 1 && (
+              <p className="sco-qui">
+                <b data-brut>{`${s.eleve.prenom} ${s.eleve.nom}`}</b>
+                <span>{s.eleve.classe || ''}</span>
+              </p>
+            )}
+            <div className="sco-solde">
+              <div className="sco-solde-haut">
+                <span>
+                  <small>Reste à payer</small>
+                  <b>{fcfa(s.reste)}</b>
+                </span>
+                {s.reste === 0 ? <em className="sco-etat ok">À jour</em> : s.enRetard ? <em className="sco-etat retard">En retard</em> : null}
+              </div>
+              <i className="sco-barre" style={{ '--p': `${pct}%` }} />
+              <small className="sco-solde-bas">{`${fcfa(s.paye)} payés sur ${fcfa(total)}`}</small>
+              {aPayer.length > 0 && enLigne && (
+                <button type="button" className="btn btn-block sco-payer" onClick={() => ouvrir(s, aPayer[0])}>
+                  Payer
+                </button>
+              )}
             </div>
-            <div className="grid2" style={{ marginTop: 12 }}>
-              <div>
-                <div style={{ opacity: 0.8, fontSize: 13 }}>Payé</div>
-                <div style={{ font: '800 20px/1.2 var(--font-display)' }}>{fcfa(s.paye)}</div>
-              </div>
-              <div>
-                <div style={{ opacity: 0.8, fontSize: 13 }}>Reste à payer</div>
-                <div style={{ font: '800 20px/1.2 var(--font-display)', color: s.reste ? '#ffd27a' : '#9ff0c4' }}>{fcfa(s.reste)}</div>
-              </div>
-            </div>
-          </div>
-          {s.frais.length === 0 && <p className="muted" style={{ marginTop: 10 }}>L’établissement n’a pas encore publié ses frais.</p>}
-          {s.frais.length > 0 && (
-            <ul className="rows" style={{ marginTop: 12 }}>
-              {s.frais.map((f) => (
-                <li className="row" key={f.id} style={{ flexWrap: 'wrap' }}>
-                  <div className="row-main">
-                    <div className="row-title">{f.nom}</div>
-                    <div className="row-sub">
-                      {CATEGORIES[f.categorie] && f.categorie !== 'scolarite' ? `${CATEGORIES[f.categorie]} · ` : ''}
-                      {fcfa(f.montant)}
-                      {f.echeance ? ` · avant le ${jour(f.echeance)}` : ''}
-                      {!f.obligatoire ? ' · facultatif' : ''}
-                    </div>
-                  </div>
-                  {f.reste === 0 ? (
-                    <span className="etiquette ok">Payé</span>
-                  ) : (
-                    <>
-                      <span className="tag tag-wait">Reste {fcfa(f.reste)}</span>
-                      {(s.moyens?.enLigne || s.moyens?.orange || s.moyens?.mtn) ? (
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{ padding: '9px 14px', fontSize: 14 }}
-                          onClick={() => {
-                            setPaiement({ eleve: s.eleve, frais: f, moyens: s.moyens, moyen: s.moyens.enLigne ? 'enligne' : s.moyens.orange ? 'orange_money' : 'mtn_momo' })
-                            setMontant(String(f.reste))
-                            setError('')
-                          }}
-                        >
-                          Payer
-                        </button>
-                      ) : (
-                        <span className="muted" style={{ fontSize: 13 }}>Paiement au guichet</span>
-                      )}
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          {s.paiements.length > 0 && (
-            <>
-              <div className="recu-entete-liste">
-                <h3>Paiements effectués</h3>
-                <a className="lien-action" href={`#/releve/${s.eleve.id}`}>
-                  Relevé de l’année
-                </a>
-              </div>
-              <ul className="rows">
-                {s.paiements.map((p) => (
-                  <li className="row" key={p.id}>
-                    <div className="row-main">
-                      <div className="row-title">{fcfa(p.montant)}</div>
-                      <div className="row-sub">
-                        {p.frais} · {MODES[p.mode]} · {jour(p.created_at)}
-                      </div>
-                    </div>
-                    <a className="btn btn-quiet" style={{ padding: '8px 12px', fontSize: 14 }} href={`#/recus/${p.id}`}>
-                      Reçu
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </section>
-      ))}
+
+            {s.frais.length === 0 && <p className="muted">L’établissement n’a pas encore publié ses frais.</p>}
+            {s.frais.length > 0 && (
+              <>
+                <h3 className="sco-titre">Frais</h3>
+                <ul className="sco-liste">
+                  {s.frais.map((f) => {
+                    const retard = f.reste > 0 && f.obligatoire && f.echeance && String(f.echeance).slice(0, 10) < auj
+                    const contenu = (
+                      <>
+                        <span className="sco-frais-texte">
+                          <b data-brut>{f.nom}</b>
+                          {(f.echeance || !f.obligatoire) && <small>{[f.echeance ? `Avant le ${jour(f.echeance)}` : '', !f.obligatoire ? 'Facultatif' : ''].filter(Boolean).join(' · ')}</small>}
+                        </span>
+                        {f.reste === 0 ? (
+                          <em className="sco-etat ok">Payé</em>
+                        ) : (
+                          <span className={`sco-montant ${retard ? 'retard' : ''}`}>
+                            <b>{fcfa(f.reste)}</b>
+                            {f.reste < f.montant && <small>{`sur ${fcfa(f.montant)}`}</small>}
+                          </span>
+                        )}
+                      </>
+                    )
+                    return (
+                      <li key={f.id}>
+                        {f.reste > 0 && enLigne ? (
+                          <button type="button" onClick={() => ouvrir(s, f)}>
+                            {contenu}
+                            <IcChevron size={15} />
+                          </button>
+                        ) : (
+                          <div>{contenu}</div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+                {!enLigne && aPayer.length > 0 && <p className="sco-aide">Paiement au guichet de l’établissement.</p>}
+              </>
+            )}
+
+            {s.paiements.length > 0 && (
+              <>
+                <div className="sco-titre-ligne">
+                  <h3 className="sco-titre">Paiements</h3>
+                  <a href={`#/releve/${s.eleve.id}`}>Relevé de l’année</a>
+                </div>
+                <ul className="sco-liste">
+                  {s.paiements.map((p) => (
+                    <li key={p.id}>
+                      <a href={`#/recus/${p.id}`}>
+                        <span className="sco-frais-texte">
+                          <b data-brut>{p.frais}</b>
+                          <small>{`${jour(p.created_at)} · ${MODES[p.mode] || ''}`}</small>
+                        </span>
+                        <span className="sco-montant">
+                          <b>{fcfa(p.montant)}</b>
+                          <small>Reçu</small>
+                        </span>
+                        <IcChevron size={15} />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        )
+      })}
 
       {paiement && (
-        <form className="card" onSubmit={payer} style={{ position: 'sticky', bottom: 90, border: '2px solid var(--primary)' }}>
-          <b>
-            {paiement.frais.nom} · {paiement.eleve.prenom}
-          </b>
-          <p className="muted" style={{ fontSize: 13, margin: '4px 0 10px' }}>
-            {paiement.moyen === 'enligne' ? 'Vous validez sur votre téléphone. Le reçu est émis automatiquement.' : 'Vous payez directement l’établissement. Le numéro et le motif s’affichent à l’étape suivante.'}
-          </p>
-          <div className="chips">
-            {paiement.moyens.enLigne && (
-              <button type="button" className="chip" aria-pressed={paiement.moyen === 'enligne'} onClick={() => setPaiement({ ...paiement, moyen: 'enligne' })}>
-                En ligne
-              </button>
+        <div className="voile" onClick={() => setPaiement(null)}>
+          <form className="feuille sco-feuille" onSubmit={payer} onClick={(e) => e.stopPropagation()}>
+            <div className="feuille-poignee" />
+            <p className="feuille-titre">Payer</p>
+            {situation.data?.length > 1 && <p className="sco-feuille-qui" data-brut>{`${paiement.eleve.prenom} ${paiement.eleve.nom}`}</p>}
+            {situation.data?.flatMap((x) => (x.eleve.id === paiement.eleve.id ? x.frais.filter((f) => f.reste > 0) : [])).length === 1 && (
+              <p className="sco-feuille-frais" data-brut>{paiement.frais.nom}</p>
             )}
-            {paiement.moyens.orange && (
-              <button type="button" className="chip" aria-pressed={paiement.moyen === 'orange_money'} onClick={() => setPaiement({ ...paiement, moyen: 'orange_money' })}>
-                <img className="moyen-logo petit" src="/paiement/orange-money.png" alt="" /> Orange Money
-              </button>
+            {situation.data?.flatMap((x) => (x.eleve.id === paiement.eleve.id ? x.frais.filter((f) => f.reste > 0) : [])).length > 1 && (
+              <select
+                className="input"
+                aria-label="Frais"
+                value={paiement.frais.id}
+                onChange={(e) => {
+                  const f = situation.data.find((x) => x.eleve.id === paiement.eleve.id).frais.find((y) => String(y.id) === e.target.value)
+                  setPaiement({ ...paiement, frais: f })
+                  setMontant(String(f.reste))
+                }}
+              >
+                {situation.data
+                  .find((x) => x.eleve.id === paiement.eleve.id)
+                  .frais.filter((f) => f.reste > 0)
+                  .map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {`${f.nom} · ${fcfa(f.reste)}`}
+                    </option>
+                  ))}
+              </select>
             )}
-            {paiement.moyens.mtn && (
-              <button type="button" className="chip" aria-pressed={paiement.moyen === 'mtn_momo'} onClick={() => setPaiement({ ...paiement, moyen: 'mtn_momo' })}>
-                <img className="moyen-logo petit" src="/paiement/mtn-momo.png" alt="" /> MTN MoMo
-              </button>
-            )}
-          </div>
-          <Field label="Montant à payer (FCFA)">
-            <input className="input" inputMode="numeric" value={montant} onChange={(e) => setMontant(e.target.value)} required />
-          </Field>
-          <Note>{error}</Note>
-          <div className="actions">
-            <button className="btn" type="submit" disabled={busy}>
+            <div className="sco-moyens" role="radiogroup" aria-label="Moyen de paiement">
+              {paiement.moyens.enLigne && (
+                <button type="button" role="radio" aria-checked={paiement.moyen === 'enligne'} onClick={() => setPaiement({ ...paiement, moyen: 'enligne' })}>
+                  En ligne
+                </button>
+              )}
+              {paiement.moyens.orange && (
+                <button type="button" role="radio" aria-checked={paiement.moyen === 'orange_money'} onClick={() => setPaiement({ ...paiement, moyen: 'orange_money' })}>
+                  <img className="moyen-logo petit" src="/paiement/orange-money.png" alt="" /> Orange Money
+                </button>
+              )}
+              {paiement.moyens.mtn && (
+                <button type="button" role="radio" aria-checked={paiement.moyen === 'mtn_momo'} onClick={() => setPaiement({ ...paiement, moyen: 'mtn_momo' })}>
+                  <img className="moyen-logo petit" src="/paiement/mtn-momo.png" alt="" /> MTN MoMo
+                </button>
+              )}
+            </div>
+            <label className="sco-montant-champ">
+              <span>Montant</span>
+              <input className="input" inputMode="numeric" value={montant} onChange={(e) => setMontant(e.target.value)} required />
+              <small>FCFA</small>
+            </label>
+            <Note>{error}</Note>
+            <button className="btn btn-block" type="submit" disabled={busy}>
               {busy ? 'Un instant…' : paiement.moyen === 'enligne' ? 'Payer maintenant' : 'Continuer'}
             </button>
-            <button className="btn btn-quiet" type="button" onClick={() => setPaiement(null)}>
-              Annuler
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
-    </>
+    </div>
   )
 }
 

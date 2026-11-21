@@ -2821,3 +2821,50 @@ html.espace-parent:not(.ordi) .app { padding-bottom: calc(74px + env(safe-area-i
 html.ordi .par-accueil { max-width: 980px; }
 html.ordi .par-enfants { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-auto-columns: auto; overflow: visible; margin: 0; padding: 0; }
 html.espace-parent:not(.ordi) .nav a .ico { background: none; }
+
+/* ---------------------------------------------------------------- Scolarite (parent, eleve) */
+.sco-page { max-width: 680px; }
+.sco-enfant { margin-bottom: 26px; }
+.sco-qui { display: flex; align-items: baseline; gap: 8px; margin: 0 2px 8px; }
+.sco-qui b { font: 700 16px/1.2 var(--font-display); }
+.sco-qui span { color: var(--muted); font-size: 13px; }
+.sco-solde { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+.sco-solde-haut { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.sco-solde-haut span { display: flex; flex-direction: column; gap: 4px; }
+.sco-solde-haut small { color: var(--muted); font-size: 13px; }
+.sco-solde-haut b { font: 700 28px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.sco-barre { display: block; height: 6px; margin: 14px 0 8px; border-radius: 3px; background: linear-gradient(90deg, var(--primary) var(--p), var(--card-2, var(--bg)) var(--p)); }
+.sco-solde-bas { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.sco-payer { margin-top: 14px; }
+.sco-etat { flex: none; font: 600 12px/1 var(--font-body); font-style: normal; padding: 5px 9px; border-radius: 6px; }
+.sco-etat.ok { background: var(--ok-soft); color: var(--ok); }
+.sco-etat.retard { background: var(--danger-soft); color: var(--danger); }
+.sco-titre { margin: 20px 2px 8px; font: 700 12px/1.2 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.sco-titre-ligne { display: flex; align-items: baseline; justify-content: space-between; }
+.sco-titre-ligne a { font: 600 13px/1 var(--font-body); color: var(--lien, var(--primary)); text-decoration: none; }
+.sco-liste { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.sco-liste li + li { border-top: 1px solid var(--line); }
+.sco-liste li > button, .sco-liste li > a, .sco-liste li > div { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.sco-liste li > div { cursor: default; }
+.sco-liste li svg { flex: none; color: var(--muted); }
+.sco-frais-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sco-frais-texte b { font: 600 14.5px/1.3 var(--font-body); }
+.sco-frais-texte small { font-size: 12.5px; color: var(--muted); }
+.sco-montant { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-variant-numeric: tabular-nums; }
+.sco-montant b { font: 700 14.5px/1.2 var(--font-body); white-space: nowrap; }
+.sco-montant small { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.sco-montant.retard b { color: var(--danger); }
+.sco-aide { margin: 8px 4px 0; font-size: 12.5px; color: var(--muted); }
+.sco-feuille { display: grid; gap: 12px; }
+.sco-feuille .feuille-titre { margin-bottom: 0; }
+.sco-feuille-qui { margin: -8px 0 0; color: var(--muted); font-size: 13px; }
+.sco-moyens { display: flex; flex-wrap: wrap; gap: 8px; }
+.sco-moyens button { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: 600 14px/1 var(--font-body); cursor: pointer; }
+.sco-moyens button[aria-checked='true'] { border-color: var(--primary); background: var(--primary-soft); }
+.sco-montant-champ { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.sco-montant-champ span { font-size: 14px; color: var(--muted); }
+.sco-montant-champ .input { font: 700 18px/1.2 var(--font-body); text-align: right; font-variant-numeric: tabular-nums; }
+.sco-montant-champ small { color: var(--muted); font-size: 13px; }
+.fr-cours.passe .fr-carte { opacity: 0.6; }
+.agenda-eleve { margin-top: 4px; }
+.sco-feuille-frais { margin: 0; font: 600 15px/1.3 var(--font-body); }

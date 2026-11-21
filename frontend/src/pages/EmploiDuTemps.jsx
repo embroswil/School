@@ -293,3 +293,64 @@ export function MonEmploi() {
     </>
   )
 }
+
+// Emploi du temps d'un eleve (parent, eleve) : presente comme l'accueil de l'enseignant —
+// les prochains jours de cours en pastilles, puis la journee en frise (cours en cours mis en avant).
+const isoDe = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+export function AgendaEleve({ creneaux }) {
+  const maintenant = new Date()
+  const auj = isoDe(maintenant)
+  const jours = []
+  for (let i = 0; i < 21 && jours.length < 7; i++) {
+    const d = new Date(maintenant)
+    d.setDate(d.getDate() + i)
+    const dow = d.getDay()
+    if (creneaux.some((c) => c.jour === dow)) jours.push(isoDe(d))
+  }
+  const [choisi, setChoisi] = useState(null)
+  const actif = choisi || jours[0] || auj
+  const date = (iso, o) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', o)
+  const dow = new Date(`${actif}T12:00:00`).getDay()
+  const cours = creneaux.filter((c) => c.jour === dow).sort((a, b) => minutes(a.debut) - minutes(b.debut))
+  const m = maintenant.getHours() * 60 + maintenant.getMinutes()
+  if (!creneaux.length) return <p className="muted">L’emploi du temps apparaîtra ici dès que l’établissement l’aura saisi.</p>
+  return (
+    <section className="ens-agenda agenda-eleve">
+      <div className="ens-semaine" role="tablist" aria-label="Choisir un jour">
+        {jours.map((iso) => (
+          <button key={iso} type="button" role="tab" aria-selected={actif === iso} onClick={() => setChoisi(iso)}>
+            <small>{iso === auj ? 'Auj.' : date(iso, { weekday: 'short' }).replace('.', '')}</small>
+            <b>{date(iso, { day: 'numeric' })}</b>
+          </button>
+        ))}
+      </div>
+      <div className="ens-agenda-tete">
+        <h2>
+          {actif === auj ? 'Aujourd’hui' : date(actif, { weekday: 'long', day: 'numeric', month: 'long' })}
+          <small>{`${cours.length} cours`}</small>
+        </h2>
+      </div>
+      <ol className="frise">
+        {cours.map((c) => {
+          const enCours = actif === auj && m >= minutes(c.debut) && m < minutes(c.fin)
+          const passe = actif === auj && m >= minutes(c.fin)
+          const prof = c.last_name ? `${c.first_name || ''} ${c.last_name}`.trim() : ''
+          return (
+            <li key={c.id} className={`fr-cours ${enCours ? 'maintenant' : passe ? 'passe' : 'avenir'}`}>
+              <span className="fr-heure">
+                <b>{c.debut}</b>
+                <small>{c.fin}</small>
+              </span>
+              <span className="fr-point" aria-hidden="true" />
+              <div className="fr-carte">
+                <b data-brut>{c.matiere || 'Cours'}</b>
+                <small data-brut>{[prof, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>
+                {enCours && <em className="fr-badge">En cours</em>}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    </section>
+  )
+}

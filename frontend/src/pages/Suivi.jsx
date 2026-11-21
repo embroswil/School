@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { ListeDevoirs } from './Devoirs.jsx'
-import { GrilleEmploi } from './EmploiDuTemps.jsx'
+import { AgendaEleve } from './EmploiDuTemps.jsx'
 import Discipline from './Discipline.jsx'
 
 const n20 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
@@ -83,7 +83,7 @@ function Notes({ id }) {
 function EmploiEleve({ id }) {
   const d = useApi(`/api/vie-scolaire/emplois/moi?eleve=${id}`)
   if (!d.data) return <p className="muted">Chargement…</p>
-  return <GrilleEmploi creneaux={d.data.creneaux} />
+  return <AgendaEleve creneaux={d.data.creneaux} />
 }
 
 function DevoirsEleve({ id }) {
