@@ -80,7 +80,15 @@ export function Info({ p, complet = false }) {
           </ul>
         )}
         {documents.map((m, k) =>
-          estPdf(m) ? (
+          m.apercu ? (
+            <a key={k} className="info-apercu" href={m.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+              <img src={m.apercu} alt="" loading="lazy" />
+              <span>
+                <b>{m.nom || 'Document'}</b>
+                <small>Toucher pour ouvrir</small>
+              </span>
+            </a>
+          ) : estPdf(m) ? (
             <ApercuPdf key={k} media={m} complet={complet} />
           ) : (
             <a key={k} className="info-doc" href={m.url} target="_blank" rel="noreferrer">

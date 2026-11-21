@@ -66,7 +66,26 @@ const lireMedias = (liste) => {
   return (Array.isArray(liste) ? liste : [])
     .slice(0, 10)
     .filter((m) => ["image", "video", "document"].includes(m?.type) && typeof m.url === "string" && pre.length > 40 && m.url.startsWith(pre))
-    .map((m) => ({ type: m.type, url: m.url, ...(m.nom ? { nom: String(m.nom).slice(0, 120) } : {}) }));
+    .map((m) => ({
+      type: m.type,
+      url: m.url,
+      ...(m.nom ? { nom: String(m.nom).slice(0, 120) } : {}),
+      ...(m.type === "document" && typeof m.apercu === "string" && m.apercu.startsWith(pre) ? { apercu: m.apercu } : {}),
+    }));
+};
+
+// Classes vues par un parent (celles de ses enfants) ou un eleve (la sienne) ; null pour le personnel (tout est visible)
+const classesVues = async (u) => {
+  if (u.role === "parent")
+    return (
+      await db.query(
+        "SELECT DISTINCT cs.class_id FROM parent_student_links l JOIN class_students cs ON cs.student_id = l.student_id AND cs.status = 'active' WHERE l.parent_id = $1",
+        [u.id]
+      )
+    ).rows.map((r) => r.class_id);
+  if (u.role === "student")
+    return (await db.query("SELECT class_id FROM class_students WHERE student_id = $1 AND status = 'active'", [u.id])).rows.map((r) => r.class_id);
+  return null;
 };
 
 // Accuse de lecture : les parents et eleves qui ont vu une information (fil ou detail ouverts)
@@ -89,8 +108,9 @@ router.get("/", async (req, res, next) => {
               p.pinned, p.created_at, s.name AS school_name, p.medias
        FROM publications p JOIN schools s ON s.id = p.school_id
        WHERE p.school_id = $1 AND p.audience <> 'interne' AND ($2::text IS NULL OR p.audience IN ('tous', $2))
+         AND ($4::int[] IS NULL OR p.class_id IS NULL OR p.class_id = ANY($4))
        ORDER BY p.pinned DESC, p.created_at DESC LIMIT $3`,
-      [ecole, peutPublier(req.user) ? null : publicRole || "tous", limite]
+      [ecole, peutPublier(req.user) ? null : publicRole || "tous", limite, await classesVues(req.user)]
     );
     // L'image n'est plus recopiee dans la liste : seulement son adresse
     res.json({ success: true, data: rows.map(({ a_image, ...p }) => ({ ...p, image: a_image ? `/api/actualites/${p.id}/image` : null })) });
@@ -132,8 +152,9 @@ router.get("/fil", async (req, res, next) => {
        WHERE (cardinality($1::int[]) = 0 OR p.school_id = ANY($1))
          AND ($3::timestamp IS NULL OR p.created_at < $3)
          AND p.school_id = ANY($2) AND p.audience IN ('tous', $4)
+         AND ($5::int[] IS NULL OR p.class_id IS NULL OR p.class_id = ANY($5))
        ORDER BY p.created_at DESC LIMIT 20`,
-      [choisies, miennes, avant, publicRole]
+      [choisies, miennes, avant, publicRole, await classesVues(req.user)]
     );
     marquerVues(req.user, rows.map((r) => r.id));
     const noms = miennes.length
@@ -172,11 +193,23 @@ router.post("/documents", async (req, res, next) => {
     const date = /^\d{4}-\d{2}-\d{2}/.test(b.dateEvenement || "") ? b.dateEvenement : null;
     // Le recapitulatif des absences (nominatif) est reserve aux familles de l'etablissement, et a l'administration
     if (cle === "absences" && req.user.role !== "principal") throw new ApiError(403, "Le récapitulatif des absences est publié par l’administration");
+    // Classe visee : seuls ses parents et ses eleves voient le document (un enseignant : une de ses classes)
+    let classe = null;
+    if (b.classeId) {
+      classe = (
+        await db.query(
+          `SELECT c.id FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id WHERE c.id = $1 AND ay.school_id = $2
+             AND ($3::int IS NULL OR EXISTS (SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id AND cs.teacher_id = $3) OR c.class_teacher_id = $3)`,
+          [parseInt(b.classeId, 10) || 0, req.user.schoolId, req.user.role === "teacher" ? req.user.id : null]
+        )
+      ).rows[0];
+      if (!classe) throw new ApiError(404, "Classe introuvable");
+    }
     const { rows } = await db.query(
-      `INSERT INTO publications (school_id, author_id, type, title, body, audience, medias, categorie, source, event_date, event_place)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+      `INSERT INTO publications (school_id, author_id, type, title, body, audience, medias, categorie, source, event_date, event_place, class_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
       [req.user.schoolId, req.user.id, type, titre, texte(b.description, 2000) || null, audience, JSON.stringify(medias), libelle,
-       cle === "absences" ? "prive" : "document", date, texte(b.lieu, 200) || null]
+       cle === "absences" ? "prive" : "document", date, texte(b.lieu, 200) || null, classe?.id || null]
     );
     res.status(201).json({ success: true, data: { id: rows[0].id, categorie: cle } });
   } catch (e) {
@@ -272,8 +305,8 @@ router.post("/infos", async (req, res, next) => {
     const photos = lireMedias(b.photos).filter((m) => m.type === "image");
     const image = typeof b.image === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(b.image) && b.image.length < 700000 ? b.image : null;
     const { rows } = await db.query(
-      `INSERT INTO publications (school_id, author_id, type, title, body, event_date, event_place, audience, medias, image, categorie, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'tous', $8, $9, $10, $11) RETURNING id`,
+      `INSERT INTO publications (school_id, author_id, type, title, body, event_date, event_place, audience, medias, image, categorie, source, class_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'tous', $8, $9, $10, $11, $12) RETURNING id`,
       [
         req.user.schoolId,
         req.user.id,
@@ -286,6 +319,7 @@ router.post("/infos", async (req, res, next) => {
         image,
         genre === "cours" ? "Cours supplémentaire" : genre === "evenement" ? "Événement" : "Information",
         genre === "cours" ? "prive" : "info",
+        classe?.id || null,
       ]
     );
     res.status(201).json({ success: true, data: { id: rows[0].id } });
@@ -299,9 +333,9 @@ router.get("/documents", async (req, res, next) => {
   try {
     if (!["principal", "teacher"].includes(req.user.role)) throw new ApiError(403, "Accès réservé");
     const { rows } = await db.query(
-      `SELECT p.id, p.title, p.categorie, p.audience, p.medias, p.created_at, p.author_id, u.first_name, u.last_name,
+      `SELECT p.id, p.title, p.categorie, p.audience, p.medias, p.created_at, p.author_id, u.first_name, u.last_name, p.class_id, c.name AS classe,
               (SELECT COUNT(*)::int FROM publication_vues v WHERE v.publication_id = p.id) AS vues
-       FROM publications p LEFT JOIN users u ON u.id = p.author_id
+       FROM publications p LEFT JOIN users u ON u.id = p.author_id LEFT JOIN classes c ON c.id = p.class_id
        WHERE p.school_id = $1 AND p.source IN ('document', 'info', 'prive') ORDER BY p.created_at DESC LIMIT 100`,
       [req.user.schoolId]
     );
@@ -321,8 +355,9 @@ router.get("/:id/detail", async (req, res, next) => {
               p.created_at, p.school_id, s.name AS school_name, s.city AS school_city, p.medias, p.categorie, p.source,
               CASE WHEN a.role = 'teacher' THEN a.first_name || ' ' || a.last_name END AS enseignant
        FROM publications p JOIN schools s ON s.id = p.school_id LEFT JOIN users a ON a.id = p.author_id
-       WHERE p.id = $1 AND ($4::boolean OR (p.school_id = ANY($2) AND p.audience IN ('tous', $3)))`,
-      [parseInt(req.params.id, 10) || 0, miennes, publicRole, req.user.role === "admin"]
+       WHERE p.id = $1 AND ($4::boolean OR (p.school_id = ANY($2) AND p.audience IN ('tous', $3)
+         AND ($5::int[] IS NULL OR p.class_id IS NULL OR p.class_id = ANY($5))))`,
+      [parseInt(req.params.id, 10) || 0, miennes, publicRole, req.user.role === "admin", await classesVues(req.user)]
     );
     const p = rows[0];
     if (!p) {

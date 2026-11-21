@@ -123,9 +123,14 @@ router.get("/eleves/:id/notes", async (req, res, next) => {
     const classe = await classeActuelle(id);
     const { rows } = await db.query(
       `SELECT e.sequence, s.id AS matiere_id, s.name AS matiere, e.titre, e.date_eval, e.bareme, x.note, x.absent, x.appreciation,
-              COALESCE(cs.coefficient, 2) AS coefficient
+              COALESCE(cs.coefficient, 2) AS coefficient, st.moyenne, st.max, st.min, st.notes, st.reussite,
+              CASE WHEN x.note IS NOT NULL THEN (SELECT COUNT(*)::int + 1 FROM notes_eleves y WHERE y.evaluation_id = e.id AND y.note > x.note) END AS rang
        FROM notes_eleves x JOIN evaluations e ON e.id = x.evaluation_id JOIN subjects s ON s.id = e.subject_id
        LEFT JOIN class_subjects cs ON cs.class_id = e.class_id AND cs.subject_id = e.subject_id
+       -- statistiques de la classe pour cette evaluation (jamais les notes des autres eleves)
+       CROSS JOIN LATERAL (SELECT ROUND(AVG(y.note)::numeric, 2) AS moyenne, MAX(y.note) AS max, MIN(y.note) AS min, COUNT(y.note)::int AS notes,
+                                  COUNT(*) FILTER (WHERE y.note >= e.bareme / 2.0)::int AS reussite
+                           FROM notes_eleves y WHERE y.evaluation_id = e.id) st
        WHERE x.student_id = $1 AND e.publiee
        ORDER BY e.sequence DESC, s.name, e.date_eval`,
       [id]
@@ -134,7 +139,11 @@ router.get("/eleves/:id/notes", async (req, res, next) => {
     for (const r of rows) {
       const q = (parSequence[r.sequence] ||= { sequence: r.sequence, matieres: {} });
       const m = (q.matieres[r.matiere_id] ||= { matiere: r.matiere, coefficient: Number(r.coefficient), notes: [] });
-      m.notes.push({ titre: r.titre, date: r.date_eval, note: r.note === null ? null : Number(r.note), bareme: Number(r.bareme), absent: r.absent });
+      const num = (v) => (v === null || v === undefined ? null : Number(v));
+      m.notes.push({
+        titre: r.titre, date: r.date_eval, note: num(r.note), bareme: Number(r.bareme), absent: r.absent,
+        classe: { moyenne: num(r.moyenne), max: num(r.max), min: num(r.min), notes: r.notes, reussite: r.reussite, rang: r.rang },
+      });
     }
     const sequences = [];
     for (const q of Object.values(parSequence).sort((a, b) => b.sequence - a.sequence)) {

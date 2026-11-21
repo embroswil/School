@@ -108,6 +108,74 @@ const ETIQUETTE = (nom, type) => {
   if (type === 'video') return 'VIDÉO'
   return { pdf: 'PDF', doc: 'WORD', docx: 'WORD', xls: 'EXCEL', xlsx: 'EXCEL', ppt: 'PPT', pptx: 'PPT', csv: 'CSV', txt: 'TXT' }[e] || 'FICHIER'
 }
+// Classe de l'enseignant reconnue dans le nom du fichier (ex. « Sujet-DS2-3e-All-4.pdf » → 3e All 4)
+const cleClasse = (t) => sansAccents(t).replace(/[^a-z0-9]+/g, ' ').trim()
+export function classeDansNom(nom, classes) {
+  const n = ` ${cleClasse(nom)} `
+  return [...(classes || [])].sort((a, b) => b.name.length - a.name.length).find((c) => n.includes(` ${cleClasse(c.name)} `)) || null
+}
+
+// Apercu d'un Word ou d'un Excel : la premiere page dessinee en image (affichee dans le fil des familles)
+async function apercuTexte(nom, texte) {
+  const tableau = /\.(xlsx?|csv|ods)$/i.test(nom)
+  const lignes = String(texte || '')
+    .split('\n')
+    .filter((l) => l.trim() && !/^\[.*\]$/.test(l.trim()))
+    .slice(0, tableau ? 26 : 34)
+  if (!lignes.length) return null
+  const W = 820
+  const H = 1100
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = H
+  const g = c.getContext('2d')
+  g.fillStyle = '#ffffff'
+  g.fillRect(0, 0, W, H)
+  g.fillStyle = '#111827'
+  const coupe = (t, max) => {
+    let x = String(t)
+    while (x && g.measureText(x).width > max) x = x.slice(0, -2)
+    return x.length < String(t).length ? `${x.slice(0, -1)}…` : x
+  }
+  let y = 70
+  if (tableau) {
+    const rangs = lignes.map((l) => l.split(',').map((v) => v.replace(/^"|"$/g, '').trim()))
+    const n = Math.min(6, Math.max(...rangs.map((r) => r.length)))
+    const larg = (W - 80) / n
+    rangs.forEach((r, i) => {
+      const titre = r.filter(Boolean).length === 1
+      g.font = `${titre || i === 0 ? 'bold ' : ''}${titre ? 20 : 17}px sans-serif`
+      if (titre) g.fillText(coupe(r.find(Boolean), W - 80), 40, y)
+      else {
+        r.slice(0, n).forEach((v, k) => g.fillText(coupe(v, larg - 12), 40 + k * larg + 6, y))
+        g.strokeStyle = '#d1d5db'
+        g.beginPath()
+        g.moveTo(40, y + 12)
+        g.lineTo(W - 40, y + 12)
+        g.stroke()
+      }
+      y += 38
+    })
+  } else {
+    lignes.forEach((l, i) => {
+      g.font = `${i === 0 ? 'bold 26px' : '19px'} sans-serif`
+      const mots = l.replace(/\s*\|\s*/g, '   ').split(' ')
+      let ligne = ''
+      for (const m of mots) {
+        if (g.measureText(`${ligne} ${m}`).width > W - 100 && ligne) {
+          if (y < H - 40) g.fillText(ligne, 50, y)
+          y += 30
+          ligne = m
+        } else ligne = ligne ? `${ligne} ${m}` : m
+      }
+      if (y < H - 40) g.fillText(ligne, 50, y)
+      y += i === 0 ? 46 : 34
+    })
+  }
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.82))
+  return blob ? new File([blob], `apercu-${nom.replace(/\.[a-z0-9]+$/i, '')}.jpg`, { type: 'image/jpeg' }) : null
+}
+
 const iPhone = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
 const ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,video/*'
 
@@ -214,7 +282,7 @@ function DocsEnseignant({ docs, retirer }) {
                 </span>
                 <b data-brut>{d.title}</b>
                 <small>{`${d.categorie} · ${jour(d.created_at)}`}</small>
-                <small className="docs-ens-public">{`${PUBLIC_COURT[d.audience] || 'Tout le monde'}${d.vues > 0 && d.audience !== 'interne' ? ` · vu par ${d.vues.toLocaleString('fr-FR')}` : ''}`}</small>
+                <small className="docs-ens-public">{`${d.classe || PUBLIC_COURT[d.audience] || 'Tout le monde'}${d.vues > 0 && d.audience !== 'interne' ? ` · vu par ${d.vues.toLocaleString('fr-FR')}` : ''}`}</small>
               </a>
               <button type="button" className="docs-ens-retirer" aria-label={`Retirer ${d.title}`} onClick={() => retirer(d.id)}>
                 <IcPoubelle size={15} />
@@ -231,6 +299,8 @@ export default function Documents() {
   const { user } = useAuth()
   const champ = useRef(null)
   const champDossier = useRef(null)
+  const mesClasses = useApi(user.role === 'teacher' ? '/api/notes/mes-classes' : null)
+  const [importNotes, setImportNotes] = useState({})
   const liste = useApi('/api/actualites/documents')
   const [items, setItems] = useState([])
   const [etat, setEtat] = useState('')
@@ -285,13 +355,23 @@ export default function Documents() {
         let texte = ''
         if (/\.(pdf|xlsx|xls|csv|ods|docx)$/i.test(x.name)) texte = (await preparerDocument([x]).catch(() => ({ texte: '' }))).texte || ''
         const vu = reconnaitre(x.name, texte)
+        // enseignant : la classe reconnue dans le nom (ou le contenu) du fichier
+        const classe = user.role === 'teacher' ? classeDansNom(x.name, mesClasses.data) || classeDansNom(texte.slice(0, 600), mesClasses.data) : null
         if (vu && DESTINATIONS[vu.nature]) {
-          maj(id, { etape: 'pret', analyse: { nature: vu.nature }, categorie: CATEGORIE_DE[vu.nature] || 'autre' })
+          maj(id, { etape: 'pret', analyse: { nature: vu.nature }, categorie: CATEGORIE_DE[vu.nature] || 'autre', texte: vu.nature === 'notes_nominatives' ? texte : '', classeId: classe ? String(classe.id) : '' })
           continue
         }
         // 2. envoi, puis lecture automatique pour les PDF et les photos
         const envoye = await envoyer(x)
-        maj(id, { fichier: envoye, type: envoye.type })
+        maj(id, { fichier: envoye, type: envoye.type, classeId: classe ? String(classe.id) : '' })
+        // Word et Excel : une image de la premiere page, affichee dans le fil des familles
+        if (/\.(docx|xlsx?|csv|ods)$/i.test(x.name) && texte) {
+          const img = await apercuTexte(x.name, texte).catch(() => null)
+          if (img) {
+            const ap = await envoyer(img).catch(() => null)
+            if (ap) maj(id, { apercu: ap.url })
+          }
+        }
         let a = null
         if (!vu) a = (await api.post('/api/actualites/documents/analyser', { url: envoye.url, mime: envoye.mime, nom: envoye.nom }).catch(() => ({ data: null }))).data
         if (a && DESTINATIONS[a.nature]) {
@@ -436,8 +516,11 @@ export default function Documents() {
     for (const x of publiables) {
       setEtat(`Publication ${n + 1} / ${publiables.length}…`)
       try {
-        const { titre, categorie, description, audience, dateEvenement, lieu } = x
-        await api.post('/api/actualites/documents', { titre, categorie, description, audience, dateEvenement, lieu, fichiers: [{ type: x.fichier.type, url: x.fichier.url, nom: x.fichier.nom }] })
+        const { titre, categorie, description, audience, dateEvenement, lieu, classeId } = x
+        await api.post('/api/actualites/documents', {
+          titre, categorie, description, audience, dateEvenement, lieu, classeId: classeId || null,
+          fichiers: [{ type: x.fichier.type, url: x.fichier.url, nom: x.fichier.nom, ...(x.apercu ? { apercu: x.apercu } : {}) }],
+        })
         const ancien = x.garderLesDeux ? null : versionPubliee(x)
         if (ancien) await api.delete(`/api/actualites/${ancien.id}`).catch(() => {})
         retirerItem(x.id)
@@ -572,10 +655,52 @@ export default function Documents() {
                     </>
                   ) : nature === 'notes_nominatives' && enseignant ? (
                     <>
-                      <p>Relevé de notes d’élèves : il n’est pas publié aux familles. Les notes se saisissent dans Mes classes → Notes.</p>
-                      <a className="btn btn-quiet btn-block" href="#/mes-classes">
-                        Saisir les notes
-                      </a>
+                      <p>Relevé de notes : il n’est pas publié aux familles. Ses notes sont reprises dans Notes ; chaque parent ne verra que la note de son enfant, avec la moyenne de la classe.</p>
+                      {groupe.map((x) => {
+                        const r = importNotes[x.id]
+                        return (
+                          <div key={x.id} className="doc-import">
+                            {groupe.length > 1 && <small className="doc-import-nom">{x.nom}</small>}
+                            {r?.fait ? (
+                              <div className="doc-import-ok">
+                                <b>{`${r.fait.trouves} note(s) reprise(s) sur ${r.fait.effectif} élèves · ${r.fait.titre} (${r.fait.classe})`}</b>
+                                {r.fait.manquants.length > 0 && <small>{`Non retrouvés : ${r.fait.manquants.slice(0, 6).join(', ')}${r.fait.manquants.length > 6 ? '…' : ''}`}</small>}
+                                <a className="btn btn-block" href={`#/evaluations/${r.fait.evaluationId}`}>
+                                  Vérifier et publier
+                                </a>
+                              </div>
+                            ) : (
+                              <>
+                                <select className="input" aria-label="Classe du relevé" value={x.classeId || ''} onChange={(e) => maj(x.id, { classeId: e.target.value })}>
+                                  <option value="">Choisir la classe</option>
+                                  {(mesClasses.data || []).map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                {r?.erreur && <Note>{r.erreur}</Note>}
+                                <button
+                                  type="button"
+                                  className="btn btn-block"
+                                  disabled={!x.classeId || r?.enCours || x.etape !== 'pret'}
+                                  onClick={async () => {
+                                    setImportNotes((m) => ({ ...m, [x.id]: { enCours: true } }))
+                                    try {
+                                      const d = (await api.post(`/api/notes/classes/${x.classeId}/import-releve`, { texte: x.texte, nom: x.nom })).data
+                                      setImportNotes((m) => ({ ...m, [x.id]: { fait: d } }))
+                                    } catch (err) {
+                                      setImportNotes((m) => ({ ...m, [x.id]: { erreur: err.message } }))
+                                    }
+                                  }}
+                                >
+                                  {r?.enCours ? 'Lecture des notes…' : 'Importer dans Notes'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })}
                     </>
                   ) : d[0] ? (
                     <button type="button" className="btn btn-block" disabled={Boolean(etat)} onClick={() => (ENLIGNE.includes(nature) ? toutAjouter(groupe) : transmettre(groupe))}>
@@ -610,7 +735,7 @@ export default function Documents() {
                     <b>{x.etape === 'pret' && !dest ? x.titre || x.nom : x.nom}</b>
                     <small>
                       {x.etape === 'lecture' && 'Lecture…'}
-                      {x.etape === 'pret' && !dest && `${libelleType} · ${PUBLICS[x.audience]}`}
+                      {x.etape === 'pret' && !dest && `${libelleType} · ${x.classeId ? (mesClasses.data || []).find((c) => String(c.id) === x.classeId)?.name || PUBLICS[x.audience] : PUBLICS[x.audience]}`}
                       {x.etape === 'pret' && versionPubliee(x) && (
                         <span className="doc-remplace">
                           {x.garderLesDeux ? 'Ajouté en plus de la version déjà publiée' : `Remplace la version du ${jour(versionPubliee(x).created_at)}`}
@@ -633,6 +758,18 @@ export default function Documents() {
                 {x.etape === 'erreur' && <Note>{x.message}</Note>}
                 {x.etape === 'pret' && !dest && x.ouvert && (
                   <div className="doc-champs">
+                    {enseignant && (
+                      <Field label="Classe">
+                        <select className="input" value={x.classeId || ''} onChange={(e) => maj(x.id, { classeId: e.target.value })}>
+                          <option value="">Tout l’établissement</option>
+                          {(mesClasses.data || []).map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
                     <Field label="Titre">
                       <input className="input" value={x.titre} onChange={(e) => maj(x.id, { titre: e.target.value })} />
                     </Field>

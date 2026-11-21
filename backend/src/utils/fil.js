@@ -9,14 +9,15 @@ const logger = require("./logger");
  * Publie une information automatique. « cle » evite les doublons (une seule
  * publication par cle : par exemple une par evaluation, une par classe et par jour).
  */
-const publierAuto = async ({ schoolId, type = "autre", titre, corps = null, categorie = null, medias = [], audience = "tous", cle = null, auteur = null }) => {
+// classId : publication reservee aux parents et aux eleves de cette classe
+const publierAuto = async ({ schoolId, type = "autre", titre, corps = null, categorie = null, medias = [], audience = "tous", cle = null, auteur = null, classId = null }) => {
   try {
     await db.query(
-      `INSERT INTO publications (school_id, author_id, type, title, body, audience, medias, categorie, source, cle_auto)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'auto', $9)
+      `INSERT INTO publications (school_id, author_id, type, title, body, audience, medias, categorie, source, cle_auto, class_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'auto', $9, $10)
        ON CONFLICT (cle_auto) WHERE cle_auto IS NOT NULL
-       DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body, created_at = NOW()`,
-      [schoolId, auteur, type, String(titre).slice(0, 200), corps, audience, JSON.stringify(medias), categorie, cle]
+       DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body, class_id = EXCLUDED.class_id, created_at = NOW()`,
+      [schoolId, auteur, type, String(titre).slice(0, 200), corps, audience, JSON.stringify(medias), categorie, cle, classId]
     );
   } catch (e) {
     logger.error(`Fil automatique : ${e.message}`);

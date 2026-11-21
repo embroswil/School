@@ -48,10 +48,29 @@ function Notes({ id }) {
                   <b>{m.matiere}</b>
                   <b style={{ color: m.moyenne >= 10 ? 'var(--ok)' : 'var(--danger)' }}>{n20(m.moyenne)}</b>
                 </div>
-                <div className="muted" style={{ fontSize: 13 }}>
-                  coef. {String(m.coefficient).replace('.0', '')} ·{' '}
-                  {m.notes.map((x) => (x.absent ? `${x.titre} : absent` : `${x.titre} : ${n20(x.note)}/${Number(x.bareme)}`)).join(' · ')}
-                </div>
+                <div className="muted" style={{ fontSize: 12.5 }}>{`coef. ${String(m.coefficient).replace('.0', '')}`}</div>
+                <ul className="sv-notes">
+                  {m.notes.map((x, k) => (
+                    <li key={k}>
+                      <span className="sv-note-tete">
+                        <span>{x.titre}</span>
+                        <b className={x.absent ? '' : x.note >= x.bareme / 2 ? 'ok' : 'ko'}>{x.absent ? 'Absent(e)' : `${n20(x.note)}/${Number(x.bareme)}`}</b>
+                      </span>
+                      {x.classe?.notes > 0 && (
+                        <span className="sv-note-classe">
+                          {[
+                            `Moyenne de la classe ${n20(x.classe.moyenne)}`,
+                            x.classe.rang ? `${x.classe.rang === 1 ? '1er' : `${x.classe.rang}e`} sur ${x.classe.notes}` : '',
+                            `plus haute ${n20(x.classe.max)} · plus basse ${n20(x.classe.min)}`,
+                            `${x.classe.reussite} sur ${x.classe.notes} ont la moyenne`,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>

@@ -223,20 +223,30 @@ router.put("/evaluations/:id", async (req, res, next) => {
         [e.id, ids, valeurs, absents, apprec, req.user.id, e.class_id]
       );
     }
-    // Publication : les parents et les eleves voient les notes
+    // Publication : les parents et les eleves voient les notes ; chacun recoit la note de l'eleve et la moyenne de la classe
     if (req.body?.publiee === true && !e.publiee) {
       await db.query("UPDATE evaluations SET publiee = true WHERE id = $1", [e.id]);
+      const moy = (await db.query("SELECT ROUND(AVG(note)::numeric, 2) AS m FROM notes_eleves WHERE evaluation_id = $1", [e.id])).rows[0].m;
+      const nb = (v) => String(Number(v)).replace(".", ",");
+      const finMoy = moy !== null ? ` · moyenne de la classe ${nb(moy)}` : "";
       await db
         .query(
           `INSERT INTO notifications (user_id, title, message, type, data)
-           SELECT DISTINCT dest, $2, $3, 'grade', '{"lien":"/notes"}'::jsonb FROM (
-             SELECT cs.student_id AS dest FROM class_students cs JOIN users u ON u.id = cs.student_id
+           SELECT d.dest, $2, d.msg, 'grade', '{"lien":"/notes"}'::jsonb FROM (
+             SELECT cs.student_id AS dest,
+                    CASE WHEN n.absent THEN 'Absent(e)' WHEN n.note IS NOT NULL THEN 'Votre note : ' || replace(trim(to_char(n.note, 'FM990.99'), '.'), '.', ',') || '/' || $4
+                         ELSE 'Pas de note' END || ' · ' || $3 || $5 AS msg
+             FROM class_students cs JOIN users u ON u.id = cs.student_id LEFT JOIN notes_eleves n ON n.evaluation_id = $6 AND n.student_id = cs.student_id
              WHERE cs.class_id = $1 AND cs.status = 'active' AND u.email NOT LIKE '%@inscrit.school'
-             UNION
-             SELECT l.parent_id FROM parent_student_links l JOIN class_students cs ON cs.student_id = l.student_id
+             UNION ALL
+             SELECT l.parent_id,
+                    u.first_name || ' : ' || CASE WHEN n.absent THEN 'absent(e)' WHEN n.note IS NOT NULL THEN replace(trim(to_char(n.note, 'FM990.99'), '.'), '.', ',') || '/' || $4
+                         ELSE 'pas de note' END || ' · ' || $3 || $5
+             FROM parent_student_links l JOIN class_students cs ON cs.student_id = l.student_id JOIN users u ON u.id = l.student_id
+             LEFT JOIN notes_eleves n ON n.evaluation_id = $6 AND n.student_id = l.student_id
              WHERE cs.class_id = $1 AND cs.status = 'active'
            ) d`,
-          [e.class_id, `Nouvelle note : ${e.matiere}`, `${e.titre} · Séquence ${e.sequence} · ${e.classe}`]
+          [e.class_id, `Nouvelle note : ${e.matiere}`, `${e.titre} (${e.classe})`, nb(e.bareme), finMoy, e.id]
         )
         .catch(() => {});
     } else if (req.body?.publiee === false) {
@@ -279,6 +289,7 @@ async function publierNotesAuFil(e) {
         "Chaque parent voit la note de son enfant dans sa fiche de suivi.",
       audience: "tous",
       cle: `notes-${e.id}`,
+      classId: e.class_id,
     });
   } catch (_) {
     /* le fil n'empeche jamais l'enregistrement des notes */
@@ -946,6 +957,123 @@ router.get("/mes-classes", async (req, res, next) => {
       [req.user.id, req.user.schoolId]
     );
     res.json({ success: true, data: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// POST /api/notes/classes/:id/import-releve { texte, nom, subjectId? } : un releve de notes (Excel, Word ou PDF lu sur
+// l'appareil) rempli dans Notes. Chaque eleve de la classe est cherche dans le texte (matricule, puis nom), et la note
+// qui suit est reprise. L'evaluation du meme intitule non publiee est completee, sinon une nouvelle est creee (non publiee).
+const sansAcc = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+router.post("/classes/:id/import-releve", async (req, res, next) => {
+  try {
+    if (req.user.role !== "teacher") throw new ApiError(403, "Réservé aux enseignants");
+    const classId = entier(req.params.id);
+    const brut = String(req.body?.texte || "").slice(0, 400000);
+    const nomFichier = String(req.body?.nom || "").slice(0, 200);
+    if (brut.replace(/\s/g, "").length < 20) throw new ApiError(400, "Le relevé est vide ou illisible");
+    const miennes = (
+      await db.query(
+        "SELECT cs.subject_id, s.name FROM class_subjects cs JOIN subjects s ON s.id = cs.subject_id WHERE cs.class_id = $1 AND cs.teacher_id = $2",
+        [classId, req.user.id]
+      )
+    ).rows;
+    if (!miennes.length) throw new ApiError(403, "Vous n’enseignez pas dans cette classe");
+    const t = sansAcc(`${nomFichier}\n${brut}`);
+    const matiere =
+      miennes.find((m) => String(m.subject_id) === String(req.body?.subjectId)) || miennes.find((m) => t.includes(sansAcc(m.name))) || miennes[0];
+    const c = await verifierClasse(req.user, classId, matiere.subject_id, "saisie");
+
+    // bareme, intitule, sequence et date lus dans le releve
+    const bareme = Number((t.match(/(?:note\s*\/\s*|sur\s+)(\d{1,3})\b/) || [])[1]) || 20;
+    const ds = t.match(/devoir surveille\s*n?\s*[°o]?\s*(\d)|\bds\s*n?\s*[°o]?\s*(\d)/);
+    const titre = ds
+      ? `Devoir surveillé n° ${ds[1] || ds[2]}`
+      : /interro/.test(t)
+        ? "Interrogation écrite"
+        : /composition/.test(t)
+          ? "Composition"
+          : "Évaluation importée";
+    const seqLue = Number((t.match(/sequence\s*(\d)/) || [])[1]) || null;
+    const dl = t.match(/(\d{1,2})\/(\d{1,2})\/(20\d{2})/);
+    const dateEval = dl ? `${dl[3]}-${dl[2].padStart(2, "0")}-${dl[1].padStart(2, "0")}` : null;
+
+    // eleves de la classe, retrouves dans le texte
+    const eleves = (
+      await db.query(
+        `SELECT u.id, u.first_name, u.last_name, regexp_replace(COALESCE(sr.admission_number, ''), '^\\d+-', '') AS matricule
+         FROM class_students cs JOIN users u ON u.id = cs.student_id LEFT JOIN student_records sr ON sr.student_id = u.id
+         WHERE cs.class_id = $1 AND cs.status = 'active'`,
+        [classId]
+      )
+    ).rows;
+    const plat = t.replace(/[,;|\t"]+/g, " ").replace(/\s+/g, " ");
+    const apres = (i) => {
+      // premiere valeur apres le nom : une note (0 a bareme) ou « abs »
+      const m = plat.slice(i, i + 40).match(/^\s*(abs(?:ent)?e?\b|\d{1,3}(?:[.,]\d{1,2})?)(?=\s|$)/);
+      if (!m) return undefined;
+      if (/^abs/.test(m[1])) return { absent: true, note: null };
+      const v = Number(m[1].replace(",", "."));
+      return v >= 0 && v <= bareme ? { absent: false, note: v } : undefined;
+    };
+    const lus = [];
+    const manquants = [];
+    for (const e of eleves) {
+      const cles = [
+        e.matricule && sansAcc(e.matricule).length >= 4 ? sansAcc(e.matricule) : null,
+        sansAcc(`${e.last_name} ${e.first_name}`).replace(/\s+/g, " ").trim(),
+        sansAcc(`${e.first_name} ${e.last_name}`).replace(/\s+/g, " ").trim(),
+      ].filter(Boolean);
+      let r;
+      for (const k of cles) {
+        const i = plat.indexOf(k);
+        if (i < 0) continue;
+        // apres le matricule vient le nom : on le saute
+        let fin = i + k.length;
+        if (k === cles[0] && e.matricule) {
+          const nom = [cles[1], cles[2]].map((n) => plat.indexOf(n, fin)).find((j) => j >= 0 && j - fin < 4);
+          if (nom !== undefined) fin = nom + (plat.startsWith(cles[1], nom) ? cles[1].length : cles[2].length);
+        }
+        r = apres(fin);
+        if (r) break;
+      }
+      if (r) lus.push({ id: e.id, ...r });
+      else manquants.push(`${e.last_name} ${e.first_name}`);
+    }
+    if (!lus.length) throw new ApiError(400, "Aucun élève de la classe n’a été retrouvé dans ce relevé : vérifiez la classe choisie.");
+
+    // evaluation a completer, ou nouvelle
+    let ev = (
+      await db.query(
+        `SELECT id, sequence FROM evaluations WHERE class_id = $1 AND subject_id = $2 AND NOT publiee AND lower(titre) = lower($3)
+         ORDER BY id DESC LIMIT 1`,
+        [classId, matiere.subject_id, titre]
+      )
+    ).rows[0];
+    if (!ev) {
+      const seq =
+        seqLue ||
+        (await db.query("SELECT MAX(sequence) AS s FROM evaluations WHERE class_id = $1 AND subject_id = $2", [classId, matiere.subject_id])).rows[0].s ||
+        1;
+      ev = (
+        await db.query(
+          `INSERT INTO evaluations (school_id, academic_year_id, class_id, subject_id, sequence, titre, date_eval, bareme, publiee, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7::date, CURRENT_DATE), $8, false, $9) RETURNING id, sequence`,
+          [c.school_id, c.academic_year_id, classId, matiere.subject_id, Math.min(6, Math.max(1, seq)), titre, dateEval, bareme, req.user.id]
+        )
+      ).rows[0];
+    }
+    await db.query(
+      `INSERT INTO notes_eleves (evaluation_id, student_id, note, absent, saisie_par, updated_at)
+       SELECT $1, x.id, x.note, x.absent, $5, NOW() FROM unnest($2::int[], $3::numeric[], $4::boolean[]) AS x(id, note, absent)
+       ON CONFLICT (evaluation_id, student_id) DO UPDATE SET note = EXCLUDED.note, absent = EXCLUDED.absent, saisie_par = EXCLUDED.saisie_par, updated_at = NOW()`,
+      [ev.id, lus.map((x) => x.id), lus.map((x) => x.note), lus.map((x) => x.absent), req.user.id]
+    );
+    res.json({
+      success: true,
+      data: { evaluationId: ev.id, titre, matiere: matiere.name, classe: c.name, trouves: lus.length, effectif: eleves.length, manquants: manquants.slice(0, 30) },
+    });
   } catch (e) {
     next(e);
   }
