@@ -283,7 +283,11 @@ router.post("/infos", async (req, res, next) => {
     if (!["principal", "teacher"].includes(req.user.role)) throw new ApiError(403, "Réservé à l’établissement et aux enseignants");
     const b = req.body || {};
     const genre = ["info", "cours", "evenement"].includes(b.genre) ? b.genre : "info";
-    const corps = texte(b.texte, 3000);
+    // les evenements (reunion, ceremonie…) sont annonces par l'administration
+    if (genre === "evenement" && req.user.role === "teacher") throw new ApiError(403, "Les événements sont annoncés par l’administration");
+    const corps =
+      texte(b.texte, 3000) ||
+      (genre === "cours" ? `Cours supplémentaire${/^\d{2}:\d{2}$/.test(b.heure || "") ? ` à ${b.heure}` : ""}${texte(b.lieu, 200) ? ` · ${texte(b.lieu, 200)}` : ""}.` : "");
     if (!corps) throw new ApiError(400, "Écrivez l’information à faire passer");
     let classe = null;
     if (b.classeId) {

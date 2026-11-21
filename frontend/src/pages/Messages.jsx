@@ -115,13 +115,7 @@ export default function Messages() {
       <div className="msg-entete">
         <div>
           <h1 className="page-title">Messages</h1>
-          <p className="muted">
-            {etablissement
-              ? 'Parents, élèves et enseignants de votre établissement.'
-              : enseignant
-                ? 'L’établissement et les parents de vos élèves.'
-                : `Votre échange avec ${user.schoolName || 'l’établissement'}.`}
-          </p>
+          {etablissement && <p className="muted">Parents, élèves et enseignants de votre établissement.</p>}
         </div>
         {!etablissement && !ouvert && (
           <button type="button" className="btn msg-nouveau" onClick={() => (setOuvert(true), setEnvoye(''))}>

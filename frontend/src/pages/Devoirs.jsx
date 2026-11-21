@@ -96,7 +96,6 @@ export default function Devoirs({ id }) {
       <div className="page-tete">
         <div>
           <h1 className="page-title">{`Devoirs${infos.data ? ` · ${infos.data.classe.name}` : ''}`}</h1>
-          <p className="muted">Visibles par les élèves et leurs parents.</p>
         </div>
         {peutDonner && !ouvert && (
           <button type="button" className="btn cn-nouvelle" onClick={() => (setOuvert(true), setOk(''))}>

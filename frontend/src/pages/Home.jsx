@@ -334,22 +334,117 @@ function EspaceEtablissement() {
 }
 
 // Accueil du parent, du tuteur ou du donateur : ses enfants, puis le fil d'informations
+// Accueil du parent : ses enfants en cartes (chacun sa couleur), leurs dernieres notes, puis les informations
+const TEINTES = [
+  ['#2f6bff', '#5b3df5'],
+  ['#0e9f8e', '#0b6e8a'],
+  ['#e0683a', '#c23d5a'],
+  ['#8b5cf6', '#c026d3'],
+  ['#0ea5e9', '#2563eb'],
+]
+const n20p = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
+const rangTexte = (r) => (r === 1 ? '1er' : `${r}e`)
+
+function CarteEnfant({ e, i }) {
+  const [a, b] = TEINTES[i % TEINTES.length]
+  const r = e.resultat
+  return (
+    <a className="par-enfant" href={`#/suivi/${e.id}`} style={{ '--c1': a, '--c2': b }}>
+      <span className="par-enfant-tete">
+        <span className="par-avatar">{`${(e.prenom || '?')[0]}${(e.nom || '')[0] || ''}`}</span>
+        <span className="par-enfant-nom">
+          <b data-brut>{e.prenom}</b>
+          <small data-brut>{[e.classe || 'Classe non précisée', e.ecole].filter(Boolean).join(' · ')}</small>
+        </span>
+        <IcChevron size={16} />
+      </span>
+      <span className="par-chiffres">
+        <span>
+          <b>{r ? n20p(r.moyenne) : '—'}</b>
+          <small>{r ? `Moyenne séq. ${r.sequence}` : 'Moyenne'}</small>
+        </span>
+        <span>
+          <b>{r?.rang ? rangTexte(r.rang) : '—'}</b>
+          <small>{r?.rang ? `sur ${r.sur}` : 'Rang'}</small>
+        </span>
+        <span>
+          <b>{e.absencesMois}</b>
+          <small>{e.absencesMois > 1 ? 'Absences ce mois' : 'Absence ce mois'}</small>
+        </span>
+      </span>
+      {e.devoirs > 0 && <span className="par-devoirs">{e.devoirs > 1 ? `${e.devoirs} devoirs à faire` : '1 devoir à faire'}</span>}
+    </a>
+  )
+}
+
 function EspaceParent() {
   const enfants = useApi('/api/suivi/eleves')
+  const liste = enfants.data || []
+  // dernieres notes de tous les enfants, la plus recente d'abord
+  const notes = liste
+    .flatMap((e, i) => (e.dernieresNotes || []).map((x) => ({ ...x, enfant: e, i })))
+    .sort((x, y) => String(y.date_eval || '').localeCompare(String(x.date_eval || '')))
+    .slice(0, 5)
   return (
-    <Fil
-      enfants={enfants.data || []}
-      actions={
-        <>
-          <a className="enfant-carte action" href="#/trouver-eleve">
-            ＋ Mon enfant
+    <div className="par-accueil">
+      <section>
+        <div className="par-titre">
+          <h2>{liste.length > 1 ? 'Mes enfants' : 'Mon enfant'}</h2>
+          <a href="#/trouver-eleve">
+            <IcPlus size={15} />
+            <span>Ajouter</span>
           </a>
-          <a className="enfant-carte action" href="#/trouver-eleve">
-            Payer une scolarité
+        </div>
+        {enfants.data && !liste.length ? (
+          <a className="par-vide" href="#/trouver-eleve">
+            <IcFamille size={26} />
+            <b>Ajoutez votre enfant</b>
+            <small>Retrouvez-le avec son établissement et sa classe pour suivre ses notes, ses absences et sa scolarité.</small>
           </a>
-        </>
-      }
-    />
+        ) : (
+          <div className={`par-enfants ${liste.length === 1 ? 'seul' : ''}`}>
+            {liste.map((e, i) => (
+              <CarteEnfant key={e.id} e={e} i={i} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {notes.length > 0 && (
+        <section>
+          <div className="par-titre">
+            <h2>Dernières notes</h2>
+          </div>
+          <ul className="par-notes">
+            {notes.map((x, k) => {
+              const [c1] = TEINTES[x.i % TEINTES.length]
+              const sur = Number(x.bareme)
+              return (
+                <li key={k}>
+                  <a href={`#/suivi/${x.enfant.id}`}>
+                    <span className="par-pastille" style={{ background: c1 }}>
+                      {(x.enfant.prenom || '?')[0]}
+                    </span>
+                    <span className="par-note-texte">
+                      <b data-brut>{x.matiere}</b>
+                      <small data-brut>{liste.length > 1 ? `${x.enfant.prenom} · ${x.titre}` : x.titre}</small>
+                    </span>
+                    <b className={`par-note ${x.absent ? '' : Number(x.note) >= sur / 2 ? 'ok' : 'ko'}`}>{x.absent ? 'Abs.' : `${Number(x.note).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}/${sur}`}</b>
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      <section>
+        <div className="par-titre">
+          <h2>Informations</h2>
+        </div>
+        <Fil enfants={[]} />
+      </section>
+    </div>
   )
 }
 

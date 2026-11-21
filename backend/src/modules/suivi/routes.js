@@ -96,8 +96,12 @@ router.get("/eleves", async (req, res, next) => {
           [id]
         )
       ).rows;
+      const devoirs = classe
+        ? (await db.query("SELECT COUNT(*)::int AS n FROM devoirs WHERE class_id = $1 AND pour_le >= CURRENT_DATE", [classe.id])).rows[0].n
+        : 0;
       data.push({
         id,
+        devoirs,
         prenom: u.first_name,
         nom: u.last_name,
         lien: lien ? LIENS[lien] || lien : null,

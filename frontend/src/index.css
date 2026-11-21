@@ -2756,3 +2756,66 @@ button.doc-dossier { align-items: flex-start; }
 .doc-import-ok b { font-size: 14px; }
 .doc-import-ok small { color: var(--muted); font-size: 12.5px; }
 .doc-import .input, .doc-import .btn { width: 100%; }
+
+/* ---------------------------------------------------------------- Informer / Cours en plus (enseignant) */
+.inf-ens { max-width: 640px; }
+.inf-carte { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.inf-ligne { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+/* champs date et heure : jamais plus larges que leur colonne (iPhone, Android) */
+input[type='date'].input, input[type='time'].input { min-width: 0; width: 100%; max-width: 100%; display: block; -webkit-appearance: none; appearance: none; }
+.grid2 > * { min-width: 0; }
+
+/* ================================================================ Espace parent
+   Barre du bas en capsule flottante (l'element ouvert s'affiche avec son nom), Messages en bulle,
+   accueil centre sur les enfants : une carte de couleur par enfant, ses dernieres notes, puis les informations. */
+html.espace-parent:not(.ordi) .nav {
+  left: 16px; right: 16px; bottom: calc(10px + env(safe-area-inset-bottom)); width: auto; height: 62px; padding: 6px;
+  display: flex; justify-content: space-between; align-items: center; gap: 6px;
+  border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+html.espace-parent:not(.ordi) .nav a { flex: 1; height: 50px; min-width: 0; flex-direction: row; justify-content: center; gap: 8px; border-radius: 999px; padding: 0 12px; font-size: 13.5px; }
+html.espace-parent:not(.ordi) .nav a > span:last-child { display: none; }
+html.espace-parent:not(.ordi) .nav a[aria-current='page'] { flex: 1.6; background: var(--primary); color: #fff; }
+html.espace-parent:not(.ordi) .nav a[aria-current='page'] svg { color: #fff; }
+html.espace-parent:not(.ordi) .nav a[aria-current='page'] > span:last-child { display: inline; font-weight: 700; }
+html.espace-parent:not(.ordi) .nav a[aria-current='page']::after { display: none; }
+html.espace-parent .bulle-messages { bottom: calc(84px + env(safe-area-inset-bottom)); }
+html.espace-parent .sheet-wrap { padding-bottom: 96px; }
+
+.par-accueil { display: grid; gap: 22px; }
+.par-titre { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
+.par-titre h2 { margin: 0; font: 700 17px/1.2 var(--font-display); }
+.par-titre a { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 999px; background: var(--primary-soft); color: var(--lien, var(--primary)); font: 600 13px/1 var(--font-body); text-decoration: none; }
+.par-enfants { display: grid; grid-auto-flow: column; grid-auto-columns: 86%; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 14px; }
+.par-enfants.seul { margin: 0; padding: 2px 0 14px; }
+.par-enfants::-webkit-scrollbar { display: none; }
+.par-enfants.seul { grid-auto-columns: 100%; }
+.par-enfant { scroll-snap-align: start; display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 20px; color: #fff; text-decoration: none; background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 12px 26px color-mix(in srgb, var(--c1) 30%, transparent); position: relative; overflow: hidden; }
+.par-enfant::before { content: ''; position: absolute; right: -40px; top: -40px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+.par-enfant-tete { display: flex; align-items: center; gap: 12px; position: relative; }
+.par-avatar { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.22); font: 700 16px/1 var(--font-body); border: 2px solid rgba(255, 255, 255, 0.45); }
+.par-enfant-nom { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.par-enfant-nom b { font: 700 18px/1.2 var(--font-display); }
+.par-enfant-nom small { font-size: 12.5px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.par-chiffres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; position: relative; }
+.par-chiffres > span { display: flex; flex-direction: column; gap: 3px; padding: 10px 8px; border-radius: 14px; background: rgba(255, 255, 255, 0.16); text-align: center; }
+.par-chiffres b { font: 700 18px/1.1 var(--font-body); font-variant-numeric: tabular-nums; }
+.par-chiffres small { font-size: 11px; opacity: 0.85; line-height: 1.25; }
+.par-devoirs { align-self: flex-start; position: relative; padding: 5px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.18); font: 600 12px/1 var(--font-body); }
+.par-vide { display: grid; justify-items: center; gap: 6px; padding: 26px 18px; border: 1.5px dashed var(--line); border-radius: 20px; color: var(--text); text-align: center; text-decoration: none; }
+.par-vide svg { color: var(--lien, var(--primary)); }
+.par-vide small { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.par-notes { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--card); overflow: hidden; }
+.par-notes li + li { border-top: 1px solid var(--line); }
+.par-notes a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; color: var(--text); text-decoration: none; }
+.par-pastille { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 700 13px/1 var(--font-body); }
+.par-note-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.par-note-texte b { font: 600 14px/1.3 var(--font-body); }
+.par-note-texte small { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.par-note { flex: none; font: 700 15px/1 var(--font-body); font-variant-numeric: tabular-nums; }
+.par-note.ok { color: var(--ok); }
+.par-note.ko { color: var(--danger); }
+html.ordi .par-accueil { max-width: 980px; }
+html.ordi .par-enfants { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-auto-columns: auto; overflow: visible; margin: 0; padding: 0; }
+html.espace-parent:not(.ordi) .nav a .ico { background: none; }

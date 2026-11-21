@@ -80,10 +80,10 @@ const NAV = {
     ['+', IcPlus, 'Actions'],
     ['/compte', IcProfil, 'Profil'],
   ],
+  // parent : Messages flotte en bas a droite (bulle), comme pour l'enseignant
   parent: [
     ['/', IcAccueil, 'Accueil'],
     ['/scolarite', IcCarte, 'Scolarité'],
-    ['/messages', IcMessages, 'Messages'],
     ['/compte', IcProfil, 'Profil'],
   ],
   student: [
@@ -113,7 +113,7 @@ const NAV_ORDI = {
     ['/document', IcFichier, 'Documents'],
     ['/mes-etablissements', IcEcole, 'Mes établissements'],
   ],
-  parent: [['/trouver-eleve', IcEleves, 'Trouver un élève']],
+  parent: [['/trouver-eleve', IcEleves, 'Trouver un élève'], ['/messages', IcMessages, 'Messages']],
   admin: [
     ['/abonnements', IcCarte, 'Abonnements'],
     ['/litiges', IcActus, 'Litiges'],
@@ -241,7 +241,8 @@ export default function Shell({ path, children }) {
   // espace enseignant : sa propre couleur (voir index.css)
   useEffect(() => {
     document.documentElement.classList.toggle('espace-enseignant', user.role === 'teacher')
-    return () => document.documentElement.classList.remove('espace-enseignant')
+    document.documentElement.classList.toggle('espace-parent', user.role === 'parent')
+    return () => document.documentElement.classList.remove('espace-enseignant', 'espace-parent')
   }, [user.role])
   // travail sans reseau : pages utiles gardees sur l'appareil des l'ouverture
   useEffect(() => {
@@ -259,6 +260,18 @@ export default function Shell({ path, children }) {
       .get('/api/boite/compteurs')
       .then((r) => setCompteurs(r.data || { notifications: 0, messages: 0 }))
       .catch(() => {})
+  }, [path])
+
+  // Pas de repetition : quand la page a son propre titre, la barre du haut ne le repete pas
+  const [titrePage, setTitrePage] = useState(false)
+  useEffect(() => {
+    const main = document.querySelector('main.sheet')
+    if (!main) return undefined
+    const voir = () => setTitrePage(Boolean(main.querySelector('h1.page-title')))
+    voir()
+    const o = new MutationObserver(voir)
+    o.observe(main, { childList: true, subtree: true })
+    return () => o.disconnect()
   }, [path])
 
   const accueil = path === '/'
@@ -282,7 +295,7 @@ export default function Shell({ path, children }) {
             <button type="button" className="icon-btn" aria-label="Retour" onClick={() => (window.history.length > 1 ? window.history.back() : (window.location.hash = '/'))}>
               <IcRetour />
             </button>
-            <span>{titre}</span>
+            {!titrePage && <span>{titre}</span>}
           </div>
         )}
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -348,7 +361,7 @@ export default function Shell({ path, children }) {
         </div>
       )}
 
-      {user.role === 'teacher' && chemin === '/' && (
+      {['teacher', 'parent'].includes(user.role) && chemin === '/' && (
         <a href="#/messages" className="bulle-messages" aria-label="Messages">
           <IcMessages size={24} />
           {compteurs.messages > 0 && <span className="pastille">{compteurs.messages}</span>}
