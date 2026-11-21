@@ -59,7 +59,7 @@ export default function Messages() {
   const etablissement = user.role === 'principal'
   const enseignant = user.role === 'teacher'
   const liste = useApi('/api/boite/messages')
-  const auDepart = (window.location.hash.match(/nouveau=(parents|absence)/) || [])[1]
+  const auDepart = (window.location.hash.match(/nouveau=(parents|absence|etablissement)/) || [])[1]
   const [ouvert, setOuvert] = useState(Boolean(auDepart))
   const [f, setF] = useState(auDepart ? { ...VIDE, a: auDepart } : VIDE)
   // enseignant : ses absences signalees (l'absence se signale depuis la messagerie)

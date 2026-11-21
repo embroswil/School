@@ -31,8 +31,12 @@ const CATEGORIES = [
   ["emploi", "Emploi du temps", "autre", /emploi|edt|horaire|planning/i],
   ["scolarite", "Scolarité", "annonce", /frais|scolarit|pension|tranche|paiement|apee?\b/i],
   ["calendrier", "Calendrier", "evenement", /calendrier|vacances|rentr[ée]e|cong[ée]/i],
-  ["examen", "Examens", "evenement", /examen|composition|s[ée]quence|bac|bepc|probatoire|devoir surveill/i],
+  ["examen", "Examens", "evenement", /examen|composition|s[ée]quence|bac|bepc|probatoire|devoir surveill|sujet|interro|\bds[\s_-]*(n[°o]?\s*)?\d/i],
   ["resultats", "Résultats", "resultats", /r[ée]sultat|tableau d.honneur|admis|classement|palmar/i],
+  // documents des enseignants
+  ["progression", "Progression", "autre", /progression|programmation|planification|r[ée]partition/i],
+  ["exercices", "Exercices", "autre", /exercice|fiche de travail|fiche[\s_-]+td|\btd\b|travaux dirig|entra[iî]nement|devoir [àa] la maison|\bdm\b/i],
+  ["cours", "Cours", "autre", /\bcours\b|le[çc]on|chapitre|r[ée]sum[ée]/i],
   ["fournitures", "Fournitures", "autre", /fourniture|liste de livres|manuels?/i],
   ["cantine", "Cantine", "autre", /cantine|menu|repas/i],
   ["evenement", "Événement", "evenement", /f[êe]te|sortie|excursion|tournoi|journ[ée]e|c[ée]r[ée]monie|semaine/i],

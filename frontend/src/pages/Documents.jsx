@@ -20,6 +20,9 @@ export const CATEGORIES = [
   ['examen', 'Examens', 'Examens'],
   ['resultats', 'Résultats', 'Résultats'],
   ['absences', 'Récapitulatif des absences', 'Absences'],
+  ['progression', 'Progression', 'Progressions'],
+  ['exercices', 'Exercices', 'Exercices'],
+  ['cours', 'Cours', 'Cours'],
   ['fournitures', 'Fournitures', 'Fournitures'],
   ['cantine', 'Cantine', 'Cantine'],
   ['evenement', 'Événement', 'Événements'],
@@ -60,6 +63,12 @@ function reconnaitre(nom, texte) {
     return { nature: 'interne', categorie: 'administration' }
   if (/cahier.d.appel|feuille.d.appel|feuille de presence/.test(t)) return { nature: 'cahier_appel' }
   if (/recapitulatif.{0,20}absences|absences des eleves/.test(t)) return { nature: 'interne', categorie: 'absences' }
+  // releve de notes ou bulletin d'eleves nommes : jamais publie aux familles
+  // (un nom en majuscules suivi d'une note sur 20, au moins 5 fois ; le texte d'un PDF peut tenir sur une seule ligne)
+  const lignesNotees = (String(texte || '').match(/[A-ZÀ-Ý]{3,}[^\n\d]{0,60}?[\s,;|](1?\d|20)([.,]\d{1,2})?(?=$|[\s,;|])/gm) || []).length
+  if (/(releve de notes|bulletin|\bnotes?\b|moyenne)/.test(t) && /(\bnoms?\b|prenom|eleve)/.test(t) && !/sanction/.test(t) && lignesNotees >= 5) return { nature: 'notes_nominatives' }
+  // le nom du fichier l'emporte : un emploi du temps cite aussi enseignants, matieres et classes
+  if (/emploi.du.temps|emplois.du.temps|\bedt\b/.test(sansAccents(nom))) return { nature: 'emploi_du_temps' }
   if (/enseignant|professeur|equipe pedagogique/.test(t) && /matiere/.test(t) && /classe/.test(t)) return { nature: 'liste_enseignants' }
   if (/matricule/.test(t) && /(date de naissance|nee? le|sexe)/.test(t)) return { nature: 'liste_eleves' }
   if (/emploi du temps|emploi-du-temps/.test(t) || (/lundi/.test(t) && /mardi/.test(t) && /mercredi/.test(t) && /\d{1,2}\s*[:h]\s*\d{2}/.test(t))) return { nature: 'emploi_du_temps' }
@@ -118,7 +127,7 @@ const jour = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', mo
 const sansAccent = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 // Icone de chaque type de document (dessin adapte, sur fond de sa couleur)
-const COULEURS = { Communiqués: '#2f6bff', Réunions: '#7c4dff', Scolarité: '#12b76a', 'Emplois du temps': '#0ba5ec', Calendriers: '#f79009', Examens: '#ef6820', Résultats: '#dd2590', Absences: '#f04438', Fournitures: '#875bf7', Cantine: '#ca8504', Événements: '#06aed4', Administration: '#7a8699', 'Autres documents': '#8a94a6' }
+const COULEURS = { Communiqués: '#2f6bff', Réunions: '#7c4dff', Scolarité: '#12b76a', 'Emplois du temps': '#0ba5ec', Calendriers: '#f79009', Examens: '#ef6820', Résultats: '#dd2590', Absences: '#f04438', Fournitures: '#875bf7', Cantine: '#ca8504', Événements: '#06aed4', Administration: '#7a8699', Cours: '#2f6bff', Exercices: '#12b76a', Progressions: '#0ba5ec', 'Autres documents': '#8a94a6' }
 const DESSINS = {
   // porte-voix
   Communiqués: <><path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1z" /><path d="M16 9a4 4 0 0 1 0 6" /><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11" /></>,
@@ -142,6 +151,12 @@ const DESSINS = {
   Cantine: <><path d="M7 3v6a2 2 0 0 0 4 0V3M9 3v18" /><path d="M17 21V3c-2 1-3 4-3 7h3" /></>,
   // drapeau d'evenement
   Événements: <><path d="M5 21V4" /><path d="M5 4h11l-2 4 2 4H5" /><path d="M9 16.5l1 1.5 2-3" /></>,
+  // livre ouvert
+  Cours: <><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H10a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H3z" /><path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H14a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h7z" /></>,
+  // feuille d'exercices cochee
+  Exercices: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="m8 8.5 1.5 1.5L12 7.5M8 14.5l1.5 1.5 2.5-2.5M14 9h2M14 15h2" /></>,
+  // courbe de progression
+  Progressions: <><path d="M4 4v16h16" /><path d="m7 15 4-4 3 3 5-6" /></>,
   // porte-documents ferme
   Administration: <><rect x="3.5" y="7" width="17" height="12" rx="2" /><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7" /><rect x="10" y="11" width="4" height="4" rx="1" /><path d="M3.5 13h6.5M14 13h6.5" /></>,
   // document
@@ -284,7 +299,7 @@ export default function Documents() {
         const envoye = await envoyer(x)
         maj(id, { fichier: envoye, type: envoye.type })
         let a = null
-        if (!vu && (envoye.mime === 'application/pdf' || envoye.type === 'image')) a = (await api.post('/api/actualites/documents/analyser', { url: envoye.url, mime: envoye.mime, nom: envoye.nom })).data
+        if (!vu) a = (await api.post('/api/actualites/documents/analyser', { url: envoye.url, mime: envoye.mime, nom: envoye.nom }).catch(() => ({ data: null }))).data
         if (a && DESTINATIONS[a.nature]) {
           maj(id, { etape: 'pret', analyse: { nature: a.nature }, categorie: CATEGORIE_DE[a.nature] || 'autre' })
           continue
@@ -416,6 +431,9 @@ export default function Documents() {
     }
   }
   const ENLIGNE = ['emploi_du_temps', 'cahier_appel']
+  // Enseignant : ces documents sont geres par l'administration (pages reservees a l'etablissement)
+  const enseignant = user.role === 'teacher'
+  const reserveEtablissement = (nature) => enseignant && ['liste_enseignants', 'liste_eleves', 'cahier_appel', 'emploi_du_temps', 'frais'].includes(nature)
   async function publier() {
     setError('')
     setOk('')
@@ -542,19 +560,33 @@ export default function Documents() {
                   </details>
                 )}
                 <div className="doc-destination">
-                  {d[0] ? (
+                  {reserveEtablissement(nature) ? (
+                    <>
+                      <p>Document géré par l’administration : il n’est pas publié. Transmettez-le à l’établissement, qui l’ajoutera.</p>
+                      <a className="btn btn-quiet btn-block" href="#/messages?nouveau=etablissement">
+                        Écrire à l’établissement
+                      </a>
+                    </>
+                  ) : nature === 'notes_nominatives' && enseignant ? (
+                    <>
+                      <p>Relevé de notes d’élèves : il n’est pas publié aux familles. Les notes se saisissent dans Mes classes → Notes.</p>
+                      <a className="btn btn-quiet btn-block" href="#/mes-classes">
+                        Saisir les notes
+                      </a>
+                    </>
+                  ) : d[0] ? (
                     <button type="button" className="btn btn-block" disabled={Boolean(etat)} onClick={() => (ENLIGNE.includes(nature) ? toutAjouter(groupe) : transmettre(groupe))}>
                       {enCours ? etat || 'Lecture…' : groupe.length > 1 ? `${d[2]} (${groupe.length})` : d[2]}
                     </button>
                   ) : (
                     <p>Les notes se saisissent dans Notes : ce document n’est pas affiché aux familles.</p>
                   )}
-                  {!enCours && ENLIGNE.includes(nature) && groupe.length === 1 && (
+                  {!enCours && ENLIGNE.includes(nature) && groupe.length === 1 && !reserveEtablissement(nature) && (
                     <button type="button" className="lien-action discret" onClick={() => transmettre(groupe)}>
                       Vérifier avant d’ajouter
                     </button>
                   )}
-                  {!enCours && d[3] && (
+                  {!enCours && d[3] && !reserveEtablissement(nature) && (
                     <label className="check doc-aussi">
                       <input type="checkbox" checked={publierAussi[nature] !== false} onChange={(e) => setPublierAussi((p) => ({ ...p, [nature]: e.target.checked }))} />
                       <span>Publier aussi dans le fil des familles</span>
@@ -604,7 +636,7 @@ export default function Documents() {
                     <div className="grid2">
                       <Field label="Type de document">
                         <select className="input" value={x.categorie} onChange={(e) => maj(x.id, { categorie: e.target.value, ...(e.target.value === 'administration' ? { audience: 'interne' } : {}) })}>
-                          {CATEGORIES.filter((c) => c[0] !== 'absences' || user.role === 'principal').map(([k, v]) => (
+                          {(enseignant ? ['cours', 'exercices', 'examen', 'progression', 'resultats', 'evenement', 'communique', 'fournitures', 'autre'].map((k) => CATEGORIES.find((c) => c[0] === k)) : CATEGORIES.filter((c) => c[0] !== 'absences' || user.role === 'principal')).map(([k, v]) => (
                             <option key={k} value={k}>
                               {v}
                             </option>
