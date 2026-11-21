@@ -56,7 +56,7 @@ const PARCOURS = {
     '/': [
       { titre: 'Bienvenue sur Sùkûl !', texte: 'Je vais vous accompagner pendant vos premiers pas. Suivez-moi : cela ne prend que quelques secondes à chaque page.' },
       { cible: '.ens-agenda', titre: 'Votre journée', texte: 'Le cours du moment : confirmez d’un geste que vous êtes en cours et faites l’appel.' },
-      { cible: '.ens-entete', titre: 'Établissements et espace parent', texte: 'Passez d’un établissement à l’autre, ou ouvrez votre espace parent pour suivre vos enfants.' },
+      { cible: '.ens-espaces', titre: 'Établissements et espace parent', texte: 'Passez d’un établissement à l’autre, ou ouvrez votre espace parent pour suivre vos enfants.' },
       { cible: '.nav-plus', titre: 'Le bouton +', texte: 'Faire l’appel, écrire aux parents, informer, programmer un cours en plus ou signaler une absence.' },
     ],
     '/emploi': [{ titre: 'Votre emploi du temps', texte: 'Tous vos cours de la semaine, jour par jour. Il est saisi par l’établissement.' }],

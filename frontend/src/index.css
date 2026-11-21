@@ -3063,3 +3063,15 @@ button.sco-tuile:active { transform: scale(0.98); }
 html.ordi .sco-tuiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sco-solde-haut .sco-anneau { display: grid; place-items: center; }
 .sco-solde-haut .sco-anneau b { font: 700 17px/1 var(--font-body); position: relative; }
+
+/* Enseignant : meme barre Enseignant | Parent que dans l'espace parent ; etablissements en menu juste dessous */
+.ens-entete-zone { position: relative; }
+.ens-espaces { margin: 4px 0 12px; }
+.ens-espaces button[aria-selected='true'] { cursor: pointer; }
+.ens-menu-fond { position: fixed; inset: 0; z-index: 40; background: transparent; }
+.ens-menu { position: absolute; z-index: 41; top: calc(100% - 6px); left: 0; right: 0; padding: 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+.ens-menu .ens-etabs { margin: 0 0 6px; gap: 4px; }
+.ens-menu .ens-etabs button, .ens-menu .ens-etabs-attente { border: 0; border-radius: 12px; background: none; padding: 9px 10px; }
+.ens-menu .ens-etabs button[aria-pressed='true'] { background: var(--primary-soft); }
+.ens-menu-ajout { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px; border-radius: 12px; background: var(--card-2, var(--bg)); color: var(--lien, var(--primary)); font: 600 14px/1 var(--font-body); text-decoration: none; }
+html.ordi .ens-entete-zone { max-width: 620px; }

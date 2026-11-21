@@ -550,46 +550,45 @@ function EnTeteEnseignant() {
   const membres = d.data?.membres || []
   const attente = (d.data?.demandes || []).filter((x) => x.status === 'pending')
   const actuel = membres.find((m) => m.ouvert)
+  // meme barre que dans l'espace parent (Enseignant | Parent) ; la liste des etablissements s'ouvre juste dessous
   return (
-    <div className="ens-entete" role="group" aria-label="Établissement et espace parent">
-      <button type="button" className="ens-etab" onClick={() => setFeuille(true)}>
-        <span className="ens-entete-ico">
-          <IcEcole size={17} />
-        </span>
-        <span className="ens-entete-texte">
-          <small>{membres.length > 1 ? `${membres.length} établissements` : 'Établissement'}</small>
-          <b data-brut>{actuel?.ecole || user.schoolName || '—'}</b>
-        </span>
-        <IcChevron size={14} style={{ transform: 'rotate(90deg)' }} />
-      </button>
-      <button
-        type="button"
-        className="ens-parent"
-        disabled={busy === 'parent'}
-        onClick={async () => {
-          setBusy('parent')
-          try {
-            await changerEspace('parent')
-          } catch {
-            // l'espace actuel reste affiche
-          }
-          setBusy(null)
-        }}
-      >
-        <span className="ens-entete-ico">
-          <IcFamille size={17} />
-        </span>
-        <span className="ens-entete-texte">
-          <small>Espace parent</small>
-          <b>{busy === 'parent' ? '…' : 'Mes enfants'}</b>
-        </span>
-      </button>
+    <div className="ens-entete-zone">
+      <div className="espaces ens-espaces" role="tablist" aria-label="Changer d’espace">
+        <button type="button" role="tab" aria-selected="true" aria-expanded={feuille} onClick={() => setFeuille((x) => !x)}>
+          <IcEcole size={18} />
+          <span>
+            <b>Enseignant</b>
+            <small data-brut>{actuel?.ecole || user.schoolName || '—'}</small>
+          </span>
+          <IcChevron size={14} style={{ transform: feuille ? 'rotate(-90deg)' : 'rotate(90deg)', marginLeft: 'auto', flex: 'none' }} />
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected="false"
+          disabled={busy === 'parent'}
+          onClick={async () => {
+            setBusy('parent')
+            try {
+              await changerEspace('parent')
+            } catch {
+              // l'espace actuel reste affiche
+            }
+            setBusy(null)
+          }}
+        >
+          <IcProfil size={18} />
+          <span>
+            <b>Parent</b>
+            <small>{busy === 'parent' ? '…' : 'Mes enfants'}</small>
+          </span>
+        </button>
+      </div>
 
       {feuille && (
-        <div className="voile" onClick={() => setFeuille(false)}>
-          <div className="feuille" onClick={(e) => e.stopPropagation()}>
-            <div className="feuille-poignee" />
-            <p className="feuille-titre">Mes établissements</p>
+        <>
+          <div className="ens-menu-fond" onClick={() => setFeuille(false)} />
+          <div className="ens-menu">
             <ul className="ens-etabs">
               {membres.map((m) => (
                 <li key={m.school_id}>
@@ -628,11 +627,11 @@ function EnTeteEnseignant() {
                 </li>
               ))}
             </ul>
-            <a className="btn btn-block" href="#/mes-etablissements">
-              <IcPlus size={18} /> Rejoindre un autre établissement
+            <a className="ens-menu-ajout" href="#/mes-etablissements">
+              <IcPlus size={16} /> Rejoindre un autre établissement
             </a>
           </div>
-        </div>
+        </>
       )}
     </div>
   )
