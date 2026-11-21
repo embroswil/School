@@ -263,7 +263,7 @@ export default function Shell({ path, children }) {
 
   const accueil = path === '/'
   const chemin = path.split('?')[0]
-  const titre = TITRES[chemin] || TITRES[`/${chemin.split('/')[1]}`] || ''
+  const titre = (user.role === 'teacher' && chemin.startsWith('/classes') ? 'Mes classes' : '') || TITRES[chemin] || TITRES[`/${chemin.split('/')[1]}`] || ''
   const isCurrent = (to) => (to === '/' ? path === '/' : path === to || path.startsWith(`${to}/`))
   // Sur ordinateur, la barre laterale est rangee par ordre alphabetique (dans la langue affichee)
   const libelles = [...items.filter(([to]) => to !== '+'), ...(NAV_ORDI[user.role] || [])].map(([to, , label]) => [to, traduire(label)])
@@ -348,7 +348,7 @@ export default function Shell({ path, children }) {
         </div>
       )}
 
-      {user.role === 'teacher' && !chemin.startsWith('/messages') && (
+      {user.role === 'teacher' && chemin === '/' && (
         <a href="#/messages" className="bulle-messages" aria-label="Messages">
           <IcMessages size={24} />
           {compteurs.messages > 0 && <span className="pastille">{compteurs.messages}</span>}

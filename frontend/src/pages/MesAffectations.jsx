@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { NiveauRepliable, Note, useNiveauxOuverts } from '../ui.jsx'
 import { niveauClasse, trierClasses } from '../classes.js'
+import { IcAppelListe, IcCoche, IcDocument } from '../icones.jsx'
 
 // Mes classes (enseignant) : chaque classe avec ses notes, ses devoirs et l'appel ;
 // le choix des matieres et des classes enseignees se fait en dessous.
@@ -24,18 +25,30 @@ export default function MesClasses() {
   if (!classes.length || modifier) return <ChoixAffectations onFini={() => (setModifier(false), d.reload())} onAnnuler={classes.length ? () => setModifier(false) : null} />
   const ligne = (c) => (
     <li key={c.id} className="mcl-classe">
-      <span className="mcl-nom">
-        <b>
-          {c.name}
+      <div className="mcl-tete">
+        <span className="mcl-nom">
+          <b data-brut>{c.name}</b>
+          <small>{c.matieres.join(', ') || '—'}</small>
+        </span>
+        <span className="mcl-meta">
           {c.prof_principal && <em>Prof. principal</em>}
-        </b>
-        <small>{`${c.matieres.join(', ') || '—'} · ${c.eleves} élèves`}</small>
-      </span>
-      <span className="mcl-liens">
-        <a href={`#/classes/${c.id}/notes`}>Notes</a>
-        <a href={`#/classes/${c.id}/devoirs`}>Devoirs</a>
-        <a href={`#/classes/${c.id}/appel`}>Appel</a>
-      </span>
+          <small>{`${c.eleves} élèves`}</small>
+        </span>
+      </div>
+      <nav className="mcl-actions" aria-label={`Classe ${c.name}`}>
+        <a href={`#/classes/${c.id}/notes`}>
+          <IcDocument size={16} />
+          <span>Notes</span>
+        </a>
+        <a href={`#/classes/${c.id}/devoirs`}>
+          <IcCoche size={16} />
+          <span>Devoirs</span>
+        </a>
+        <a href={`#/classes/${c.id}/appel`}>
+          <IcAppelListe size={16} />
+          <span>Appel</span>
+        </a>
+      </nav>
     </li>
   )
   return (
@@ -43,7 +56,7 @@ export default function MesClasses() {
       <div className="page-tete">
         <div>
           <h1 className="page-title">Mes classes</h1>
-          <p className="muted">{`${classes.length} classe(s)`}</p>
+          <p className="muted">{`${classes.length} classe${classes.length > 1 ? 's' : ''} · ${classes.reduce((n, c) => n + Number(c.eleves || 0), 0)} élèves`}</p>
         </div>
         <button type="button" className="btn btn-quiet" onClick={() => setModifier(true)}>
           Modifier

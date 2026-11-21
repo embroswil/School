@@ -62,14 +62,37 @@ export default function Evaluation({ id }) {
 
   const maj = (sid, k, v) => setNotes((x) => ({ ...x, [sid]: { ...x[sid], [k]: v } }))
 
+  const valeurs = Object.values(notes)
+    .filter((n) => !n.absent && n.note !== '')
+    .map((n) => Number(String(n.note).replace(',', '.')))
+    .filter((v) => v >= 0 && v <= bareme)
+  const moyenne = valeurs.length ? (valeurs.reduce((a, b) => a + b, 0) / valeurs.length).toFixed(2).replace('.', ',') : '—'
+  const absents = Object.values(notes).filter((n) => n.absent).length
+  const exporter = () =>
+    exporterExcel(`notes-${ev.classe}-${ev.matiere}`.replace(/\s+/g, '-'), [
+      {
+        nom: `${ev.classe} ${ev.matiere}`,
+        lignes: eleves.map((e, i) => {
+          const n = notes[e.id] || {}
+          return {
+            'N°': i + 1,
+            Nom: e.last_name,
+            'Prénom(s)': e.first_name,
+            [`Note /${bareme}`]: n.absent ? 'Abs' : n.note === '' || n.note === undefined ? '' : Number(String(n.note).replace(',', '.')),
+          }
+        }),
+      },
+    ])
+
   return (
-    <>
-      <h1 className="page-title" style={{ fontSize: 22 }}>
-        {ev.matiere} · {ev.classe}
-      </h1>
-      <p className="lede" style={{ marginBottom: 12 }}>
-        {ev.titre} · Séquence {ev.sequence} · noté sur {bareme} · {ev.publiee ? 'publiée' : 'brouillon'}
-      </p>
+    <div className="ev-page">
+      <div className="page-tete">
+        <div>
+          <h1 className="page-title" data-brut>{ev.titre || 'Évaluation'}</h1>
+          <p className="muted">{`${ev.matiere} · ${ev.classe} · Séquence ${ev.sequence} · noté sur ${bareme}`}</p>
+        </div>
+        <em className={`ev-statut ${ev.publiee ? 'publiee' : ''}`}>{ev.publiee ? 'Publiée' : 'Brouillon'}</em>
+      </div>
 
       {d.horsLigne && <p className="hors-ligne">Pas de réseau : notes gardées sur le téléphone, telles qu’à votre dernière connexion.</p>}
       {!modif && (
@@ -77,93 +100,78 @@ export default function Evaluation({ id }) {
           Consultation : seules les enseignantes et enseignants de cette matière peuvent modifier ces notes.
         </div>
       )}
-      {modif && (
-      <div className="barre-import" style={{ position: 'sticky', top: 'calc(64px + env(safe-area-inset-top))', zIndex: 10 }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, border: '2px solid var(--primary)' }}>
-          <div style={{ flex: 1 }}>
-            <b>
-              {saisies}/{eleves.length} notes
-            </b>
-          </div>
-          <button type="button" className="btn" style={{ padding: '10px 14px', fontSize: 14 }} disabled={busy} onClick={() => enregistrer(true)}>
-            {busy ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
+
+      <div className="ev-chiffres">
+        <div>
+          <b>{`${saisies}/${eleves.length}`}</b>
+          <small>Saisies</small>
+        </div>
+        <div>
+          <b>{moyenne}</b>
+          <small>Moyenne</small>
+        </div>
+        <div>
+          <b>{absents}</b>
+          <small>Absents</small>
         </div>
       </div>
-      )}
+
       <Note>{error}</Note>
       <Note kind="ok">{ok}</Note>
 
-      <ul className="rows" style={{ marginTop: 10 }}>
+      <ol className="ev-liste">
         {eleves.map((e, i) => {
           const n = notes[e.id] || { note: '', absent: false }
           const val = Number(String(n.note).replace(',', '.'))
           const faux = n.note !== '' && !(val >= 0 && val <= bareme)
           return (
-            <li className="row" key={e.id} style={{ padding: '10px 14px' }}>
-              <span className="muted" style={{ width: 24, fontSize: 13 }}>
-                {i + 1}
-              </span>
-              <div className="row-main">
-                <div className="row-title" style={{ fontSize: 15 }}>
-                  {e.last_name} {e.first_name}
-                </div>
-              </div>
+            <li key={e.id} className={n.absent ? 'absent' : ''}>
+              <span className="ev-num">{i + 1}</span>
+              <span className="ev-nom" data-brut>{`${e.last_name} ${e.first_name}`}</span>
               {!modif ? (
-                <b style={{ minWidth: 60, textAlign: 'right' }}>{n.absent ? 'Abs' : n.note === '' ? '—' : `${n.note}/${bareme}`}</b>
+                <b className="ev-lu">{n.absent ? 'Abs' : n.note === '' ? '—' : `${n.note}/${bareme}`}</b>
               ) : (
-              <>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={n.absent}
-                style={{ padding: '7px 10px', fontSize: 12 }}
-                onClick={() => maj(e.id, 'absent', !n.absent)}
-              >
-                Abs
-              </button>
-              <input
-                className="input"
-                inputMode="decimal"
-                disabled={n.absent}
-                value={n.absent ? '' : n.note}
-                placeholder={`/${bareme}`}
-                onChange={(ev2) => maj(e.id, 'note', ev2.target.value)}
-                style={{ width: 72, padding: '8px 10px', textAlign: 'center', borderColor: faux ? 'var(--danger)' : undefined }}
-              />
-              </>
+                <>
+                  <button type="button" className="ev-abs" aria-pressed={n.absent} onClick={() => maj(e.id, 'absent', !n.absent)}>
+                    Abs
+                  </button>
+                  <input
+                    className={`ev-note ${faux ? 'faux' : ''}`}
+                    inputMode="decimal"
+                    disabled={n.absent}
+                    value={n.absent ? '' : n.note}
+                    placeholder={`/${bareme}`}
+                    aria-label={`Note de ${e.last_name} ${e.first_name}`}
+                    onChange={(ev2) => maj(e.id, 'note', ev2.target.value)}
+                  />
+                </>
               )}
             </li>
           )
         })}
-      </ul>
-      <button
-        type="button"
-        className="lien-discret"
-        onClick={() =>
-            exporterExcel(`notes-${ev.classe}-${ev.matiere}`.replace(/\s+/g, '-'), [
-              {
-                nom: `${ev.classe} ${ev.matiere}`,
-                lignes: eleves.map((e, i) => {
-                  const n = notes[e.id] || {}
-                  return {
-                    'N°': i + 1,
-                    Nom: e.last_name,
-                    'Prénom(s)': e.first_name,
-                    [`Note /${bareme}`]: n.absent ? 'Abs' : n.note === '' || n.note === undefined ? '' : Number(String(n.note).replace(',', '.')),
-                  }
-                }),
-              },
-            ])
-          }
-        >
-        Exporter en Excel
-      </button>
-      {modif && (
-        <button type="button" className="btn btn-quiet btn-danger btn-block" style={{ marginTop: 18 }} onClick={supprimer}>
-          Supprimer l’évaluation
+      </ol>
+
+      <div className="ev-secondaire">
+        <button type="button" className="btn btn-quiet" onClick={exporter}>
+          Exporter en Excel
         </button>
+        {modif && (
+          <button type="button" className="btn btn-quiet btn-danger" onClick={supprimer}>
+            Supprimer l’évaluation
+          </button>
+        )}
+      </div>
+
+      {modif && (
+        <div className="ev-barre">
+          <span>
+            <b>{`${saisies}/${eleves.length}`}</b> notes saisies
+          </span>
+          <button type="button" className="btn" disabled={busy} onClick={() => enregistrer(true)}>
+            {busy ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
       )}
-    </>
+    </div>
   )
 }

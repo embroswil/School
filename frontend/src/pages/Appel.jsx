@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { copieProche, mettreEnAttente, retirerAttente } from '../horsligne.js'
+import { IcCalendrier, IcCoche } from '../icones.jsx'
 
 // Seules les absences sont enregistrees
 const STATUTS = [
@@ -102,6 +103,88 @@ export default function Appel({ id }) {
 
   const compte = (s) => Object.values(statuts).filter((x) => x === s).length
   const modif = d.data?.modifiable
+
+  const changerDate = (v) => {
+    setDate(v)
+    setPeriode(null)
+    setAuto(true)
+  }
+  const dateLongue = new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+
+  // Enseignant : appel de son cours
+  if (modif)
+    return (
+      <div className="ap-page">
+        <div className="page-tete">
+          <div>
+            <h1 className="page-title">{`Appel · ${d.data.classe}`}</h1>
+            <p className="muted ap-date">{date === aujourdhui() ? `Aujourd’hui · ${dateLongue}` : dateLongue}</p>
+          </div>
+          <label className="ap-calendrier" aria-label="Changer de jour">
+            <IcCalendrier size={18} />
+            <input type="date" value={date} max={aujourdhui()} onChange={(e) => e.target.value && changerDate(e.target.value)} />
+          </label>
+        </div>
+        {d.data.cours?.length > 0 ? (
+          <div className="ap-cours" role="tablist" aria-label="Cours">
+            {d.data.cours.map((c) => (
+              <button key={c.periode} type="button" role="tab" aria-selected={periode === c.periode} onClick={() => setPeriode(c.periode)}>
+                <b>{c.debut}</b>
+                <small>{c.matiere || 'Cours'}</small>
+                {c.fait && <IcCoche size={13} />}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="ap-info">Pas d’emploi du temps pour ce jour : l’appel vaut pour toute la journée.</p>
+        )}
+        <div className="ap-chiffres">
+          <div>
+            <b>{compte('present')}</b>
+            <small>Présents</small>
+          </div>
+          <div className={compte('absent') ? 'alerte' : ''}>
+            <b>{compte('absent')}</b>
+            <small>Absents</small>
+          </div>
+          <div>
+            <b>{d.data.eleves.length}</b>
+            <small>{d.data.faite ? 'Appel fait' : 'Effectif'}</small>
+          </div>
+        </div>
+        {d.horsLigne && <p className="hors-ligne">Pas de réseau : liste gardée sur le téléphone. L’appel sera envoyé dès le retour du réseau.</p>}
+        <Note>{error}</Note>
+        <Note kind="ok">{ok}</Note>
+        <ol className="ap-liste">
+          {d.data.eleves.map((e, i) => {
+            const absent = statuts[e.id] === 'absent'
+            return (
+              <li key={e.id} className={absent ? 'absent' : ''}>
+                <span className="ev-num">{i + 1}</span>
+                <span className="ev-nom" data-brut>{`${e.last_name} ${e.first_name}`}</span>
+                <span className="ap-choix" role="group" aria-label={`${e.last_name} ${e.first_name}`}>
+                  <button type="button" aria-pressed={!absent} onClick={() => setStatuts((x) => ({ ...x, [e.id]: 'present' }))}>
+                    P
+                  </button>
+                  <button type="button" className="a" aria-pressed={absent} onClick={() => setStatuts((x) => ({ ...x, [e.id]: 'absent' }))}>
+                    A
+                  </button>
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+        <p className="ap-aide">Tout le monde est présent par défaut : touchez A pour chaque absent. Les parents des absents sont prévenus.</p>
+        <div className="ev-barre">
+          <span>
+            <b>{compte('absent')}</b> {compte('absent') > 1 ? 'absents' : 'absent'}
+          </span>
+          <button type="button" className="btn" disabled={busy} onClick={enregistrer}>
+            {busy ? 'Enregistrement…' : d.data.faite ? 'Mettre à jour' : 'Enregistrer l’appel'}
+          </button>
+        </div>
+      </div>
+    )
 
   return (
     <>

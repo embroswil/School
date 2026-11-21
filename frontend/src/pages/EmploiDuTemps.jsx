@@ -202,14 +202,94 @@ export default function EmploiDuTemps({ id }) {
   )
 }
 
-// Emploi du temps de l'enseignant (tous ses cours)
+// Un jour de l'emploi du temps, en liste (telephone) : horaires, matiere, classe et salle ; pauses et cours en cours
+function JourEmploi({ creneaux, jour }) {
+  const maintenant = new Date()
+  const m = maintenant.getHours() * 60 + maintenant.getMinutes()
+  const auj = maintenant.getDay() === jour
+  const liste = creneaux.filter((c) => c.jour === jour).sort((a, b) => minutes(a.debut) - minutes(b.debut))
+  if (!liste.length) return <p className="edj-vide">Aucun cours ce jour-là.</p>
+  const lignes = []
+  liste.forEach((c, i) => {
+    const prec = liste[i - 1]
+    if (prec && minutes(c.debut) - minutes(prec.fin) >= 10) lignes.push({ pause: true, debut: prec.fin, fin: c.debut })
+    lignes.push(c)
+  })
+  return (
+    <ol className="edj-liste">
+      {lignes.map((c) =>
+        c.pause ? (
+          <li key={`p${c.debut}`} className="edj-pause">
+            <span>{`${c.debut} – ${c.fin}`}</span>
+            <small>Pause</small>
+          </li>
+        ) : (
+          <li key={c.id} className={`edj-cours ${auj && m >= minutes(c.debut) && m < minutes(c.fin) ? 'en-cours' : ''}`}>
+            <span className="edj-heure">
+              <b>{c.debut}</b>
+              <small>{c.fin}</small>
+            </span>
+            <span className="edj-texte">
+              <b data-brut>{c.classe}</b>
+              <small>{[c.matiere, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>
+            </span>
+            {auj && m >= minutes(c.debut) && m < minutes(c.fin) && <em className="edj-badge">En cours</em>}
+          </li>
+        ),
+      )}
+    </ol>
+  )
+}
+
+// Emploi du temps de l'enseignant (tous ses cours) : par jour sur telephone, toute la semaine sur ordinateur
 export function MonEmploi() {
   const d = useApi('/api/vie-scolaire/emplois/moi')
+  const [vue, setVue] = useState(telephone() ? 'jour' : 'semaine')
+  const creneaux = d.data?.creneaux || []
+  const jours = [1, 2, 3, 4, 5, 6].filter((j) => creneaux.some((c) => c.jour === j))
+  const ajd = new Date().getDay()
+  const [jour, setJour] = useState(null)
+  const actif = jour || (jours.includes(ajd) ? ajd : jours.find((j) => j > ajd) || jours[0])
+  const total = creneaux.reduce((s, c) => s + Math.max(0, minutes(c.fin) - minutes(c.debut)), 0)
+  if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
   return (
     <>
-      <h1 className="page-title">Mon emploi du temps</h1>
-      <GrilleEmploi creneaux={d.data.creneaux} avecClasse />
+      <div className="page-tete">
+        <div>
+          <h1 className="page-title">Emploi du temps</h1>
+          {creneaux.length > 0 && <p className="muted">{`${creneaux.length} cours par semaine · ${Math.floor(total / 60)} h${total % 60 ? ` ${String(total % 60).padStart(2, '0')}` : ''}`}</p>}
+        </div>
+      </div>
+      {creneaux.length > 0 && (
+        <div className="segments petit edj-vues" role="tablist">
+          <button type="button" role="tab" aria-selected={vue === 'jour'} onClick={() => setVue('jour')}>
+            Par jour
+          </button>
+          <button type="button" role="tab" aria-selected={vue === 'semaine'} onClick={() => setVue('semaine')}>
+            Semaine
+          </button>
+        </div>
+      )}
+      {vue === 'jour' && creneaux.length > 0 ? (
+        <div className="edj-carte">
+          <div className="edj-jours" role="tablist" aria-label="Choisir un jour">
+            {jours.map((j) => (
+              <button key={j} type="button" role="tab" aria-selected={actif === j} onClick={() => setJour(j)}>
+                {COURTS[j]}
+                {j === ajd && <i aria-label="Aujourd’hui" />}
+              </button>
+            ))}
+          </div>
+          <p className="edj-titre">
+            <b>{JOURS[actif]}</b>
+            <small>{`${creneaux.filter((c) => c.jour === actif).length} cours`}</small>
+          </p>
+          <JourEmploi creneaux={creneaux} jour={actif} />
+        </div>
+      ) : (
+        <GrilleEmploi creneaux={creneaux} avecClasse />
+      )}
     </>
   )
 }

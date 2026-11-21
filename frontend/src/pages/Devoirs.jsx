@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { envoyerOuGarder } from '../horsligne.js'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
+import { IcPlus, IcPoubelle } from '../icones.jsx'
 
 const jour = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : 'sans date')
 
@@ -51,6 +52,7 @@ export default function Devoirs({ id }) {
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
+  const [ouvert, setOuvert] = useState(false)
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
   const droits = infos.data?.droits
   const mesMatieres = (infos.data?.matieres || []).filter((m) => droits?.mesMatieres.includes(m.id))
@@ -69,6 +71,7 @@ export default function Devoirs({ id }) {
       })
       setOk(r.attente ? 'Pas de réseau : devoir gardé sur le téléphone, publié dès le retour du réseau.' : 'Devoir publié : les élèves et les parents sont notifiés.')
       setF((x) => ({ ...x, titre: '', consigne: '' }))
+      setOuvert(false)
       liste.reload()
     } catch (err) {
       setError(err.message)
@@ -76,12 +79,41 @@ export default function Devoirs({ id }) {
     setBusy(false)
   }
 
+  const peutDonner = droits?.saisie
+  const devoirs = liste.data || []
+  // devoirs regroupes par date a rendre
+  const groupes = []
+  for (const x of devoirs) {
+    const k = String(x.pour_le || '').slice(0, 10)
+    const g = groupes[groupes.length - 1]
+    if (g && g.k === k) g.liste.push(x)
+    else groupes.push({ k, liste: [x] })
+  }
+  const auj = new Date().toISOString().slice(0, 10)
+
   return (
-    <>
-      <h1 className="page-title">Devoirs{infos.data ? ` · ${infos.data.classe.name}` : ''}</h1>
-      <p className="lede">Le cahier de textes de la classe : les devoirs à faire, visibles par les élèves et leurs parents.</p>
-      {droits?.saisie && (
-        <form className="card" onSubmit={ajouter} style={{ marginBottom: 16 }}>
+    <div className="dv-page">
+      <div className="page-tete">
+        <div>
+          <h1 className="page-title">{`Devoirs${infos.data ? ` · ${infos.data.classe.name}` : ''}`}</h1>
+          <p className="muted">Visibles par les élèves et leurs parents.</p>
+        </div>
+        {peutDonner && !ouvert && (
+          <button type="button" className="btn cn-nouvelle" onClick={() => (setOuvert(true), setOk(''))}>
+            <IcPlus size={16} />
+            <span>Nouveau</span>
+          </button>
+        )}
+      </div>
+      {!ouvert && <Note kind="ok">{ok}</Note>}
+      {peutDonner && ouvert && (
+        <form className="dv-form" onSubmit={ajouter}>
+          <div className="cn-form-tete">
+            <b>Nouveau devoir</b>
+            <button type="button" className="lien-action" onClick={() => setOuvert(false)}>
+              Annuler
+            </button>
+          </div>
           {mesMatieres.length > 1 && (
             <Field label="Matière">
               <select className="input" value={f.subjectId} onChange={maj('subjectId')} required>
@@ -98,27 +130,49 @@ export default function Devoirs({ id }) {
             <input className="input" placeholder="ex. Exercices 3 et 4 page 52" value={f.titre} onChange={maj('titre')} required />
           </Field>
           <Field label="Consigne (facultatif)">
-            <textarea className="input" value={f.consigne} onChange={maj('consigne')} />
+            <textarea className="input" rows={3} value={f.consigne} onChange={maj('consigne')} />
           </Field>
           <Field label="Pour le">
-            <input className="input" type="date" value={f.pourLe} onChange={maj('pourLe')} />
+            <input className="input" type="date" value={f.pourLe} min={auj} onChange={maj('pourLe')} />
           </Field>
           <Note>{error}</Note>
-          <Note kind="ok">{ok}</Note>
           <button className="btn btn-block" type="submit" disabled={busy}>
             {busy ? 'Publication…' : 'Donner le devoir'}
           </button>
         </form>
       )}
-      {liste.data && (
-        <ListeDevoirs
-          devoirs={liste.data}
-          onSupprimer={async (did) => {
-            await api.delete(`/api/notes/devoirs/${did}`)
-            liste.reload()
-          }}
-        />
-      )}
-    </>
+      {!liste.data && <p className="muted">Chargement…</p>}
+      {liste.data && !devoirs.length && <p className="cn-vide">Aucun devoir à faire pour le moment.</p>}
+      {groupes.map((g) => (
+        <section key={g.k} className="dv-groupe">
+          <h2 className="dv-date">{g.k ? `Pour ${jour(g.k)}` : 'Sans date'}</h2>
+          <ul className="dv-liste">
+            {g.liste.map((x) => (
+              <li key={x.id}>
+                <div className="dv-texte">
+                  <b data-brut>{x.titre}</b>
+                  {x.consigne && <p data-brut>{x.consigne}</p>}
+                  <small data-brut>{[x.matiere, x.last_name ? `${x.first_name} ${x.last_name}` : ''].filter(Boolean).join(' · ')}</small>
+                </div>
+                {x.mien && (
+                  <button
+                    type="button"
+                    className="dv-retirer"
+                    aria-label="Retirer ce devoir"
+                    onClick={async () => {
+                      if (!window.confirm('Retirer ce devoir ? Il ne sera plus visible par les élèves et les parents.')) return
+                      await api.delete(`/api/notes/devoirs/${x.id}`)
+                      liste.reload()
+                    }}
+                  >
+                    <IcPoubelle size={16} />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
   )
 }

@@ -2555,3 +2555,161 @@ html.ordi .ens-sem { max-width: 820px; }
   .ens-sem-jours li { grid-template-columns: 62px minmax(0, 1fr) 94px; }
   .ens-sem-chiffres b { font-size: 14px; }
 }
+
+/* ---------------------------------------------------------------- Enseignant : emploi du temps par jour */
+.edj-vues { max-width: 320px; }
+.edj-carte { border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; margin-bottom: 14px; }
+.edj-jours { display: flex; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.edj-jours::-webkit-scrollbar { display: none; }
+.edj-jours button { flex: 1 0 auto; min-width: 48px; position: relative; padding: 12px 6px 11px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: 600 13.5px/1 var(--font-body); cursor: pointer; margin-bottom: -1px; }
+.edj-jours button[aria-selected='true'] { color: var(--text); border-bottom-color: var(--primary); }
+.edj-jours button i { position: absolute; top: 6px; right: calc(50% - 16px); width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
+.edj-titre { display: flex; align-items: baseline; justify-content: space-between; margin: 0; padding: 12px 14px 4px; }
+.edj-titre b { font: 700 16px/1.2 var(--font-display); }
+.edj-titre small { color: var(--muted); font-size: 12.5px; }
+.edj-liste { list-style: none; margin: 0; padding: 0 14px 6px; }
+.edj-cours { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.edj-liste > li:first-child { border-top: 0; }
+.edj-heure { display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.edj-heure b { font: 600 14px/1.2 var(--font-body); }
+.edj-heure small { font-size: 12.5px; color: var(--muted); }
+.edj-texte { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-left: 12px; border-left: 3px solid var(--line); }
+.edj-texte b { font: 600 15px/1.3 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.edj-texte small { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.edj-cours.en-cours .edj-texte { border-left-color: var(--primary); }
+.edj-badge { font: 600 11.5px/1 var(--font-body); font-style: normal; padding: 4px 8px; border-radius: 6px; background: var(--primary-soft); color: var(--lien, var(--primary)); }
+.edj-pause { display: flex; justify-content: space-between; padding: 7px 10px; margin: 2px 0; border-radius: 8px; background: var(--card-2, var(--bg)); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.edj-vide { margin: 0; padding: 14px; color: var(--muted); font-size: 14px; }
+
+/* ---------------------------------------------------------------- Enseignant : mes classes en cartes */
+.mcl-liste { border: 0; background: none; border-radius: 0; overflow: visible; display: grid; gap: 10px; }
+.mcl-classe { display: block; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.mcl-classe:last-child { border-bottom: 1px solid var(--line); }
+.mcl-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 14px; }
+.mcl-nom b { font: 700 16px/1.25 var(--font-body); }
+.mcl-nom small { font-size: 13px; margin-top: 2px; }
+.mcl-meta { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.mcl-meta small { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.mcl-meta em { font-style: normal; font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 6px; background: var(--primary-soft); color: var(--lien, var(--primary)); }
+.mcl-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.mcl-actions a { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 6px; color: var(--text); text-decoration: none; font: 600 13.5px/1 var(--font-body); }
+.mcl-actions a + a { border-left: 1px solid var(--line); }
+.mcl-actions a svg { color: var(--lien, var(--primary)); }
+.mcl-actions a:active { background: var(--card-2, var(--bg)); }
+html.ordi .mcl-liste { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+html.ordi .mcl-actions a:hover { background: var(--card-2, var(--bg)); }
+
+/* ---------------------------------------------------------------- Enseignant : evaluations d'une classe */
+.cn-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 10px; }
+.cn-tete > b { font: 600 14px/1.2 var(--font-body); color: var(--muted); }
+.cn-nouvelle { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 13.5px; border-radius: 10px; min-height: 0; }
+.cn-form-tete { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cn-form-tete b { font: 700 15px/1.2 var(--font-body); }
+.cn-vide { padding: 16px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); font-size: 14px; margin: 0; }
+.cn-liste { list-style: none; margin: 0 0 14px; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.cn-liste li + li { border-top: 1px solid var(--line); }
+.cn-liste a { display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: var(--text); text-decoration: none; }
+.cn-liste a > svg { flex: none; color: var(--muted); }
+.cn-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cn-haut { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cn-haut b { font: 600 15px/1.3 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cn-haut em { flex: none; font: 600 11.5px/1 var(--font-body); font-style: normal; padding: 4px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.14); color: #d97706; }
+.cn-haut em.publiee { background: var(--ok-soft); color: var(--ok); }
+.cn-texte > small { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cn-bas { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; margin-top: 4px; }
+.cn-bas i { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--primary) var(--p), var(--card-2, var(--bg)) var(--p)); }
+.cn-bas small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cn-bas .cn-moy { color: var(--text); font-weight: 600; }
+html.ordi .cn-liste a:hover { background: var(--card-2, var(--bg)); }
+
+/* ---------------------------------------------------------------- Saisie des notes d'une evaluation */
+.ev-statut { flex: none; align-self: flex-start; margin-top: 6px; font: 600 12px/1 var(--font-body); font-style: normal; padding: 5px 9px; border-radius: 6px; background: rgba(245, 158, 11, 0.14); color: #d97706; }
+.ev-statut.publiee { background: var(--ok-soft); color: var(--ok); }
+.ev-chiffres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 12px; }
+.ev-chiffres > div { display: flex; flex-direction: column; gap: 3px; padding: 11px 8px; text-align: center; }
+.ev-chiffres > div + div { border-left: 1px solid var(--line); }
+.ev-chiffres b { font: 700 17px/1.1 var(--font-body); font-variant-numeric: tabular-nums; }
+.ev-chiffres small { font-size: 11.5px; color: var(--muted); }
+.ev-liste { list-style: none; margin: 0 0 12px; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.ev-liste li { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 14px; }
+.ev-liste li + li { border-top: 1px solid var(--line); }
+.ev-num { flex: none; width: 22px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ev-nom { flex: 1; min-width: 0; font: 500 14.5px/1.3 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev-liste li.absent .ev-nom { color: var(--muted); }
+.ev-abs { flex: none; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: none; color: var(--muted); font: 600 12px/1 var(--font-body); cursor: pointer; }
+.ev-abs[aria-pressed='true'] { background: var(--danger-soft); border-color: transparent; color: var(--danger); }
+.ev-note { flex: none; width: 64px; padding: 8px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card-2, var(--bg)); color: var(--text); font: 600 15px/1.2 var(--font-body); text-align: center; font-variant-numeric: tabular-nums; }
+.ev-note:focus { outline: none; border-color: var(--primary); }
+.ev-note.faux { border-color: var(--danger); color: var(--danger); }
+.ev-note:disabled { opacity: 0.4; }
+.ev-lu { flex: none; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+.ev-secondaire { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.ev-secondaire .btn { flex: 1; padding: 10px 12px; font-size: 13.5px; }
+.ev-barre { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 10px 10px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28); }
+.ev-barre span { font-size: 13.5px; color: var(--muted); }
+.ev-barre span b { color: var(--text); font-variant-numeric: tabular-nums; }
+.ev-barre .btn { padding: 10px 18px; font-size: 14px; }
+html.ordi .ev-page { max-width: 760px; }
+html.ordi .ev-barre { bottom: 16px; }
+
+/* ---------------------------------------------------------------- Appel (enseignant) */
+.ap-date::first-letter { text-transform: uppercase; }
+.ap-calendrier { flex: none; position: relative; width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); cursor: pointer; overflow: hidden; }
+.ap-calendrier input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.ap-cours { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 0 12px; padding-bottom: 2px; }
+.ap-cours::-webkit-scrollbar { display: none; }
+.ap-cours button { flex: none; display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 6px; row-gap: 3px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
+.ap-cours button b { font: 600 14px/1 var(--font-body); color: var(--text); font-variant-numeric: tabular-nums; }
+.ap-cours button small { grid-column: 1 / -1; grid-row: 2; font-size: 12px; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-cours button svg { color: var(--ok); }
+.ap-cours button[aria-selected='true'] { border-color: var(--primary); background: var(--primary-soft); }
+.ap-cours button[aria-selected='true'] small { color: var(--lien, var(--primary)); }
+.ap-info { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--card-2, var(--card)); color: var(--muted); font-size: 13px; }
+.ap-chiffres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 12px; }
+.ap-chiffres > div { display: flex; flex-direction: column; gap: 3px; padding: 11px 8px; text-align: center; }
+.ap-chiffres > div + div { border-left: 1px solid var(--line); }
+.ap-chiffres b { font: 700 17px/1.1 var(--font-body); font-variant-numeric: tabular-nums; }
+.ap-chiffres small { font-size: 11.5px; color: var(--muted); }
+.ap-chiffres .alerte b { color: var(--danger); }
+.ap-liste { list-style: none; margin: 0 0 8px; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.ap-liste li { display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 14px; }
+.ap-liste li + li { border-top: 1px solid var(--line); }
+.ap-liste li.absent { background: var(--danger-soft); }
+.ap-choix { flex: none; display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--card-2, var(--bg)); }
+.ap-choix button { width: 36px; height: 30px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: 700 13px/1 var(--font-body); cursor: pointer; }
+.ap-choix button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+.ap-choix button.a[aria-pressed='true'] { background: var(--danger); }
+.ap-aide { margin: 0 4px 12px; font-size: 12.5px; color: var(--muted); }
+html.ordi .ap-page { max-width: 760px; }
+
+/* ---------------------------------------------------------------- Devoirs d'une classe (enseignant) */
+.dv-form { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 16px; }
+.dv-groupe { margin-bottom: 14px; }
+.dv-date { margin: 0 0 8px 2px; font: 700 12px/1.2 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.dv-liste { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.dv-liste li { display: flex; align-items: flex-start; gap: 10px; padding: 12px 10px 12px 14px; }
+.dv-liste li + li { border-top: 1px solid var(--line); }
+.dv-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dv-texte b { font: 600 15px/1.35 var(--font-body); }
+.dv-texte p { margin: 0; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; color: var(--texte-doux, var(--text)); }
+.dv-texte small { font-size: 12.5px; color: var(--muted); }
+.dv-retirer { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--muted); cursor: pointer; }
+.dv-retirer:hover, .dv-retirer:active { background: var(--danger-soft); color: var(--danger); }
+html.ordi .dv-page { max-width: 760px; }
+
+/* ---------------------------------------------------------------- Informer (enseignant) */
+.info-photos { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border: 1px dashed var(--line); border-radius: 12px; background: none; color: var(--muted); font: 600 14px/1.2 var(--font-body); cursor: pointer; }
+.info-photos svg { color: var(--lien, var(--primary)); }
+
+/* ---------------------------------------------------------------- Mes etablissements (enseignant) : listes sobres */
+.rj-liste { gap: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.rj-liste li { border: 0; border-radius: 0; background: none; padding: 11px 12px 11px 14px; gap: 10px; }
+.rj-liste li + li { border-top: 1px solid var(--line); }
+.rj-liste li.ouvert { border-color: var(--line); box-shadow: inset 3px 0 0 var(--primary); }
+.rj-liste .ea-choix-ico { width: 34px; height: 34px; border-radius: 9px; }
+.rj-liste .ea-choix-texte b { font-size: 14.5px; }
+.rj-ouvrir { padding: 7px 12px; font-size: 13px; border-radius: 8px; min-height: 0; }
+.rj-quitter { text-decoration: none; padding: 7px 8px; border-radius: 8px; font-weight: 600; }
+.rj-quitter:hover, .rj-quitter:active { background: var(--danger-soft); color: var(--danger); }
+.rj-liste .etiquette { border-radius: 6px; }
+html.ordi .rj-liste, html.ordi .rj-actions { max-width: 680px; }

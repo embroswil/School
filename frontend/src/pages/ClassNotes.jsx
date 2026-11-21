@@ -3,13 +3,14 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
+import { IcChevron, IcPlus } from '../icones.jsx'
 
 const SEQUENCES = [1, 2, 3, 4, 5, 6]
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '')
 const note20 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
 
-function NouvelleEvaluation({ classId, matieres }) {
-  const [f, setF] = useState({ subjectId: '', sequence: '1', titre: 'Devoir', date: new Date().toISOString().slice(0, 10), bareme: '20' })
+function NouvelleEvaluation({ classId, matieres, onAnnuler }) {
+  const [f, setF] = useState({ subjectId: matieres.length === 1 ? String(matieres[0].id) : '', sequence: '1', titre: 'Devoir', date: new Date().toISOString().slice(0, 10), bareme: '20' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
@@ -27,6 +28,14 @@ function NouvelleEvaluation({ classId, matieres }) {
   }
   return (
     <form className="card" onSubmit={creer} style={{ marginBottom: 14 }}>
+      {onAnnuler && (
+        <div className="cn-form-tete">
+          <b>Nouvelle évaluation</b>
+          <button type="button" className="lien-action" onClick={onAnnuler}>
+            Annuler
+          </button>
+        </div>
+      )}
       <Field label="Matière">
         <select className="input" value={f.subjectId} onChange={maj('subjectId')} required>
           <option value="">Choisir la matière</option>
@@ -215,6 +224,70 @@ export default function ClassNotes({ id }) {
   if (!d.data) return <p className="muted">Chargement…</p>
   const { classe, matieres, evaluations, droits } = d.data
   const mesMatieres = matieres.filter((m) => droits.mesMatieres.includes(m.id))
+
+  if (!etablissement)
+    return (
+      <>
+        <div className="page-tete">
+          <div>
+            <h1 className="page-title">{`Notes · ${classe.name}`}</h1>
+            <p className="muted">{`${classe.eleves} élèves${classe.professeurPrincipal ? ` · prof. principal : ${classe.professeurPrincipal.first_name} ${classe.professeurPrincipal.last_name}` : ''}`}</p>
+          </div>
+        </div>
+        {droits.resultats && (
+          <div className="segments petit" role="tablist">
+            {[['evaluations', 'Évaluations'], ['resultats', 'Résultats'], ['coefficients', 'Coefficients']].map(([k, t]) => (
+              <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}>
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+        {onglet === 'evaluations' && (
+          <>
+            {droits.saisie && nouvelle && <NouvelleEvaluation classId={id} matieres={mesMatieres} onAnnuler={() => setNouvelle(false)} />}
+            <div className="cn-tete">
+              <b>{evaluations.length ? `${evaluations.length} évaluation${evaluations.length > 1 ? 's' : ''}` : 'Évaluations'}</b>
+              {droits.saisie && !nouvelle && (
+                <button type="button" className="btn cn-nouvelle" onClick={() => setNouvelle(true)}>
+                  <IcPlus size={16} />
+                  <span>Nouvelle évaluation</span>
+                </button>
+              )}
+            </div>
+            {evaluations.length === 0 && <p className="cn-vide">Aucune évaluation pour le moment. Créez la première pour saisir les notes de la classe.</p>}
+            {evaluations.length > 0 && (
+              <ul className="cn-liste">
+                {evaluations.map((e) => {
+                  const p = classe.eleves ? Math.min(100, Math.round((e.saisies / classe.eleves) * 100)) : 0
+                  return (
+                    <li key={e.id}>
+                      <a href={`#/evaluations/${e.id}`}>
+                        <span className="cn-texte">
+                          <span className="cn-haut">
+                            <b data-brut>{e.titre || 'Évaluation'}</b>
+                            <em className={e.publiee ? 'publiee' : ''}>{e.publiee ? 'Publiée' : 'Brouillon'}</em>
+                          </span>
+                          <small>{[`Séquence ${e.sequence}`, jour(e.date_eval), e.matiere].filter(Boolean).join(' · ')}</small>
+                          <span className="cn-bas">
+                            <i style={{ '--p': `${p}%` }} />
+                            <small>{`${e.saisies}/${classe.eleves} notes`}</small>
+                            <small className="cn-moy">{e.moyenne !== null ? `Moy. ${note20(e.moyenne)}` : 'Moy. —'}</small>
+                          </span>
+                        </span>
+                        <IcChevron size={15} />
+                      </a>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </>
+        )}
+        {onglet === 'resultats' && <Resultats classId={id} matieres={matieres} />}
+        {onglet === 'coefficients' && <Coefficients classId={id} matieres={matieres} modifiable={droits.bulletin} onDone={() => d.reload()} />}
+      </>
+    )
 
   return (
     <>

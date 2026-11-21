@@ -4,6 +4,7 @@ import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { useDepotPage } from '../depot.jsx'
+import { IcPhoto } from '../icones.jsx'
 
 const reduire = (fichier, max = 1440, q = 0.82) =>
   new Promise((ok) => {
@@ -35,6 +36,7 @@ const GENRES = [
 // Faire passer une information aux familles, avec photos (etablissement et enseignants)
 export default function InfoPublier() {
   const { user } = useAuth()
+  const enseignant = user.role === 'teacher'
   const classes = useApi(user.role === 'teacher' ? '/api/notes/mes-classes' : '/api/etablissement/classes')
   const champ = useRef(null)
   const [f, setF] = useState({ genre: /genre=cours/.test(window.location.hash) ? 'cours' : 'info', classeId: '', titre: '', texte: '', date: '', heure: '', lieu: '' })
@@ -76,7 +78,25 @@ export default function InfoPublier() {
   return (
     <form onSubmit={publier}>
       {zoneDepot}
-      <h1 className="page-title">Faire passer une information</h1>
+      {enseignant ? (
+        <div className="page-tete">
+          <div>
+            <h1 className="page-title">Informer</h1>
+            <p className="muted">{(GENRES.find((g) => g[0] === f.genre) || [])[2]}</p>
+          </div>
+        </div>
+      ) : (
+        <h1 className="page-title">Faire passer une information</h1>
+      )}
+      {enseignant ? (
+        <div className="segments petit" role="tablist">
+          {GENRES.map(([k, t]) => (
+            <button key={k} type="button" role="tab" aria-selected={f.genre === k} onClick={() => setF({ ...f, genre: k })}>
+              {k === 'cours' ? 'Cours en plus' : t}
+            </button>
+          ))}
+        </div>
+      ) : (
       <div className="genres">
         {GENRES.map(([k, t, d]) => (
           <button key={k} type="button" className="genre" aria-pressed={f.genre === k} onClick={() => setF({ ...f, genre: k })}>
@@ -85,6 +105,7 @@ export default function InfoPublier() {
           </button>
         ))}
       </div>
+      )}
       <div className="card">
         <Field label={f.genre === 'cours' ? 'Classe' : 'Classe concernée (facultatif)'}>
           <select className="input" value={f.classeId} onChange={maj('classeId')} required={f.genre === 'cours'}>
@@ -118,8 +139,9 @@ export default function InfoPublier() {
           <textarea className="input" value={f.texte} onChange={maj('texte')} required style={{ minHeight: 100 }} placeholder="Ex. : Cours de rattrapage de mathématiques samedi de 8 h à 10 h en salle 12." />
         </Field>
         <input ref={champ} type="file" hidden multiple accept="image/*" onChange={(e) => (setPhotos((l) => [...l, ...[...(e.target.files || [])]].slice(0, 6)), (e.target.value = ''))} />
-        <button type="button" className="btn btn-quiet btn-block" onClick={() => champ.current?.click()}>
-          {photos.length ? `${photos.length} photo(s) · en ajouter` : 'Ajouter des photos (facultatif)'}
+        <button type="button" className={enseignant ? 'info-photos' : 'btn btn-quiet btn-block'} onClick={() => champ.current?.click()}>
+          {enseignant && <IcPhoto size={18} />}
+          <span>{photos.length ? `${photos.length} photo(s) · en ajouter` : 'Ajouter des photos (facultatif)'}</span>
         </button>
         {photos.length > 0 && (
           <div className="vignettes">
