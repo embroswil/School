@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { api } from '../api.js'
+import { useEffect, useRef, useState } from 'react'
+import { envoyerOuGarder, lireCopie } from '../horsligne.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { IcCalendrier, IcChevron } from '../icones.jsx'
@@ -22,23 +22,46 @@ export const confirmable = (c, v) => v && v.date === v.aujourdhui && !c.confirme
 const termine = (c, v) => v && (v.date < v.aujourdhui || (v.date === v.aujourdhui && v.maintenant >= c.fin))
 const commence = (c, v) => v && (v.date < v.aujourdhui || (v.date === v.aujourdhui && v.maintenant >= moins15(c.debut)))
 
+// Confirme la presence ; sans reseau, la confirmation est gardee avec son heure et envoyee plus tard.
+// Renvoie true si elle est en attente d'envoi.
 export async function confirmerCours(c, date) {
-  await api.post('/api/presence-enseignants/mes-cours/confirmer', { classId: c.class_id, debut: c.debut, date })
+  const r = await envoyerOuGarder({
+    cle: `presence-${c.class_id}-${date}-${c.debut}`,
+    path: '/api/presence-enseignants/mes-cours/confirmer',
+    body: { classId: c.class_id, debut: c.debut, date, le: new Date().toISOString() },
+    libelle: `Présence ${c.classe} (${c.debut})`,
+  })
+  return r.attente
+}
+const presenceEnAttente = (c, date) => {
+  try {
+    return (JSON.parse(localStorage.getItem('sukul-envois')) || []).some((x) => x.cle === `presence-${c.class_id}-${date}-${c.debut}`)
+  } catch {
+    return false
+  }
 }
 
 // Un cours de l'enseignant : confirmation « je suis en cours » et cahier de textes
-function Cours({ c, v, onMaj }) {
+function Cours({ c, v, onMaj, demande }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [edition, setEdition] = useState(false)
   const [texte, setTexte] = useState(c.contenu || '')
+  const [attente, setAttente] = useState(() => presenceEnAttente(c, v?.date))
+  // ouvert depuis la notification « Confirmez votre presence » : confirme d'un geste
+  const auto = useRef(false)
+  useEffect(() => {
+    if (!demande || auto.current || demande !== `${c.class_id}-${c.debut.replace(':', '')}-${v?.date}`) return
+    auto.current = true
+    if (confirmable(c, v) && !attente) confirmer()
+  }, [])
 
   async function confirmer() {
     setBusy(true)
     setError('')
     try {
-      await confirmerCours(c, v.date)
-      onMaj()
+      if (await confirmerCours(c, v.date)) setAttente(true)
+      else onMaj()
     } catch (err) {
       setError(err.message)
     }
@@ -48,18 +71,27 @@ function Cours({ c, v, onMaj }) {
     setBusy(true)
     setError('')
     try {
-      await api.put('/api/presence-enseignants/mes-cours/cahier', { classId: c.class_id, debut: c.debut, date: v.date, contenu: texte })
+      const r = await envoyerOuGarder({
+        cle: `cahier-${c.class_id}-${v.date}-${c.debut}`,
+        path: '/api/presence-enseignants/mes-cours/cahier',
+        body: { classId: c.class_id, debut: c.debut, date: v.date, contenu: texte },
+        libelle: `Cahier de textes ${c.classe}`,
+        methode: 'put',
+      })
       setEdition(false)
-      onMaj()
+      if (r.attente) c.contenu = texte
+      else onMaj()
     } catch (err) {
       setError(err.message)
     }
     setBusy(false)
   }
 
-  const enCours = confirmable(c, v)
-  const confirme = c.confirme_le || c.etat === 'assure'
-  const statut = c.confirme_le
+  const enCours = confirmable(c, v) && !attente
+  const confirme = c.confirme_le || c.etat === 'assure' || attente
+  const statut = attente
+    ? ['ok', 'Présent · en attente']
+    : c.confirme_le
     ? ['ok', `Présent · ${heureDe(c.confirme_le)}`]
     : c.absent
       ? ['alerte', 'Absent']
@@ -132,8 +164,13 @@ function Cours({ c, v, onMaj }) {
 
 // Mes cours : chaque cours du jour, a confirmer d'un geste, et le cahier de textes
 export default function MesCours() {
-  const [date, setDate] = useState(() => enChaine(new Date()))
-  const d = useApi(`/api/presence-enseignants/mes-cours?date=${date}`)
+  // ?confirmer=classe-HHMM-date : ouvert depuis la notification de presence
+  const [demande] = useState(() => (window.location.hash.match(/confirmer=([\d]+-\d{4}-\d{4}-\d{2}-\d{2})/) || [])[1] || '')
+  const [date, setDate] = useState(() => (demande ? demande.slice(-10) : enChaine(new Date())))
+  const enLigne = useApi(`/api/presence-enseignants/mes-cours?date=${date}`)
+  // sans reseau : la journee gardee par l'accueil (meme jour) si cette page n'a pas encore de copie
+  const accueil = enLigne.sansReseau && !enLigne.data ? lireCopie('/api/presence-enseignants/mes-cours') : null
+  const d = accueil?.data?.date === date ? { ...enLigne, data: accueil.data, error: '' } : enLigne
   const v = d.data
   const auj = v?.aujourdhui || enChaine(new Date())
   // de 14 jours en arriere (cahier de textes) a 60 jours en avant (prochains cours)
@@ -177,7 +214,7 @@ export default function MesCours() {
       {v && v.cours.length > 0 && (
         <div className="mc-liste">
           {v.cours.map((c) => (
-            <Cours key={`${c.class_id}-${c.debut}-${date}-${c.contenu || ''}`} c={c} v={v} onMaj={() => d.reload()} />
+            <Cours key={`${c.class_id}-${c.debut}-${date}-${c.contenu || ''}`} c={c} v={v} onMaj={() => d.reload()} demande={demande} />
           ))}
         </div>
       )}

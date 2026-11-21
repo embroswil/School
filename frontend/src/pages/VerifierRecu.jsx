@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { fcfa, MODES_PAIEMENT } from '../recus.js'
 import { lireCode128 } from '../code128.js'
+import { paquetScolarite, parMatricule, recuLocal } from '../paquet.js'
 
 const date = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—')
 
@@ -150,6 +151,11 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
   const [etat, setEtat] = useState(null) // recu verifie depuis son QR code ou son code-barres
   const [scan, setScan] = useState(false)
   const [refus, setRefus] = useState(false)
+  // sans reseau : verification sur les donnees gardees sur l'appareil (eleves, frais, recus)
+  const [paquet, setPaquet] = useState(null)
+  useEffect(() => {
+    paquetScolarite().then(setPaquet)
+  }, [])
 
   async function chercher(matricule) {
     const m = matricule.trim()
@@ -161,7 +167,9 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
     try {
       setSituation((await api.get(`/api/verifier/eleves/${encodeURIComponent(m)}`)).data)
     } catch (err) {
-      setErreur(err.message)
+      const local = err.status === 0 ? parMatricule(paquet, m) : null
+      if (local) setSituation(local)
+      else setErreur(err.status === 0 && !paquet ? 'Pas de réseau, et les données de la scolarité ne sont pas encore sur cet appareil.' : err.message)
     }
     setBusy(false)
   }
@@ -178,7 +186,11 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
       const m = r.data.eleve?.matricule
       if (m) setSituation((await api.get(`/api/verifier/eleves/${encodeURIComponent(m)}`).catch(() => ({ data: null }))).data)
     } catch (err) {
-      setEtat({ ok: false, message: err.message })
+      const local = err.status === 0 ? recuLocal(paquet, numero, code) : null
+      if (local) {
+        setEtat({ ok: local.codeOk !== false, recu: local })
+        setSituation(parMatricule(paquet, local.eleve.matricule))
+      } else setEtat({ ok: false, message: err.status === 0 && !paquet ? 'Pas de réseau, et les reçus ne sont pas encore sur cet appareil.' : err.message })
     }
     setBusy(false)
   }
@@ -193,9 +205,11 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
     try {
       setSituation((await api.get(`/api/verifier/eleves/${encodeURIComponent(l.numero)}`)).data)
       setBusy(false)
-    } catch {
+    } catch (err) {
       setBusy(false)
-      verifierRecu(l.numero, l.code)
+      const local = err.status === 0 ? parMatricule(paquet, l.numero) : null
+      if (local) setSituation(local)
+      else verifierRecu(l.numero, l.code)
     }
   }
   useEffect(() => {
@@ -274,11 +288,15 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
             <b className={r.fraisReste ? 'rouge' : 'vert'}>{r.fraisReste ? `Reste ${fcfa(r.fraisReste)}` : 'Soldé'}</b>
             <small>{`${fcfa(r.fraisPaye)} payés sur ${fcfa(r.fraisMontant)}`}</small>
           </div>
-          <div className="verif-liens">
-            <a href={`#/recus/${r.id}`}>Voir le reçu</a>
-          </div>
+          {r.horsLigne && <small className="verif-hl">{`Vérifié sans réseau, sur les données du ${date(r.horsLigne)}.`}</small>}
+          {r.id && (
+            <div className="verif-liens">
+              <a href={`#/recus/${r.id}`}>Voir le reçu</a>
+            </div>
+          )}
         </div>
       )}
+      {situation?.horsLigne && <p className="hors-ligne">{`Pas de réseau : situation calculée sur l’appareil (données du ${date(situation.horsLigne)}).`}</p>}
       {situation && <Situation s={situation} />}
     </div>
   )

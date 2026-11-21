@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api } from '../api.js'
+import { envoyerOuGarder } from '../horsligne.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
@@ -15,6 +15,7 @@ export default function Conversation({ id }) {
   const [texte, setTexte] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [enAttente, setEnAttente] = useState([]) // messages ecrits sans reseau
 
   async function repondre(e) {
     e.preventDefault()
@@ -22,9 +23,10 @@ export default function Conversation({ id }) {
     setError('')
     setBusy(true)
     try {
-      await api.post(`/api/boite/messages/${id}`, { body: texte })
+      const r = await envoyerOuGarder({ cle: `reponse-${id}-${Date.now()}`, path: `/api/boite/messages/${id}`, body: { body: texte }, libelle: 'Message' })
+      if (r.attente) setEnAttente((l) => [...l, texte])
       setTexte('')
-      conv.reload()
+      if (!r.attente) conv.reload()
     } catch (err) {
       setError(err.message)
     }
@@ -89,6 +91,12 @@ export default function Conversation({ id }) {
               )
             })}
           </div>
+          {enAttente.map((t, i) => (
+            <div key={i} className="msg-attente">
+              {t}
+              <small>Pas de réseau · envoyé dès le retour de la connexion</small>
+            </div>
+          ))}
           <form onSubmit={repondre} style={{ marginTop: 16 }}>
             <textarea className="input" placeholder="Votre réponse…" value={texte} onChange={(e) => setTexte(e.target.value)} />
             <Note>{error}</Note>

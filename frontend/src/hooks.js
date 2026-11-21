@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, session } from './api.js'
-import { garderCopie, lireCopie } from './horsligne.js'
+import { copiesPretes, garderCopie, lireCopie } from './horsligne.js'
 
 // Dernieres reponses de l'API, gardees en memoire le temps de la visite.
 // En revenant sur une page, elle s'affiche tout de suite avec ces donnees,
@@ -35,8 +35,9 @@ export function useApi(path) {
         garderCopie(path, { data: res.data ?? null, meta: res.meta ?? null })
         if (live) setState({ key: done, data: res.data ?? null, meta: res.meta ?? null, error: '' })
       },
-      (err) => {
-        // sans reseau : derniere version gardee sur le telephone (classes, appel, notes de l'enseignant)
+      async (err) => {
+        // sans reseau : derniere version de la page gardee sur l'appareil
+        if (err.status === 0) await copiesPretes()
         const copie = err.status === 0 ? lireCopie(path) : null
         if (!live) return
         if (copie) setState({ key: done, data: copie.data, meta: copie.meta, error: '', horsLigne: copie.le })

@@ -1,6 +1,6 @@
 // Service worker de Sùkûl : l'application s'ouvre tout de suite, meme avec un reseau lent,
 // et reste affichable hors connexion. Les donnees (API) ne sont jamais mises en cache.
-const CACHE = 'sukul-v4'
+const CACHE = 'sukul-v5'
 const POLICES = ['fonts.googleapis.com', 'fonts.gstatic.com']
 
 self.addEventListener('install', (e) => {
@@ -94,13 +94,20 @@ self.addEventListener('push', (e) => {
   } catch (_) {
     m = { title: 'Sùkûl', body: e.data ? e.data.text() : '' }
   }
+  // Presence en cours : notification « a valider », qui reste affichee (ecran verrouille compris)
+  // jusqu'a ce que l'enseignant reponde. Android : bouton « Je suis en cours ». iPhone : toucher la notification.
+  const valider = m.type === 'attendance' && m.confirmer
   e.waitUntil(
     self.registration.showNotification(m.title || 'Sùkûl', {
       body: m.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       tag: m.tag,
-      data: { lien: m.lien || '/notifications' },
+      renotify: Boolean(valider),
+      requireInteraction: Boolean(valider),
+      vibrate: valider ? [300, 120, 300, 120, 300] : undefined,
+      actions: valider ? [{ action: 'present', title: 'Je suis en cours' }, { action: 'ouvrir', title: 'Ouvrir' }] : undefined,
+      data: { lien: m.lien || '/notifications', confirmer: m.confirmer || null },
     }),
   )
 })
@@ -108,7 +115,10 @@ self.addEventListener('push', (e) => {
 // Toucher la notification ouvre Sùkûl a la bonne page
 self.addEventListener('notificationclick', (e) => {
   e.notification.close()
-  const url = `/#${e.notification.data?.lien || '/'}`
+  // « Je suis en cours » (ou toucher une notification de presence) : Sùkûl s'ouvre et confirme aussitot,
+  // ou garde la confirmation sur le telephone s'il n'y a pas de reseau.
+  const lien = e.notification.data?.lien || '/'
+  const url = `/#${lien}`
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((fenetres) => {
       for (const f of fenetres) {

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useApi } from './hooks.js'
 import { trierClasses } from './classes.js'
+import { rechercher } from './paquet.js'
 
 // Choisir un eleve de l'etablissement : recherche par nom, ou classe puis eleve.
-export default function ChoixEleve({ valeur, onChange }) {
+export default function ChoixEleve({ valeur, onChange, paquet = null }) {
   const classes = trierClasses(useApi('/api/etablissement/classes').data || [])
   const [classe, setClasse] = useState('')
   const [q, setQ] = useState('')
@@ -13,7 +14,10 @@ export default function ChoixEleve({ valeur, onChange }) {
     return () => clearTimeout(t)
   }, [q])
   const url = rech.length >= 2 ? `/api/etablissement/eleves?q=${encodeURIComponent(rech)}` : classe ? `/api/etablissement/eleves?classe=${classe}` : null
-  const eleves = useApi(url)
+  const enLigne = useApi(url)
+  // sans reseau : recherche dans les eleves gardes sur l'appareil (guichet)
+  const nomClasse = classes.find((c) => String(c.id) === String(classe))?.name
+  const eleves = enLigne.sansReseau && paquet && url ? { ...enLigne, loading: false, data: rechercher(paquet, rech.length >= 2 ? rech : '', rech.length >= 2 ? '' : nomClasse) } : enLigne
   const choisi = valeur && (eleves.data || []).find((e) => String(e.id) === String(valeur))
   const [nomChoisi, setNomChoisi] = useState('')
 

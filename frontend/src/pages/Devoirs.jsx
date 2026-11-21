@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api.js'
+import { envoyerOuGarder } from '../horsligne.js'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 
@@ -60,8 +61,13 @@ export default function Devoirs({ id }) {
     setOk('')
     setBusy(true)
     try {
-      await api.post(`/api/notes/classes/${id}/devoirs`, { ...f, subjectId: Number(f.subjectId || mesMatieres[0]?.id) })
-      setOk('Devoir publié : les élèves et les parents sont notifiés.')
+      const r = await envoyerOuGarder({
+        cle: `devoir-${id}-${Date.now()}`,
+        path: `/api/notes/classes/${id}/devoirs`,
+        body: { ...f, subjectId: Number(f.subjectId || mesMatieres[0]?.id) },
+        libelle: `Devoir « ${f.titre} »`,
+      })
+      setOk(r.attente ? 'Pas de réseau : devoir gardé sur le téléphone, publié dès le retour du réseau.' : 'Devoir publié : les élèves et les parents sont notifiés.')
       setF((x) => ({ ...x, titre: '', consigne: '' }))
       liste.reload()
     } catch (err) {

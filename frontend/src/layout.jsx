@@ -6,15 +6,20 @@ import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue, langue, traduire } from './i18n.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
+import { precharger } from './prechargement.js'
 import { envoisEnAttente, envoyerAttente } from './horsligne.js'
 import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier, IcInfo, IcTrombone, IcHorlogePlus, IcTableauNoir, IcAppelListe } from './icones.jsx'
 
 // Appels et notes gardes sur le telephone faute de reseau : rappel discret, envoi a la demande
 function EnvoisEnAttente() {
   const [n, setN] = useState(() => envoisEnAttente().length)
+  const [horsLigne, setHorsLigne] = useState(() => navigator.onLine === false)
   const [envoi, setEnvoi] = useState(false)
   useEffect(() => {
-    const maj = () => setN(envoisEnAttente().length)
+    const maj = () => {
+      setN(envoisEnAttente().length)
+      setHorsLigne(navigator.onLine === false)
+    }
     window.addEventListener('sukul-envois', maj)
     window.addEventListener('online', maj)
     window.addEventListener('offline', maj)
@@ -24,7 +29,14 @@ function EnvoisEnAttente() {
       window.removeEventListener('offline', maj)
     }
   }, [])
-  if (!n) return null
+  if (!n && !horsLigne) return null
+  if (!n)
+    return (
+      <div className="hors-connexion" role="status">
+        <b>Hors connexion</b>
+        <span>Vous voyez les données gardées sur l’appareil. Ce que vous faites est envoyé dès le retour du réseau.</span>
+      </div>
+    )
   return (
     <div className="envois-attente" role="status">
       <span>
@@ -231,6 +243,16 @@ export default function Shell({ path, children }) {
     document.documentElement.classList.toggle('espace-enseignant', user.role === 'teacher')
     return () => document.documentElement.classList.remove('espace-enseignant')
   }, [user.role])
+  // travail sans reseau : pages utiles gardees sur l'appareil des l'ouverture
+  useEffect(() => {
+    const t = setTimeout(precharger, 5000)
+    const enLigne = () => setTimeout(precharger, 3000)
+    window.addEventListener('online', enLigne)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('online', enLigne)
+    }
+  }, [user.id, user.schoolId])
   useEffect(() => {
     setActions(false)
     api

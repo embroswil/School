@@ -14,7 +14,7 @@ const envoyer = async () => {
     const { rows } = await db.query(
       `UPDATE notifications SET push_envoye = true
        WHERE id IN (SELECT id FROM notifications WHERE NOT push_envoye AND created_at > NOW() - INTERVAL '30 minutes' ORDER BY id LIMIT 500)
-       RETURNING id, user_id, title, message, data`
+       RETURNING id, user_id, title, message, type, data`
     );
     if (!rows.length) return;
     const abos = (
@@ -28,7 +28,7 @@ const envoyer = async () => {
       for (const a of abos.filter((x) => x.user_id === n.user_id)) {
         try {
           const t = traduireNotification(n, a.langue);
-          const statut = await W.envoyer(a, { title: t.title, body: t.message || "", lien: n.data?.lien || "/notifications", tag: `n${n.id}` });
+          const statut = await W.envoyer(a, { title: t.title, body: t.message || "", lien: n.data?.lien || "/notifications", tag: `n${n.id}`, type: n.type, confirmer: n.data?.confirmer || null });
           if (statut === 404 || statut === 410) await db.query("DELETE FROM push_abonnements WHERE id = $1", [a.id]);
         } catch (e) {
           logger.error(`Push : ${e.message}`);

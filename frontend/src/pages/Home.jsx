@@ -400,9 +400,11 @@ function PointFrise({ c, v, onMaj }) {
   async function present() {
     setMsg('…')
     try {
-      await confirmerCours(c, v.date)
-      setMsg('')
-      onMaj()
+      if (await confirmerCours(c, v.date)) setMsg('attente')
+      else {
+        setMsg('')
+        onMaj()
+      }
     } catch (err) {
       setMsg(err.message)
     }
@@ -423,7 +425,7 @@ function PointFrise({ c, v, onMaj }) {
         {etat === 'fait' && c.confirme_le && <em className="fr-note">{`Présence confirmée à ${heure(c.confirme_le)}`}</em>}
         {etat === 'manque' && <em className="fr-note">Présence non confirmée</em>}
         {etat === 'absent' && <em className="fr-note">Absence signalée</em>}
-        {(confirmable(c, v) || enCours) && (
+        {(confirmable(c, v) || enCours) && msg !== 'attente' && (
           <div className="fr-actions">
             {confirmable(c, v) && (
               <button type="button" className="btn" disabled={msg === '…'} onClick={present}>
@@ -437,7 +439,8 @@ function PointFrise({ c, v, onMaj }) {
             )}
           </div>
         )}
-        {msg && msg !== '…' && <p className="cours-erreur">{msg}</p>}
+        {msg === 'attente' && <em className="fr-note">Présence gardée sur le téléphone : envoyée dès le retour du réseau</em>}
+        {msg && msg !== '…' && msg !== 'attente' && <p className="cours-erreur">{msg}</p>}
       </div>
     </li>
   )

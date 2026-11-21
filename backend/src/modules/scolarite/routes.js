@@ -511,6 +511,13 @@ router.post("/paiements", async (req, res, next) => {
     const mode = ["especes", "banque", "mobile_money", "autre"].includes(b.mode) ? b.mode : "especes";
     const ok = await db.query("SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'student'", [studentId, ecole]);
     if (!ok.rows[0]) throw new ApiError(404, "Élève introuvable");
+    // Encaissement fait sans reseau : numero d'operation cree par l'appareil. Renvoye plusieurs fois,
+    // il n'est enregistre qu'une seule fois.
+    const opClient = /^OP-[A-Z0-9]{4,14}-[A-Z0-9]{4,8}$/.test(String(b.op || "")) ? String(b.op) : null;
+    if (opClient) {
+      const deja = await operationGuichet(ecole, opClient);
+      if (deja) return res.status(200).json({ success: true, data: deja });
+    }
     const s = await situationEleve(studentId);
     const frais = s.frais.find((f) => f.id === fraisId);
     if (!frais) throw new ApiError(404, "Frais introuvable pour cet élève");
@@ -603,6 +610,13 @@ router.post("/encaissements", async (req, res, next) => {
     const mode = MODES_GUICHET.includes(b.mode) ? b.mode : "especes";
     const ok = await db.query("SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'student'", [studentId, ecole]);
     if (!ok.rows[0]) throw new ApiError(404, "Élève introuvable");
+    // Encaissement fait sans reseau : numero d'operation cree par l'appareil. Renvoye plusieurs fois,
+    // il n'est enregistre qu'une seule fois.
+    const opClient = /^OP-[A-Z0-9]{4,14}-[A-Z0-9]{4,8}$/.test(String(b.op || "")) ? String(b.op) : null;
+    if (opClient) {
+      const deja = await operationGuichet(ecole, opClient);
+      if (deja) return res.status(200).json({ success: true, data: deja });
+    }
     const s = await situationEleve(studentId);
     const vus = new Set();
     const lignes = (Array.isArray(b.lignes) ? b.lignes : []).slice(0, 30).map((l) => {
@@ -617,14 +631,17 @@ router.post("/encaissements", async (req, res, next) => {
     });
     if (!lignes.length) throw new ApiError(400, "Choisissez au moins un frais à encaisser");
     const ref = texte(b.recuExterne, 80) || null;
-    const op = `OP-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+    const op = opClient || `OP-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+    // heure reelle de l'encaissement fait sans reseau (au plus 7 jours avant)
+    const le = b.le ? new Date(b.le) : null;
+    const quand = le && !Number.isNaN(le.getTime()) && le.getTime() < Date.now() + 300000 && Date.now() - le.getTime() < 7 * 86400000 ? le : new Date();
     await client.query("BEGIN");
     for (const [i, l] of lignes.entries()) {
       await client.query(
         `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, enregistre_par, confirme_le,
-                                          recu_externe, operation, verse_par, telephone)
-         VALUES ($1, $2, $3, $4, $5, 'reussi', $6, $7, NOW(), $8, $9, $10, $11)`,
-        [ecole, l.fraisId, studentId, l.montant, mode, `${op}-${i + 1}`, req.user.id, ref && (i ? `${ref}/${i + 1}` : ref), op, texte(b.versePar, 120) || null, texte(b.telephone, 30) || null]
+                                          recu_externe, operation, verse_par, telephone, created_at)
+         VALUES ($1, $2, $3, $4, $5, 'reussi', $6, $7, $12, $8, $9, $10, $11, $12)`,
+        [ecole, l.fraisId, studentId, l.montant, mode, `${op}-${i + 1}`, req.user.id, ref && (i ? `${ref}/${i + 1}` : ref), op, texte(b.versePar, 120) || null, texte(b.telephone, 30) || null, quand]
       );
     }
     await client.query("COMMIT");
@@ -647,6 +664,48 @@ router.post("/encaissements", async (req, res, next) => {
     next(e);
   } finally {
     client.release();
+  }
+});
+
+// GET /api/scolarite/hors-ligne : tout ce qu'il faut au guichet et a la verification des recus sans reseau
+// (eleves, frais, sommes deja payees, recus emis), garde sur l'appareil de l'administration.
+router.get("/hors-ligne", async (req, res, next) => {
+  try {
+    reserve(req);
+    const ecole = ecoleDe(req);
+    const annee = await assurerAnneeScolaire(ecole);
+    const frais = (
+      await db.query(
+        `SELECT id, nom, montant, echeance, obligatoire, classes FROM frais_scolaires
+         WHERE school_id = $1 AND (academic_year_id IS NULL OR academic_year_id = $2) ORDER BY echeance NULLS LAST, id`,
+        [ecole, annee?.id || null]
+      )
+    ).rows;
+    const eleves = (
+      await db.query(
+        `SELECT u.id, u.last_name, u.first_name, ${SQL_CLASSE} AS classe, regexp_replace(COALESCE(sr.admission_number, ''), '^\\d+-', '') AS matricule
+         FROM users u LEFT JOIN student_records sr ON sr.student_id = u.id
+         WHERE u.school_id = $1 AND u.role = 'student' AND u.is_active ORDER BY u.last_name, u.first_name`,
+        [ecole]
+      )
+    ).rows.map((e) => [e.id, e.last_name, e.first_name, e.classe || "", e.matricule || ""]);
+    const payes = (
+      await db.query(
+        `SELECT student_id, frais_id, SUM(montant)::int AS s FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi' GROUP BY 1, 2`,
+        [ecole]
+      )
+    ).rows.map((p) => [p.student_id, p.frais_id, p.s]);
+    const { codeRecu } = require("../../utils/recus");
+    const recus = (
+      await db.query(
+        `SELECT numero_recu, recu_externe, montant, student_id, frais_id, COALESCE(confirme_le, created_at) AS d, mode
+         FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi' AND numero_recu IS NOT NULL ORDER BY id`,
+        [ecole]
+      )
+    ).rows.map((r) => [r.numero_recu, r.montant, codeRecu(r.numero_recu, r.montant), r.student_id, r.frais_id, r.d, r.mode, r.recu_externe || null]);
+    res.json({ success: true, data: { le: new Date().toISOString(), ecole, frais, eleves, payes, recus } });
+  } catch (e) {
+    next(e);
   }
 });
 

@@ -191,7 +191,7 @@ function Pages({ path }) {
   if (path.split('?')[0] === '/info') return reserve(['principal', 'teacher'].includes(user.role), <InfoPublier />)
   if (path === '/presence-enseignants') return reserve(user.role === 'principal', <PresenceEnseignants />)
   if (path === '/mon-absence') return reserve(user.role === 'teacher', <MonAbsence />)
-  if (path === '/mes-cours') return reserve(user.role === 'teacher', <MesCours />)
+  if (path.split('?')[0] === '/mes-cours') return reserve(user.role === 'teacher', <MesCours key={path} />)
   if (path === '/import-absences-enseignants') return reserve(user.role === 'principal', <ImportAbsencesEnseignants />)
   if (path === '/document' || path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Documents />)
   if (path === '/trouver-eleve') return reserve(user.role === 'parent', <TrouverEleve />)

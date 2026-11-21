@@ -35,18 +35,20 @@ const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', 
 // format : ticket (80 mm), a5, ou double (moitie de feuille A4 : recu + souche sur la meme feuille)
 export function recuHtml(op, { format = 'a5', exemplaire = '', logo = '' } = {}) {
   const premier = op.lignes[0]
+  // encaissement fait sans reseau : recu provisoire (numero definitif et code attribues a l'envoi)
+  const nature = op.provisoire ? 'REÇU PROVISOIRE' : 'REÇU DE CAISSE'
   const ligne = (k, v) => (v ? `<div class="ri-l"><span>${esc(k)}</span><b>${esc(v)}</b></div>` : '')
   const plus = op.lignes.length > 1 ? ` (+${op.lignes.length - 1})` : ''
   const tete = `
   <header class="ri-tete">
     ${logo ? `<img class="ri-logo" src="${esc(logo)}" alt="" />` : `<span class="ri-logo ri-initiale">${esc(String(op.ecole.nom || '?').charAt(0))}</span>`}
     <div><b>${esc(op.ecole.nom)}</b><small>${esc([op.ecole.ville, op.annee && `Année ${op.annee}`].filter(Boolean).join(' · '))}</small></div>
-    ${format === 'double' ? `<div class="ri-titre"><b>REÇU DE CAISSE</b><span>N° ${esc(premier.numero)}${plus}</span><small>${esc(dateHeure(op.date))}</small>${exemplaire ? `<em class="ri-ex">${esc(exemplaire)}</em>` : ''}</div>` : ''}
+    ${format === 'double' ? `<div class="ri-titre"><b>${nature}</b><span>N° ${esc(premier.numero)}${plus}</span><small>${esc(dateHeure(op.date))}</small>${exemplaire ? `<em class="ri-ex">${esc(exemplaire)}</em>` : ''}</div>` : ''}
   </header>`
   const titre =
     format === 'double'
       ? ''
-      : `<div class="ri-titre"><b>REÇU DE CAISSE</b><span>N° ${esc(premier.numero)}${plus}</span><small>${esc(dateHeure(op.date))}</small></div>
+      : `<div class="ri-titre"><b>${nature}</b><span>N° ${esc(premier.numero)}${plus}</span><small>${esc(dateHeure(op.date))}</small></div>
   ${exemplaire ? `<p class="ri-exemplaire">${esc(exemplaire)}</p>` : ''}`
   const eleve = `<section class="ri-bloc">
     ${ligne('Élève', `${op.eleve.nom} ${op.eleve.prenom}`)}
@@ -72,7 +74,7 @@ export function recuHtml(op, { format = 'a5', exemplaire = '', logo = '' } = {})
     <div><span>Déjà payé</span><b>${esc(fcfa(op.situation.paye))}</b></div>
     <div><span>Reste à payer</span><b>${esc(fcfa(op.situation.reste))}</b></div>
   </section>`
-  const qr = format === 'ticket' ? '' : `<div class="ri-qr">${qrSvg(lienVerification(premier.numero, premier.code), 92)}<small>Code ${esc(premier.code)}</small></div>`
+  const qr = format === 'ticket' || op.provisoire ? '' : `<div class="ri-qr">${qrSvg(lienVerification(premier.numero, premier.code), 92)}<small>Code ${esc(premier.code)}</small></div>`
   const codes = `<div class="ri-codes">
       <div class="ri-barres">${code128Svg(premier.numero, 40)}<small>${esc(premier.numero)}</small></div>
       ${qr}
@@ -86,7 +88,7 @@ export function recuHtml(op, { format = 'a5', exemplaire = '', logo = '' } = {})
     <div>${eleve}${table}</div>
     <div>${paiement}${situation}<div class="ri-codes-signature">${codes}${signature}</div></div>
   </div>
-  <p class="ri-mention">Reçu Sùkûl vérifiable par l’établissement (code-barres). Conservez-le.</p>
+  <p class="ri-mention">${op.provisoire ? 'Encaissement fait sans réseau : enregistré dans Sùkûl dès le retour de la connexion. Le reçu définitif peut alors être réimprimé.' : 'Reçu Sùkûl vérifiable par l’établissement (code-barres). Conservez-le.'}</p>
 </article>`
   }
   return `
@@ -100,7 +102,7 @@ export function recuHtml(op, { format = 'a5', exemplaire = '', logo = '' } = {})
   <footer class="ri-pied">
     ${codes}
     ${signature}
-    <p>Reçu Sùkûl vérifiable par l’établissement (code-barres). Conservez-le.</p>
+    <p>${op.provisoire ? 'Encaissement fait sans réseau : enregistré dans Sùkûl dès le retour de la connexion. Le reçu définitif peut alors être réimprimé.' : 'Reçu Sùkûl vérifiable par l’établissement (code-barres). Conservez-le.'}</p>
   </footer>
 </article>`
 }

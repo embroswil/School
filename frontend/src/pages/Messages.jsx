@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api.js'
+import { envoyerOuGarder } from '../horsligne.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
@@ -79,16 +80,20 @@ export default function Messages() {
     setBusy(true)
     try {
       if (absence) {
-        await api.post('/api/presence-enseignants', { date: f.date, motif: f.motif })
-        setEnvoye('Absence signalée : l’administration est prévenue.')
+        const r = await envoyerOuGarder({ cle: `absence-${f.date}`, path: '/api/presence-enseignants', body: { date: f.date, motif: f.motif }, libelle: 'Absence signalée' })
+        setEnvoye(r.attente ? 'Pas de réseau : absence gardée sur le téléphone, signalée dès le retour du réseau.' : 'Absence signalée : l’administration est prévenue.')
         setOuvert(false)
         setF(VIDE)
         absences.reload()
         setBusy(false)
         return
       }
-      const r = await api.post('/api/boite/messages', f)
-      if (r.data.id) window.location.hash = `/messages/${r.data.id}`
+      const r = await envoyerOuGarder({ cle: `message-${Date.now()}`, path: '/api/boite/messages', body: f, libelle: `Message « ${f.subject} »` })
+      if (r.attente) {
+        setEnvoye('Pas de réseau : message gardé sur le téléphone, envoyé dès le retour de la connexion.')
+        setOuvert(false)
+        setF(VIDE)
+      } else if (r.data.id) window.location.hash = `/messages/${r.data.id}`
       else {
         setEnvoye(`Message envoyé à ${r.data.envoyes} parent${r.data.envoyes > 1 ? 's' : ''}.`)
         setOuvert(false)
