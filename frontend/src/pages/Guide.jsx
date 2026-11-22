@@ -14,7 +14,7 @@ const GUIDES = {
     ['Informer les familles', 'Bouton + › Publier (photo, vidéo) ou Annonce (événement, conseil de discipline).'],
   ],
   teacher: [
-    ['Choisir mes classes', 'Accueil › Modifier : vos matières et vos classes.'],
+    ['Mes classes', 'À la première connexion, choisissez vos matières et vos classes ; ensuite, l’établissement les gère.'],
     ['Faire l’appel', 'Sur la carte de la classe › Faire l’appel, heure par heure. Les parents des absents sont prévenus.'],
     ['Saisir les notes', 'Notes › Nouvelle évaluation (séquence), saisissez puis publiez : les parents les voient aussitôt.'],
     ['Donner un devoir', 'Sur la carte de la classe › Devoirs.'],

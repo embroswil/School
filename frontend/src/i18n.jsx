@@ -882,7 +882,7 @@ const EN = {
   "Acceptez les conditions d’utilisation et la politique de confidentialité pour continuer.": "Accept the terms of use and the privacy policy to continue.",
   "Accueil": "Home",
   "Accueil › + Mon enfant › l’établissement › sa classe › « Mon enfant », puis confirmez avec sa date de naissance.": "Home › + My child › the school › their class › “My child”, then confirm with their date of birth.",
-  "Accueil › Modifier : vos matières et vos classes.": "Home › Edit: your subjects and your classes.",
+  "À la première connexion, choisissez vos matières et vos classes ; ensuite, l’établissement les gère.": "When you first sign in, choose your subjects and classes; after that, the school manages them.",
   "Accueil › Payer une scolarité : un proche, un filleul, un don.": "Home › Pay school fees: a relative, a godchild, a donation.",
   "Accès réservé": "Restricted access",
   "Accédez à votre espace Sùkûl.": "Access your Sùkûl space.",

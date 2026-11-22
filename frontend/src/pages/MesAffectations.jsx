@@ -6,10 +6,9 @@ import { niveauClasse, trierClasses } from '../classes.js'
 import { IcAppelListe, IcCoche, IcDocument } from '../icones.jsx'
 
 // Mes classes (enseignant) : chaque classe avec ses notes, ses devoirs et l'appel ;
-// le choix des matieres et des classes enseignees se fait en dessous.
+// a la premiere connexion (aucune classe), l'enseignant choisit ses matieres et ses classes ; ensuite, c'est l'etablissement qui les gere.
 export default function MesClasses() {
   const d = useApi('/api/notes/mes-classes')
-  const [modifier, setModifier] = useState(false)
   const [ouverts, basculer] = useNiveauxOuverts('mes-classes')
   const classes = trierClasses(d.data || [])
   const niveaux = []
@@ -22,7 +21,7 @@ export default function MesClasses() {
   const peu = classes.length <= 6 // peu de classes : tout est deplie
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
-  if (!classes.length || modifier) return <ChoixAffectations onFini={() => (setModifier(false), d.reload())} onAnnuler={classes.length ? () => setModifier(false) : null} />
+  if (!classes.length) return <ChoixAffectations onFini={() => d.reload()} />
   const ligne = (c) => (
     <li key={c.id} className="mcl-classe">
       <div className="mcl-tete">
@@ -58,9 +57,6 @@ export default function MesClasses() {
           <h1 className="page-title">Mes classes</h1>
           <p className="muted">{`${classes.length} classe${classes.length > 1 ? 's' : ''} · ${classes.reduce((n, c) => n + Number(c.eleves || 0), 0)} élèves`}</p>
         </div>
-        <button type="button" className="btn btn-quiet" onClick={() => setModifier(true)}>
-          Modifier
-        </button>
       </div>
       {peu ? (
         <ul className="mcl-liste">{classes.map(ligne)}</ul>
