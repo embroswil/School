@@ -521,7 +521,9 @@ router.put("/appel/:classId", async (req, res, next) => {
        DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, updated_at = NOW()`,
       [c.id, c.academic_year_id, date, req.user.id, nonPresents.map((p) => entier(p.studentId)), nonPresents.map((p) => p.statut), periode]
     );
+    // Absents de cet appel (pas deja signales) : leurs parents sont prevenus tout de suite (notification et push)
     const absents = liste.filter((p) => p.statut === "absent" && ancien.get(entier(p.studentId)) !== "absent").map((p) => entier(p.studentId));
+    let parentsPrevenus = 0;
     if (absents.length) {
       const jour = new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
       const { rows } = await db.query(
@@ -536,10 +538,12 @@ router.put("/appel/:classId", async (req, res, next) => {
           type: "attendance",
           priority: "high",
           data: { lien: `/suivi/${r.eleve}` },
-        }).catch(() => {});
+        })
+          .then(() => parentsPrevenus++)
+          .catch(() => {});
       }
     }
-    res.json({ success: true, data: { enregistres: liste.length, absentsSignales: absents.length } });
+    res.json({ success: true, data: { enregistres: liste.length, absentsSignales: absents.length, parentsPrevenus } });
   } catch (e) {
     next(e);
   }

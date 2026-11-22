@@ -44,6 +44,15 @@ const emailNotification = async (userId, { title, message, data }) => {
   }
 };
 
+// La notification part tout de suite sur les telephones (push), sans attendre la verification periodique
+const pousser = () => {
+  try {
+    require("../taches/push").maintenant();
+  } catch (_) {
+    /* push non configure */
+  }
+};
+
 /** Notifie tous les administrateurs d'un etablissement. */
 const notifierEtablissement = async (schoolId, { title, message, type = "system", data = null, priority = "normal" }) => {
   if (!schoolId) return;
@@ -52,6 +61,7 @@ const notifierEtablissement = async (schoolId, { title, message, type = "system"
      SELECT id, $2, $3, $4, $5, $6 FROM users WHERE school_id = $1 AND role = 'principal' AND is_active = true`,
     [schoolId, title, message, type, priority, data ? JSON.stringify(data) : null]
   );
+  pousser();
 };
 
 /** Notifie un utilisateur (et lui envoie un email pour les evenements importants). */
@@ -61,6 +71,7 @@ const notifierUtilisateur = async (userId, { title, message, type = "system", da
     "INSERT INTO notifications (user_id, title, message, type, priority, data) VALUES ($1, $2, $3, $4, $5, $6)",
     [userId, title, message, type, priority, data ? JSON.stringify(data) : null]
   );
+  pousser();
   if (TYPES_EMAIL.includes(type)) emailNotification(userId, { title, message, data }); // sans attendre
 };
 

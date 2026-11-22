@@ -87,7 +87,12 @@ export default function Appel({ id }) {
     try {
       const r = await api.put(`/api/notes/appel/${id}`, corps)
       retirerAttente(cle) // un appel garde sans reseau ne doit pas remplacer celui-ci plus tard
-      setOk(`Appel enregistré.${r.data.absentsSignales ? ` ${r.data.absentsSignales} absence(s) signalée(s) aux parents.` : ''}`)
+      const d = r.data || {}
+      setOk(
+        `Appel enregistré.${
+          d.parentsPrevenus ? ` ${d.parentsPrevenus} parent${d.parentsPrevenus > 1 ? 's' : ''} prévenu${d.parentsPrevenus > 1 ? 's' : ''} de l’absence.` : d.absentsSignales ? ' Aucun parent inscrit pour ces absents.' : ''
+        }`,
+      )
       d.reload()
     } catch (err) {
       if (err.status === 0) {

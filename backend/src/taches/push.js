@@ -6,8 +6,13 @@ const logger = require("../utils/logger");
 const W = require("../utils/webpush");
 
 let enCours = false;
+let encore = false; // demande arrivee pendant un envoi : on repasse juste apres
 const envoyer = async () => {
-  if (!W.configuree() || enCours) return;
+  if (!W.configuree()) return;
+  if (enCours) {
+    encore = true;
+    return;
+  }
   enCours = true;
   try {
     // Notifications recentes pas encore poussees (au plus 500 a la fois)
@@ -39,8 +44,15 @@ const envoyer = async () => {
     logger.error(`Push : ${e.message}`);
   } finally {
     enCours = false;
+    if (encore) {
+      encore = false;
+      setImmediate(envoyer);
+    }
   }
 };
+
+// Envoi immediat (absence a l'appel, note, message…) : sans attendre le passage suivant de 15 s
+const maintenant = () => setImmediate(() => envoyer().catch(() => {}));
 
 const demarrer = () => {
   // Les notifications anciennes (serveur endormi) ne sont pas envoyees en rafale au reveil
@@ -48,4 +60,4 @@ const demarrer = () => {
   setInterval(envoyer, 15000);
 };
 
-module.exports = { envoyer, demarrer };
+module.exports = { envoyer, demarrer, maintenant };
