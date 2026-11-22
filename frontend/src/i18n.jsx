@@ -1341,6 +1341,7 @@ const EN = {
   "de l’année": "for the year",
   "Info, consigne, photos": "Note, instruction, photos",
   "Dernier cours": "Last lesson",
+  "Vos questions vont à l’établissement.": "Your questions go to the school.",
   "Demain": "Tomorrow",
   "Revenir à aujourd’hui": "Back to today",
   "Choisir un jour": "Choose a day",

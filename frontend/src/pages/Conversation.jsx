@@ -97,12 +97,22 @@ export default function Conversation({ id }) {
             ))}
           </div>
           <Note>{error}</Note>
-          <form className="ig-saisie" onSubmit={repondre}>
-            <textarea rows={1} placeholder="Message…" value={texte} onChange={(e) => setTexte(e.target.value)} />
-            <button type="submit" disabled={busy || !texte.trim()}>
-              {busy ? '…' : 'Envoyer'}
-            </button>
-          </form>
+          {d?.lectureSeule ? (
+            // Message d'un enseignant : le parent le lit ; ses questions vont a l'etablissement
+            <div className="ig-lecture">
+              <span>Vos questions vont à l’établissement.</span>
+              <a className="btn" href="#/messages?nouveau=etablissement">
+                Écrire à l’établissement
+              </a>
+            </div>
+          ) : (
+            <form className="ig-saisie" onSubmit={repondre}>
+              <textarea rows={1} placeholder="Message…" value={texte} onChange={(e) => setTexte(e.target.value)} />
+              <button type="submit" disabled={busy || !texte.trim()}>
+                {busy ? '…' : 'Envoyer'}
+              </button>
+            </form>
+          )}
         </>
       )}
     </div>

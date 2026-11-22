@@ -218,7 +218,7 @@ router.get("/messages/:id", async (req, res, next) => {
     const auteur = await db.query("SELECT first_name, last_name, role, email, phone FROM users WHERE id = $1", [c.user_id]);
     const enseignant = c.teacher_id ? (await db.query("SELECT first_name, last_name FROM users WHERE id = $1", [c.teacher_id])).rows[0] : null;
     const eleve = c.student_id ? (await db.query("SELECT first_name, last_name FROM users WHERE id = $1", [c.student_id])).rows[0] : null;
-    res.json({ success: true, data: { conversation: c, auteur: auteur.rows[0], enseignant, eleve, coteEcole: ecole, messages: rows } });
+    res.json({ success: true, data: { conversation: c, auteur: auteur.rows[0], enseignant, eleve, coteEcole: ecole, lectureSeule: Boolean(c.teacher_id) && !ecole, messages: rows } });
   } catch (e) {
     next(e);
   }
@@ -231,6 +231,8 @@ router.post("/messages/:id", async (req, res, next) => {
     const corps = texte(req.body?.body, 5000);
     if (!corps) throw new ApiError(400, "Le message est vide");
     const deEtab = coteEcole(c, u);
+    // Message d'un enseignant : le parent le lit, mais ne repond pas a l'enseignant ; il ecrit a l'etablissement
+    if (c.teacher_id && !deEtab) throw new ApiError(403, "Les enseignants vous informent ici. Pour toute question, écrivez à l’établissement.");
     await db.query("INSERT INTO conversation_messages (conversation_id, sender_id, from_school, body) VALUES ($1, $2, $3, $4)", [
       c.id,
       u.id,
