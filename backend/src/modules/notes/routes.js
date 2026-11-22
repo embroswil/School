@@ -521,6 +521,22 @@ router.put("/appel/:classId", async (req, res, next) => {
        DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, updated_at = NOW()`,
       [c.id, c.academic_year_id, date, req.user.id, nonPresents.map((p) => entier(p.studentId)), nonPresents.map((p) => p.statut), periode]
     );
+    // L'appel fait par l'enseignant pendant son cours (de 15 min avant le debut jusqu'a la fin) confirme sa presence :
+    // le cours est « assuré » et le rappel « Êtes-vous en cours ? » n'est plus envoye.
+    if (!admin && periode !== null && date === jourCameroun()) {
+      const debut = `${String(Math.floor(periode / 100)).padStart(2, "0")}:${String(periode % 100).padStart(2, "0")}`;
+      await db
+        .query(
+          `INSERT INTO cours_suivi (school_id, class_id, date, debut, teacher_id, confirme_le)
+           SELECT cr.school_id, cr.class_id, $2::date, cr.debut, $4, NOW() FROM creneaux cr
+           WHERE cr.class_id = $1 AND cr.jour = EXTRACT(ISODOW FROM $2::date) AND cr.debut = $3::time
+             AND (NOW() AT TIME ZONE 'Africa/Douala')::time BETWEEN cr.debut - INTERVAL '15 minutes' AND cr.fin
+           ON CONFLICT (class_id, date, debut) DO UPDATE SET confirme_le = COALESCE(cours_suivi.confirme_le, EXCLUDED.confirme_le),
+             teacher_id = COALESCE(cours_suivi.teacher_id, EXCLUDED.teacher_id)`,
+          [c.id, date, debut, req.user.id]
+        )
+        .catch(() => {});
+    }
     // Absents de cet appel (pas deja signales) : leurs parents sont prevenus tout de suite (notification et push)
     const absents = liste.filter((p) => p.statut === "absent" && ancien.get(entier(p.studentId)) !== "absent").map((p) => entier(p.studentId));
     let parentsPrevenus = 0;
