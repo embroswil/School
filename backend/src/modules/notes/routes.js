@@ -426,7 +426,7 @@ router.get("/appel/:classId", async (req, res, next) => {
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || "") ? req.query.date : jourCameroun();
     const periode = periodeDe(req.query.periode);
     // Cours du jour d'apres l'emploi du temps (ceux de l'enseignant s'il s'agit d'un enseignant)
-    const jour = new Date(`${date}T12:00:00`).getDay(); // 0 = dimanche
+    const jour = new Date(`${date}T12:00:00`).getDay() || 7; // jour ISO : 1 = lundi … 7 = dimanche (comme l’emploi du temps)
     const cours = (
       await db.query(
         `SELECT to_char(cr.debut, 'HH24MI')::int AS periode, to_char(cr.debut, 'HH24:MI') AS debut, to_char(cr.fin, 'HH24:MI') AS fin, s.name AS matiere,
