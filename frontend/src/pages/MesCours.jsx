@@ -17,8 +17,8 @@ const moins15 = (hhmm) => {
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
 }
 
-// Le cours peut etre confirme le jour meme, de 15 minutes avant son debut jusqu'a sa fin
-export const confirmable = (c, v) => v && v.date === v.aujourdhui && !c.confirme_le && !c.absent && v.maintenant >= moins15(c.debut) && v.maintenant < c.fin
+// Le cours peut etre confirme le jour meme, de l'heure de son debut jusqu'a sa fin (jamais avant)
+export const confirmable = (c, v) => v && v.date === v.aujourdhui && !c.confirme_le && !c.absent && v.maintenant >= c.debut && v.maintenant < c.fin
 // Question « Etes-vous en cours ? » (ouverte depuis la notification de presence) : Oui / Non
 function Question({ c, v, reponseInitiale, onFini }) {
   const [busy, setBusy] = useState(false)

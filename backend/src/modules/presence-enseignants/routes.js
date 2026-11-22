@@ -288,7 +288,7 @@ const monCours = async (req) => {
 };
 
 // POST /api/presence-enseignants/mes-cours/confirmer { classId, debut, date, le } : « je suis en cours »
-// Possible le jour meme, de 15 minutes avant le debut du cours jusqu'a sa fin.
+// Possible le jour meme, de l'heure de debut du cours jusqu'a sa fin (jamais avant).
 // Sans reseau, la confirmation est gardee sur le telephone avec son heure (`le`) et envoyee plus tard :
 // elle est acceptee si cette heure etait dans le cours et qu'elle arrive dans les 3 jours.
 router.post("/mes-cours/confirmer", async (req, res, next) => {
@@ -301,10 +301,10 @@ router.post("/mes-cours/confirmer", async (req, res, next) => {
       const local = new Date(le.getTime() + 3600 * 1000).toISOString();
       const [jour, heure] = [local.slice(0, 10), local.slice(11, 16)];
       if (le.getTime() > Date.now() + 5 * 60 * 1000 || Date.now() - le.getTime() > 3 * 86400 * 1000) throw new ApiError(400, "Confirmation trop ancienne");
-      if (jour !== date || heure < decaler(debut, -15) || (cr.fin && heure >= cr.fin)) throw new ApiError(400, "La présence n’a pas été confirmée pendant le cours.");
+      if (jour !== date || heure < debut || (cr.fin && heure >= cr.fin)) throw new ApiError(400, "La présence n’a pas été confirmée pendant le cours.");
     } else {
       if (date !== jourCameroun()) throw new ApiError(400, "La présence se confirme le jour du cours");
-      if (heureCameroun() < decaler(debut, -15)) throw new ApiError(400, `Vous pourrez confirmer à partir de ${decaler(debut, -15)}`);
+      if (heureCameroun() < debut) throw new ApiError(400, `Vous pourrez confirmer à partir de ${debut}, heure du début du cours`);
       if (cr.fin && heureCameroun() >= cr.fin) throw new ApiError(400, "Ce cours est terminé : la présence ne peut plus être confirmée.");
     }
     const r = await suivre(req.user.schoolId, cr.class_id, date, debut, req.user.id, { confirme_le: differe ? le : new Date() });
@@ -321,7 +321,7 @@ async function repondrePresence({ teacherId, schoolId, classId, date, debut }, r
   if (!cr) throw new ApiError(404, "Ce cours n’est plus dans votre emploi du temps");
   if (date !== jourCameroun()) throw new ApiError(400, "Ce cours n’est pas aujourd’hui");
   if (reponse === "oui") {
-    if (heureCameroun() < decaler(debut, -15)) throw new ApiError(400, `Vous pourrez confirmer à partir de ${decaler(debut, -15)}`);
+    if (heureCameroun() < debut) throw new ApiError(400, `Vous pourrez confirmer à partir de ${debut}, heure du début du cours`);
     if (cr.fin && heureCameroun() >= cr.fin) throw new ApiError(400, "Ce cours est terminé : la présence ne peut plus être confirmée.");
     const r = await suivre(schoolId, classId, date, debut, teacherId, { confirme_le: new Date() });
     return { reponse, confirme_le: r.rows[0].confirme_le, classe: cr.classe, debut };
