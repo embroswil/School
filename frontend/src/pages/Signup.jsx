@@ -23,7 +23,7 @@ export default function Signup() {
   const [ecoles, setEcoles] = useState(null)
   const [recherche, setRecherche] = useState('')
   const [ecole, setEcole] = useState(null)
-  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', classe: '' })
+  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', classe: '', dateNaissance: '' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [aVerifier, setAVerifier] = useState(null) // compte cree, e-mail a confirmer
@@ -176,9 +176,14 @@ export default function Signup() {
           </Field>
         </div>
         {eleve && (
-          <Field label="Classe">
-            <input className="input" placeholder="ex. 3e A" value={f.classe} onChange={maj('classe')} required />
-          </Field>
+          <div className="grid2">
+            <Field label="Classe">
+              <input className="input" placeholder="ex. 3e A" value={f.classe} onChange={maj('classe')} required />
+            </Field>
+            <Field label="Date de naissance">
+              <input className="input" type="date" value={f.dateNaissance} onChange={maj('dateNaissance')} required />
+            </Field>
+          </div>
         )}
         <Field label="Adresse e-mail">
           <input className="input" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={f.email} onChange={maj('email')} required />

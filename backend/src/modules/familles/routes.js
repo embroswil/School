@@ -56,6 +56,7 @@ router.get("/ecoles", async (req, res, next) => {
 router.get("/ecoles/:id/eleves", async (req, res, next) => {
   try {
     reserveParent(req);
+    await exigerEmailConfirme(req.user);
     const q = texte(req.query.q, 60);
     if (q.replace(/\s/g, "").length < 3) return res.json({ success: true, data: [] });
     const mots = q.split(/\s+/).filter(Boolean).slice(0, 4);
@@ -132,9 +133,16 @@ router.post("/relier", async (req, res, next) => {
     }
     const saisie = /^\d{4}-\d{2}-\d{2}$/.test(req.body?.dateNaissance || "") ? req.body.dateNaissance : null;
     const connue = e.date_of_birth ? new Date(e.date_of_birth).toISOString().slice(0, 10) : null;
-    if (saisie && connue && saisie === connue) {
-      await relier(req.user.id, studentId, lien);
-      return res.json({ success: true, data: { statut: "relie" } });
+    // La date de naissance ne relie automatiquement qu'apres peu d'erreurs : au-dela de 5 erreurs en 24 h,
+    // toute nouvelle demande part a l'etablissement (sinon on pourrait essayer toutes les dates d'une annee).
+    const T = require("../../utils/tentatives");
+    const cle = `parent:${req.user.id}`;
+    if (saisie && connue && !(await T.bloque(cle))) {
+      if (saisie === connue) {
+        await relier(req.user.id, studentId, lien);
+        return res.json({ success: true, data: { statut: "relie" } });
+      }
+      await T.noterErreur(cle);
     }
     // Sinon : demande a l'etablissement (une seule en attente par eleve et par parent)
     const ex = await db.query("SELECT id FROM parent_requests WHERE parent_id = $1 AND student_id = $2 AND status = 'pending'", [req.user.id, studentId]);
@@ -162,6 +170,7 @@ router.post("/relier", async (req, res, next) => {
 router.get("/eleves/:id/frais", async (req, res, next) => {
   try {
     reserveParent(req);
+    await exigerEmailConfirme(req.user);
     const id = entier(req.params.id);
     const e = (
       await db.query(

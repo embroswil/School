@@ -126,7 +126,9 @@ router.post("/verification/envoyer", async (req, res, next) => {
     const u = await compteParIdentifiant(req.body?.email || req.body?.telephone);
     let envoi = null;
     if (u && !u.email_verifie && !u.telephone_verifie) envoi = await envoyerCode(u, "verification");
-    res.json({ success: true, data: envoi, message: "Si un compte non vérifié existe, un code vient d'être envoyé." });
+    // Adresse masquee (jo•••@gmail.com) : un numero de telephone ne doit pas reveler l'e-mail d'un compte
+    const masquer = (e) => String(e || "").replace(/^(.{0,2})[^@]*(@.*)$/, "$1•••$2");
+    res.json({ success: true, data: envoi && { ...envoi, destination: masquer(envoi.destination) }, message: "Si un compte non vérifié existe, un code vient d'être envoyé." });
   } catch (e) {
     next(e);
   }

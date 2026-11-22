@@ -89,17 +89,36 @@ const inscription = async (req, res, next) => {
     await q("BEGIN");
     const statut = "active";
     const hash = await bcrypt.hash(b.password, 10);
-    // Eleve deja importe par l'etablissement (meme prenom et nom) : il reprend sa fiche
+    // Eleve deja importe par l'etablissement (meme prenom et nom) : il reprend sa fiche, seulement s'il donne
+    // sa date de naissance exacte (le nom seul ne suffit pas : n'importe qui pourrait prendre la fiche d'un eleve).
+    // Quelques erreurs par jour au plus, pour qu'on ne puisse pas essayer toutes les dates.
     const importe =
       role === "student"
         ? (
             await q(
-              `SELECT id FROM users WHERE school_id = $1 AND role = 'student' AND email LIKE '%@inscrit.school'
-                 AND lower(trim(first_name)) = lower($2) AND lower(trim(last_name)) = lower($3) LIMIT 1`,
+              `SELECT u.id, to_char(sr.date_of_birth, 'YYYY-MM-DD') AS naissance FROM users u
+               LEFT JOIN student_records sr ON sr.student_id = u.id
+               WHERE u.school_id = $1 AND u.role = 'student' AND u.email LIKE '%@inscrit.school'
+                 AND lower(trim(u.first_name)) = lower($2) AND lower(trim(u.last_name)) = lower($3) LIMIT 1`,
               [schoolId, prenom, nom]
             )
           ).rows[0]
         : null;
+    if (importe) {
+      const T = require("../../utils/tentatives");
+      const cle = `eleve:${schoolId}:${prenom.toLowerCase()} ${nom.toLowerCase()}`;
+      if (await T.bloque(cle)) throw new ApiError(429, "Trop d’essais aujourd’hui : demandez à votre établissement de créer votre accès.");
+      const saisie = date(b.dateNaissance);
+      if (!importe.naissance || !saisie || saisie !== importe.naissance) {
+        await T.noterErreur(cle);
+        throw new ApiError(
+          400,
+          importe.naissance
+            ? "Un élève porte déjà ce nom dans cet établissement : indiquez votre date de naissance exacte, ou demandez à l’établissement de créer votre accès."
+            : "Votre fiche existe déjà dans l’établissement : demandez-lui de créer votre accès."
+        );
+      }
+    }
     let userId;
     if (importe) {
       await q(`UPDATE users SET email = $2, password_hash = $3, phone = $4, updated_at = NOW() WHERE id = $1`, [
@@ -126,22 +145,8 @@ const inscription = async (req, res, next) => {
          ON CONFLICT (student_id) DO UPDATE SET date_of_birth = COALESCE(EXCLUDED.date_of_birth, student_records.date_of_birth)`,
         [userId, `ELV-${schoolId}-${userId}`, date(b.dateNaissance), texte(b.classe)]
       );
-      // Parents deja inscrits qui ont declare cet enfant : on les relie
-      const attente = await q(
-        `SELECT id, parent_id, COALESCE(relationship, 'parent') AS lien FROM parent_requests
-         WHERE status = 'pending' AND school_id = $1
-           AND lower(trim(child_first_name)) = lower(trim($2)) AND lower(trim(child_last_name)) = lower(trim($3))`,
-        [schoolId, prenom, nom]
-      );
-      for (const d of attente.rows) {
-        await q(
-          `INSERT INTO parent_student_links (parent_id, student_id, relationship, is_primary)
-           SELECT $1, $2, $3::varchar, $3::varchar IN ('pere', 'mere', 'parent', 'tuteur')
-           WHERE NOT EXISTS (SELECT 1 FROM parent_student_links WHERE parent_id = $1 AND student_id = $2)`,
-          [d.parent_id, userId, d.lien]
-        );
-        await q(`UPDATE parent_requests SET status = 'approved', student_id = $2, decided_at = NOW() WHERE id = $1`, [d.id, userId]);
-      }
+      // Les demandes de parents ne sont jamais validees ici d'apres le seul nom de l'eleve : c'est l'etablissement
+      // (ou la date de naissance, cote parent) qui relie un parent a un eleve.
     }
 
     if (role === "parent" && schoolId) {

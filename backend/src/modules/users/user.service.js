@@ -320,6 +320,15 @@ const updateUser = async (id, data, actorId) => {
   if (data.phone !== undefined) fields.phone = data.phone;
   if (data.address !== undefined) fields.address = data.address;
 
+  // L'adresse e-mail et le role d'un compte appartiennent a son titulaire : un administrateur d'etablissement
+  // ne peut pas les changer (sinon il pourrait detourner le compte d'un parent ou d'un enseignant
+  // en y mettant son adresse, puis « Mot de passe oublié »). Seul l'administrateur de la plateforme le peut.
+  if (ecoleCourante() && (data.email !== undefined || data.role !== undefined)) {
+    const memeEmail = data.email === undefined || normalizeEmail(data.email) === cible.email;
+    const memeRole = data.role === undefined || data.role === cible.role;
+    if (!memeEmail || !memeRole) throw new ApiError(403, "L’adresse e-mail et le rôle d’un compte ne peuvent être changés que par son titulaire ou par Sùkûl");
+  }
+
   if (data.email !== undefined) {
     const email = normalizeEmail(data.email);
     if (!EMAIL_RE.test(email)) throw new ApiError(400, "A valid email is required");
