@@ -214,6 +214,11 @@ export default function OrdrePaiement({ id }) {
           </div>
           {o.preuve && <img src={o.preuve} alt="Capture du paiement" className="op-preuve" />}
           {o.motif && o.statut === 'litige' && <p className="op-litige">{`Litige : ${o.motif}`}</p>}
+          {o.commande_id && (
+            <a className="btn btn-block" style={{ marginTop: 10 }} href={`#/boutique/commandes/${o.commande_id}`}>
+              Voir la commande
+            </a>
+          )}
           {o.statut === 'confirme' && o.paiement_id && (
             <a className="btn btn-block" style={{ marginTop: 10 }} href={`#/recus/${o.paiement_id}`}>
               Voir le reçu
@@ -231,7 +236,7 @@ export default function OrdrePaiement({ id }) {
             type="button"
             className="btn btn-block"
             disabled={busy}
-            onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/confirmer`), `Confirmez-vous avoir bien reçu ${fcfa(aEnvoyer)} sur votre compte ? Cette action émet le reçu et ne peut pas être annulée.`)}
+            onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/confirmer`), `Confirmez-vous avoir bien reçu ${fcfa(aEnvoyer)} sur votre compte ? ${o.commande_id ? 'La commande passera en préparation' : 'Cette action émet le reçu'} et ne peut pas être annulée.`)}
           >
             Confirmer la réception
           </button>
@@ -268,6 +273,13 @@ export default function OrdrePaiement({ id }) {
             </button>
           </div>
         </section>
+      )}
+
+      {/* ------------------------------ commande de la boutique : paiement expire ou annule, on y retourne */}
+      {o.commande_id && ['annule', 'expire'].includes(o.statut) && (
+        <a className="btn btn-block" href={`#/boutique/commandes/${o.commande_id}`}>
+          Retour à la commande
+        </a>
       )}
 
       {/* ------------------------------ contact et discussion, en une ligne chacun */}

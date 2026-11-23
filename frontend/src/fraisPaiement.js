@@ -4,9 +4,9 @@ const TAUX_RETRAIT = 0.01
 const FRAIS_SERVICE = 200
 const auDessus5 = (n) => Math.ceil(n / 5) * 5
 
-export function fraisPaiementDirect(montant, { abonne = false } = {}) {
+export function fraisPaiementDirect(montant) {
   const m = Math.max(0, Math.round(Number(String(montant ?? '').replace(/\s/g, '')) || 0))
-  const service = abonne ? 0 : FRAIS_SERVICE
+  const service = FRAIS_SERVICE
   const net = m + service
   const retrait = net ? auDessus5(Math.ceil(net / (1 - TAUX_RETRAIT)) - net) : 0
   return { montant: m, fraisService: service, fraisRetrait: retrait, total: net + retrait }

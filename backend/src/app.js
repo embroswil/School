@@ -71,6 +71,7 @@ app.use("/api/medias", require("./modules/medias/routes"));
 app.use("/api/familles", require("./modules/familles/routes"));
 app.use("/api/verifier", require("./modules/scolarite/verifier"));
 app.use("/api/scolarite/ordres", require("./modules/scolarite/ordres"));
+app.use("/api/boutique", require("./modules/boutique/routes"));
 app.use("/api/scolarite", require("./modules/scolarite/routes"));
 app.use("/api/comptabilite", require("./modules/comptabilite/routes"));
 app.use("/api/travaux", require("./modules/travaux/routes"));

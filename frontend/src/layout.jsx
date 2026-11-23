@@ -8,7 +8,7 @@ import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
 import { precharger } from './prechargement.js'
 import { envoisEnAttente, envoyerAttente } from './horsligne.js'
-import { IcAccueil, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier, IcInfo, IcTrombone, IcHorlogePlus, IcTableauNoir, IcAppelListe } from './icones.jsx'
+import { IcAccueil, IcSac, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier, IcInfo, IcTrombone, IcHorlogePlus, IcTableauNoir, IcAppelListe } from './icones.jsx'
 
 // Appels et notes gardes sur le telephone faute de reseau : rappel discret, envoi a la demande
 function EnvoisEnAttente() {
@@ -84,6 +84,7 @@ const NAV = {
   parent: [
     ['/', IcAccueil, 'Accueil'],
     ['/scolarite', IcCarte, 'Scolarité'],
+    ['/boutique', IcSac, 'Boutique'],
     ['/compte', IcProfil, 'Profil'],
   ],
   student: [
@@ -99,6 +100,7 @@ const NAV_ORDI = {
   principal: [
     ['/eleves', IcEleves, 'Élèves'],
     ['/scolarite', IcCarte, 'Scolarité'],
+    ['/boutique-gestion', IcSac, 'Boutique'],
     ['/presence-enseignants', IcEcole, 'Enseignants'],
     ['/absences', IcEleves, 'Absences du jour'],
     ['/document', IcActus, 'Documents'],
@@ -176,6 +178,8 @@ const TITRES = {
   '/annuel': 'Fin d’année',
   '/notes': 'Notes',
   '/mes-classes': 'Mes classes',
+  '/boutique': 'Boutique',
+  '/boutique-gestion': 'Boutique',
 }
 
 const ACTIONS = [

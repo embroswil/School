@@ -54,6 +54,9 @@ import OrdrePaiement, { ListeOrdres } from './pages/OrdrePaiement.jsx'
 import TrouverEleve from './pages/TrouverEleve.jsx'
 import PayerEleve from './pages/PayerEleve.jsx'
 import Rattachements from './pages/Rattachements.jsx'
+import Boutique from './pages/Boutique.jsx'
+import BoutiqueGestion from './pages/BoutiqueGestion.jsx'
+import CommandeBoutique from './pages/CommandeBoutique.jsx'
 import Documents from './pages/Documents.jsx'
 import InfoPublier from './pages/InfoPublier.jsx'
 import PresenceEnseignants from './pages/PresenceEnseignants.jsx'
@@ -195,6 +198,10 @@ function Pages({ path }) {
   if (path === '/import-absences-enseignants') return reserve(user.role === 'principal', <ImportAbsencesEnseignants />)
   if (path === '/document' || path === '/publier') return reserve(['principal', 'teacher'].includes(user.role), <Documents />)
   if (path === '/trouver-eleve') return reserve(user.role === 'parent', <TrouverEleve />)
+  if (path.split('?')[0] === '/boutique') return reserve(user.role === 'parent', <Boutique key={path} />)
+  if (path === '/boutique-gestion') return reserve(user.role === 'principal', <BoutiqueGestion />)
+  const commandeMatch = path.match(/^\/boutique\/commandes\/(\d+)$/)
+  if (commandeMatch) return reserve(['parent', 'principal'].includes(user.role), <CommandeBoutique key={commandeMatch[1]} id={commandeMatch[1]} />)
   if (path === '/rattachements') return reserve(user.role === 'principal', <Rattachements />)
   const payerMatch = path.match(/^\/payer\/(\d+)$/)
   if (payerMatch) return reserve(user.role === 'parent', <PayerEleve key={payerMatch[1]} id={Number(payerMatch[1])} />)

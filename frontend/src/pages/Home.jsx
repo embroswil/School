@@ -8,7 +8,7 @@ import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcSac, IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -276,13 +276,16 @@ function EspaceEtablissement() {
   const prof = useApi(`/api/presence-enseignants?date=${aujourdhuiLocal()}`)
   const ordres = useApi('/api/scolarite/ordres?statut=paye,litige')
   const demandes = useApi('/api/familles/demandes')
+  const boutique = useApi('/api/boutique/gestion')
   const d = t.data || {}
+  const aPreparer = boutique.data ? boutique.data.commandes.filter((c) => c.statut === 'payee').length : 0
   const aVerifier = prof.data ? prof.data.cours.filter((c) => c.etat === 'a_verifier').length : null
   const aConfirmer = ordres.data?.length ?? null
   const taches = [
     d.eleves === 0 && ['#/dossier', 'Installez votre établissement', 'Ajoutez votre dossier : élèves, enseignants, emplois du temps, frais… tout est reconnu'],
     d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`, 'Vérifiez et validez leurs comptes'],
     demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`, 'Demandes de suivi d’un élève'],
+    aPreparer > 0 && ['#/boutique-gestion', `${aPreparer} commande(s) de la boutique à préparer`, 'Payées par les parents, à préparer puis à remettre'],
     d.eleves_sans_classe > 0 && ['#/eleves', `${d.eleves_sans_classe} élève(s) sans classe`, 'À placer dans leur classe'],
   ].filter(Boolean)
   return (
@@ -323,11 +326,12 @@ function EspaceEtablissement() {
       )}
 
       <h2 className="section-title">Mon établissement</h2>
-      <div className="grille-tuiles quatre">
+      <div className="grille-tuiles quatre cinq">
         <Tuile href="#/eleves" Icone={IcEleves} titre="Élèves" texte="Listes, classes, fiches" chiffre={d.eleves ?? '…'} />
         <Tuile href="#/presence-enseignants" Icone={IcProf} titre="Enseignants" texte="Présence et cours du jour" chiffre={d.enseignants ?? '…'} />
         <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
         <Tuile href="#/verifier" Icone={IcScan} titre="Vérifier un paiement" texte="Par le matricule de l’élève" />
+        <Tuile href="#/boutique-gestion" Icone={IcSac} titre="Boutique" texte="Tenues, fournitures, commandes" />
       </div>
     </>
   )

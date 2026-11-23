@@ -688,14 +688,14 @@ export default function Scolarite() {
 }
 
 // Paiement direct : ce que le parent envoie au numero de l'etablissement (frais de retrait et de service compris)
-export function ApercuEnvoi({ calcul }) {
+export function ApercuEnvoi({ calcul, libelle = 'Scolarité' }) {
   return (
     <div className="envoi-apercu">
       <div>
         <span>À envoyer</span>
         <b>{fcfa(calcul.total)}</b>
       </div>
-      <small>{`Scolarité ${fcfa(calcul.montant)} · frais de retrait ${fcfa(calcul.fraisRetrait)}${calcul.fraisService ? ` · frais de service ${fcfa(calcul.fraisService)}` : ''}`}</small>
+      <small>{`${libelle} ${fcfa(calcul.montant)} · frais de retrait ${fcfa(calcul.fraisRetrait)}${calcul.fraisService ? ` · frais de service ${fcfa(calcul.fraisService)}` : ''}`}</small>
     </div>
   )
 }

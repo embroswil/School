@@ -56,3 +56,4 @@ export const IcTrombone = I(<><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.1-8
 export const IcHorlogePlus = I(<><path d="M20.4 13A8.5 8.5 0 1 1 11 3.6" /><path d="M11 7.5V12l3 2" /><path d="M18 3v6" /><path d="M15 6h6" /></>)
 export const IcTableauNoir = I(<><rect x="3" y="4" width="18" height="12" rx="1.8" /><path d="M8 20l2-4" /><path d="M16 20l-2-4" /><path d="M7 8.5h6" /><path d="M7 11.5h4" /></>)
 export const IcAppelListe = I(<><path d="M9 6h11" /><path d="M9 12h11" /><path d="M9 18h11" /><path d="M3.5 6l1.2 1.2L6.8 5" /><path d="M3.5 12l1.2 1.2 2.1-2.2" /><path d="M4 17.5h2" /></>)
+export const IcSac = I(<><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z" /><path d="M9 10V6.5a3 3 0 0 1 6 0V10" /></>)

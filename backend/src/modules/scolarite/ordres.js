@@ -29,12 +29,12 @@ const nouveauCode = () => {
 };
 
 const SQL_ORDRE = `
-  SELECT o.*, f.nom AS frais, u.first_name, u.last_name, s.name AS ecole, s.city AS ville, s.paiement_instructions AS consignes,
+  SELECT o.*, COALESCE(f.nom, 'Boutique · commande n° ' || o.commande_id) AS frais, u.first_name, u.last_name, s.name AS ecole, s.city AS ville, s.paiement_instructions AS consignes,
          COALESCE(s.telephone, (SELECT d.phone FROM users d WHERE d.school_id = s.id AND d.role = 'principal' AND d.phone IS NOT NULL ORDER BY d.id LIMIT 1)) AS telephone_ecole,
          pp.first_name AS parent_prenom, pp.last_name AS parent_nom, pp.phone AS parent_tel,
          (SELECT c.name FROM class_students cs JOIN classes c ON c.id = cs.class_id
           WHERE cs.student_id = o.student_id AND cs.status = 'active' ORDER BY cs.enrolled_at DESC LIMIT 1) AS classe
-  FROM ordres_paiement o JOIN frais_scolaires f ON f.id = o.frais_id JOIN users u ON u.id = o.student_id
+  FROM ordres_paiement o LEFT JOIN frais_scolaires f ON f.id = o.frais_id JOIN users u ON u.id = o.student_id
   JOIN schools s ON s.id = o.school_id LEFT JOIN users pp ON pp.id = o.cree_par`;
 
 // L'ordre tel qu'il est vu par l'utilisateur (null si pas d'acces)
@@ -67,8 +67,30 @@ const ajouterMessage = (ordreId, auteurId, role, txt) =>
   db.query("INSERT INTO messages_ordre (ordre_id, auteur_id, role, texte) VALUES ($1, $2, $3, $4)", [ordreId, auteurId, role, txt.slice(0, 1000)]);
 const lien = (o) => ({ lien: `/ordres/${o.id}` });
 
+// Commande de la boutique : l'argent est recu, la commande passe en preparation (pas de recu de scolarite)
+const confirmerCommande = async (o, userId, message) => {
+  const maj = await db.query(
+    `UPDATE ordres_paiement SET statut = 'confirme', confirme_le = NOW(), confirme_par = $2
+     WHERE id = $1 AND statut IN ('paye', 'litige') RETURNING id`,
+    [o.id, userId]
+  );
+  if (!maj.rowCount) throw new ApiError(409, "Cet ordre a déjà été traité");
+  await db.query("UPDATE boutique_commandes SET statut = 'payee', payee_le = NOW() WHERE id = $1 AND statut = 'a_payer'", [o.commande_id]);
+  await ajouterMessage(o.id, userId, "systeme", message.replace("Reçu émis.", "Commande en préparation."));
+  if (o.cree_par) {
+    await notifierUtilisateur(o.cree_par, {
+      title: "Paiement de la commande reçu",
+      message: `Commande n° ${o.commande_id} · ${o.first_name} ${o.last_name} : l’établissement la prépare. Vous serez prévenu quand elle sera prête.`,
+      type: "payment",
+      data: { lien: `/boutique/commandes/${o.commande_id}` },
+    }).catch(() => {});
+  }
+  return { id: null };
+};
+
 // Confirme la reception : cree le paiement (recu automatique) et clot l'ordre
 const confirmerOrdre = async (o, userId, message) => {
+  if (o.commande_id) return confirmerCommande(o, userId, message);
   const s = await S.situationEleve(o.student_id);
   const f = s?.frais.find((x) => x.id === o.frais_id);
   const montant = Math.min(o.montant, f ? f.reste : o.montant) || o.montant;
@@ -90,6 +112,33 @@ const confirmerOrdre = async (o, userId, message) => {
   // Recu, notification du payeur et des autres parents (sans renotifier l'etablissement)
   await S.apresPaiement({ ...rows[0], school_id: -1 });
   return rows[0];
+};
+
+// Cree un ordre de paiement direct (scolarite ou commande de la boutique) et son premier message
+const creerOrdre = async ({ studentId, fraisId = null, commandeId = null, montant, moyen, userId, libelle }) => {
+  const ecole = (await db.query("SELECT sc.id, sc.orange_money, sc.mtn_momo FROM users u JOIN schools sc ON sc.id = u.school_id WHERE u.id = $1", [studentId])).rows[0] || {};
+  const numero = moyen === "orange_money" ? ecole.orange_money : ecole.mtn_momo;
+  if (!numero) throw new ApiError(400, `L’établissement n’a pas de numéro ${OPERATEURS[moyen]}`);
+  // Le parent envoie aussi les frais de retrait (1 %) et le frais de service (pour l'etablissement)
+  const calcul = fraisPaiementDirect(montant);
+  let o = null;
+  for (let i = 0; i < 5 && !o; i++) {
+    o = (
+      await db.query(
+        `INSERT INTO ordres_paiement (code, school_id, student_id, frais_id, commande_id, montant, moyen, numero_destinataire, cree_par, expire_le, frais_retrait, frais_service)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW() + ($10 || ' minutes')::interval, $11, $12)
+         ON CONFLICT (code) DO NOTHING RETURNING id`,
+        [nouveauCode(), ecole.id, studentId, fraisId, commandeId, montant, moyen, numero, userId, String(DELAI_MINUTES), calcul.fraisRetrait, calcul.fraisService]
+      )
+    ).rows[0];
+  }
+  await ajouterMessage(
+    o.id,
+    null,
+    "systeme",
+    `Ordre créé : ${fcfa(calcul.total)} à envoyer par ${OPERATEURS[moyen]} au ${numero} (${fcfa(montant)} ${libelle}, ${fcfa(calcul.fraisRetrait)} de frais de retrait, ${fcfa(calcul.fraisService)} de frais de service).`
+  );
+  return o;
 };
 
 // ---------------------------------------------------------------- creation et suivi
@@ -118,29 +167,7 @@ router.post("/", async (req, res, next) => {
     const max = f.reste - enCours;
     if (max <= 0) throw new ApiError(400, "Un paiement est déjà en cours pour ce frais : terminez-le ou annulez-le d’abord");
     if (!(montant >= 100) || montant > max) throw new ApiError(400, `Montant entre 100 et ${fcfa(max)}`);
-    const ecole = (await db.query("SELECT orange_money, mtn_momo FROM users u JOIN schools sc ON sc.id = u.school_id WHERE u.id = $1", [studentId])).rows[0] || {};
-    const numero = moyen === "orange_money" ? ecole.orange_money : ecole.mtn_momo;
-    if (!numero) throw new ApiError(400, `L’établissement n’a pas de numéro ${OPERATEURS[moyen]}`);
-    const schoolId = (await db.query("SELECT school_id FROM users WHERE id = $1", [studentId])).rows[0].school_id;
-    // Le parent envoie aussi les frais de retrait (1 %) et le frais de service (pour l'etablissement)
-    const calcul = fraisPaiementDirect(montant);
-    let o = null;
-    for (let i = 0; i < 5 && !o; i++) {
-      o = (
-        await db.query(
-          `INSERT INTO ordres_paiement (code, school_id, student_id, frais_id, montant, moyen, numero_destinataire, cree_par, expire_le, frais_retrait, frais_service)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW() + ($9 || ' minutes')::interval, $10, $11)
-           ON CONFLICT (code) DO NOTHING RETURNING id`,
-          [nouveauCode(), schoolId, studentId, fraisId, montant, moyen, numero, u.id, String(DELAI_MINUTES), calcul.fraisRetrait, calcul.fraisService]
-        )
-      ).rows[0];
-    }
-    await ajouterMessage(
-      o.id,
-      null,
-      "systeme",
-      `Ordre créé : ${fcfa(calcul.total)} à envoyer par ${OPERATEURS[moyen]} au ${numero} (${fcfa(montant)} de scolarité, ${fcfa(calcul.fraisRetrait)} de frais de retrait${calcul.fraisService ? `, ${fcfa(calcul.fraisService)} de frais de service` : ""}).`
-    );
+    const o = await creerOrdre({ studentId, fraisId, montant, moyen, userId: u.id, libelle: "de scolarité" });
     res.status(201).json({ success: true, data: { id: o.id } });
   } catch (e) {
     next(e);
@@ -170,7 +197,7 @@ router.get("/", async (req, res, next) => {
       where += ` AND o.statut = ANY($${params.length})`;
     }
     const { rows } = await db.query(
-      `${SQL_ORDRE.replace("o.*,", "o.id, o.code, o.school_id, o.student_id, o.montant, o.moyen, o.statut, o.transaction, o.expire_le, o.paye_le, o.confirme_le, o.created_at,")}
+      `${SQL_ORDRE.replace("o.*,", "o.id, o.code, o.school_id, o.student_id, o.montant, o.moyen, o.statut, o.transaction, o.expire_le, o.paye_le, o.confirme_le, o.created_at, o.frais_retrait, o.frais_service, o.commande_id,")}
        WHERE ${where} ORDER BY CASE o.statut WHEN 'litige' THEN 0 WHEN 'paye' THEN 1 WHEN 'a_payer' THEN 2 ELSE 3 END, o.created_at DESC LIMIT 100`,
       params
     );
@@ -330,3 +357,5 @@ router.post("/:id/arbitrer", async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.creerOrdre = creerOrdre;
+module.exports.OPERATEURS = OPERATEURS;
