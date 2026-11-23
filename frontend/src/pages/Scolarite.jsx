@@ -1,3 +1,4 @@
+import { fraisPaiementDirect } from '../fraisPaiement.js'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
@@ -239,6 +240,9 @@ function Situation() {
               <input className="input" inputMode="numeric" value={montant} onChange={(e) => setMontant(e.target.value)} required />
               <small>FCFA</small>
             </label>
+            {paiement.moyen !== 'enligne' && fraisPaiementDirect(montant).montant > 0 && (
+              <ApercuEnvoi calcul={fraisPaiementDirect(montant)} />
+            )}
             <Note>{error}</Note>
             <button className="btn btn-block" type="submit" disabled={busy}>
               {busy ? 'Un instant…' : paiement.moyen === 'enligne' ? 'Payer maintenant' : 'Continuer'}
@@ -680,5 +684,18 @@ export default function Scolarite() {
       {onglet === 'confirmer' && <AConfirmer />}
       {onglet === 'frais' && <Frais />}
     </>
+  )
+}
+
+// Paiement direct : ce que le parent envoie au numero de l'etablissement (frais de retrait et de service compris)
+export function ApercuEnvoi({ calcul }) {
+  return (
+    <div className="envoi-apercu">
+      <div>
+        <span>À envoyer</span>
+        <b>{fcfa(calcul.total)}</b>
+      </div>
+      <small>{`Scolarité ${fcfa(calcul.montant)} · frais de retrait ${fcfa(calcul.fraisRetrait)}${calcul.fraisService ? ` · frais de service ${fcfa(calcul.fraisService)}` : ''}`}</small>
+    </div>
   )
 }

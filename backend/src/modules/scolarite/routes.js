@@ -74,6 +74,10 @@ const situationEleve = async (studentId) => {
   };
 };
 
+// Paiement automatique en ligne (NotchPay) : reserve aux familles abonnees a Sùkûl (abonnement Famille, a venir).
+// En attendant, les parents paient par transfert direct au numero de l'etablissement (ordre de paiement).
+const ENLIGNE_PARENTS = false;
+
 // Moyens de paiement de l'etablissement : son propre compte NotchPay (paiement
 // en ligne) et/ou ses numeros Orange Money / MTN MoMo (transfert puis declaration)
 const moyensEcole = async (schoolId) => {
@@ -90,7 +94,7 @@ const moyensEcole = async (schoolId) => {
     // Frais de transaction du paiement en ligne : ajoutes au montant paye par le parent, si l'etablissement le choisit
     fraisServicePct: e.frais_service_parent ? Number(e.frais_service_pct || 0) : 0,
     public: {
-      enLigne: Boolean(cleEcole),
+      enLigne: ENLIGNE_PARENTS && Boolean(cleEcole),
       fraisServicePct: e.frais_service_parent ? Number(e.frais_service_pct || 0) : 0,
       orange: e.orange_money || null,
       mtn: e.mtn_momo || null,
@@ -133,6 +137,7 @@ router.post("/payer", async (req, res, next) => {
     const fraisId = entier(req.body?.fraisId);
     const montant = entier(req.body?.montant);
     const telephone = texte(req.body?.telephone, 30);
+    if (!ENLIGNE_PARENTS) throw new ApiError(403, "Le paiement en ligne sera réservé aux familles abonnées à Sùkûl. Payez par Orange Money ou MTN MoMo au numéro de l’établissement.");
     // Parent relie, ou tout parent/donateur : on peut payer la scolarite de n'importe quel eleve
     if (u.role !== "parent" && !(await elevesAccessibles(u)).includes(studentId)) throw new ApiError(403, "Élève non relié à votre compte");
     const s = await situationEleve(studentId);

@@ -52,7 +52,7 @@ export default function RecuScolarite({ id }) {
     ...(r.reference && !/^(GUI|SCH)-/.test(r.reference) ? [['Référence', r.reference]] : []),
     ['Payé par', r.payeur_nom ? `${r.payeur_prenom} ${r.payeur_nom}` : 'Au guichet de l’établissement'],
     ['Date', `${date(quand)} · ${heure(quand)}`],
-    ...(r.frais_service ? [['Frais de transaction', fcfa(r.frais_service)]] : []),
+    ...(r.frais_service ? [['Frais de service', fcfa(r.frais_service)]] : []),
   ]
   const nomFichier = `Recu-${r.numero_recu}.pdf`
   // photo de l'etablissement convertie en petit JPEG pour le PDF (sinon initiale)

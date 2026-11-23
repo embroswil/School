@@ -45,7 +45,7 @@ function Copier({ valeur, children }) {
         } catch (_) {}
       }}
     >
-      {fait ? '✓ Copié' : children || 'Copier'}
+      {fait ? 'Copié' : children || 'Copier'}
     </button>
   )
 }
@@ -69,7 +69,7 @@ function Contact({ titre, nom, telephone, message }) {
       </div>
       <div className="actions" style={{ marginTop: 10 }}>
         <a className="btn" href={`tel:${String(telephone).replace(/\s/g, '')}`} style={{ padding: '10px 14px', fontSize: 14 }}>
-          📞 Appeler
+          Appeler
         </a>
         <a className="btn btn-quiet" href={`https://wa.me/${international(telephone)}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer" style={{ padding: '10px 14px', fontSize: 14 }}>
           WhatsApp
@@ -151,6 +151,8 @@ export default function OrdrePaiement({ id }) {
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
   const o = d.data
+  // ce que le parent envoie : scolarite + frais de retrait + frais de service
+  const aEnvoyer = Number(o.montant || 0) + Number(o.frais_retrait || 0) + Number(o.frais_service || 0)
   const [titre, , couleur, fond] = ETATS[o.statut] || ETATS.annule
   // arrondi a la seconde : la valeur reste stable d'un affichage a l'autre
   const decalage = Math.round((new Date(o.maintenant).getTime() - Date.now()) / 1000) * 1000
@@ -185,8 +187,8 @@ export default function OrdrePaiement({ id }) {
         </div>
         <Etapes statut={o.statut} />
         <div className="ordre-montant">
-          <span className="muted">Montant</span>
-          <b>{fcfa(o.montant)}</b>
+          <span className="muted">Montant à envoyer</span>
+          <b>{fcfa(aEnvoyer)}</b>
           <span className="muted" style={{ fontSize: 14 }}>
             {o.frais} · {o.first_name} {o.last_name}
             {o.classe ? ` (${o.classe})` : ''}
@@ -217,7 +219,7 @@ export default function OrdrePaiement({ id }) {
             {[
               ['Opérateur', o.operateur, null],
               ['Numéro de l’établissement', o.numero_destinataire, o.numero_destinataire],
-              ['Montant exact', fcfa(o.montant), o.montant],
+              ['Montant exact', fcfa(aEnvoyer), aEnvoyer],
               ['Motif à indiquer', o.code, o.code],
             ].map(([k, v, c]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--line)' }}>
@@ -228,9 +230,14 @@ export default function OrdrePaiement({ id }) {
                 </span>
               </div>
             ))}
+            {(o.frais_retrait > 0 || o.frais_service > 0) && (
+              <p className="muted ordre-detail" style={{ fontSize: 13, marginTop: 6 }}>
+                {`Scolarité ${fcfa(o.montant)} · frais de retrait ${fcfa(o.frais_retrait)}${o.frais_service ? ` · frais de service ${fcfa(o.frais_service)}` : ''}`}
+              </p>
+            )}
             {o.consignes && <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{o.consignes}</p>}
             <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-              ⚠️ Vous avez {o.delaiMinutes} minutes pour payer et signaler le paiement. Passé ce délai, l’ordre expire.
+              Vous avez {o.delaiMinutes} minutes pour payer et signaler le paiement. Passé ce délai, l’ordre expire.
             </p>
           </div>
           <form
@@ -259,13 +266,13 @@ export default function OrdrePaiement({ id }) {
               }}
             />
             <button type="button" className="btn btn-quiet btn-block" onClick={() => fichier.current?.click()}>
-              {f.preuve ? '✓ Capture ajoutée (changer)' : 'Ajouter la capture du SMS (facultatif)'}
+              {f.preuve ? 'Capture ajoutée (changer)' : 'Ajouter la capture du SMS (facultatif)'}
             </button>
             {f.preuve && <img src={f.preuve} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 220, borderRadius: 12, marginTop: 8 }} />}
             <Note>{error}</Note>
             <div className="actions" style={{ marginTop: 10 }}>
               <button className="btn" type="submit" disabled={busy}>
-                {busy ? 'Envoi…' : '✓ J’ai payé'}
+                {busy ? 'Envoi…' : 'J’ai payé'}
               </button>
               <button type="button" className="btn btn-quiet btn-danger" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/annuler`), 'Annuler cet ordre ? Ne l’annulez pas si vous avez déjà envoyé l’argent.')}>
                 Annuler l’ordre
@@ -301,7 +308,7 @@ export default function OrdrePaiement({ id }) {
       {/* ------------------------------ actions de l'etablissement */}
       {o.monRole === 'etablissement' && ['paye', 'litige'].includes(o.statut) && (
         <div className="card">
-          <b>Avez-vous reçu {fcfa(o.montant)} ?</b>
+          <b>Avez-vous reçu {fcfa(aEnvoyer)} ?</b>
           <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>
             Vérifiez sur votre compte {o.operateur} ({o.numero_destinataire}) la transaction <b>{o.transaction}</b>, avec le motif <b>{o.code}</b>.
           </p>
@@ -310,9 +317,9 @@ export default function OrdrePaiement({ id }) {
             type="button"
             className="btn btn-block"
             disabled={busy}
-            onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/confirmer`), `Confirmez-vous avoir bien reçu ${fcfa(o.montant)} sur votre compte ? Cette action émet le reçu et ne peut pas être annulée.`)}
+            onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/confirmer`), `Confirmez-vous avoir bien reçu ${fcfa(aEnvoyer)} sur votre compte ? Cette action émet le reçu et ne peut pas être annulée.`)}
           >
-            ✓ Confirmer la réception
+            Confirmer la réception
           </button>
           {o.statut === 'paye' && (
             <>
@@ -358,7 +365,7 @@ export default function OrdrePaiement({ id }) {
           titre="Joindre l’établissement"
           nom={o.ecole}
           telephone={o.telephone_ecole}
-          message={`Bonjour, je vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(o.montant)} (${o.frais}, ${o.first_name} ${o.last_name}).`}
+          message={`Bonjour, je vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(aEnvoyer)} (${o.frais}, ${o.first_name} ${o.last_name}).`}
         />
       )}
       {['etablissement', 'arbitre'].includes(o.monRole) && o.parent_tel && (
@@ -366,7 +373,7 @@ export default function OrdrePaiement({ id }) {
           titre="Joindre le payeur"
           nom={`${o.parent_prenom || ''} ${o.parent_nom || ''}`.trim()}
           telephone={o.parent_tel}
-          message={`Bonjour, ${o.ecole} vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(o.montant)}.`}
+          message={`Bonjour, ${o.ecole} vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(aEnvoyer)}.`}
         />
       )}
 
@@ -421,7 +428,7 @@ export function ListeOrdres({ statut, vide }) {
           <li className="row" key={o.id}>
             <a className="row-main" href={`#/ordres/${o.id}`} style={{ color: 'inherit' }}>
               <div className="row-title">
-                {fcfa(o.montant)} · {o.first_name} {o.last_name}
+                {fcfa(Number(o.montant || 0) + Number(o.frais_retrait || 0) + Number(o.frais_service || 0))} · {o.first_name} {o.last_name}
               </div>
               <div className="row-sub">
                 {o.frais} · {o.classe || '—'} · {o.code} · {heure(o.paye_le || o.created_at)}

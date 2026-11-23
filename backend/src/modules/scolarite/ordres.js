@@ -15,6 +15,7 @@ const ApiError = require("../../utils/ApiError");
 const { authenticate } = require("../../middlewares/auth.middleware");
 const { notifierEtablissement, notifierUtilisateur } = require("../../utils/notifier");
 const S = require("./routes");
+const { fraisPaiementDirect } = require("../../utils/frais-paiement");
 
 router.use(authenticate);
 const DELAI_MINUTES = 30;
@@ -72,9 +73,9 @@ const confirmerOrdre = async (o, userId, message) => {
   const f = s?.frais.find((x) => x.id === o.frais_id);
   const montant = Math.min(o.montant, f ? f.reste : o.montant) || o.montant;
   const { rows } = await db.query(
-    `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, telephone, paye_par, enregistre_par, confirme_le)
-     VALUES ($1, $2, $3, $4, 'mobile_money', 'reussi', $5, $6, $7, $8, NOW()) RETURNING *`,
-    [o.school_id, o.frais_id, o.student_id, montant, `P2P-${o.code}`, o.telephone_payeur, o.cree_par, userId]
+    `INSERT INTO paiements_scolaires (school_id, frais_id, student_id, montant, mode, statut, reference, telephone, paye_par, enregistre_par, confirme_le, frais_service)
+     VALUES ($1, $2, $3, $4, 'mobile_money', 'reussi', $5, $6, $7, $8, NOW(), $9) RETURNING *`,
+    [o.school_id, o.frais_id, o.student_id, montant, `P2P-${o.code}`, o.telephone_payeur, o.cree_par, userId, o.frais_service || 0]
   );
   const maj = await db.query(
     `UPDATE ordres_paiement SET statut = 'confirme', confirme_le = NOW(), confirme_par = $2, paiement_id = $3
@@ -121,18 +122,25 @@ router.post("/", async (req, res, next) => {
     const numero = moyen === "orange_money" ? ecole.orange_money : ecole.mtn_momo;
     if (!numero) throw new ApiError(400, `L’établissement n’a pas de numéro ${OPERATEURS[moyen]}`);
     const schoolId = (await db.query("SELECT school_id FROM users WHERE id = $1", [studentId])).rows[0].school_id;
+    // Le parent envoie aussi les frais de retrait (1 %) et le frais de service (pour l'etablissement)
+    const calcul = fraisPaiementDirect(montant);
     let o = null;
     for (let i = 0; i < 5 && !o; i++) {
       o = (
         await db.query(
-          `INSERT INTO ordres_paiement (code, school_id, student_id, frais_id, montant, moyen, numero_destinataire, cree_par, expire_le)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW() + ($9 || ' minutes')::interval)
+          `INSERT INTO ordres_paiement (code, school_id, student_id, frais_id, montant, moyen, numero_destinataire, cree_par, expire_le, frais_retrait, frais_service)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW() + ($9 || ' minutes')::interval, $10, $11)
            ON CONFLICT (code) DO NOTHING RETURNING id`,
-          [nouveauCode(), schoolId, studentId, fraisId, montant, moyen, numero, u.id, String(DELAI_MINUTES)]
+          [nouveauCode(), schoolId, studentId, fraisId, montant, moyen, numero, u.id, String(DELAI_MINUTES), calcul.fraisRetrait, calcul.fraisService]
         )
       ).rows[0];
     }
-    await ajouterMessage(o.id, null, "systeme", `Ordre créé : ${fcfa(montant)} à envoyer par ${OPERATEURS[moyen]} au ${numero}.`);
+    await ajouterMessage(
+      o.id,
+      null,
+      "systeme",
+      `Ordre créé : ${fcfa(calcul.total)} à envoyer par ${OPERATEURS[moyen]} au ${numero} (${fcfa(montant)} de scolarité, ${fcfa(calcul.fraisRetrait)} de frais de retrait${calcul.fraisService ? `, ${fcfa(calcul.fraisService)} de frais de service` : ""}).`
+    );
     res.status(201).json({ success: true, data: { id: o.id } });
   } catch (e) {
     next(e);
@@ -212,7 +220,7 @@ router.post("/:id/payer", async (req, res, next) => {
     await ajouterMessage(o.id, req.user.id, "systeme", `Paiement signalé par le parent · transaction ${transaction}.`);
     await notifierEtablissement(o.school_id, {
       title: "Paiement à confirmer",
-      message: `${fcfa(o.montant)} par ${OPERATEURS[o.moyen]} · ${o.frais} · ${o.first_name} ${o.last_name} · code ${o.code}`,
+      message: `${fcfa(o.montant + (o.frais_retrait || 0) + (o.frais_service || 0))} par ${OPERATEURS[o.moyen]} · ${o.frais} · ${o.first_name} ${o.last_name} · code ${o.code}`,
       type: "payment",
       priority: "high",
       data: lien(o),

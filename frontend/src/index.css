@@ -3073,3 +3073,10 @@ html.ordi .ens-entete-zone { max-width: 620px; }
 .ig-lecture span { flex: 1; min-width: 0; color: var(--muted); font-size: 13.5px; line-height: 1.35; }
 .ig-lecture .btn { flex: none; padding: 9px 14px; font-size: 13.5px; }
 html.ordi .ig-lecture { bottom: 12px; }
+
+/* Paiement direct : montant a envoyer, frais compris */
+.envoi-apercu { display: grid; gap: 3px; margin: 10px 0 4px; padding: 12px 14px; border-radius: 14px; background: var(--primary-soft); }
+.envoi-apercu div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.envoi-apercu span { font: 600 13.5px/1.2 var(--font-body); color: var(--muted); }
+.envoi-apercu b { font: 800 19px/1.1 var(--font-display); color: var(--text); white-space: nowrap; }
+.envoi-apercu small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }

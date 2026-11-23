@@ -1,3 +1,5 @@
+import { fraisPaiementDirect } from '../fraisPaiement.js'
+import { ApercuEnvoi } from './Scolarite.jsx'
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
@@ -136,6 +138,7 @@ export default function PayerEleve({ id }) {
           <Field label="Montant (FCFA)">
             <input className="input" inputMode="numeric" value={montant} onChange={(e) => setMontant(e.target.value)} required />
           </Field>
+          {op !== 'enligne' && fraisPaiementDirect(montant).montant > 0 && <ApercuEnvoi calcul={fraisPaiementDirect(montant)} />}
           <Note>{error}</Note>
           <div className="actions">
             <button className="btn" type="submit" disabled={busy}>
