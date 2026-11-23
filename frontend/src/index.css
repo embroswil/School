@@ -3117,3 +3117,23 @@ html.ordi .op-page { margin: 0 auto; }
 .op-msg.ecole { background: var(--primary-soft); }
 .op-msg small { color: var(--muted); font-size: 11.5px; }
 .op-saisie { position: static; margin: 4px 12px 12px; }
+
+/* Envoi en tuiles (pas de lignes) : numero en grand, montant et motif cote a cote ; toucher une tuile copie */
+.op-tuiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+.op-tuile { display: grid; gap: 3px; justify-items: start; min-width: 0; padding: 11px 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--card-2, var(--bg)); color: var(--text); text-align: left; cursor: pointer; font: inherit; }
+.op-tuile.large { grid-column: 1 / -1; }
+.op-tuile small { color: var(--muted); font: 600 12px/1.2 var(--font-body); }
+.op-tuile b { font: 800 19px/1.15 var(--font-display); letter-spacing: 0.01em; overflow-wrap: anywhere; }
+.op-tuile.large b { font-size: 24px; letter-spacing: 0.04em; }
+.op-tuile em { font-style: normal; color: var(--lien, var(--primary)); font: 600 11.5px/1.2 var(--font-body); }
+.op-tuile.copie { border-color: var(--ok, #16a34a); }
+.op-tuile.copie em { color: var(--ok, #16a34a); }
+.op-contact { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0; border: 0; background: none; }
+.op-contact a { display: grid; place-items: center; padding: 11px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--lien, var(--primary)); font: 700 14px/1 var(--font-body); }
+.op-tuile.fixe { cursor: default; }
+.op-tuile { padding: 9px 12px; }
+.op-tuile b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.op-tuile.large b { font-size: 22px; }
+.op-tuiles { gap: 7px; }
+.op-carte { padding-bottom: 10px; }
+.op-annuler { margin-top: 2px; padding: 6px; }

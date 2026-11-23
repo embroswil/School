@@ -14,6 +14,28 @@ export const ETATS = {
   expire: ['Ordre expiré', 'Expiré', 'var(--muted)', 'var(--line)'],
 }
 
+// Tuile a toucher pour copier (numero, montant, motif)
+function TuileCopie({ libelle, valeur, affiche, large }) {
+  const [fait, setFait] = useState(false)
+  return (
+    <button
+      type="button"
+      className={`op-tuile${large ? ' large' : ''}${fait ? ' copie' : ''}`}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(String(valeur))
+          setFait(true)
+          setTimeout(() => setFait(false), 1500)
+        } catch (_) {}
+      }}
+    >
+      <small>{libelle}</small>
+      <b data-brut>{affiche || valeur}</b>
+      <em>{fait ? 'Copié' : 'Copier'}</em>
+    </button>
+  )
+}
+
 function Copier({ valeur, children }) {
   const [fait, setFait] = useState(false)
   return (
@@ -44,8 +66,7 @@ const international = (t) => {
 function Contact({ nom, telephone, message }) {
   if (!telephone) return null
   return (
-    <div className="op-contact">
-      <span data-brut>{nom}</span>
+    <div className="op-contact" aria-label={`Joindre ${nom}`}>
       <a href={`tel:${String(telephone).replace(/\s/g, '')}`}>Appeler</a>
       <a href={`https://wa.me/${international(telephone)}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">
         WhatsApp
@@ -128,11 +149,10 @@ export default function OrdrePaiement({ id }) {
   }
 
   const enAttente = o.statut === 'a_payer' && o.monRole === 'payeur'
-  const ligne = (k, v, copie) => (
-    <div className="op-ligne" key={k}>
-      <span>{k}</span>
+  const tuile = (k, v, large) => (
+    <div className={`op-tuile fixe${large ? ' large' : ''}`} key={k}>
+      <small>{k}</small>
       <b data-brut>{v}</b>
-      {copie !== null && <Copier valeur={copie} />}
     </div>
   )
   return (
@@ -168,9 +188,11 @@ export default function OrdrePaiement({ id }) {
       {enAttente && (
         <section className="op-carte">
           <p className="op-titre">{`Envoyez par ${o.operateur}`}</p>
-          {ligne('Numéro', o.numero_destinataire, o.numero_destinataire)}
-          {ligne('Montant', fcfa(aEnvoyer), aEnvoyer)}
-          {ligne('Motif', o.code, o.code)}
+          <div className="op-tuiles">
+            <TuileCopie libelle="Numéro" valeur={o.numero_destinataire} large />
+            <TuileCopie libelle="Montant" valeur={String(aEnvoyer)} affiche={fcfa(aEnvoyer)} />
+            <TuileCopie libelle="Motif" valeur={o.code} />
+          </div>
           <Note>{error}</Note>
           <button type="button" className="btn btn-block op-paye" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/payer`, {}))}>
             {busy ? 'Envoi…' : 'J’ai payé'}
@@ -184,10 +206,12 @@ export default function OrdrePaiement({ id }) {
       {/* ------------------------------ paiement signale */}
       {['paye', 'litige', 'confirme'].includes(o.statut) && (
         <section className="op-carte">
-          {ligne('Envoyé au', `${o.numero_destinataire} · ${o.operateur}`, null)}
-          {ligne('Motif', o.code, null)}
-          {o.transaction && ligne('Transaction', o.transaction, null)}
-          {o.monRole !== 'payeur' && o.parent_nom && ligne('Payeur', `${o.parent_prenom || ''} ${o.parent_nom}`.trim(), null)}
+          <div className="op-tuiles">
+            {tuile(`Envoyé par ${o.operateur}`, o.numero_destinataire, true)}
+            {tuile('Motif', o.code)}
+            {o.monRole !== 'payeur' && o.parent_nom ? tuile('Payeur', `${o.parent_prenom || ''} ${o.parent_nom}`.trim()) : tuile('Montant', fcfa(aEnvoyer))}
+            {o.transaction && tuile('Transaction', o.transaction, true)}
+          </div>
           {o.preuve && <img src={o.preuve} alt="Capture du paiement" className="op-preuve" />}
           {o.motif && o.statut === 'litige' && <p className="op-litige">{`Litige : ${o.motif}`}</p>}
           {o.statut === 'confirme' && o.paiement_id && (
