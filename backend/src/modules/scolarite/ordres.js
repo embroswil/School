@@ -204,8 +204,9 @@ router.post("/:id/payer", async (req, res, next) => {
   try {
     const o = await exiger(req.user, entier(req.params.id), ["payeur"]);
     if (o.statut !== "a_payer") throw new ApiError(400, o.statut === "expire" ? "Ordre expiré : créez un nouvel ordre" : "Cet ordre n’est plus en attente de paiement");
-    const transaction = texte(req.body?.transaction, 120);
-    if (transaction.length < 4) throw new ApiError(400, "Indiquez l’ID de la transaction reçu par SMS");
+    // Le parent touche simplement « J'ai payé » : l'etablissement retrouve le transfert grace au motif (code) et au montant.
+    // L'ID de transaction reste accepte s'il est fourni.
+    const transaction = texte(req.body?.transaction, 120) || null;
     const preuve = req.body?.preuve ? String(req.body.preuve) : null;
     if (preuve && (!/^data:image\/(jpeg|png|webp);base64,/.test(preuve) || preuve.length > 700000)) throw new ApiError(400, "Capture invalide ou trop lourde");
     try {
@@ -217,7 +218,7 @@ router.post("/:id/payer", async (req, res, next) => {
       if (err.code === "23505") throw new ApiError(409, "Cet ID de transaction a déjà été utilisé");
       throw err;
     }
-    await ajouterMessage(o.id, req.user.id, "systeme", `Paiement signalé par le parent · transaction ${transaction}.`);
+    await ajouterMessage(o.id, req.user.id, "systeme", `Paiement signalé par le parent${transaction ? ` · transaction ${transaction}` : ""}.`);
     await notifierEtablissement(o.school_id, {
       title: "Paiement à confirmer",
       message: `${fcfa(o.montant + (o.frais_retrait || 0) + (o.frais_service || 0))} par ${OPERATEURS[o.moyen]} · ${o.frais} · ${o.first_name} ${o.last_name} · code ${o.code}`,

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, apiBase } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Field, Note } from '../ui.jsx'
+import { Note } from '../ui.jsx'
 
 const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const heure = (d) => (d ? new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '')
@@ -13,22 +13,6 @@ export const ETATS = {
   annule: ['Ordre annulé', 'Annulé', 'var(--muted)', 'var(--line)'],
   expire: ['Ordre expiré', 'Expiré', 'var(--muted)', 'var(--line)'],
 }
-
-// Photo de la capture, reduite (max 1000 px, JPEG) avant l'envoi
-const reduire = (fichier) =>
-  new Promise((ok, ko) => {
-    const img = new Image()
-    img.onload = () => {
-      const r = Math.min(1, 1000 / Math.max(img.width, img.height))
-      const c = document.createElement('canvas')
-      c.width = Math.round(img.width * r)
-      c.height = Math.round(img.height * r)
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
-      ok(c.toDataURL('image/jpeg', 0.7))
-    }
-    img.onerror = () => ko(new Error('Image illisible'))
-    img.src = URL.createObjectURL(fichier)
-  })
 
 function Copier({ valeur, children }) {
   const [fait, setFait] = useState(false)
@@ -56,25 +40,16 @@ const international = (t) => {
   return c.length === 9 ? `237${c}` : c
 }
 
-// Contact direct avec l'autre partie : appel et WhatsApp
-function Contact({ titre, nom, telephone, message }) {
+// Contact direct avec l'autre partie : une ligne, appel et WhatsApp
+function Contact({ nom, telephone, message }) {
   if (!telephone) return null
   return (
-    <div className="card contact-ordre">
-      <div style={{ flex: 1 }}>
-        <b>{titre}</b>
-        <div className="muted" style={{ fontSize: 14 }}>
-          {nom} · {telephone}
-        </div>
-      </div>
-      <div className="actions" style={{ marginTop: 10 }}>
-        <a className="btn" href={`tel:${String(telephone).replace(/\s/g, '')}`} style={{ padding: '10px 14px', fontSize: 14 }}>
-          Appeler
-        </a>
-        <a className="btn btn-quiet" href={`https://wa.me/${international(telephone)}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer" style={{ padding: '10px 14px', fontSize: 14 }}>
-          WhatsApp
-        </a>
-      </div>
+    <div className="op-contact">
+      <span data-brut>{nom}</span>
+      <a href={`tel:${String(telephone).replace(/\s/g, '')}`}>Appeler</a>
+      <a href={`https://wa.me/${international(telephone)}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">
+        WhatsApp
+      </a>
     </div>
   )
 }
@@ -90,22 +65,6 @@ export function LogoEcole({ id, nom, taille = 46 }) {
         (nom || '?')[0]
       )}
     </span>
-  )
-}
-
-// Etapes de l'ordre : cree -> paye -> confirme
-function Etapes({ statut }) {
-  const n = { a_payer: 1, paye: 2, litige: 2, confirme: 3 }[statut] || 0
-  const libelles = ['Ordre créé', 'Payé', 'Confirmé']
-  return (
-    <ol className="etapes-ordre">
-      {libelles.map((l, i) => (
-        <li key={l} className={i < n ? 'fait' : i === n ? 'courant' : ''} data-litige={statut === 'litige' && i === 1 ? 'oui' : undefined}>
-          <span>{i < n ? '✓' : i + 1}</span>
-          {statut === 'litige' && i === 1 ? 'Litige' : l}
-        </li>
-      ))}
-    </ol>
   )
 }
 
@@ -134,12 +93,10 @@ function CompteARebours({ fin, decalage, onFini }) {
 // Page d'un ordre de paiement « P2P » (parent, etablissement ou arbitrage)
 export default function OrdrePaiement({ id }) {
   const d = useApi(`/api/scolarite/ordres/${id}`)
-  const [f, setF] = useState({ transaction: '', telephone: '', preuve: null })
   const [msg, setMsg] = useState('')
   const [motif, setMotif] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const fichier = useRef(null)
   // Rafraichissement regulier tant que l'ordre est en cours
   useEffect(() => {
     if (!d.data || !['a_payer', 'paye', 'litige'].includes(d.data.statut)) return
@@ -170,148 +127,81 @@ export default function OrdrePaiement({ id }) {
     setBusy(false)
   }
 
+  const enAttente = o.statut === 'a_payer' && o.monRole === 'payeur'
+  const ligne = (k, v, copie) => (
+    <div className="op-ligne" key={k}>
+      <span>{k}</span>
+      <b data-brut>{v}</b>
+      {copie !== null && <Copier valeur={copie} />}
+    </div>
+  )
   return (
-    <>
-      <section className="ordre-tete">
-        <div className="ordre-marchand">
-          <LogoEcole id={o.school_id} nom={o.ecole} />
-          <div style={{ minWidth: 0 }}>
-            <b>{o.ecole}</b>
-            <div className="muted" style={{ fontSize: 13 }}>
-              {o.ville ? `${o.ville} · ` : ''}Ordre n° {o.code}
-            </div>
+    <div className="op-page">
+      {/* ------------------------------ en-tete : etablissement, etat, montant */}
+      <section className="op-tete">
+        <div className="op-ecole">
+          <LogoEcole id={o.school_id} nom={o.ecole} taille={36} />
+          <div>
+            <b data-brut>{o.ecole}</b>
+            <small data-brut>{`${o.frais} · ${o.first_name} ${o.last_name}`}</small>
           </div>
-          <span className="tag" style={{ marginLeft: 'auto', background: fond, color: couleur }}>
-            {(ETATS[o.statut] || ETATS.annule)[1]}
-          </span>
+          {o.statut === 'a_payer' ? (
+            <span className="op-chrono">
+              <CompteARebours fin={o.expire_le} decalage={decalage} onFini={() => d.reload()} />
+            </span>
+          ) : (
+            <span className="tag" style={{ background: fond, color: couleur }}>
+              {(ETATS[o.statut] || ETATS.annule)[1]}
+            </span>
+          )}
         </div>
-        <Etapes statut={o.statut} />
-        <div className="ordre-montant">
-          <span className="muted">Montant à envoyer</span>
-          <b>{fcfa(aEnvoyer)}</b>
-          <span className="muted" style={{ fontSize: 14 }}>
-            {o.frais} · {o.first_name} {o.last_name}
-            {o.classe ? ` (${o.classe})` : ''}
-          </span>
+        <div className="op-montant">
+          <b data-brut>{fcfa(aEnvoyer)}</b>
+          {(o.frais_retrait > 0 || o.frais_service > 0) && (
+            <small>{`dont ${fcfa(Number(o.frais_retrait || 0) + Number(o.frais_service || 0))} de frais`}</small>
+          )}
         </div>
-        {o.statut === 'a_payer' ? (
-          <div className="ordre-chrono">
-            <span>Temps restant pour payer</span>
-            <CompteARebours fin={o.expire_le} decalage={decalage} onFini={() => d.reload()} />
-          </div>
-        ) : (
-          <p className="ordre-etat" style={{ color: couleur }}>
-            {titre}
-          </p>
-        )}
-        <p className="muted" style={{ fontSize: 12, textAlign: 'center' }}>
-          Créé {heure(o.created_at)}
-          {o.paye_le ? ` · payé ${heure(o.paye_le)}` : ''}
-          {o.confirme_le ? ` · confirmé ${heure(o.confirme_le)}` : ''}
-        </p>
+        {!enAttente && <p className="op-etat" style={{ color: couleur }}>{titre}</p>}
       </section>
 
-      {/* ------------------------------ le parent doit payer */}
-      {o.statut === 'a_payer' && o.monRole === 'payeur' && (
-        <>
-          <div className="card">
-            <b>1. Envoyez exactement ce montant</b>
-            {[
-              ['Opérateur', o.operateur, null],
-              ['Numéro de l’établissement', o.numero_destinataire, o.numero_destinataire],
-              ['Montant exact', fcfa(aEnvoyer), aEnvoyer],
-              ['Motif à indiquer', o.code, o.code],
-            ].map(([k, v, c]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--line)' }}>
-                <span className="muted" style={{ fontSize: 14 }}>{k}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <b>{v}</b>
-                  {c !== null && <Copier valeur={c} />}
-                </span>
-              </div>
-            ))}
-            {(o.frais_retrait > 0 || o.frais_service > 0) && (
-              <p className="muted ordre-detail" style={{ fontSize: 13, marginTop: 6 }}>
-                {`Scolarité ${fcfa(o.montant)} · frais de retrait ${fcfa(o.frais_retrait)}${o.frais_service ? ` · frais de service ${fcfa(o.frais_service)}` : ''}`}
-              </p>
-            )}
-            {o.consignes && <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{o.consignes}</p>}
-            <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-              Vous avez {o.delaiMinutes} minutes pour payer et signaler le paiement. Passé ce délai, l’ordre expire.
-            </p>
-          </div>
-          <form
-            className="card"
-            onSubmit={(e) => {
-              e.preventDefault()
-              action(() => api.post(`/api/scolarite/ordres/${o.id}/payer`, f))
-            }}
-          >
-            <b>2. Après le paiement, signalez-le</b>
-            <Field label="ID de la transaction (dans le SMS de confirmation)">
-              <input className="input" placeholder="ex. MP261103.1452.A12345" value={f.transaction} onChange={(e) => setF({ ...f, transaction: e.target.value })} required />
-            </Field>
-            <Field label="Numéro utilisé pour payer">
-              <input className="input" type="tel" placeholder="6 XX XX XX XX" value={f.telephone} onChange={(e) => setF({ ...f, telephone: e.target.value })} />
-            </Field>
-            <input
-              ref={fichier}
-              type="file"
-              hidden
-              accept="image/*"
-              onChange={async (e) => {
-                const x = e.target.files?.[0]
-                e.target.value = ''
-                if (x) setF({ ...f, preuve: await reduire(x) })
-              }}
-            />
-            <button type="button" className="btn btn-quiet btn-block" onClick={() => fichier.current?.click()}>
-              {f.preuve ? 'Capture ajoutée (changer)' : 'Ajouter la capture du SMS (facultatif)'}
-            </button>
-            {f.preuve && <img src={f.preuve} alt="" style={{ display: 'block', maxWidth: '100%', maxHeight: 220, borderRadius: 12, marginTop: 8 }} />}
-            <Note>{error}</Note>
-            <div className="actions" style={{ marginTop: 10 }}>
-              <button className="btn" type="submit" disabled={busy}>
-                {busy ? 'Envoi…' : 'J’ai payé'}
-              </button>
-              <button type="button" className="btn btn-quiet btn-danger" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/annuler`), 'Annuler cet ordre ? Ne l’annulez pas si vous avez déjà envoyé l’argent.')}>
-                Annuler l’ordre
-              </button>
-            </div>
-          </form>
-        </>
+      {/* ------------------------------ le parent paie : numero, montant, motif, puis « J'ai paye » */}
+      {enAttente && (
+        <section className="op-carte">
+          <p className="op-titre">{`Envoyez par ${o.operateur}`}</p>
+          {ligne('Numéro', o.numero_destinataire, o.numero_destinataire)}
+          {ligne('Montant', fcfa(aEnvoyer), aEnvoyer)}
+          {ligne('Motif', o.code, o.code)}
+          <Note>{error}</Note>
+          <button type="button" className="btn btn-block op-paye" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/payer`, {}))}>
+            {busy ? 'Envoi…' : 'J’ai payé'}
+          </button>
+          <button type="button" className="op-annuler" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/annuler`), 'Annuler ce paiement ? Ne l’annulez pas si vous avez déjà envoyé l’argent.')}>
+            Annuler
+          </button>
+        </section>
       )}
 
-      {/* ------------------------------ details du paiement signale */}
+      {/* ------------------------------ paiement signale */}
       {['paye', 'litige', 'confirme'].includes(o.statut) && (
-        <div className="card">
-          <b>Paiement signalé</b>
-          <p style={{ fontSize: 14, marginTop: 6 }}>
-            {o.operateur} vers le <b>{o.numero_destinataire}</b> · transaction <b>{o.transaction}</b>
-            {o.telephone_payeur ? ` · depuis le ${o.telephone_payeur}` : ''}
-            {o.parent_nom ? ` · par ${o.parent_prenom} ${o.parent_nom}` : ''}
-          </p>
-          {o.preuve && <img src={o.preuve} alt="Capture du paiement" style={{ display: 'block', maxWidth: '100%', maxHeight: 360, borderRadius: 12, marginTop: 8 }} />}
-          {o.motif && o.statut === 'litige' && (
-            <p style={{ color: 'var(--danger)', marginTop: 8 }}>
-              <b>Litige :</b> {o.motif}
-            </p>
-          )}
+        <section className="op-carte">
+          {ligne('Envoyé au', `${o.numero_destinataire} · ${o.operateur}`, null)}
+          {ligne('Motif', o.code, null)}
+          {o.transaction && ligne('Transaction', o.transaction, null)}
+          {o.monRole !== 'payeur' && o.parent_nom && ligne('Payeur', `${o.parent_prenom || ''} ${o.parent_nom}`.trim(), null)}
+          {o.preuve && <img src={o.preuve} alt="Capture du paiement" className="op-preuve" />}
+          {o.motif && o.statut === 'litige' && <p className="op-litige">{`Litige : ${o.motif}`}</p>}
           {o.statut === 'confirme' && o.paiement_id && (
             <a className="btn btn-block" style={{ marginTop: 10 }} href={`#/recus/${o.paiement_id}`}>
               Voir le reçu
             </a>
           )}
-        </div>
+        </section>
       )}
 
-      {/* ------------------------------ actions de l'etablissement */}
+      {/* ------------------------------ l'etablissement confirme */}
       {o.monRole === 'etablissement' && ['paye', 'litige'].includes(o.statut) && (
-        <div className="card">
-          <b>Avez-vous reçu {fcfa(aEnvoyer)} ?</b>
-          <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>
-            Vérifiez sur votre compte {o.operateur} ({o.numero_destinataire}) la transaction <b>{o.transaction}</b>, avec le motif <b>{o.code}</b>.
-          </p>
+        <section className="op-carte">
+          <p className="op-titre">{`Avez-vous reçu ${fcfa(aEnvoyer)} avec le motif ${o.code} ?`}</p>
           <Note>{error}</Note>
           <button
             type="button"
@@ -323,31 +213,27 @@ export default function OrdrePaiement({ id }) {
           </button>
           {o.statut === 'paye' && (
             <>
-              <input className="input" placeholder="Motif (ex. aucun transfert reçu à ce nom)" value={motif} onChange={(e) => setMotif(e.target.value)} style={{ marginTop: 10 }} />
-              <button type="button" className="btn btn-quiet btn-danger btn-block" style={{ marginTop: 8 }} disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/litige`, { motif }), 'Ouvrir un litige sur ce paiement ?')}>
+              <input className="input" placeholder="Motif du litige (ex. rien reçu)" value={motif} onChange={(e) => setMotif(e.target.value)} style={{ marginTop: 10 }} />
+              <button type="button" className="op-annuler" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/litige`, { motif }), 'Ouvrir un litige sur ce paiement ?')}>
                 Je n’ai rien reçu : ouvrir un litige
               </button>
             </>
           )}
-        </div>
+        </section>
       )}
 
       {/* ------------------------------ le parent peut contester apres 24 h */}
       {o.monRole === 'payeur' && o.statut === 'paye' && Date.now() + decalage - new Date(o.paye_le).getTime() > 24 * 3600 * 1000 && (
-        <div className="card">
-          <b>Toujours pas confirmé ?</b>
-          <p className="muted" style={{ fontSize: 14, margin: '4px 0 10px' }}>Écrivez d’abord à l’établissement ci-dessous. Sans réponse, ouvrez un litige : Sùkûl tranchera.</p>
-          <button type="button" className="btn btn-quiet btn-danger btn-block" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/litige`, { motif: 'Paiement non confirmé après 24 heures' }), 'Ouvrir un litige ?')}>
-            Ouvrir un litige
-          </button>
-        </div>
+        <button type="button" className="op-annuler" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/litige`, { motif: 'Paiement non confirmé après 24 heures' }), 'Toujours pas confirmé après 24 heures : ouvrir un litige ? Sùkûl tranchera.')}>
+          Toujours pas confirmé : ouvrir un litige
+        </button>
       )}
 
       {/* ------------------------------ arbitrage par la plateforme */}
       {o.monRole === 'arbitre' && o.statut === 'litige' && (
-        <div className="card" style={{ borderColor: 'var(--danger)' }}>
-          <b>Arbitrage</b>
-          <input className="input" placeholder="Motif de la décision" value={motif} onChange={(e) => setMotif(e.target.value)} style={{ margin: '10px 0' }} />
+        <section className="op-carte">
+          <p className="op-titre">Arbitrage</p>
+          <input className="input" placeholder="Motif de la décision" value={motif} onChange={(e) => setMotif(e.target.value)} style={{ margin: '6px 0 10px' }} />
           <Note>{error}</Note>
           <div className="actions">
             <button type="button" className="btn" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/arbitrer`, { decision: 'confirmer', motif }), 'Valider ce paiement (le reçu sera émis) ?')}>
@@ -357,61 +243,58 @@ export default function OrdrePaiement({ id }) {
               Annuler l’ordre
             </button>
           </div>
-        </div>
+        </section>
       )}
 
+      {/* ------------------------------ contact et discussion, en une ligne chacun */}
       {['payeur', 'arbitre'].includes(o.monRole) && (
-        <Contact
-          titre="Joindre l’établissement"
-          nom={o.ecole}
-          telephone={o.telephone_ecole}
-          message={`Bonjour, je vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(aEnvoyer)} (${o.frais}, ${o.first_name} ${o.last_name}).`}
-        />
+        <Contact nom={o.ecole} telephone={o.telephone_ecole} message={`Bonjour, je vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(aEnvoyer)} (${o.frais}, ${o.first_name} ${o.last_name}).`} />
       )}
       {['etablissement', 'arbitre'].includes(o.monRole) && o.parent_tel && (
-        <Contact
-          titre="Joindre le payeur"
-          nom={`${o.parent_prenom || ''} ${o.parent_nom || ''}`.trim()}
-          telephone={o.parent_tel}
-          message={`Bonjour, ${o.ecole} vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(aEnvoyer)}.`}
-        />
+        <Contact nom={`${o.parent_prenom || ''} ${o.parent_nom || ''}`.trim()} telephone={o.parent_tel} message={`Bonjour, ${o.ecole} vous contacte au sujet du paiement Sùkûl ${o.code} de ${fcfa(aEnvoyer)}.`} />
       )}
+      <Discussion o={o} msg={msg} setMsg={setMsg} busy={busy} envoyer={(t) => action(() => api.post(`/api/scolarite/ordres/${o.id}/messages`, { texte: t }).then(() => setMsg('')))} />
+    </div>
+  )
+}
 
-      {/* ------------------------------ discussion */}
-      <h2 className="section-title">Discussion</h2>
-      <ul className="rows">
-        {o.messages.map((m) => (
-          <li key={m.id} className="row" style={{ alignItems: 'flex-start' }}>
-            <div className="row-main">
-              <div className="row-sub" style={{ fontSize: 12 }}>
-                {m.role === 'systeme' ? 'Sùkûl' : m.role === 'etablissement' ? 'Établissement' : m.role === 'arbitre' ? 'Arbitrage Sùkûl' : `${m.first_name || ''} ${m.last_name || ''}`.trim() || 'Parent'} ·{' '}
-                {heure(m.created_at)}
-              </div>
-              <div style={{ whiteSpace: 'pre-wrap', fontStyle: m.role === 'systeme' ? 'italic' : 'normal', color: m.role === 'systeme' ? 'var(--muted)' : undefined }}>{m.texte}</div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {!['annule', 'expire'].includes(o.statut) && (
-        <form
-          className="card"
-          style={{ marginTop: 10 }}
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!msg.trim()) return
-            action(async () => {
-              await api.post(`/api/scolarite/ordres/${o.id}/messages`, { texte: msg })
-              setMsg('')
-            })
-          }}
-        >
-          <textarea className="input" placeholder="Écrire un message…" value={msg} onChange={(e) => setMsg(e.target.value)} style={{ minHeight: 60 }} />
-          <button className="btn btn-quiet btn-block" type="submit" disabled={busy} style={{ marginTop: 8 }}>
-            Envoyer
-          </button>
-        </form>
+// Discussion de l'ordre : repliee (une ligne), les messages ecrits (hors messages automatiques) s'ouvrent au toucher
+function Discussion({ o, msg, setMsg, busy, envoyer }) {
+  const [ouverte, setOuverte] = useState(false)
+  const ecrits = o.messages.filter((m) => m.role !== 'systeme')
+  const ouvert = !['annule', 'expire'].includes(o.statut)
+  if (!ecrits.length && !ouvert) return null
+  return (
+    <section className="op-discussion">
+      <button type="button" className="op-discussion-tete" aria-expanded={ouverte} onClick={() => setOuverte(!ouverte)}>
+        <span>Discussion</span>
+        <small>{ecrits.length ? `${ecrits.length} message${ecrits.length > 1 ? 's' : ''}` : 'Aucun message'}</small>
+      </button>
+      {ouverte && (
+        <>
+          {ecrits.map((m) => (
+            <p key={m.id} className={`op-msg ${m.role === 'etablissement' ? 'ecole' : ''}`}>
+              <small>{`${m.role === 'etablissement' ? 'Établissement' : m.role === 'arbitre' ? 'Sùkûl' : `${m.first_name || ''} ${m.last_name || ''}`.trim() || 'Parent'} · ${heure(m.created_at)}`}</small>
+              {m.texte}
+            </p>
+          ))}
+          {ouvert && (
+            <form
+              className="ig-saisie op-saisie"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (msg.trim()) envoyer(msg)
+              }}
+            >
+              <textarea rows={1} placeholder="Message…" value={msg} onChange={(e) => setMsg(e.target.value)} />
+              <button type="submit" disabled={busy || !msg.trim()}>
+                Envoyer
+              </button>
+            </form>
+          )}
+        </>
       )}
-    </>
+    </section>
   )
 }
 
