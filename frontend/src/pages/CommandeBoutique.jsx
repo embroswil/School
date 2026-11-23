@@ -4,6 +4,7 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { EtatCommande, fcfa } from './Boutique.jsx'
+import { VisuelArticle } from '../boutique-visuels.jsx'
 
 const ETAPES = [
   ['a_payer', 'Payée'],
@@ -64,6 +65,7 @@ export default function CommandeBoutique({ id }) {
         <ul className="bq-lignes">
           {c.lignes.map((l) => (
             <li key={l.id}>
+              <VisuelArticle article={l} className="mini" />
               <span data-brut>
                 {`${l.quantite} × ${l.nom}`}
                 {l.taille && <em>{` · ${l.taille}`}</em>}

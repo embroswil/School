@@ -4,6 +4,22 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { CATEGORIES, ListeCommandes, fcfa } from './Boutique.jsx'
+import { VisuelArticle } from '../boutique-visuels.jsx'
+import Recadreur from '../Recadreur.jsx'
+
+// Photo d'article : envoyee au stockage ; s'il n'est pas active, gardee dans l'article (image legere)
+async function envoyerPhoto(dataUrl) {
+  try {
+    const blob = await (await fetch(dataUrl)).blob()
+    const s = await api.post('/api/medias/signer', { mime: 'image/jpeg', taille: blob.size })
+    const r = await fetch(s.data.envoi, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob })
+    if (!r.ok) throw new Error('L’envoi de la photo a échoué. Vérifiez la connexion et réessayez.')
+    return s.data.url
+  } catch (err) {
+    if (/pas encore activé/.test(err.message) && dataUrl.length <= 400000) return dataUrl
+    throw err
+  }
+}
 
 const FILTRES = [
   ['payee', 'À préparer'],
@@ -85,7 +101,7 @@ function Commandes({ commandes }) {
 
 // ---------------------------------------------------------------- articles
 
-const VIDE = { categorie: 'fournitures', nom: '', description: '', prix: '', tailles: '', niveaux: '', actif: true }
+const VIDE = { categorie: 'fournitures', nom: '', description: '', prix: '', tailles: '', niveaux: '', actif: true, image: null }
 
 function Articles({ articles, onChange }) {
   const [edition, setEdition] = useState(null)
@@ -97,28 +113,23 @@ function Articles({ articles, onChange }) {
       {CATEGORIES.filter(([c]) => articles.some((a) => a.categorie === c)).map(([c, t]) => (
         <div key={c}>
           <h2 className="section-title">{t}</h2>
-          <ul className="rows" style={{ marginBottom: 14 }}>
+          <div className="bq-gestion-grille">
             {articles
               .filter((a) => a.categorie === c)
               .map((a) => (
-                <li className="row" key={a.id}>
-                  <button
-                    type="button"
-                    className="row-main bq-row-bouton"
-                    onClick={() => setEdition({ ...a, tailles: a.tailles.join(', '), niveaux: a.niveaux.join(', '), description: a.description || '' })}
-                  >
-                    <div className="row-title" data-brut>{a.nom}</div>
-                    <div className="row-sub" data-brut>
-                      {[a.niveaux.length ? a.niveaux.join(', ') : 'Toutes les classes', a.tailles.length ? `${a.tailles.length} tailles` : ''].filter(Boolean).join(' · ')}
-                    </div>
-                  </button>
-                  <span className="bq-prix-fixe" data-brut>
-                    {fcfa(a.prix)}
-                  </span>
+                <button
+                  type="button"
+                  key={a.id}
+                  className={`bq-gestion-carte ${a.actif ? '' : 'masque'}`}
+                  onClick={() => setEdition({ ...a, tailles: a.tailles.join(', '), niveaux: a.niveaux.join(', '), description: a.description || '' })}
+                >
+                  <VisuelArticle article={a} />
                   {!a.actif && <span className="tag">Masqué</span>}
-                </li>
+                  <b data-brut>{fcfa(a.prix)}</b>
+                  <span data-brut>{a.nom}</span>
+                </button>
               ))}
-          </ul>
+          </div>
         </div>
       ))}
       {edition && <FormArticle valeur={edition} onFermer={() => setEdition(null)} onChange={onChange} />}
@@ -130,7 +141,21 @@ function FormArticle({ valeur, onFermer, onChange }) {
   const [a, setA] = useState(valeur)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [aRecadrer, setARecadrer] = useState(null)
   const maj = (k) => (e) => setA({ ...a, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
+  async function photo(dataUrl) {
+    setARecadrer(null)
+    setBusy(true)
+    setError('')
+    try {
+      setA((x) => ({ ...x, image: null }))
+      const url = await envoyerPhoto(dataUrl)
+      setA((x) => ({ ...x, image: url }))
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(false)
+  }
 
   async function envoyer(e) {
     e.preventDefault()
@@ -165,6 +190,32 @@ function FormArticle({ valeur, onFermer, onChange }) {
       <form className="feuille bq-feuille" onClick={(e) => e.stopPropagation()} onSubmit={envoyer}>
         <div className="feuille-poignee" />
         <p className="feuille-titre">{a.id ? 'Modifier l’article' : 'Nouvel article'}</p>
+        <div className="bq-photo">
+          <VisuelArticle article={a} />
+          <div>
+            <label className="btn btn-quiet bq-petit" style={{ cursor: 'pointer' }}>
+              {a.image ? 'Changer la photo' : 'Ajouter une photo'}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  e.target.value = ''
+                  if (f) setARecadrer(f)
+                }}
+              />
+            </label>
+            {a.image ? (
+              <button type="button" className="op-annuler" style={{ padding: 0, textAlign: 'left' }} onClick={() => setA({ ...a, image: null })}>
+                Revenir à l’illustration
+              </button>
+            ) : (
+              <small className="muted">Sans photo, une illustration est affichée.</small>
+            )}
+          </div>
+        </div>
+        {aRecadrer && <Recadreur fichier={aRecadrer} ratio={1} sortie={700} onValider={photo} onAnnuler={() => setARecadrer(null)} />}
         <div className="grid2">
           <Field label="Catégorie">
             <select className="input" value={a.categorie} onChange={maj('categorie')}>
@@ -299,6 +350,7 @@ function FormListe({ valeur, articles, onFermer, onChange }) {
         <ul className="bq-choix">
           {ordre.map((a) => (
             <li key={a.id}>
+              <VisuelArticle article={a} className="mini" />
               <span data-brut>
                 {a.nom}
                 <small>{fcfa(a.prix)}</small>

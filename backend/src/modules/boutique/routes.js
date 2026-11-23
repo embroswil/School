@@ -125,7 +125,7 @@ router.get("/eleves/:id", async (req, res, next) => {
     if (!e.ouverte) return res.json({ success: true, data: { eleve: e, ouverte: false, articles: [], kits: [] } });
     const articles = (
       await db.query(
-        `SELECT id, categorie, nom, description, prix, tailles FROM boutique_articles
+        `SELECT id, categorie, nom, description, prix, tailles, image FROM boutique_articles
          WHERE school_id = $1 AND actif AND ${SQL_NIVEAU("niveaux", "$2")} ORDER BY categorie, ordre, nom`,
         [e.school_id, e.classe || ""]
       )
@@ -138,7 +138,7 @@ router.get("/eleves/:id", async (req, res, next) => {
          LEFT JOIN boutique_kit_articles ka ON ka.kit_id = k.id
          LEFT JOIN boutique_articles a ON a.id = ka.article_id AND a.actif
          WHERE k.school_id = $1 AND k.actif AND ${SQL_NIVEAU("k.niveaux", "$2")}
-         GROUP BY k.id ORDER BY k.ordre, k.nom`,
+         GROUP BY k.id ORDER BY cardinality(k.niveaux) = 0, k.ordre, k.nom`,
         [e.school_id, e.classe || ""]
       )
     ).rows;
@@ -234,7 +234,13 @@ router.post("/commandes", async (req, res, next) => {
 router.get("/commandes/:id", async (req, res, next) => {
   try {
     const c = await exigerCommande(req.user, entier(req.params.id));
-    const lignes = (await db.query("SELECT id, nom, taille, quantite, prix FROM boutique_lignes WHERE commande_id = $1 ORDER BY id", [c.id])).rows;
+    const lignes = (
+      await db.query(
+        `SELECT l.id, l.nom, l.taille, l.quantite, l.prix, a.categorie, a.image
+         FROM boutique_lignes l LEFT JOIN boutique_articles a ON a.id = l.article_id WHERE l.commande_id = $1 ORDER BY l.id`,
+        [c.id]
+      )
+    ).rows;
     const ordre = await ordreEnCours(c.id);
     const dernier = (await db.query("SELECT id FROM ordres_paiement WHERE commande_id = $1 ORDER BY created_at DESC LIMIT 1", [c.id])).rows[0];
     res.json({
@@ -320,6 +326,15 @@ router.put("/gestion/ouverte", async (req, res, next) => {
   }
 });
 
+// Photo de l'article : adresse du stockage (https) ou petite image integree (si le stockage n'est pas active)
+const lireImage = (v) => {
+  const t = String(v ?? "").trim();
+  if (!t) return null;
+  if (/^https:\/\/[^\s"'<>]{8,600}$/.test(t)) return t;
+  if (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t) && t.length <= 400000) return t;
+  throw new ApiError(400, "Photo invalide ou trop lourde");
+};
+
 const lireArticle = (b) => {
   const nom = texte(b?.nom, 120);
   const prix = entier(b?.prix);
@@ -333,6 +348,7 @@ const lireArticle = (b) => {
     tailles: liste(b?.tailles),
     niveaux: liste(b?.niveaux),
     actif: b?.actif !== false,
+    image: lireImage(b?.image),
   };
 };
 
@@ -342,9 +358,9 @@ router.post("/gestion/articles", async (req, res, next) => {
     const ecole = exigerGestion(req.user);
     const a = lireArticle(req.body);
     const { rows } = await db.query(
-      `INSERT INTO boutique_articles (school_id, categorie, nom, description, prix, tailles, niveaux, actif, ordre)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (SELECT COALESCE(MAX(ordre), 0) + 1 FROM boutique_articles WHERE school_id = $1)) RETURNING *`,
-      [ecole, a.categorie, a.nom, a.description, a.prix, a.tailles, a.niveaux, a.actif]
+      `INSERT INTO boutique_articles (school_id, categorie, nom, description, prix, tailles, niveaux, actif, image, ordre)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, (SELECT COALESCE(MAX(ordre), 0) + 1 FROM boutique_articles WHERE school_id = $1)) RETURNING *`,
+      [ecole, a.categorie, a.nom, a.description, a.prix, a.tailles, a.niveaux, a.actif, a.image]
     );
     res.status(201).json({ success: true, data: rows[0] });
   } catch (e) {
@@ -358,9 +374,9 @@ router.put("/gestion/articles/:id", async (req, res, next) => {
     const ecole = exigerGestion(req.user);
     const a = lireArticle(req.body);
     const { rows } = await db.query(
-      `UPDATE boutique_articles SET categorie = $3, nom = $4, description = $5, prix = $6, tailles = $7, niveaux = $8, actif = $9
+      `UPDATE boutique_articles SET categorie = $3, nom = $4, description = $5, prix = $6, tailles = $7, niveaux = $8, actif = $9, image = $10
        WHERE id = $1 AND school_id = $2 RETURNING *`,
-      [entier(req.params.id), ecole, a.categorie, a.nom, a.description, a.prix, a.tailles, a.niveaux, a.actif]
+      [entier(req.params.id), ecole, a.categorie, a.nom, a.description, a.prix, a.tailles, a.niveaux, a.actif, a.image]
     );
     if (!rows[0]) throw new ApiError(404, "Article introuvable");
     res.json({ success: true, data: rows[0] });
