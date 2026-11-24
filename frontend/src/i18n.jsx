@@ -2556,7 +2556,7 @@ const FORMULES = [
   [/^Envoyez par (.+)$/, 'Send with $1'],
   [/^Envoyé par (.+)$/, 'Sent with $1'],
   [/^dont ([\d\s\u202f]+ FCFA) de frais$/, 'including $1 in fees'],
-  [/^Avez-vous reçu ([\d\s\u202f]+ FCFA) avec le motif (\S+) \?$/, 'Did you receive $1 with the reference $2?'],
+  [/^Avez-vous reçu ([\d\s\u202f]+ FCFA) avec le motif (.+) \?$/, 'Did you receive $1 with the reference $2?'],
   [/^(\d+) messages?$/, (_, n) => `${n} message${n > 1 ? 's' : ''}`],
   [/^Articles ([\d\s ]+ FCFA) · frais de retrait ([\d\s ]+ FCFA) · frais de service ([\d\s ]+ FCFA)$/, (_, a, b, c) => `Items ${a} · withdrawal fee ${b} · service fee ${c}`],
   [/^(\d+) article\(s\)$/, '$1 item(s)'],

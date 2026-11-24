@@ -131,6 +131,7 @@ export default function OrdrePaiement({ id }) {
   const o = d.data
   // ce que le parent envoie : scolarite + frais de retrait + frais de service
   const aEnvoyer = Number(o.montant || 0) + Number(o.frais_retrait || 0) + Number(o.frais_service || 0)
+  const motifTransfert = o.commande_id ? 'Boutique' : o.frais // motif du transfert : le nom du frais seulement
   const [titre, , couleur, fond] = ETATS[o.statut] || ETATS.annule
   // arrondi a la seconde : la valeur reste stable d'un affichage a l'autre
   const decalage = Math.round((new Date(o.maintenant).getTime() - Date.now()) / 1000) * 1000
@@ -191,7 +192,7 @@ export default function OrdrePaiement({ id }) {
           <div className="op-tuiles">
             <TuileCopie libelle="Numéro" valeur={o.numero_destinataire} large />
             <TuileCopie libelle="Montant" valeur={String(aEnvoyer)} affiche={fcfa(aEnvoyer)} />
-            <TuileCopie libelle="Motif" valeur={o.code} />
+            <TuileCopie libelle="Motif" valeur={motifTransfert} />
           </div>
           <Note>{error}</Note>
           <button type="button" className="btn btn-block op-paye" disabled={busy} onClick={() => action(() => api.post(`/api/scolarite/ordres/${o.id}/payer`, {}))}>
@@ -208,7 +209,7 @@ export default function OrdrePaiement({ id }) {
         <section className="op-carte">
           <div className="op-tuiles">
             {tuile(`Envoyé par ${o.operateur}`, o.numero_destinataire, true)}
-            {tuile('Motif', o.code)}
+            {tuile('Motif', motifTransfert)}
             {o.monRole !== 'payeur' && o.parent_nom ? tuile('Payeur', `${o.parent_prenom || ''} ${o.parent_nom}`.trim()) : tuile('Montant', fcfa(aEnvoyer))}
             {o.transaction && tuile('Transaction', o.transaction, true)}
           </div>
@@ -230,7 +231,7 @@ export default function OrdrePaiement({ id }) {
       {/* ------------------------------ l'etablissement confirme */}
       {o.monRole === 'etablissement' && ['paye', 'litige'].includes(o.statut) && (
         <section className="op-carte">
-          <p className="op-titre">{`Avez-vous reçu ${fcfa(aEnvoyer)} avec le motif ${o.code} ?`}</p>
+          <p className="op-titre">{`Avez-vous reçu ${fcfa(aEnvoyer)} avec le motif ${motifTransfert} ?`}</p>
           <Note>{error}</Note>
           <button
             type="button"

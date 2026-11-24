@@ -3132,7 +3132,8 @@ html.ordi .op-page { margin: 0 auto; }
 .op-contact a { display: grid; place-items: center; padding: 11px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--lien, var(--primary)); font: 700 14px/1 var(--font-body); }
 .op-tuile.fixe { cursor: default; }
 .op-tuile { padding: 9px 12px; }
-.op-tuile b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* le motif (nom du frais) peut tenir sur deux lignes, sans couper les mots */
+.op-tuile b { font-size: 17px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: break-word; max-width: 100%; }
 .op-tuile.large b { font-size: 22px; }
 .op-tuiles { gap: 7px; }
 .op-carte { padding-bottom: 10px; }
