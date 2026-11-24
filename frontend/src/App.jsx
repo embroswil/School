@@ -220,6 +220,8 @@ function Pages({ path }) {
   if (releveMatch) return reserve(user.role !== 'teacher', <ReleveScolarite key={releveMatch[1]} id={Number(releveMatch[1])} />)
   const recuScolMatch = path.match(/^\/recus\/(\d+)$/)
   if (recuScolMatch) return <RecuScolarite key={recuScolMatch[1]} id={Number(recuScolMatch[1])} />
+  const recuBoutique = path.match(/^\/boutique\/recus\/(\d+)$/)
+  if (recuBoutique) return <RecuScolarite key={`b${recuBoutique[1]}`} url={`/api/boutique/commandes/${recuBoutique[1]}/recu`} />
   const recuMatch = path.match(/^\/abonnement\/recus\/(\d+)$/)
   if (recuMatch) return reserve(['principal', 'admin'].includes(user.role), <Recu key={recuMatch[1]} id={Number(recuMatch[1])} />)
   if (path === '/discipline') return reserve(gestion || user.role === 'teacher', <DisciplineImport />)

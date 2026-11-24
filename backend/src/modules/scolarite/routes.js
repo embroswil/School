@@ -700,7 +700,7 @@ router.get("/hors-ligne", async (req, res, next) => {
         [ecole]
       )
     ).rows.map((p) => [p.student_id, p.frais_id, p.s]);
-    const { codeRecu } = require("../../utils/recus");
+    const { codeRecu, SQL_NUMERO_BOUTIQUE } = require("../../utils/recus");
     const recus = (
       await db.query(
         `SELECT numero_recu, recu_externe, montant, student_id, frais_id, COALESCE(confirme_le, created_at) AS d, mode
@@ -708,7 +708,15 @@ router.get("/hors-ligne", async (req, res, next) => {
         [ecole]
       )
     ).rows.map((r) => [r.numero_recu, r.montant, codeRecu(r.numero_recu, r.montant), r.student_id, r.frais_id, r.d, r.mode, r.recu_externe || null]);
-    res.json({ success: true, data: { le: new Date().toISOString(), ecole, frais, eleves, payes, recus } });
+    // recus de la boutique (sans frais : frais_id null)
+    const boutique = (
+      await db.query(
+        `SELECT ${SQL_NUMERO_BOUTIQUE} AS n, c.montant, c.student_id, c.payee_le FROM boutique_commandes c
+         WHERE c.school_id = $1 AND c.payee_le IS NOT NULL AND c.statut <> 'annulee' ORDER BY c.id`,
+        [ecole]
+      )
+    ).rows.map((r) => [r.n, r.montant, codeRecu(r.n, r.montant), r.student_id, null, r.payee_le, "mobile_money", null]);
+    res.json({ success: true, data: { le: new Date().toISOString(), ecole, frais, eleves, payes, recus: recus.concat(boutique) } });
   } catch (e) {
     next(e);
   }

@@ -95,8 +95,9 @@ export function recuLocal(p, numero, code) {
   if (!r) return null
   const [num, montant, cle, eleve, fraisId, d, mode] = r
   const e = eleveDe(p, eleve)
-  const f = p.frais.find((x) => x.id === fraisId)
-  const paye = p.payes.filter(([s, fr]) => s === eleve && fr === fraisId).reduce((a, x) => a + x[2], 0)
+  // recu de la boutique : pas de frais, la commande est payee en entier
+  const f = fraisId ? p.frais.find((x) => x.id === fraisId) : { nom: 'Boutique', montant }
+  const paye = fraisId ? p.payes.filter(([s, fr]) => s === eleve && fr === fraisId).reduce((a, x) => a + x[2], 0) : montant
   return {
     id: null,
     numero: num,

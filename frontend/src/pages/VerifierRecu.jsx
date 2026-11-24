@@ -197,7 +197,7 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
   // Texte scanne : lien du QR code d'un recu, numero de recu, ou matricule (carte d'eleve)
   async function lu(texte) {
     const l = lireScan(texte)
-    if (/verifier\//.test(String(texte)) || /^(SK|REC|LBR)?-?\d{4}-\d+$/i.test(l.numero)) return verifierRecu(l.numero, l.code)
+    if (/verifier\//.test(String(texte)) || /^(SK|SB|REC|LBR)?-?\d{4}-\d+$/i.test(l.numero)) return verifierRecu(l.numero, l.code)
     setScan(false)
     setBusy(true)
     setErreur('')
@@ -289,9 +289,9 @@ export default function VerifierRecu({ numero: numeroLien = '', code: codeLien =
             <small>{`${fcfa(r.fraisPaye)} payés sur ${fcfa(r.fraisMontant)}`}</small>
           </div>
           {r.horsLigne && <small className="verif-hl">{`Vérifié sans réseau, sur les données du ${date(r.horsLigne)}.`}</small>}
-          {r.id && (
+          {(r.id || r.lien) && (
             <div className="verif-liens">
-              <a href={`#/recus/${r.id}`}>Voir le reçu</a>
+              <a href={r.lien || `#/recus/${r.id}`}>Voir le reçu</a>
             </div>
           )}
         </div>

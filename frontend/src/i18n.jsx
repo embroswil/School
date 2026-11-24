@@ -2565,6 +2565,7 @@ const FORMULES = [
   [/^(\d+) au panier$/, '$1 in cart'],
   [/^Panier · (.+)$/, 'Cart · $1'],
   [/^Commande n° (\d+)$/, 'Order no. $1'],
+  [/^Boutique · (.+)$/, 'Shop · $1'],
   [/^Articles · (.+)$/, 'Items · $1'],
   [/^(.+) ajouté au panier$/, '$1 added to cart'],
   [/^Pour (.+)$/, 'For $1'],

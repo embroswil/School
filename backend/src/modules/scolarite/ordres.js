@@ -2,7 +2,7 @@
 // Paiement « P2P » des frais de scolarite, comme sur les plateformes d'echange :
 // 1. le parent cree un ordre (frais, montant, Orange Money ou MTN MoMo) : Sùkûl
 //    affiche le numero de l'etablissement, le montant exact et un code a mettre en motif ;
-// 2. il a 30 minutes pour payer depuis son telephone, puis touche « J'ai paye »
+// 2. il a 15 minutes pour payer depuis son telephone, puis touche « J'ai paye »
 //    (ID de transaction, capture facultative) ;
 // 3. l'etablissement verifie son compte et confirme la reception (recu automatique),
 //    ou ouvre un litige ; l'administrateur de la plateforme arbitre les litiges.
@@ -18,7 +18,7 @@ const S = require("./routes");
 const { fraisPaiementDirect } = require("../../utils/frais-paiement");
 
 router.use(authenticate);
-const DELAI_MINUTES = 30;
+const DELAI_MINUTES = 15;
 const entier = (v) => parseInt(String(v ?? "").replace(/\s/g, ""), 10);
 const texte = (v, max) => String(v ?? "").trim().slice(0, max);
 const fcfa = (n) => `${Number(n).toLocaleString("fr-FR")} FCFA`;

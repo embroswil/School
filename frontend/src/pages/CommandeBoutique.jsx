@@ -144,6 +144,11 @@ export default function CommandeBoutique({ id }) {
       )}
       {parent && c.statut === 'payee' && <p className="muted">L’établissement prépare la commande. Vous serez prévenu quand elle sera prête.</p>}
       {parent && c.statut === 'prete' && <p className="muted">La commande est prête : elle est à retirer à l’établissement.</p>}
+      {['payee', 'prete', 'remise'].includes(c.statut) && (
+        <a className="btn btn-block btn-quiet" href={`#/boutique/recus/${c.id}`}>
+          Reçu
+        </a>
+      )}
       {['payee', 'prete', 'remise'].includes(c.statut) && c.dernierOrdre && (
         <a className="op-annuler" style={{ color: 'var(--lien)', textAlign: 'center' }} href={`#/ordres/${c.dernierOrdre}`}>
           Voir le paiement

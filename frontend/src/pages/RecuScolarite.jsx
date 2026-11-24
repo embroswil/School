@@ -32,16 +32,17 @@ export function EnteteRecu({ ecoleId, aPhoto, ecole, ville, titre, numero, sous 
   )
 }
 
-// Recu virtuel d'un paiement de scolarite : verifiable par QR code, imprimable et partageable.
-export default function RecuScolarite({ id }) {
+// Recu virtuel d'un paiement de scolarite (ou d'une commande de la boutique, via url) : verifiable par QR code, imprimable et partageable.
+export default function RecuScolarite({ id, url = `/api/scolarite/recus/${id}` }) {
   const { user } = useAuth()
-  const d = useApi(`/api/scolarite/recus/${id}`)
+  const d = useApi(url)
   const [busy, setBusy] = useState(false)
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
   const r = d.data
   const lien = lienVerification(r.numero_recu, r.code)
   const quand = r.confirme_le || r.created_at
+  const scolarite = r.resteApres != null // la boutique n'a ni reste ni releve
   const lignes = [
     ['Élève', `${r.last_name} ${r.first_name}`],
     ['Classe', r.classe || '—'],
@@ -92,7 +93,7 @@ export default function RecuScolarite({ id }) {
       montant: fcfa(r.montant),
       montantLettres: fr ? `Arrêté à la somme de ${enLettres(r.montant)} francs CFA` : `Received the sum of ${inWords(r.montant)} CFA francs`,
       lignes: lignes.map(([k, v]) => [traduire(k), String(v).startsWith('Au guichet') ? traduire(v) : v]),
-      situation: [[traduire('Reste sur ce frais'), fcfa(r.resteApres)], ...(r.annee ? [[traduire('Payé sur l’année'), fcfa(r.annee.paye)], [traduire('Reste sur l’année'), fcfa(r.annee.reste)]] : [])],
+      situation: !scolarite ? [] : [[traduire('Reste sur ce frais'), fcfa(r.resteApres)], ...(r.annee ? [[traduire('Payé sur l’année'), fcfa(r.annee.paye)], [traduire('Reste sur l’année'), fcfa(r.annee.reste)]] : [])],
       lien,
       code: r.code,
       barres: r.numero_recu,
@@ -146,7 +147,7 @@ export default function RecuScolarite({ id }) {
         <button type="button" className="btn btn-quiet" disabled={busy} onClick={partager}>
           Partager
         </button>
-        {user.role !== 'teacher' && (
+        {scolarite && user.role !== 'teacher' && (
           <a className="btn btn-quiet" href={`#/releve/${r.student_id}`}>
             Relevé
           </a>
@@ -174,7 +175,7 @@ export default function RecuScolarite({ id }) {
           ))}
         </dl>
 
-        <div className="recu-situation">
+        {scolarite && <div className="recu-situation">
           <div>
             <span>Reste sur ce frais</span>
             <b>{fcfa(r.resteApres)}</b>
@@ -191,7 +192,7 @@ export default function RecuScolarite({ id }) {
               </div>
             </>
           )}
-        </div>
+        </div>}
 
         <footer className="recu-pied">
           <div className="recu-qr" dangerouslySetInnerHTML={{ __html: qrSvg(lien, 112) }} />

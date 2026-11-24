@@ -252,6 +252,48 @@ router.get("/commandes/:id", async (req, res, next) => {
   }
 });
 
+// GET /api/boutique/commandes/:id/recu : recu Sukul d'une commande payee, au format du recu de scolarite
+router.get("/commandes/:id/recu", async (req, res, next) => {
+  try {
+    const c = await exigerCommande(req.user, entier(req.params.id));
+    const { codeRecu, SQL_NUMERO_BOUTIQUE } = require("../../utils/recus");
+    const r = (
+      await db.query(
+        `SELECT ${SQL_NUMERO_BOUTIQUE} AS numero_recu, s.city, s.photo IS NOT NULL AS a_photo, sr.admission_number AS matricule,
+                o.code, o.frais_service, o.confirme_le,
+                (SELECT string_agg(l.quantite || ' × ' || l.nom, ', ' ORDER BY l.id) FROM boutique_lignes l WHERE l.commande_id = c.id) AS articles
+         FROM boutique_commandes c JOIN schools s ON s.id = c.school_id LEFT JOIN student_records sr ON sr.student_id = c.student_id
+         LEFT JOIN ordres_paiement o ON o.commande_id = c.id AND o.statut = 'confirme'
+         WHERE c.id = $1 AND c.payee_le IS NOT NULL AND c.statut <> 'annulee'`,
+        [c.id]
+      )
+    ).rows[0];
+    if (!r) throw new ApiError(404, "Reçu introuvable");
+    res.json({
+      success: true,
+      data: {
+        ...r,
+        code: codeRecu(r.numero_recu, c.montant),
+        montant: c.montant,
+        confirme_le: r.confirme_le || c.payee_le,
+        frais: `Boutique · ${r.articles || `commande n° ${c.id}`}`,
+        mode: "mobile_money",
+        reference: r.code ? `P2P-${r.code}` : null,
+        first_name: c.prenom,
+        last_name: c.nom,
+        classe: c.classe,
+        ecole: c.ecole,
+        school_id: c.school_id,
+        student_id: c.student_id,
+        payeur_prenom: c.parent_prenom,
+        payeur_nom: c.parent_nom,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // POST /api/boutique/commandes/:id/payer { moyen } : nouveau paiement (le precedent a expire ou a ete annule)
 router.post("/commandes/:id/payer", async (req, res, next) => {
   try {

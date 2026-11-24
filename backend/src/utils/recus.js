@@ -11,4 +11,7 @@ function codeRecu(numero, montant) {
   return code;
 }
 
-module.exports = { codeRecu };
+// Numero du recu d'une commande de la boutique payee (alias c = boutique_commandes), ex. SB-2026-0000001
+const SQL_NUMERO_BOUTIQUE = "'SB-' || to_char(c.payee_le, 'YYYY') || '-' || lpad(c.id::text, 7, '0')";
+
+module.exports = { codeRecu, SQL_NUMERO_BOUTIQUE };

@@ -7,7 +7,7 @@ const router = express.Router();
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate } = require("../../middlewares/auth.middleware");
-const { codeRecu } = require("../../utils/recus");
+const { codeRecu, SQL_NUMERO_BOUTIQUE } = require("../../utils/recus");
 
 router.use(authenticate);
 
@@ -43,6 +43,41 @@ router.get("/recus/:numero", async (req, res, next) => {
     if (!["principal", "admin"].includes(u.role)) throw new ApiError(403, "La vérification des reçus est réservée à l’administration de l’établissement.");
     const numero = String(req.params.numero || "").trim().toUpperCase().slice(0, 80);
     const code = String(req.query.c || "").trim().toUpperCase();
+    // Recu d'une commande de la boutique (SB-annee-n°)
+    const sb = numero.match(/^SB-\d{4}-(\d+)$/);
+    if (sb) {
+      const c = (
+        await db.query(
+          `SELECT c.id, c.montant, c.payee_le, c.school_id, c.student_id, u.first_name, u.last_name, sr.admission_number AS matricule,
+                  (SELECT cl.name FROM class_students cs JOIN classes cl ON cl.id = cs.class_id WHERE cs.student_id = u.id AND cs.status = 'active' ORDER BY cs.enrolled_at DESC LIMIT 1) AS classe,
+                  e.first_name AS par_prenom, e.last_name AS par_nom
+           FROM boutique_commandes c JOIN users u ON u.id = c.student_id LEFT JOIN student_records sr ON sr.student_id = u.id
+           LEFT JOIN ordres_paiement o ON o.commande_id = c.id AND o.statut = 'confirme' LEFT JOIN users e ON e.id = o.confirme_par
+           WHERE c.id = $1 AND c.payee_le IS NOT NULL AND c.statut <> 'annulee' AND ${SQL_NUMERO_BOUTIQUE} = $2`,
+          [Number(sb[1]), numero]
+        )
+      ).rows[0];
+      if (!c) throw new ApiError(404, "Aucun paiement ne correspond à ce numéro.");
+      if (u.role !== "admin" && c.school_id !== u.schoolId) throw new ApiError(404, "Ce reçu a été émis par un autre établissement.");
+      return res.json({
+        success: true,
+        data: {
+          id: null,
+          lien: `#/boutique/recus/${c.id}`,
+          numero,
+          codeOk: code ? code === codeRecu(numero, c.montant) : null,
+          eleve: { id: c.student_id, nom: `${c.last_name} ${c.first_name}`, classe: c.classe, matricule: c.matricule },
+          frais: `Boutique · commande n° ${c.id}`,
+          montant: c.montant,
+          mode: "mobile_money",
+          date: c.payee_le,
+          enregistrePar: c.par_nom ? `${c.par_prenom} ${c.par_nom}` : null,
+          fraisMontant: c.montant,
+          fraisPaye: c.montant,
+          fraisReste: 0,
+        },
+      });
+    }
     const { rows } = await db.query(
       `SELECT p.id, p.numero_recu, p.recu_externe, p.montant, p.mode, p.created_at, p.confirme_le, p.student_id, p.school_id, p.frais_id,
               f.nom AS frais, f.montant AS frais_montant, u.first_name, u.last_name, sr.admission_number AS matricule,
