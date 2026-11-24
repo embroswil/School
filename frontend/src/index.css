@@ -1873,6 +1873,11 @@ html.ordi .guichet-caisse { position: sticky; top: 90px; }
 .bc-lettres { font-style: italic; margin: 12px 0 30px; }
 .bc-signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center; font-weight: 700; break-inside: avoid; }
 .bc-signatures span { padding-bottom: 60px; border-bottom: 1px dashed #98a2b3; }
+/* rapport de conseil d'enseignement (A4 paysage) */
+.rce-table th, .rce-table td { text-align: center !important; white-space: nowrap; font-weight: 400 !important; padding: 4px 3px; }
+.rce-table td:first-child, .rce-table th:first-child { text-align: left !important; font-weight: 700 !important; }
+.rce-legende { font-size: 9px; color: #475467; margin: 0 0 8px; }
+.rce-zone { min-height: 52px; border-bottom: 1px dashed #98a2b3; margin: 0 0 6px; }
 
 /* ---------- Zone d'impression : seule visible quand on imprime depuis l'application ---------- */
 #zone-impression { display: none; }

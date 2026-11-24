@@ -57,6 +57,9 @@ export default function MesClasses() {
           <h1 className="page-title">Mes classes</h1>
           <p className="muted">{`${classes.length} classe${classes.length > 1 ? 's' : ''} · ${classes.reduce((n, c) => n + Number(c.eleves || 0), 0)} élèves`}</p>
         </div>
+        <a className="btn btn-quiet" href="#/conseil-enseignement">
+          Conseil d’enseignement
+        </a>
       </div>
       {peu ? (
         <ul className="mcl-liste">{classes.map(ligne)}</ul>

@@ -81,6 +81,7 @@ export default function ClassDetail({ id }) {
       <h2 className="section-title">Suivi de la classe</h2>
       <Ligne Icone={IcCarte} titre="Résultats et classement" texte="Moyennes, rangs, taux de réussite" href={`#/classes/${id}/notes?onglet=resultats`} />
       <Ligne Icone={IcCarte} titre="Conseil de fin d’année" texte="Moyenne annuelle et décisions" href={`#/classes/${id}/annuel`} />
+      <Ligne Icone={IcActus} titre="Conseil d’enseignement" texte="Rapport de fin de trimestre par matière" href="#/conseil-enseignement" />
       <Ligne Icone={IcClasses} titre="Emploi du temps" texte="Cours de la semaine" href={`#/classes/${id}/emploi`} />
       <Ligne Icone={IcActus} titre="Évaluations" texte="Devoirs et notes publiés par les enseignants" href={`#/classes/${id}/notes`} />
       <Ligne Icone={IcClasses} titre="Présences" texte="Appel fait en classe par les enseignants" href={`#/classes/${id}/appel`} />

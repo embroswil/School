@@ -1246,6 +1246,115 @@ router.put("/mes-affectations", async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------- rapport de conseil d'enseignement (Minesec)
+
+// GET /api/notes/rapport-enseignement?matiere=&trimestre= : le tableau du « Rapport de conseil d'enseignement
+// de fin de trimestre », classe par classe, calcule avec l'appel, la presence des enseignants et les notes.
+// Sans matiere : la liste des matieres disponibles.
+router.get("/rapport-enseignement", async (req, res, next) => {
+  try {
+    const u = req.user;
+    if (!["principal", "teacher"].includes(u.role) || !u.schoolId) throw new ApiError(403, "Réservé à l'établissement et à ses enseignants");
+    const ecole = u.schoolId;
+    const prof = u.role === "teacher" ? u.id : null;
+    // matieres enseignees cette annee (pour un enseignant : les siennes)
+    const matieres = (
+      await db.query(
+        `SELECT DISTINCT s.id, s.name FROM class_subjects cs JOIN subjects s ON s.id = cs.subject_id
+         JOIN classes c ON c.id = cs.class_id JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
+         WHERE ay.school_id = $1 AND ($2::int IS NULL OR cs.teacher_id = $2) ORDER BY s.name`,
+        [ecole, prof]
+      )
+    ).rows;
+    const matiere = matieres.find((m) => m.id === entier(req.query.matiere));
+    const tri = [1, 2, 3].includes(entier(req.query.trimestre)) ? entier(req.query.trimestre) : 1;
+    if (!matiere) return res.json({ success: true, data: { matieres } });
+    const annee = (await db.query("SELECT name, start_date, end_date FROM academic_years WHERE school_id = $1 AND is_current LIMIT 1", [ecole])).rows[0];
+    if (!annee) throw new ApiError(404, "Aucune année scolaire en cours");
+    // minimal : trimestres fixes (rentree au 31 dec, janvier a mars, avril a la fin de l'annee)
+    const y = new Date(annee.start_date).getFullYear();
+    const [debut, fin] = [
+      [annee.start_date, `${y}-12-31`],
+      [`${y + 1}-01-01`, `${y + 1}-03-31`],
+      [`${y + 1}-04-01`, annee.end_date],
+    ][tri - 1];
+    const { rows } = await db.query(
+      `WITH cl AS (
+         SELECT DISTINCT c.id, c.name FROM class_subjects cs JOIN classes c ON c.id = cs.class_id
+         JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
+         WHERE ay.school_id = $1 AND cs.subject_id = $2),
+       el AS (
+         SELECT cs.class_id, cs.student_id, COALESCE(sr.gender, '') AS g FROM class_students cs
+         LEFT JOIN student_records sr ON sr.student_id = cs.student_id
+         WHERE cs.status = 'active' AND cs.class_id IN (SELECT id FROM cl)),
+       -- seances prevues (emploi du temps) jusqu'a aujourd'hui. Un cours est compte fait sauf absence
+       -- declaree ou constatee de l'enseignant : un appel manquant ne prouve pas que le cours n'a pas eu lieu.
+       se AS (
+         SELECT cr.class_id, cr.debut, d::date AS d, EXTRACT(EPOCH FROM cr.fin - cr.debut) / 3600 AS h,
+                (ab.id IS NULL AND su.constat IS DISTINCT FROM 'absent') AS faite,
+                su.contenu IS NOT NULL AS lecon
+         FROM generate_series($3::date, LEAST($4::date, CURRENT_DATE), '1 day') d
+         JOIN creneaux cr ON cr.jour = EXTRACT(ISODOW FROM d) AND cr.subject_id = $2 AND cr.class_id IN (SELECT id FROM cl)
+         LEFT JOIN class_subjects cs ON cs.class_id = cr.class_id AND cs.subject_id = cr.subject_id
+         LEFT JOIN cours_suivi su ON su.class_id = cr.class_id AND su.date = d::date AND su.debut = cr.debut
+         LEFT JOIN absences_enseignants ab ON ab.teacher_id = cs.teacher_id AND ab.date = d::date),
+       -- heures d'absence des eleves pendant les cours de la matiere
+       ab AS (
+         SELECT a.class_id, SUM(EXTRACT(EPOCH FROM cr.fin - cr.debut) / 3600) AS h FROM attendance a
+         JOIN creneaux cr ON cr.class_id = a.class_id AND cr.subject_id = $2 AND cr.jour = EXTRACT(ISODOW FROM a.date)
+           AND to_char(cr.debut, 'HH24MI')::int = a.period_number
+         WHERE a.status = 'absent' AND a.date BETWEEN $3 AND $4 AND a.class_id IN (SELECT id FROM cl) GROUP BY 1),
+       mo AS (
+         SELECT e.class_id, x.student_id, AVG(x.note * 20 / e.bareme) AS m FROM notes_eleves x JOIN evaluations e ON e.id = x.evaluation_id
+         WHERE e.subject_id = $2 AND e.sequence = ANY($5) AND x.note IS NOT NULL AND e.class_id IN (SELECT id FROM cl) GROUP BY 1, 2)
+       SELECT cl.id, cl.name,
+         (SELECT COUNT(*) FROM el WHERE el.class_id = cl.id AND el.g = 'male')::int AS g,
+         (SELECT COUNT(*) FROM el WHERE el.class_id = cl.id AND el.g = 'female')::int AS f,
+         (SELECT COUNT(*) FROM el WHERE el.class_id = cl.id)::int AS total,
+         (SELECT COALESCE(SUM(h), 0) FROM se WHERE se.class_id = cl.id)::float AS hd,
+         (SELECT COALESCE(SUM(h) FILTER (WHERE faite), 0) FROM se WHERE se.class_id = cl.id)::float AS hf,
+         (SELECT COUNT(*) FILTER (WHERE lecon) FROM se WHERE se.class_id = cl.id)::int AS lf,
+         COALESCE((SELECT h FROM ab WHERE ab.class_id = cl.id), 0)::float AS habs,
+         (SELECT COUNT(*) FROM mo JOIN el ON el.class_id = mo.class_id AND el.student_id = mo.student_id WHERE mo.class_id = cl.id AND el.g = 'male')::int AS g_notes,
+         (SELECT COUNT(*) FROM mo JOIN el ON el.class_id = mo.class_id AND el.student_id = mo.student_id WHERE mo.class_id = cl.id AND el.g = 'male' AND mo.m >= 10)::int AS g_reussi,
+         (SELECT COUNT(*) FROM mo JOIN el ON el.class_id = mo.class_id AND el.student_id = mo.student_id WHERE mo.class_id = cl.id AND el.g = 'female')::int AS f_notes,
+         (SELECT COUNT(*) FROM mo JOIN el ON el.class_id = mo.class_id AND el.student_id = mo.student_id WHERE mo.class_id = cl.id AND el.g = 'female' AND mo.m >= 10)::int AS f_reussi,
+         (SELECT COUNT(*) FROM mo WHERE mo.class_id = cl.id)::int AS notes,
+         (SELECT COUNT(*) FROM mo WHERE mo.class_id = cl.id AND mo.m >= 10)::int AS reussi,
+         (SELECT AVG(m) FROM mo WHERE mo.class_id = cl.id)::float AS mgc
+       FROM cl ORDER BY cl.name`,
+      [ecole, matiere.id, debut, fin, [tri * 2 - 1, tri * 2]]
+    );
+    const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
+    const lignes = rows.map((r) => {
+      const c = r.total * r.hd; // heures-eleves prevues
+      return {
+        classe: r.name,
+        g: r.g,
+        f: r.f,
+        total: r.total,
+        heures: arrondi(r.hd),
+        heuresEleves: arrondi(c),
+        absences: arrondi(r.habs),
+        presences: arrondi(c - r.habs),
+        assiduite: pct(c - r.habs, c),
+        lf: r.lf,
+        hd: arrondi(r.hd),
+        hf: arrondi(r.hf),
+        tauxHeures: pct(r.hf, r.hd),
+        tg: pct(r.g_reussi, r.g_notes),
+        tf: pct(r.f_reussi, r.f_notes),
+        tr: pct(r.reussi, r.notes),
+        mgc: arrondi(r.mgc),
+      };
+    });
+    const ecoleInfo = (await db.query("SELECT name, city FROM schools WHERE id = $1", [ecole])).rows[0];
+    res.json({ success: true, data: { matieres, matiere: matiere.name, trimestre: tri, annee: annee.name, du: debut, au: fin, ecole: ecoleInfo, lignes } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 module.exports = router;
 module.exports.calculerBulletins = calculerBulletins;
 module.exports.classeBulletin = classeBulletin;

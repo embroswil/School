@@ -42,6 +42,7 @@ import MesAffectations from './pages/MesAffectations.jsx'
 import Devoirs from './pages/Devoirs.jsx'
 import EmploiDuTemps, { MonEmploi } from './pages/EmploiDuTemps.jsx'
 import ConseilAnnuel from './pages/ConseilAnnuel.jsx'
+import RapportEnseignement from './pages/RapportEnseignement.jsx'
 import DisciplineImport from './pages/DisciplineImport.jsx'
 import Abonnement from './pages/Abonnement.jsx'
 import AbonnementsAdmin from './pages/AbonnementsAdmin.jsx'
@@ -227,6 +228,7 @@ function Pages({ path }) {
   if (path === '/discipline') return reserve(gestion || user.role === 'teacher', <DisciplineImport />)
   const emploiMatch = path.match(/^\/classes\/(\d+)\/emploi$/)
   if (emploiMatch) return reserve(gestion || user.role === 'teacher', <EmploiDuTemps key={emploiMatch[1]} id={Number(emploiMatch[1])} />)
+  if (path === '/conseil-enseignement') return reserve(['principal', 'teacher'].includes(user.role), <RapportEnseignement />)
   const annuelMatch = path.match(/^\/classes\/(\d+)\/annuel$/)
   if (annuelMatch) return reserve(gestion || user.role === 'teacher', <ConseilAnnuel key={annuelMatch[1]} id={Number(annuelMatch[1])} />)
   const devoirsMatch = path.match(/^\/classes\/(\d+)\/devoirs$/)

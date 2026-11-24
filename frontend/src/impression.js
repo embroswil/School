@@ -190,7 +190,7 @@ export function avisRelanceHtml(d) {
     .join('')
 }
 
-// Imprime un document HTML au format voulu (ticket : 80 mm de large ; a5 ; a4)
+// Imprime un document HTML au format voulu (ticket : 80 mm de large ; a5 ; a4 ; a4-paysage)
 export function imprimer(html, format = 'a5') {
   let zone = document.getElementById('zone-impression')
   if (!zone) {
@@ -207,7 +207,7 @@ export function imprimer(html, format = 'a5') {
   document.body.appendChild(page)
   zone.className = `impression-${format}`
   zone.innerHTML = html
-  let taille = format === 'a4' || format === 'double' ? 'A4 portrait' : 'A5 portrait'
+  let taille = format === 'a4-paysage' ? 'A4 landscape' : format === 'a4' || format === 'double' ? 'A4 portrait' : 'A5 portrait'
   if (format === 'ticket') {
     // ticket : 80 mm de large, hauteur du recu (mesuree hors ecran)
     zone.style.cssText = 'display:block;position:absolute;left:-10000px;top:0;width:74mm'
