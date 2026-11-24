@@ -52,7 +52,8 @@ const verifierClasse = async (u, classId, subjectId = null, mode = "lecture") =>
 const elevesDe = async (classId) =>
   (
     await db.query(
-      `SELECT u.id, u.first_name, u.last_name FROM class_students cs JOIN users u ON u.id = cs.student_id
+      `SELECT u.id, u.first_name, u.last_name, regexp_replace(COALESCE(sr.admission_number, ''), '^\\d+-', '') AS matricule, sr.gender, sr.date_of_birth
+       FROM class_students cs JOIN users u ON u.id = cs.student_id LEFT JOIN student_records sr ON sr.student_id = u.id
        WHERE cs.class_id = $1 AND cs.status = 'active' ORDER BY u.last_name, u.first_name`,
       [classId]
     )
@@ -897,6 +898,9 @@ router.get("/classes/:id/annuel", async (req, res, next) => {
         id: e.id,
         prenom: e.first_name,
         nom: e.last_name,
+        matricule: e.matricule || "",
+        sexe: e.gender || "",
+        naissance: e.date_of_birth,
         trimestres: ts,
         annuelle,
         decision: d?.decision || null,

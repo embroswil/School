@@ -281,8 +281,18 @@ function EspaceEtablissement() {
   const aPreparer = boutique.data ? boutique.data.commandes.filter((c) => c.statut === 'payee').length : 0
   const aVerifier = prof.data ? prof.data.cours.filter((c) => c.etat === 'a_verifier').length : null
   const aConfirmer = ordres.data?.length ?? null
+  // Mise en route : les 5 etapes qui rendent l'etablissement operationnel (affichees tant qu'il en reste)
+  const etapes = [
+    [d.eleves > 0, '#/dossier', 'Ajouter les élèves', 'Photo, Excel ou PDF des listes de classes : tout est reconnu'],
+    [d.enseignants > 0, '#/import-enseignants', 'Ajouter les enseignants', 'La liste des enseignants et de leurs classes'],
+    [d.frais > 0, '#/scolarite?onglet=frais', 'Saisir les frais', 'Pension, APEE, tranches et échéances'],
+    [d.numeros, '#/scolarite?onglet=frais', 'Numéros Orange Money et MTN', 'Pour recevoir les paiements des parents'],
+    [d.creneaux > 0, '#/import-emplois', 'Emplois du temps', 'Une photo par classe suffit'],
+  ]
+  const faites = etapes.filter((e) => e[0]).length
+  const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
+  const resteARembourser = Math.max(0, (d.abonnement || 0) - (d.gain_service || 0))
   const taches = [
-    d.eleves === 0 && ['#/dossier', 'Installez votre établissement', 'Ajoutez votre dossier : élèves, enseignants, emplois du temps, frais… tout est reconnu'],
     d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`, 'Vérifiez et validez leurs comptes'],
     demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`, 'Demandes de suivi d’un élève'],
     aPreparer > 0 && ['#/boutique-gestion', `${aPreparer} commande(s) de la boutique à préparer`, 'Payées par les parents, à préparer puis à remettre'],
@@ -300,6 +310,25 @@ function EspaceEtablissement() {
       )}
       <EnteteEtablissement d={d} ecole={user.schoolId} onChange={() => t.reload()} />
 
+      {t.data && faites < etapes.length && (
+        <>
+          <h2 className="section-title">{`Mise en route · ${faites}/${etapes.length}`}</h2>
+          <ol className="etapes">
+            {etapes.map(([fait, href, titre, texte], i) => (
+              <li key={titre}>
+                <span className="numero" style={fait ? { background: 'var(--ok)' } : undefined}>
+                  {fait ? <IcCoche size={16} /> : i + 1}
+                </span>
+                <a href={href} style={{ color: 'inherit', flex: 1 }}>
+                  <b style={fait ? { color: 'var(--muted)' } : undefined}>{titre}</b>
+                  <span>{fait ? 'Fait' : texte}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+
       <h2 className="section-title">Aujourd’hui</h2>
       <div className="jour-chiffres">
         <a href="#/absences">
@@ -315,6 +344,31 @@ function EspaceEtablissement() {
           <span>paiement(s) à confirmer</span>
         </a>
       </div>
+
+      {t.data && (d.abonnement > 0 || d.gain_service > 0 || d.gain_boutique > 0) && (
+        <>
+          <h2 className="section-title">Ce que Sùkûl vous rapporte cette année</h2>
+          <div className="jour-chiffres">
+            <a href="#/scolarite">
+              <b style={{ fontSize: 'clamp(16px, 4.4vw, 24px)', color: 'var(--ok)' }}>{fcfa(d.gain_service)}</b>
+              <span>frais de service encaissés</span>
+            </a>
+            <a href="#/boutique-gestion">
+              <b style={{ fontSize: 'clamp(16px, 4.4vw, 24px)' }}>{fcfa(d.gain_boutique)}</b>
+              <span>ventes de la boutique</span>
+            </a>
+            <a href="#/abonnement">
+              <b style={{ fontSize: 'clamp(16px, 4.4vw, 24px)' }}>{fcfa(d.abonnement)}</b>
+              <span>abonnement Sùkûl par an</span>
+            </a>
+          </div>
+          {d.abonnement > 0 && (
+            <p className="muted" style={{ fontSize: 14, margin: '8px 2px 0' }}>
+              {resteARembourser ? `Encore ${fcfa(resteARembourser)} de frais de service et votre abonnement est remboursé.` : 'Les frais de service ont déjà remboursé votre abonnement.'}
+            </p>
+          )}
+        </>
+      )}
 
       {taches.length > 0 && (
         <>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { BoutonExcel, exporterExcel } from '../export.jsx'
 
 const n2 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
 
@@ -19,6 +20,30 @@ export default function ConseilAnnuel({ id }) {
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Calcul…</p>
   const { eleves, stats, decisions, modifiable } = d.data
+
+  // Resultats de fin d'annee en Excel, pour les reporter sur cartescolaire.cm (Minesec) sans ressaisie
+  function exporter() {
+    exporterExcel(`Conseil-${d.data.classe}`, [
+      {
+        nom: d.data.classe,
+        lignes: eleves.map((e, i) => ({
+          'N°': i + 1,
+          Matricule: e.matricule,
+          Nom: e.nom,
+          Prénom: e.prenom,
+          Sexe: { male: 'M', female: 'F' }[e.sexe] || e.sexe,
+          'Date de naissance': e.naissance ? new Date(e.naissance).toLocaleDateString('fr-FR') : '',
+          'Moyenne T1': e.trimestres[0],
+          'Moyenne T2': e.trimestres[1],
+          'Moyenne T3': e.trimestres[2],
+          'Moyenne annuelle': e.annuelle,
+          Rang: e.rang,
+          Décision: decisions[dec[e.id]?.decision || e.decision || e.proposition] || '',
+          Observation: dec[e.id]?.observation ?? e.observation,
+        })),
+      },
+    ])
+  }
 
   async function enregistrer() {
     setError('')
@@ -38,7 +63,10 @@ export default function ConseilAnnuel({ id }) {
 
   return (
     <>
-      <h1 className="page-title">Conseil de fin d’année · {d.data.classe}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <h1 className="page-title">Conseil de fin d’année · {d.data.classe}</h1>
+        <BoutonExcel onClick={exporter} texte="Excel pour cartescolaire.cm" />
+      </div>
       <p className="lede">Moyenne annuelle = moyenne des trois trimestres. Une décision est proposée automatiquement (≥ 10 : admis ; ≥ 9 : sous réserve ; sinon : redouble), modifiable.</p>
       <div className="stats" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginTop: 0 }}>
         <div className="stat">

@@ -48,7 +48,19 @@ router.get("/tableau", async (req, res, next) => {
         (SELECT COUNT(*)::int FROM users WHERE school_id = $1 AND role = 'parent') AS parents,
         (SELECT COUNT(*)::int FROM classes c JOIN academic_years ay ON ay.id = c.academic_year_id WHERE ay.school_id = $1 AND ($2::int IS NULL OR ay.id = $2)) AS classes,
         (SELECT COUNT(*)::int FROM users u WHERE u.school_id = $1 AND u.role = 'student'
-           AND NOT EXISTS (SELECT 1 FROM class_students cs WHERE cs.student_id = u.id AND cs.status = 'active' AND ($2::int IS NULL OR cs.academic_year_id = $2))) AS eleves_sans_classe`,
+           AND NOT EXISTS (SELECT 1 FROM class_students cs WHERE cs.student_id = u.id AND cs.status = 'active' AND ($2::int IS NULL OR cs.academic_year_id = $2))) AS eleves_sans_classe,
+        -- mise en route : ce qui est deja installe
+        (SELECT COUNT(*)::int FROM frais_scolaires WHERE school_id = $1 AND (academic_year_id IS NULL OR academic_year_id = $2)) AS frais,
+        (SELECT orange_money IS NOT NULL OR mtn_momo IS NOT NULL FROM schools WHERE id = $1) AS numeros,
+        (SELECT COUNT(*)::int FROM creneaux WHERE school_id = $1) AS creneaux,
+        -- ce que Sukul rapporte a l'etablissement depuis le debut de l'annee scolaire
+        (SELECT COALESCE(SUM(frais_service), 0)::int FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi'
+           AND created_at >= COALESCE((SELECT start_date FROM academic_years WHERE id = $2), date_trunc('year', NOW())))
+        + (SELECT COALESCE(SUM(frais_service), 0)::int FROM ordres_paiement WHERE school_id = $1 AND commande_id IS NOT NULL AND statut = 'confirme'
+           AND confirme_le >= COALESCE((SELECT start_date FROM academic_years WHERE id = $2), date_trunc('year', NOW()))) AS gain_service,
+        (SELECT COALESCE(SUM(montant), 0)::int FROM boutique_commandes WHERE school_id = $1 AND payee_le IS NOT NULL AND statut <> 'annulee'
+           AND payee_le >= COALESCE((SELECT start_date FROM academic_years WHERE id = $2), date_trunc('year', NOW()))) AS gain_boutique,
+        (SELECT CASE WHEN gratuit THEN 0 ELSE montant END FROM abonnements WHERE school_id = $1 ORDER BY id DESC LIMIT 1) AS abonnement`,
       [ecole, annee?.id || null]
     );
     res.json({ success: true, data: { ...rows[0], annee } });
