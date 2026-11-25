@@ -6,7 +6,7 @@ const router = express.Router();
 const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate, isPlatformAdmin } = require("../../middlewares/auth.middleware");
-const { notifierUtilisateur, emailNotification } = require("../../utils/notifier");
+const { notifierUtilisateur } = require("../../utils/notifier");
 const S = require("./service");
 
 router.use(authenticate);

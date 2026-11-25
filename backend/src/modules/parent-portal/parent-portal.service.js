@@ -1,5 +1,4 @@
 const parentPortalSql = require("./parent-portal.sql");
-const studentsSql = require("../students/students.sql");
 const ApiError = require("../../utils/ApiError");
 
 

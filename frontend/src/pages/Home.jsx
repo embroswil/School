@@ -4,11 +4,10 @@ import { useAuth } from '../auth.jsx'
 import { langue } from '../i18n.jsx'
 import { useApi } from '../hooks.js'
 import { Publication } from './Actualites.jsx'
-import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcBillets, IcSac, IcFamille, IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcPhoto, IcPlus, IcProf, IcProfil, IcBouclier, IcTableau } from '../icones.jsx'
+import { IcBillets, IcSac, IcFamille, IcActus, IcScan, IcCarte, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcPhoto, IcPlus, IcProf, IcBouclier, IcTableau } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -26,20 +25,8 @@ function Bientot() {
 const TYPES_ECOLE = { maternelle: 'Maternelle', primaire: 'Primaire', college: 'Collège', lycee: 'Lycée' }
 const nombre = (n) => (n === undefined || n === null ? '…' : Number(n).toLocaleString('fr-FR'))
 
-function Kpi({ Icone, valeur, libelle, detail }) {
-  return (
-    <div className="kpi">
-      <span className="kpi-ico">
-        <Icone size={18} />
-      </span>
-      <b>{valeur}</b>
-      <span>{libelle}</span>
-      {detail && <small>{detail}</small>}
-    </div>
-  )
-}
-
-// Tableau de bord de l'administrateur de la plateforme
+// Tableau de bord de l'administrateur de la plateforme : la plateforme en une carte, ce qui attend,
+// 4 chiffres, 4 acces, puis les etablissements les plus actifs
 function EspaceAdmin() {
   const { user } = useAuth()
   const st = useApi('/api/schools/statistiques')
@@ -51,116 +38,85 @@ function EspaceAdmin() {
     if (jours === 1) return 'actif hier'
     return `actif il y a ${jours} j`
   }
-  const aujourdhui = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-
+  const ecoles = [...(d.ecoles || [])].sort((x, y) => String(y.derniere_activite || '').localeCompare(String(x.derniere_activite || ''))).slice(0, 6)
   return (
     <>
-      <section className="hero-card" style={{ marginTop: 4 }}>
-        <span className="badge">Plateforme Sùkûl</span>
-        <h2 style={{ marginTop: 10 }}>Bonjour, {user.firstName}</h2>
-        <p style={{ textTransform: 'capitalize' }}>{aujourdhui}</p>
-        <div className="hero-ligne">
+      {st.error && <p className="note note-error">{st.error}</p>}
+      <section className="adm-hero">
+        <span className="ent-hero-badge">
+          <IcBouclier size={15} /> Plateforme Sùkûl
+        </span>
+        <b>{`Bonjour, ${user.firstName}`}</b>
+        <span className="adm-hero-chiffres">
           <span>
-            <b>{nombre(d.etablissements_actifs)}</b> établissement(s) actif(s)
+            <b>{nombre(d.etablissements_actifs)}</b>
+            <small>établissements actifs</small>
           </span>
           <span>
-            <b>{nombre(d.inscrits_7j)}</b> inscription(s) cette semaine
+            <b>{nombre(d.inscrits_7j)}</b>
+            <small>inscriptions en 7 jours</small>
           </span>
-        </div>
+        </span>
       </section>
 
-      <h2 className="section-title">À traiter</h2>
-      {d.demandes > 0 ? (
-        <Action
-          href="#/etablissements"
-          Icone={IcEcole}
-          titre="Demandes d’établissements"
-          texte="Écoles en attente d’activation"
-          compteur={d.demandes}
-          urgent
-        />
-      ) : (
-        <div className="action-row" style={{ boxShadow: 'none' }}>
-          <span className="ico" style={{ background: 'var(--ok-soft)', color: 'var(--ok)' }}>
-            <IcCoche />
-          </span>
+      {d.demandes > 0 && (
+        <a className="adm-alerte" href="#/etablissements">
+          <IcEcole size={20} />
           <span>
-            <b>Tout est à jour</b>
-            <small>Aucune demande d’établissement en attente</small>
+            <b>{`${d.demandes} demande(s) d’établissement`}</b>
+            <small>À vérifier puis activer</small>
           </span>
-        </div>
+          <IcChevron size={18} />
+        </a>
       )}
 
-      <h2 className="section-title">Indicateurs</h2>
-      <div className="kpis">
-        <Kpi Icone={IcEcole} valeur={nombre(d.etablissements)} libelle="Établissements" detail={`${nombre(d.etablissements_actifs)} actifs`} />
-        <Kpi Icone={IcEleves} valeur={nombre(d.eleves)} libelle="Élèves" detail={`${nombre(d.eleves_avec_compte)} avec un compte`} />
-        <Kpi Icone={IcClasses} valeur={nombre(d.enseignants)} libelle="Enseignants" detail="comptes validés" />
-        <Kpi Icone={IcProfil} valeur={nombre(d.parents)} libelle="Parents" detail="inscrits" />
-        <Kpi Icone={IcActus} valeur={nombre(d.inscrits_7j)} libelle="Nouveaux comptes" detail="7 derniers jours" />
-        <Kpi Icone={IcCarte} valeur={`${nombre(d.paiements_total)}`} libelle="FCFA payés en ligne" detail="via Sùkûl, à reverser aux écoles" />
+      <div className="chiffres">
+        <Chiffre href="#/utilisateurs" Icone={IcEleves} teinte="bleu" valeur={nombre(d.eleves)} libelle="Élèves" detail={d.eleves_avec_compte != null && `${nombre(d.eleves_avec_compte)} avec compte`} />
+        <Chiffre href="#/utilisateurs" Icone={IcProf} teinte="violet" valeur={nombre(d.enseignants)} libelle="Enseignants" detail="comptes validés" />
+        <Chiffre href="#/utilisateurs" Icone={IcFamille} teinte="bleu" valeur={nombre(d.parents)} libelle="Parents" detail="inscrits" />
+        <Chiffre href="#/abonnements" Icone={IcBillets} teinte="vert" valeur={nombre(d.paiements_total)} libelle="FCFA payés en ligne" detail="à reverser" />
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h2 className="section-title">Établissements</h2>
-        <a href="#/etablissements" style={{ fontWeight: 700, fontSize: 14 }}>
-          Gérer
-        </a>
+      <nav className="ent-actions" aria-label="Accès directs">
+        {[
+          ['#/abonnements', IcCarte, 'Abonnements'],
+          ['#/litiges', IcActus, 'Litiges'],
+          ['#/quotas-ia', IcScan, 'Lectures automatiques'],
+          ['#/etablissements', IcPlus, 'Ajouter un établissement'],
+        ].map(([href, Icone, titre]) => (
+          <a key={href + titre} href={href}>
+            <Icone size={22} />
+            <span>{titre}</span>
+          </a>
+        ))}
+      </nav>
+
+      <div className="par-titre">
+        <h2>Établissements</h2>
+        <a href="#/etablissements">Tout voir</a>
       </div>
       {d.ecoles?.length === 0 && <p className="muted">Aucun établissement pour le moment.</p>}
-      {d.ecoles?.map((e) => (
-        <a className="ecole-carte" key={e.id} href={`#/etablissements/${e.id}`}>
-          <div className="ecole-tete">
-            <span className="pastille-ico" style={{ width: 42, height: 42 }}>
-              <IcEcole size={20} />
-            </span>
-            <div className="row-main">
-              <div className="row-title">{e.name}</div>
-              <div className="row-sub">
-                {TYPES_ECOLE[e.type] || ''}
-                {e.city ? ` · ${e.city}` : ''} · {recente(e.derniere_activite)}
-              </div>
-            </div>
-            {e.is_active ? <span className="tag tag-now">Actif</span> : <span className="tag tag-off">Suspendu</span>}
-          </div>
-          <div className="ecole-chiffres">
-            <span>
-              <b>{nombre(e.eleves)}</b> élèves
-            </span>
-            <span>
-              <b>{nombre(e.enseignants)}</b> enseignants
-            </span>
-            <span>
-              <b>{nombre(e.parents)}</b> parents
-            </span>
-          </div>
-        </a>
-      ))}
-
-      <h2 className="section-title">Raccourcis</h2>
-      <Action href="#/abonnements" Icone={IcCarte} titre="Abonnements des établissements" texte="Tarifs, paiements à confirmer, revenus" />
-      <Action href="#/litiges" Icone={IcCoche} titre="Litiges de paiement" texte="Paiements contestés entre parents et établissements" />
-      <Action href="#/etablissements" Icone={IcPlus} titre="Ajouter un établissement" texte="Créer une école et désigner son administrateur" />
-      <Action href="#/utilisateurs" Icone={IcEleves} titre="Comptes utilisateurs" texte="Rechercher, activer ou désactiver un compte" />
+      <ul className="adm-ecoles">
+        {ecoles.map((e, i) => (
+          <li key={e.id}>
+            <a href={`#/etablissements/${e.id}`}>
+              <span className="par-pastille" style={{ background: TEINTES[i % TEINTES.length][0] }}>
+                {(e.name || '?')[0]}
+              </span>
+              <span className="adm-ecole-texte">
+                <b data-brut>{e.name}</b>
+                <small>{[TYPES_ECOLE[e.type], e.city, recente(e.derniere_activite)].filter(Boolean).join(' · ')}</small>
+              </span>
+              <span className="adm-ecole-nb">
+                <b>{nombre(e.eleves)}</b>
+                <small>élèves</small>
+              </span>
+              <i className={e.is_active ? 'actif' : ''} title={e.is_active ? 'Actif' : 'Suspendu'} />
+            </a>
+          </li>
+        ))}
+      </ul>
     </>
-  )
-}
-
-function Action({ href, Icone, titre, texte, compteur, urgent }) {
-  return (
-    <a className={`action-row ${urgent && compteur ? 'urgent' : ''}`} href={href}>
-      <span className="ico">
-        <Icone />
-      </span>
-      <span>
-        <b>{titre}</b>
-        <small>{texte}</small>
-      </span>
-      <span className="fin">
-        {compteur > 0 && <span className="count">{compteur}</span>}
-        <IcChevron size={18} />
-      </span>
-    </a>
   )
 }
 
@@ -413,19 +369,16 @@ function EspaceEtablissement() {
         </>
       )}
 
-      {/* acces directs, en tuiles defilantes */}
+      {/* acces directs : ce que les chiffres ci-dessous n'ouvrent pas deja (eleves, enseignants, scolarite, absences) */}
       <nav className="ent-actions" aria-label="Accès directs">
         {[
-          ['#/eleves', IcEleves, 'Élèves'],
-          ['#/presence-enseignants', IcProf, 'Enseignants'],
-          ['#/scolarite', IcCarte, 'Scolarité'],
           ['#/actualites', IcDocument, 'Documents'],
           ['#/boutique-gestion', IcSac, 'Boutique'],
           ['#/conseil-classe', IcClasses, 'Conseil de classe'],
           ['#/conseil-enseignement', IcTableau, 'Conseil d’enseignement'],
         ].map(([href, Icone, titre]) => (
           <a key={href} href={href}>
-            <Icone size={24} />
+            <Icone size={22} />
             <span>{titre}</span>
           </a>
         ))}

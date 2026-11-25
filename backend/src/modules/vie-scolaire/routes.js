@@ -6,7 +6,7 @@ const db = require("../../config/db");
 const ApiError = require("../../utils/ApiError");
 const { authenticate } = require("../../middlewares/auth.middleware");
 const { notifierUtilisateur } = require("../../utils/notifier");
-const { lireDocument, normaliser } = require("../../utils/ia");
+const { normaliser } = require("../../utils/ia");
 
 router.use(authenticate);
 const entier = (v) => parseInt(v, 10);

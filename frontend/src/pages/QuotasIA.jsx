@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Field, Note } from '../ui.jsx'
+import { Note } from '../ui.jsx'
 
 const TYPES = { document: 'Documents du fil', 'liste-eleves': 'Listes d’élèves', 'liste-enseignants': 'Listes d’enseignants', frais: 'Frais', discipline: 'Discipline', emploi: 'Emplois du temps', absences: 'Cahiers d’appel' }
 

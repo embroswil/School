@@ -9,7 +9,7 @@ import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
 import { precharger } from './prechargement.js'
 import { envoisEnAttente, envoyerAttente } from './horsligne.js'
-import { IcAccueil, IcSac, IcActus, IcAppel, IcBillets, IcCarte, IcCasquette, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier, IcInfo, IcTrombone, IcHorlogePlus, IcTableauNoir, IcAppelListe } from './icones.jsx'
+import { IcAccueil, IcSac, IcActus, IcAppel, IcBillets, IcCarte, IcCloche, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcMegaphone, IcMessages, IcPlus, IcProfil, IcRetour, IcBouclier, IcCalendrier, IcInfo, IcTrombone, IcHorlogePlus, IcTableauNoir, IcAppelListe } from './icones.jsx'
 
 // Appels et notes gardes sur le telephone faute de reseau : rappel discret, envoi a la demande
 function EnvoisEnAttente() {

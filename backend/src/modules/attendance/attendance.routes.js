@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const attendanceController = require("./attendance.controller");
-const { authenticate, authorize, isAdminOrTeacher, isAdmin } = require("../../middlewares/auth.middleware");
+const { authenticate, authorize } = require("../../middlewares/auth.middleware");
 
 router.use(authenticate);
 

@@ -373,6 +373,26 @@ router.put("/mes-cours/cahier", async (req, res, next) => {
   }
 });
 
+// POST /api/presence-enseignants/mes-cours/cahier/lire { images } : photo du cahier de textes papier,
+// lue par l'IA (comptee sur le plafond de l'etablissement) ; le texte revient a l'enseignant, qui le relit avant d'enregistrer
+router.post("/mes-cours/cahier/lire", async (req, res, next) => {
+  try {
+    if (req.user.role !== "teacher") throw new ApiError(403, "Accès réservé aux enseignants");
+    const images = (Array.isArray(req.body?.images) ? req.body.images : []).filter((i) => typeof i === "string" && i.startsWith("data:image/")).slice(0, 3);
+    if (!images.length) throw new ApiError(400, "Aucune photo à lire");
+    const d = await require("../../utils/quota-ia").lireAvecQuota(req, "cahier-textes", {
+      images,
+      consigne: `Cette photo montre une page de cahier de textes d'une classe (établissement scolaire camerounais), souvent écrite à la main.
+Recopie fidèlement ce qui a été fait pendant le cours : titre du chapitre ou de la leçon, points traités, exercices donnés.
+Garde l'ordre et les retours à la ligne, sans commentaire ni mise en forme. Ignore les signatures, cachets et dates en marge.
+Format : {"contenu": ""}`,
+    });
+    res.json({ success: true, data: { contenu: String(d?.contenu || "").trim().slice(0, 2000) } });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // DELETE /api/presence-enseignants/:id : retirer une absence signalee
 router.delete("/:id", async (req, res, next) => {
   try {

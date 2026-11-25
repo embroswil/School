@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { envoyerOuGarder, lireCopie } from '../horsligne.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { IcCalendrier, IcChevron } from '../icones.jsx'
+import { IcCalendrier, IcChevron, IcPhoto } from '../icones.jsx'
+import { api } from '../api.js'
+import { preparerDocument } from '../lecture-fichier.js'
 
 const enChaine = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const decaler = (jour, n) => {
@@ -103,6 +105,28 @@ function Cours({ c, v, onMaj }) {
   const [edition, setEdition] = useState(false)
   const [texte, setTexte] = useState(c.contenu || '')
   const [attente, setAttente] = useState(() => presenceEnAttente(c, v?.date))
+  const photo = useRef(null)
+  const [lecture, setLecture] = useState(false)
+
+  // photo du cahier de textes papier : le texte lu s'ajoute a la saisie, a relire avant d'enregistrer
+  async function lirePhoto(e) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    setLecture(true)
+    setError('')
+    try {
+      const { images } = await preparerDocument([f])
+      const r = await api.post('/api/presence-enseignants/mes-cours/cahier/lire', { images })
+      const lu = r.data?.contenu || ''
+      if (!lu) setError('Aucun texte reconnu sur la photo. Reprenez-la plus près, bien éclairée.')
+      else setTexte((t) => (t.trim() ? `${t.trim()}\n${lu}` : lu))
+      setEdition(true)
+    } catch (err) {
+      setError(err.message)
+    }
+    setLecture(false)
+  }
 
   async function confirmer() {
     setBusy(true)
@@ -172,6 +196,7 @@ function Cours({ c, v, onMaj }) {
 
       {commence(c, v) && !c.absent && (
         <div className="mc-cahier">
+          <input ref={photo} type="file" accept="image/*" capture="environment" hidden onChange={lirePhoto} />
           {!edition && c.contenu && (
             <p>
               <span>Cahier de textes</span>
@@ -180,10 +205,13 @@ function Cours({ c, v, onMaj }) {
           )}
           {edition ? (
             <>
-              <textarea className="input" rows={3} value={texte} onChange={(e) => setTexte(e.target.value)} placeholder="Chapitre, leçon ou exercices traités pendant ce cours" autoFocus />
+              <textarea className="input" rows={4} value={texte} onChange={(e) => setTexte(e.target.value)} placeholder="Chapitre, leçon ou exercices traités pendant ce cours" autoFocus />
               <div className="mc-boutons">
-                <button type="button" className="btn" disabled={busy} onClick={enregistrer}>
+                <button type="button" className="btn" disabled={busy || lecture} onClick={enregistrer}>
                   Enregistrer
+                </button>
+                <button type="button" className="btn btn-quiet" disabled={lecture} onClick={() => photo.current?.click()}>
+                  <IcPhoto size={17} /> {lecture ? 'Lecture…' : 'Photo du cahier'}
                 </button>
                 <button type="button" className="btn btn-quiet" onClick={() => (setEdition(false), setTexte(c.contenu || ''))}>
                   Annuler
@@ -194,6 +222,9 @@ function Cours({ c, v, onMaj }) {
             <div className="mc-liens">
               <button type="button" className="lien-action" onClick={() => setEdition(true)}>
                 {c.contenu ? 'Modifier le cahier de textes' : 'Cahier de textes'}
+              </button>
+              <button type="button" className="lien-action" disabled={lecture} onClick={() => photo.current?.click()}>
+                <IcPhoto size={15} /> {lecture ? 'Lecture de la photo…' : 'Prendre en photo'}
               </button>
               {v.date === v.aujourdhui && !c.appel && !termine(c, v) && (
                 <a className="lien-action" href={`#/classes/${c.class_id}/appel`}>
