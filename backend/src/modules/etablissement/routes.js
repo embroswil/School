@@ -108,26 +108,7 @@ router.get("/statistiques", async (req, res, next) => {
            SELECT s.name AS matiere, ROUND(AVG(n.note * 20 / e.bareme)::numeric, 2) AS moyenne
              FROM notes_eleves n JOIN evaluations e ON e.id = n.evaluation_id JOIN subjects s ON s.id = e.subject_id
             WHERE e.school_id = $1 AND e.academic_year_id = $2 AND n.note IS NOT NULL
-            GROUP BY s.name ORDER BY COUNT(*) DESC LIMIT 6) x) AS matieres,
-        -- activites recentes : paiements, commandes de la boutique, documents et informations (il_y_a en secondes)
-        (SELECT json_agg(x) FROM (
-           SELECT genre, titre, montant, lien, EXTRACT(EPOCH FROM NOW() - quand)::int AS il_y_a FROM (
-             (SELECT 'paiement' AS genre, u.first_name || ' ' || u.last_name AS titre, ps.montant, COALESCE(ps.confirme_le, ps.created_at) AS quand, NULL::int AS lien
-                FROM paiements_scolaires ps JOIN users u ON u.id = ps.student_id
-               WHERE ps.school_id = $1 AND ps.statut = 'reussi' ORDER BY 4 DESC LIMIT 5)
-             UNION ALL
-             (SELECT 'commande', u.first_name || ' ' || u.last_name, c.montant, c.payee_le, c.id
-                FROM boutique_commandes c JOIN users u ON u.id = c.student_id
-               WHERE c.school_id = $1 AND c.payee_le IS NOT NULL ORDER BY c.payee_le DESC LIMIT 5)
-             UNION ALL
-             (SELECT CASE WHEN p.source = 'document' THEN 'document' ELSE 'information' END, p.title, NULL, p.created_at, p.id
-                FROM publications p WHERE p.school_id = $1 AND p.title IS NOT NULL ORDER BY p.created_at DESC LIMIT 5)
-           ) t ORDER BY quand DESC LIMIT 5) x) AS activite,
-        -- la communication a mettre en avant : l'evenement a venir le plus proche, sinon la derniere annonce
-        (SELECT row_to_json(p) FROM (
-           SELECT id, title, body, type, event_date, event_place, image, medias FROM publications
-            WHERE school_id = $1 AND class_id IS NULL AND type IN ('annonce', 'evenement') AND audience <> 'interne'
-            ORDER BY (event_date >= NOW()) IS TRUE DESC, pinned DESC, created_at DESC LIMIT 1) p) AS communication`,
+            GROUP BY s.name ORDER BY COUNT(*) DESC LIMIT 6) x) AS matieres`,
       [ecole, annee?.id || null]
     );
     res.json({ success: true, data: rows[0] });

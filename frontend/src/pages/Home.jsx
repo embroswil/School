@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, apiBase } from '../api.js'
+import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { langue } from '../i18n.jsx'
 import { useApi } from '../hooks.js'
@@ -8,7 +8,7 @@ import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcBillets, IcSac, IcFamille, IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcPhoto, IcPlus, IcProf, IcProfil, IcBouclier, IcMegaphone, IcTableau } from '../icones.jsx'
+import { IcBillets, IcSac, IcFamille, IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcPhoto, IcPlus, IcProf, IcProfil, IcBouclier, IcTableau } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -354,18 +354,12 @@ function Tendance({ valeurs }) {
   )
 }
 
-const ilYa = (sec) => (sec < 3600 ? `Il y a ${Math.max(1, Math.round(sec / 60))} min` : sec < 86400 ? `Il y a ${Math.round(sec / 3600)} h` : `Il y a ${Math.round(sec / 86400)} jours`)
-const ACTIVITES = {
-  paiement: [IcBillets, 'vert', 'Paiement reçu', () => '#/scolarite'],
-  commande: [IcSac, 'bleu', 'Commande de la boutique', (a) => `#/boutique/commandes/${a.lien}`],
-  document: [IcDocument, 'violet', 'Nouveau document', (a) => `#/infos/${a.lien}`],
-  information: [IcActus, 'bleu', 'Nouvelle information', (a) => `#/infos/${a.lien}`],
-}
-
 function EspaceEtablissement() {
   const { user } = useAuth()
   const t = useApi('/api/etablissement/tableau')
-  const st = useApi('/api/etablissement/statistiques')
+  // graphiques et courbe des encaissements : seulement sur ordinateur
+  const ordi = document.documentElement.classList.contains('ordi')
+  const st = useApi(ordi ? '/api/etablissement/statistiques' : null)
   const abs = useApi(`/api/notes/absences?date=${aujourdhuiLocal()}`)
   const d = t.data || {}
   const s = st.data
@@ -467,43 +461,14 @@ function EspaceEtablissement() {
         />
       </div>
 
-      <div className="ent-duo">
-        <section className="db-panneau ent-activites">
-          <div className="db-titre">
-            <b>Activités récentes</b>
-          </div>
-          {s && !s.activite?.length && <p className="muted">Rien pour le moment.</p>}
-          <ol>
-            {(s?.activite || []).map((x, i) => {
-              const [Icone, teinte, titre, lien] = ACTIVITES[x.genre] || ACTIVITES.information
-              return (
-                <li key={i}>
-                  <a href={lien(x)}>
-                    <span className={`ent-activite-ico ${teinte}`}>
-                      <Icone size={18} />
-                    </span>
-                    <span className="ent-activite-texte">
-                      <b>{titre}</b>
-                      <small data-brut>{x.montant != null ? `${fcfa(x.montant)} · ${x.titre}` : x.titre}</small>
-                    </span>
-                    <em>{ilYa(x.il_y_a)}</em>
-                  </a>
-                </li>
-              )
-            })}
-          </ol>
-        </section>
-        <a className="ent-verifier" href="#/verifier">
-          <IcBouclier size={34} />
-          <b>Vérifier un reçu</b>
-          <small>Scannez le code d’un reçu pour savoir s’il est authentique.</small>
-          <span>
-            Scanner <IcChevron size={14} />
-          </span>
-        </a>
-      </div>
-
-      {s?.communication && <Communication p={s.communication} photo={d.photo} />}
+      <a className="ent-verifier" href="#/verifier">
+        <IcBouclier size={34} />
+        <b>Vérifier un reçu</b>
+        <small>Scannez le code d’un reçu pour savoir s’il est authentique.</small>
+        <span>
+          Scanner <IcChevron size={14} />
+        </span>
+      </a>
 
       {/* sur ordinateur : graphiques de l'annee */}
       {st.error && <p className="muted">{st.error}</p>}
@@ -551,25 +516,6 @@ function EspaceEtablissement() {
         </div>
       )}
     </>
-  )
-}
-
-// La communication du moment (evenement a venir ou derniere annonce), avec sa photo ou celle de l'etablissement
-function Communication({ p, photo }) {
-  const media = (p.medias || []).find((m) => m.type === 'image')?.url || (p.image ? `${apiBase()}${p.image}` : photo)
-  const quand = p.event_date && new Date(p.event_date).toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
-  return (
-    <a className="ent-com" href={`#/infos/${p.id}`}>
-      <span className="ent-com-photo" style={media ? { backgroundImage: `url(${media})` } : undefined} />
-      <span className="ent-com-texte">
-        <em>
-          <IcMegaphone size={14} /> {p.type === 'evenement' ? 'Événement' : 'Annonce'}
-        </em>
-        <b data-brut>{p.title}</b>
-        <small data-brut>{[quand, p.event_place].filter(Boolean).join(' · ') || (p.body || '').slice(0, 90)}</small>
-      </span>
-      <IcChevron size={18} />
-    </a>
   )
 }
 
