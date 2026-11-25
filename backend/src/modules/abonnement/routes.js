@@ -30,7 +30,7 @@ const confirmer = async (paiementId, adminId) => {
   for (const c of chefs.rows) {
     await notifierUtilisateur(c.id, {
       title: "Paiement de l’abonnement confirmé",
-      message: `${fcfa(p.montant)} reçus pour l’année ${p.annee}. Votre reçu est disponible.`,
+      message: `${fcfa(p.montant)} reçus (année ${p.annee}). Votre reçu est disponible.`,
       type: "payment",
       data: { lien: "/abonnement" },
     }).catch(() => {});
@@ -94,8 +94,9 @@ router.post("/payer", async (req, res, next) => {
     if (req.user.role !== "principal") throw new ApiError(403, "Réservé à l’administration de l’établissement");
     if (!cleNotchPay()) throw new ApiError(400, "Le paiement en ligne n’est pas encore activé : utilisez le transfert puis déclarez-le");
     const e = await S.etat(req.user.schoolId);
-    if (e.statut === "gratuit" || e.reste <= 0) throw new ApiError(400, "Rien à payer");
-    const montant = Math.min(entier(req.body?.montant) || e.reste, e.reste);
+    if (e.statut === "gratuit" || e.resteAnnee <= 0) throw new ApiError(400, "Rien à payer");
+    // le trimestre du (ou le prochain), ou l'annee entiere : jamais plus que le reste de l'annee
+    const montant = Math.min(entier(req.body?.montant) || e.reste || e.prochain, e.resteAnnee);
     if (!(montant >= 100)) throw new ApiError(400, "Montant invalide");
     const reference = `ABO-${req.user.schoolId}-${Date.now()}`;
     const { rows } = await db.query(
@@ -213,7 +214,7 @@ router.get("/admin", isPlatformAdmin, async (req, res, next) => {
         totaux: {
           attendu: payants.reduce((s, x) => s + x.abonnement.montant, 0),
           encaisse: payants.reduce((s, x) => s + x.abonnement.paye, 0),
-          reste: payants.reduce((s, x) => s + x.abonnement.reste, 0),
+          reste: payants.reduce((s, x) => s + x.abonnement.resteAnnee, 0),
           enRetard: payants.filter((x) => ["en_retard", "lecture_seule"].includes(x.abonnement.statut)).length,
           gratuits: liste.length - payants.length,
         },
@@ -308,7 +309,7 @@ router.put("/admin/reglages", isPlatformAdmin, async (req, res, next) => {
     const b = req.body || {};
     const champs = {
       prix_defaut: b.prixDefaut !== undefined ? Math.max(0, entier(b.prixDefaut) || 0) : undefined,
-      echeance: /^\d{2}-\d{2}$/.test(b.echeance || "") ? b.echeance : undefined,
+      prix_trimestre: b.prixTrimestre !== undefined ? Math.max(0, entier(b.prixTrimestre) || 0) : undefined,
       delai_grace_jours: b.delaiGrace !== undefined ? Math.min(180, Math.max(0, entier(b.delaiGrace) || 0)) : undefined,
       beneficiaire: b.beneficiaire !== undefined ? String(b.beneficiaire).slice(0, 80) : undefined,
       orange_money: b.orangeMoney !== undefined ? String(b.orangeMoney).slice(0, 30) : undefined,

@@ -1,3 +1,9 @@
 {
-  "rewrites": [{ "source": "/api/:chemin*", "destination": "https://school-1z7r.onrender.com/api/:chemin*" }]
+  "rewrites": [{ "source": "/api/:chemin*", "destination": "https://school-1z7r.onrender.com/api/:chemin*" }],
+  "headers": [
+    { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+  ]
 }

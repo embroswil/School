@@ -1,22 +1,19 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import { ChampMotDePasse, Field, Note, PageAuth } from '../ui.jsx'
-import { useAuth } from '../auth.jsx'
-import { VerificationEmail } from './CodeEmail.jsx'
 
 const TYPES = { lycee: 'Lycée', college: 'Collège', primaire: 'École primaire', maternelle: 'Maternelle' }
 const FONCTIONS = ['Proviseur', 'Principal', 'Directeur / Directrice', 'Fondateur / Promoteur', 'Censeur', 'Surveillant général', 'Intendant / Économe', 'Secrétaire', 'Autre']
 const vide = { name: '', type: 'lycee', city: '', contactFirstName: '', contactLastName: '', contactFunction: '', contactEmail: '', contactPhone: '', password: '' }
 
-// « Inscrire mon etablissement » : l'etablissement est cree tout de suite, le responsable confirme son
-// adresse e-mail avec le code recu (obligatoire), puis il arrive sur son tableau de bord.
+// « Inscrire mon etablissement » : la demande part a l'equipe Sùkûl, qui active l'etablissement ;
+// le responsable se connecte ensuite avec son e-mail et son mot de passe.
 export default function SchoolSignup() {
-  const { login } = useAuth()
   const [f, setF] = useState(vide)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [existe, setExiste] = useState(false)
-  const [aVerifier, setAVerifier] = useState(null)
+  const [envoye, setEnvoye] = useState(false)
   const maj = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
 
   async function envoyer(e) {
@@ -24,8 +21,8 @@ export default function SchoolSignup() {
     setError('')
     setBusy(true)
     try {
-      const r = await api.post('/api/demandes-etablissements', f, { auth: false })
-      setAVerifier(r?.data || {})
+      await api.post('/api/demandes-etablissements', f, { auth: false })
+      setEnvoye(true)
     } catch (err) {
       setError(err.message)
       setExiste(err.status === 409 && /compte existe/.test(err.message))
@@ -33,20 +30,18 @@ export default function SchoolSignup() {
     setBusy(false)
   }
 
-  // Etablissement cree : confirmation de l'adresse e-mail par le code recu
-  if (aVerifier) {
+  // Demande envoyee : l'equipe Sùkûl la verifie, le responsable est prevenu par e-mail a l'activation
+  if (envoye) {
     return (
-      <PageAuth onRetour={() => setAVerifier(null)}>
+      <PageAuth titre="Demande envoyée" sousTitre="L’équipe Sùkûl vérifie votre établissement.">
         <div className="card">
-          <VerificationEmail
-            email={f.contactEmail.trim().toLowerCase()}
-            canal={aVerifier.canal}
-            destination={aVerifier.destination}
-            onConfirme={async () => {
-              await login(f.contactEmail.trim(), f.password)
-              window.location.hash = '/'
-            }}
-          />
+          <p>{`${f.name} : nous vous écrivons à ${f.contactEmail.trim().toLowerCase()} dès que l’établissement est activé.`}</p>
+          <p className="muted" style={{ marginTop: 8 }}>
+            Vous vous connecterez ensuite avec cette adresse e-mail et le mot de passe choisi.
+          </p>
+          <a className="btn btn-block" href="#/connexion" style={{ marginTop: 14 }}>
+            Retour à la connexion
+          </a>
         </div>
       </PageAuth>
     )
@@ -55,7 +50,7 @@ export default function SchoolSignup() {
   return (
     <PageAuth
       titre="Inscrire votre établissement"
-      sousTitre="Votre espace Sùkûl est prêt dès l’inscription."
+      sousTitre="Votre demande est vérifiée par l’équipe Sùkûl, puis votre espace est activé."
       pied={
         <>
           Déjà inscrit ? <a href="#/connexion">Se connecter</a>
@@ -128,7 +123,7 @@ export default function SchoolSignup() {
           </p>
         )}
         <button className="btn btn-block" type="submit" disabled={busy}>
-          {busy ? 'Création…' : 'Créer l’établissement'}
+          {busy ? 'Envoi…' : 'Envoyer la demande'}
         </button>
       </form>
     </PageAuth>

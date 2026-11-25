@@ -1,6 +1,6 @@
 // modules/demandes-etablissements/routes.js
-// « Inscrire mon etablissement » : l'etablissement et le compte de son responsable sont crees
-// immediatement (aucune validation par l'equipe Sùkûl). L'inscription reste enregistree pour le suivi.
+// « Inscrire mon etablissement » : la demande est enregistree, l'equipe Sùkûl la verifie puis l'active
+// (l'etablissement et le compte du responsable sont alors crees) ou la refuse.
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
@@ -53,66 +53,39 @@ router.post("/", async (req, res, next) => {
     if ((await db.query("SELECT 1 FROM users WHERE email = $1", [email])).rows[0]) {
       throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».");
     }
-    const client = await db.connect();
-    let ecoleId;
-    let responsableId;
-    try {
-      await client.query("BEGIN");
-      const hash = await bcrypt.hash(b.password, 10);
-      ecoleId = (await client.query("INSERT INTO schools (name, type, city, is_active) VALUES ($1, $2, $3, true) RETURNING id", [nom, b.type, texte(b.city) || null])).rows[0].id;
-      responsableId = (await client.query(
-        `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, school_id, status)
-         VALUES ($1, $2, 'principal', $3, $4, $5, $6, 'active') RETURNING id`,
-        [email, hash, texte(b.contactFirstName), texte(b.contactLastName), texte(b.contactPhone, 30), ecoleId]
-      )).rows[0].id;
-      await client.query(
-        `INSERT INTO school_requests (name, type, city, address, student_count, contact_first_name, contact_last_name,
-           contact_function, contact_email, contact_phone, password_hash, message, status, school_id, decided_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'approved',$13,NOW())`,
-        [
-          nom,
-          b.type,
-          texte(b.city) || null,
-          texte(b.address, 500) || null,
-          texte(b.studentCount, 50) || null,
-          texte(b.contactFirstName),
-          texte(b.contactLastName),
-          texte(b.contactFunction) || null,
-          email,
-          texte(b.contactPhone, 30),
-          hash,
-          texte(b.message, 1000) || null,
-          ecoleId,
-        ]
-      );
-      await client.query("COMMIT");
-    } catch (e) {
-      await client.query("ROLLBACK").catch(() => {});
-      if (e.code === "23505") throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail : connectez-vous, ou utilisez « Mot de passe oublié ».");
-      throw e;
-    } finally {
-      client.release();
+    if ((await db.query("SELECT 1 FROM school_requests WHERE contact_email = $1 AND status = 'pending'", [email])).rows[0]) {
+      throw new ApiError(409, "Une demande est déjà en attente avec cette adresse e-mail : l’équipe Sùkûl la vérifie.");
     }
-    await assurerAnneeScolaire(ecoleId).catch(() => {});
-    // l'equipe Sùkûl est simplement informee
+    const hash = await bcrypt.hash(b.password, 10);
+    await db.query(
+      `INSERT INTO school_requests (name, type, city, address, student_count, contact_first_name, contact_last_name,
+         contact_function, contact_email, contact_phone, password_hash, message, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pending')`,
+      [
+        nom,
+        b.type,
+        texte(b.city) || null,
+        texte(b.address, 500) || null,
+        texte(b.studentCount, 50) || null,
+        texte(b.contactFirstName),
+        texte(b.contactLastName),
+        texte(b.contactFunction) || null,
+        email,
+        texte(b.contactPhone, 30),
+        hash,
+        texte(b.message, 1000) || null,
+      ]
+    );
+    // l'equipe Sùkûl est prevenue : la demande attend sa validation
     const admins = (await db.query("SELECT id FROM users WHERE role = 'admin' AND is_active")).rows;
     for (const a of admins)
-      await notifierUtilisateur(a.id, { title: "Nouvel établissement inscrit", message: `${nom}${texte(b.city) ? ` · ${texte(b.city)}` : ""} · ${texte(b.contactFirstName)} ${texte(b.contactLastName)}`, type: "system" }).catch(() => {});
-    // Enseignants qui avaient declare cet etablissement (pas encore sur Sukul) : leur demande lui est envoyee
-    await proposerEnseignantsDeclares(ecoleId, nom, texte(b.city)).catch(() => {});
-    // Confirmation de l'adresse e-mail du responsable, des l'inscription (code a 6 chiffres)
-    let envoi = null;
-    try {
-      const { envoyerCode } = require("../codes/routes");
-      envoi = await envoyerCode({ id: responsableId, email, first_name: texte(b.contactFirstName) }, "verification");
-    } catch (_) {
-      // l'etablissement reste cree ; un nouveau code pourra etre demande depuis l'ecran de confirmation
-    }
-    res.status(201).json({
-      success: true,
-      data: { schoolId: ecoleId, codeEnvoye: Boolean(envoi), canal: envoi?.canal || null, destination: envoi?.destination || null },
-      message: "Établissement créé : bienvenue sur Sùkûl.",
-    });
+      await notifierUtilisateur(a.id, {
+        title: "Nouvelle demande d’établissement",
+        message: `${nom}${texte(b.city) ? ` · ${texte(b.city)}` : ""} · ${texte(b.contactFirstName)} ${texte(b.contactLastName)} : à vérifier puis activer`,
+        type: "system",
+        data: { lien: "/etablissements" },
+      }).catch(() => {});
+    res.status(201).json({ success: true, data: { enAttente: true }, message: "Demande envoyée : l’équipe Sùkûl la vérifie." });
   } catch (e) {
     next(e);
   }
@@ -164,6 +137,21 @@ router.post("/:id/valider", authenticate, isPlatformAdmin, async (req, res, next
     );
     await client.query("COMMIT");
     await assurerAnneeScolaire(ecole.rows[0].id).catch(() => {});
+    // un trimestre d'essai gratuit (environ 3 mois) a partir de l'activation
+    await db.query("UPDATE schools SET essai_fin = CURRENT_DATE + 91 WHERE id = $1", [ecole.rows[0].id]).catch(() => {});
+    await proposerEnseignantsDeclares(ecole.rows[0].id, d.name, d.city).catch(() => {});
+    // le responsable est prevenu par e-mail (son adresse n'est pas encore confirmee : envoi direct)
+    const h = (t) => String(t || "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]);
+    const lien = `${(process.env.FRONTEND_URL || "").split(",")[0].trim()}/#/connexion`;
+    require("../../utils/email")
+      .envoyerEmail({
+        a: d.contact_email,
+        nom: d.contact_first_name,
+        sujet: "Sùkûl · Votre établissement est activé",
+        texte: `Bonjour ${d.contact_first_name},\n\n${d.name} est activé sur Sùkûl. Connectez-vous avec votre adresse e-mail et le mot de passe choisi à l'inscription : ${lien}`,
+        html: `<p>Bonjour ${h(d.contact_first_name)},</p><p><b>${h(d.name)}</b> est activé sur Sùkûl. Connectez-vous avec votre adresse e-mail et le mot de passe choisi à l'inscription.</p><p><a href="${lien}">Se connecter</a></p>`,
+      })
+      .catch(() => {});
     res.json({ success: true, message: "Établissement activé : le responsable peut se connecter avec son email et son mot de passe." });
   } catch (e) {
     try {

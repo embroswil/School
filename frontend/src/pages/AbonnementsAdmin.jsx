@@ -7,7 +7,7 @@ import { MOYENS, STATUTS, fcfa, jourLong } from './Abonnement.jsx'
 function Ecole({ e, onChange }) {
   const a = e.abonnement
   const [ouvert, setOuvert] = useState(false)
-  const [f, setF] = useState({ tarifAnnuel: String(a.montant), echeance: a.echeance, gratuit: a.gratuit })
+  const [f, setF] = useState({ tarifAnnuel: String(a.prixAnnee), echeance: '', gratuit: a.gratuit })
   const [p, setP] = useState({ montant: '', moyen: 'especes', reference: '' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -31,7 +31,7 @@ function Ecole({ e, onChange }) {
           <div className="row-title">{e.name}</div>
           <div className="row-sub">
             {e.city ? `${e.city} · ` : ''}
-            {a.statut === 'gratuit' ? 'gratuit' : `${fcfa(a.paye)} / ${fcfa(a.montant)} · échéance ${jourLong(a.echeance)}`}
+            {a.statut === 'gratuit' ? 'gratuit' : a.statut === 'essai' ? `essai jusqu’au ${jourLong(a.essaiFin)}` : `${fcfa(a.paye)} / ${fcfa(a.montant)} · échéance ${jourLong(a.echeance)}`}
           </div>
         </div>
         <span className="tag" style={{ background: fond, color: couleur }}>
@@ -41,10 +41,10 @@ function Ecole({ e, onChange }) {
       {ouvert && (
         <div style={{ marginTop: 12 }}>
           <div className="grid2">
-            <Field label="Montant annuel (FCFA)">
+            <Field label="Prix pour l’année (FCFA)">
               <input className="input" inputMode="numeric" value={f.tarifAnnuel} onChange={(x) => setF({ ...f, tarifAnnuel: x.target.value.replace(/\D/g, '') })} />
             </Field>
-            <Field label="Échéance">
+            <Field label="Pas d’échéance avant le">
               <input className="input" type="date" value={f.echeance} onChange={(x) => setF({ ...f, echeance: x.target.value })} />
             </Field>
           </div>
@@ -55,13 +55,13 @@ function Ecole({ e, onChange }) {
           <button type="button" className="btn btn-quiet btn-block" disabled={busy} onClick={() => faire(() => api.put(`/api/abonnement/admin/ecoles/${e.id}`, { ...f, tarifAnnuel: Number(f.tarifAnnuel) }))}>
             Enregistrer le tarif
           </button>
-          {a.statut !== 'gratuit' && a.reste > 0 && (
+          {a.statut !== 'gratuit' && a.resteAnnee > 0 && (
             <>
               <p className="groupe-titre" style={{ marginTop: 14 }}>
                 Paiement reçu directement
               </p>
               <div className="grid2">
-                <input className="input" inputMode="numeric" placeholder={`Montant (${a.reste})`} value={p.montant} onChange={(x) => setP({ ...p, montant: x.target.value.replace(/\D/g, '') })} />
+                <input className="input" inputMode="numeric" placeholder={`Montant (${a.reste || a.prochain})`} value={p.montant} onChange={(x) => setP({ ...p, montant: x.target.value.replace(/\D/g, '') })} />
                 <select className="input" value={p.moyen} onChange={(x) => setP({ ...p, moyen: x.target.value })}>
                   {['especes', 'orange_money', 'mtn_momo', 'virement', 'autre'].map((m) => (
                     <option key={m} value={m}>
@@ -76,9 +76,9 @@ function Ecole({ e, onChange }) {
                 className="btn btn-block"
                 style={{ marginTop: 8 }}
                 disabled={busy}
-                onClick={() => faire(() => api.post(`/api/abonnement/admin/ecoles/${e.id}/paiements`, { ...p, montant: Number(p.montant || a.reste) }))}
+                onClick={() => faire(() => api.post(`/api/abonnement/admin/ecoles/${e.id}/paiements`, { ...p, montant: Number(p.montant || a.reste || a.prochain) }))}
               >
-                Enregistrer {fcfa(Number(p.montant || a.reste))} (reçu automatique)
+                Enregistrer {fcfa(Number(p.montant || a.reste || a.prochain))} (reçu automatique)
               </button>
             </>
           )}
@@ -98,17 +98,17 @@ function Reglages({ r, onChange }) {
       className="card"
       onSubmit={async (ev) => {
         ev.preventDefault()
-        await api.put('/api/abonnement/admin/reglages', { ...f, prixDefaut: Number(f.prixDefaut), delaiGrace: Number(f.delaiGrace) })
+        await api.put('/api/abonnement/admin/reglages', { ...f, prixDefaut: Number(f.prixDefaut), prixTrimestre: Number(f.prixTrimestre), delaiGrace: Number(f.delaiGrace) })
         setOk('Réglages enregistrés.')
         onChange()
       }}
     >
       <div className="grid2">
-        <Field label="Prix par défaut (FCFA / an)">
-          <input className="input" inputMode="numeric" value={f.prixDefaut} onChange={maj('prixDefaut')} />
+        <Field label="Prix par trimestre (FCFA)">
+          <input className="input" inputMode="numeric" value={f.prixTrimestre} onChange={maj('prixTrimestre')} />
         </Field>
-        <Field label="Échéance (MM-JJ)">
-          <input className="input" placeholder="10-31" value={f.echeance} onChange={maj('echeance')} />
+        <Field label="Prix pour l’année (FCFA)">
+          <input className="input" inputMode="numeric" value={f.prixDefaut} onChange={maj('prixDefaut')} />
         </Field>
       </div>
       <Field label="Jours avant la lecture seule (après l’échéance)">

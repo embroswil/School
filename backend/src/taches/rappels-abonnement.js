@@ -21,20 +21,22 @@ const rappeler = async () => {
   const ecoles = (await db.query("SELECT id FROM schools WHERE is_active")).rows;
   for (const { id } of ecoles) {
     const e = await S.etat(id);
-    if (!e || ["gratuit", "paye"].includes(e.statut)) continue;
-    const palier = PALIERS.find((p) => p.si(e.joursRestants) && !e.rappels.includes(p.cle));
-    const lectureSeule = e.statut === "lecture_seule" && !e.rappels.includes("lecture_seule");
+    if (!e || !["a_payer", "en_retard", "lecture_seule"].includes(e.statut)) continue;
+    // chaque rappel une fois par echeance (une echeance par trimestre)
+    const cle = (c) => `${c}@${e.echeance}`;
+    const palier = PALIERS.find((p) => p.si(e.joursRestants) && !e.rappels.includes(cle(p.cle)));
+    const lectureSeule = e.statut === "lecture_seule" && !e.rappels.includes(cle("lecture_seule"));
     if (!palier && !lectureSeule) continue;
     const titre = lectureSeule ? "Établissement en lecture seule" : palier.titre;
     const message = lectureSeule
       ? `L’abonnement ${e.annee} n’est pas réglé (reste ${fcfa(e.reste)}). Sùkûl est en lecture seule jusqu’au paiement.`
-      : `Reste à payer : ${fcfa(e.reste)} pour l’année ${e.annee}, échéance le ${date(e.echeance)}.` +
+      : `À payer : ${fcfa(e.reste)} pour le trimestre (ou ${fcfa(e.resteAnnee)} pour l’année ${e.annee}), échéance le ${date(e.echeance)}.` +
         (e.joursRestants < 0 ? ` Sans paiement, Sùkûl passera en lecture seule le ${date(e.finGrace)}.` : "");
     const chefs = await db.query("SELECT id FROM users WHERE school_id = $1 AND role = 'principal' AND is_active", [id]);
     for (const c of chefs.rows) {
       await notifierUtilisateur(c.id, { title: titre, message, type: "payment", priority: "high", data: { lien: "/abonnement" } }).catch(() => {});
     }
-    await db.query("UPDATE abonnements SET rappels = rappels || $2::jsonb WHERE id = $1", [e.id, JSON.stringify([lectureSeule ? "lecture_seule" : palier.cle])]);
+    await db.query("UPDATE abonnements SET rappels = rappels || $2::jsonb WHERE id = $1", [e.id, JSON.stringify([cle(lectureSeule ? "lecture_seule" : palier.cle)])]);
   }
 };
 

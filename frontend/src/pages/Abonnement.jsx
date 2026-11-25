@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
-import { Field, Note } from '../ui.jsx'
+import { Note } from '../ui.jsx'
 
 export const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 export const jourLong = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '')
 export const STATUTS = {
   gratuit: ['Gratuit', 'var(--ok)', 'var(--ok-soft)'],
+  essai: ['Essai gratuit', 'var(--ok)', 'var(--ok-soft)'],
   paye: ['Payé', 'var(--ok)', 'var(--ok-soft)'],
+  a_jour: ['À jour', 'var(--ok)', 'var(--ok-soft)'],
   a_payer: ['À payer', '#a35d00', '#fff1d6'],
   en_retard: ['En retard', 'var(--danger)', '#ffe5e9'],
   lecture_seule: ['Lecture seule', 'var(--danger)', '#ffe5e9'],
@@ -60,7 +62,7 @@ export default function Abonnement() {
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [busy, setBusy] = useState(false)
-  const [montantEnLigne, setMontantEnLigne] = useState('')
+  const [annee, setAnnee] = useState(false)
   // Retour de la page de paiement NotchPay : verification
   useEffect(() => {
     let ref = null
@@ -71,7 +73,7 @@ export default function Abonnement() {
     api
       .get(`/api/abonnement/verifier/${encodeURIComponent(ref)}`)
       .then((r) => {
-        if (r.data.statut === 'confirme') setOk('✓ Paiement en ligne confirmé. Votre reçu est disponible dans l’historique.')
+        if (r.data.statut === 'confirme') setOk('Paiement en ligne confirmé. Votre reçu est disponible dans l’historique.')
         else if (r.data.statut === 'echoue') setError('Le paiement en ligne n’a pas abouti.')
         if (r.data.statut !== 'en_attente') localStorage.removeItem('school-abonnement')
         d.reload()
@@ -87,7 +89,7 @@ export default function Abonnement() {
     setError('')
     setBusy(true)
     try {
-      const r = await api.post('/api/abonnement/payer', { montant: Number(montantEnLigne || e.reste) })
+      const r = await api.post('/api/abonnement/payer', { montant: aPayer })
       try {
         localStorage.setItem('school-abonnement', r.data.reference)
       } catch (_) {}
@@ -99,7 +101,10 @@ export default function Abonnement() {
   }
   const [libelle, couleur, fond] = STATUTS[e.statut] || STATUTS.a_payer
   const pct = e.montant > 0 ? Math.min(100, Math.round((e.paye / e.montant) * 100)) : 100
-  const doit = e.statut !== 'gratuit' && e.reste > 0
+  const doit = e.statut !== 'gratuit' && e.resteAnnee > 0
+  // a payer : le trimestre du (ou le prochain), ou le reste de l'annee
+  const trimestre = e.reste || e.prochain
+  const aPayer = annee ? e.resteAnnee : trimestre
 
   return (
     <>
@@ -119,9 +124,18 @@ export default function Abonnement() {
           </>
         ) : (
           <>
-            <b className="abo-montant">
-              {fcfa(e.montant)} <small>/ an</small>
-            </b>
+            {e.statut === 'essai' ? (
+              <b className="abo-montant">
+                Essai gratuit <small>{`jusqu’au ${jourLong(e.essaiFin)}`}</small>
+              </b>
+            ) : e.reste > 0 ? (
+              <b className="abo-montant">
+                {fcfa(e.reste)} <small>à régler</small>
+              </b>
+            ) : (
+              <b className="abo-montant">{e.statut === 'paye' ? 'Année réglée' : 'À jour'}</b>
+            )}
+            <p className="abo-tarif">{`${fcfa(e.prixTrimestre)} par trimestre, ou ${fcfa(e.prixAnnee)} pour l’année entière`}</p>
             <div className="abo-progres" title={`${pct} % payé`}>
               <i style={{ width: `${pct}%` }} />
             </div>
@@ -130,17 +144,17 @@ export default function Abonnement() {
                 Payé <b style={{ color: 'var(--vert)' }}>{fcfa(e.paye)}</b>
               </span>
               <span>
-                Reste <b style={{ color: e.reste ? '#ff7a82' : undefined }}>{fcfa(e.reste)}</b>
+                Reste sur l’année <b>{fcfa(e.resteAnnee)}</b>
               </span>
             </div>
             {doit && (
               <p className="abo-echeance">
-                Échéance : <b>{jourLong(e.echeance)}</b>
-                {e.statut !== 'lecture_seule' && <> · sans paiement, Sùkûl passera en lecture seule le {jourLong(e.finGrace)}</>}
+                {e.reste > 0 ? 'Échéance' : 'Prochain trimestre à régler avant le'} : <b>{jourLong(e.echeance)}</b>
+                {e.reste > 0 && e.statut !== 'lecture_seule' && <> · sans paiement, Sùkûl passera en lecture seule le {jourLong(e.finGrace)}</>}
                 {e.enAttente > 0 && <> · {fcfa(e.enAttente)} déclarés, en cours de vérification</>}
               </p>
             )}
-            {!doit && <p className="abo-echeance">✓ Abonnement entièrement réglé. Merci !</p>}
+            {!doit && <p className="abo-echeance">Abonnement entièrement réglé. Merci !</p>}
           </>
         )}
       </section>
@@ -155,11 +169,18 @@ export default function Abonnement() {
               <div className="card abo-mode abo-mode-principal">
                 <b>En ligne</b>
                 <p className="muted">Orange Money, MTN MoMo ou carte bancaire. Reçu émis automatiquement.</p>
-                <Field label="Montant (FCFA)">
-                  <input className="input" inputMode="numeric" placeholder={String(e.reste)} value={montantEnLigne} onChange={(x) => setMontantEnLigne(x.target.value.replace(/\D/g, ''))} />
-                </Field>
+                {e.resteAnnee > trimestre && (
+                  <div className="chips" style={{ margin: '4px 0 10px' }}>
+                    <button type="button" className="chip" aria-pressed={!annee} onClick={() => setAnnee(false)}>
+                      {`Trimestre · ${fcfa(trimestre)}`}
+                    </button>
+                    <button type="button" className="chip" aria-pressed={annee} onClick={() => setAnnee(true)}>
+                      {`Année · ${fcfa(e.resteAnnee)}`}
+                    </button>
+                  </div>
+                )}
                 <button type="button" className="btn btn-block" disabled={busy} onClick={payerEnLigne}>
-                  {busy ? 'Un instant…' : `Payer ${fcfa(Number(montantEnLigne || e.reste))}`}
+                  {busy ? 'Un instant…' : `Payer ${fcfa(aPayer)}`}
                 </button>
               </div>
             )}
@@ -170,7 +191,7 @@ export default function Abonnement() {
               </p>
               {e.paiement.telephone && (
                 <a className="btn btn-quiet btn-block" href={`tel:${e.paiement.telephone.replace(/\s/g, '')}`}>
-                  📞 Prendre rendez-vous · {e.paiement.telephone}
+                  {`Prendre rendez-vous · ${e.paiement.telephone}`}
                 </a>
               )}
             </div>
@@ -220,7 +241,7 @@ export default function Abonnement() {
         </div>
       )}
       <p className="muted" style={{ fontSize: 12.5, margin: '14px 2px 0' }}>
-        L’abonnement comprend toutes les fonctions de Sùkûl pour tous vos élèves et enseignants : appel, notes, scolarité, informations aux familles et assistance.
+        L’abonnement comprend toutes les fonctions de Sùkûl pour tous vos élèves et enseignants : appel, notes, scolarité, informations aux familles et assistance. Un nouvel établissement profite d’un trimestre d’essai gratuit.
       </p>
     </>
   )

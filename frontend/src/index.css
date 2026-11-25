@@ -974,6 +974,7 @@ html.ordi .astuce-depot { display: block; margin-top: 6px; color: var(--muted); 
 .abo-hero-tete { display: flex; justify-content: space-between; align-items: center; color: var(--lien-doux); font: 700 14px/1 var(--font-body); }
 .abo-montant { display: block; margin: 14px 0 12px; font: 800 30px/1.1 var(--font-display); color: #fff; }
 .abo-montant small { font: 600 15px var(--font-body); color: var(--muted); }
+.abo-tarif { margin: 2px 0 10px; color: var(--muted); font-size: 13.5px; }
 .abo-progres { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
 .abo-progres i { display: block; height: 100%; border-radius: 4px; background: #2f6bff; }
 .abo-ligne { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 14px; }

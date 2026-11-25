@@ -100,7 +100,7 @@ function Demandes({ onChange }) {
       {demandes.data?.map((d) => (
         <div className="card" key={d.id}>
           <div className="row-title" style={{ fontSize: 17 }}>
-            🏫 {d.name}
+            {d.name}
           </div>
           <div className="row-sub">
             {TYPES[d.type]}
@@ -108,19 +108,19 @@ function Demandes({ onChange }) {
             {d.student_count ? ` · ${d.student_count} élèves` : ''}
           </div>
           <ul style={{ marginTop: 10, fontSize: 15, display: 'grid', gap: 4 }}>
-            {d.address && <li>📍 {d.address}</li>}
+            {d.address && <li>{d.address}</li>}
             <li>
-              👤 {d.contact_first_name} {d.contact_last_name}
+              {d.contact_first_name} {d.contact_last_name}
               {d.contact_function ? ` · ${d.contact_function}` : ''}
             </li>
             <li>
-              ✉️ {d.contact_email} · 📞 {d.contact_phone}
+              {d.contact_email} · {d.contact_phone}
             </li>
             {d.message && <li className="muted">« {d.message} »</li>}
           </ul>
           <div className="actions">
             <button type="button" className="btn btn-ok" disabled={busy === d.id} onClick={() => decider(d.id, 'valider')}>
-              ✓ Activer l’établissement
+              Activer l’établissement
             </button>
             <button type="button" className="btn btn-quiet btn-danger" disabled={busy === d.id} onClick={() => decider(d.id, 'refuser')}>
               Refuser

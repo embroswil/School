@@ -44,25 +44,51 @@ const retirer = () => {
 }
 requestAnimationFrame(() => setTimeout(retirer, Math.max(200, 1200 - performance.now())))
 
-// Nouvelle version en ligne : mise a jour discrete, sans annonce.
-// La version en ligne est deja gardee par le service worker pour la prochaine ouverture. En plus, elle est
-// chargee pendant que l'application est en arriere-plan (l'utilisateur ne voit rien, et sur iPhone la barre
-// d'etat ne clignote pas), sauf si une saisie est en cours sur la page : rien n'est jamais perdu.
+// Nouvelle version en ligne : appliquee vite, sans annonce et sans jamais perdre une saisie.
+// - a l'ouverture : le service worker compare la page gardee et la page en ligne ; si elle a change,
+//   l'application se recharge aussitot, encore sous l'ecran de demarrage (dans les 15 premieres secondes) ;
+// - ensuite : la version en ligne est verifiee au retour dans l'application et toutes les 5 minutes ;
+//   une nouvelle version s'applique au retour dans l'application, au changement de page ou en arriere-plan.
 if ('serviceWorker' in navigator) {
   let nouvelle = false
+  const ouverture = Date.now()
   // texte saisi sur la page (formulaire, message, note…) : on attend, la mise a jour se fera plus tard
   const saisieEnCours = () =>
     [...document.querySelectorAll('textarea, input:not([type]), input[type="text"], input[type="number"], input[type="email"], input[type="tel"]')].some(
       (el) => !el.readOnly && !el.disabled && el.value.trim() !== '',
     ) || Boolean(document.querySelector('[contenteditable="true"]:not(:empty)'))
-  const appliquer = () => {
-    if (nouvelle && document.visibilityState === 'hidden' && !saisieEnCours()) window.location.reload()
+  const recharger = () => {
+    if (nouvelle && !saisieEnCours()) window.location.reload()
+  }
+  // script de la version affichee (/assets/index-xxxx.js) ; absent en developpement
+  const actuel = document.querySelector('script[type="module"][src*="/assets/"]')?.getAttribute('src')
+  let verification = null
+  const verifier = async () => {
+    if (!actuel || nouvelle || verification) return nouvelle
+    verification = (async () => {
+      try {
+        navigator.serviceWorker.getRegistration().then((r) => r?.update()).catch(() => {})
+        // passe par le service worker, qui garde aussi cette page pour la prochaine ouverture
+        const page = await (await fetch('/', { cache: 'no-store' })).text()
+        const enLigne = page.match(/\/assets\/index-[\w-]+\.js/)?.[0]
+        if (enLigne && !actuel.includes(enLigne)) nouvelle = true
+      } catch (_) {
+        /* hors ligne : on reessaiera */
+      }
+      verification = null
+      return nouvelle
+    })()
+    return verification
   }
   navigator.serviceWorker.addEventListener('message', (e) => {
     if (e.data?.type !== 'nouvelle-version') return
     nouvelle = true
-    appliquer()
+    if (Date.now() - ouverture < 15000 || document.visibilityState === 'hidden') recharger()
   })
-  document.addEventListener('visibilitychange', appliquer)
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'hidden') return recharger()
+    if (await verifier()) recharger()
+  })
+  window.addEventListener('hashchange', recharger)
+  setInterval(() => document.visibilityState === 'visible' && verifier(), 5 * 60 * 1000)
 }
-

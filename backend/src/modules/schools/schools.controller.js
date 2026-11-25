@@ -74,6 +74,8 @@ const creer = async (req, res, next) => {
       [d.name, d.type, d.city || null, d.code || null]
     );
     await assurerAnneeScolaire(rows[0].id).catch(() => {});
+    // nouvel etablissement : un trimestre d'essai gratuit
+    await db.query("UPDATE schools SET essai_fin = CURRENT_DATE + 91 WHERE id = $1", [rows[0].id]).catch(() => {});
     res.status(201).json({ success: true, data: versPublic(rows[0]) });
   } catch (e) {
     if (e.code === "23505") return next(new ApiError(409, "Ce code d'établissement existe déjà"));
