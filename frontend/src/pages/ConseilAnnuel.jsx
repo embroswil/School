@@ -67,56 +67,68 @@ export default function ConseilAnnuel({ id }) {
         <h1 className="page-title">Conseil de fin d’année · {d.data.classe}</h1>
         <BoutonExcel onClick={exporter} texte="Excel pour cartescolaire.cm" />
       </div>
-      <p className="lede">Moyenne annuelle = moyenne des trois trimestres. Une décision est proposée automatiquement (≥ 10 : admis ; ≥ 9 : sous réserve ; sinon : redouble), modifiable.</p>
-      <div className="stats" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', marginTop: 0 }}>
-        <div className="stat">
-          <b>{n2(stats.moyenneClasse)}</b>
-          <span>moyenne</span>
-        </div>
-        <div className="stat">
-          <b style={{ color: 'var(--ok)' }}>{stats.admis}</b>
-          <span>admis</span>
-        </div>
-        <div className="stat">
-          <b style={{ color: 'var(--danger)' }}>{stats.redoublants}</b>
-          <span>redoublent</span>
-        </div>
-      </div>
+      <p className="muted" style={{ margin: '2px 0 10px' }}>
+        {`Moyenne de la classe ${n2(stats.moyenneClasse)} · `}
+        <b style={{ color: 'var(--ok)' }}>{`${stats.admis} admis`}</b>
+        {' · '}
+        <b style={{ color: 'var(--danger)' }}>{`${stats.redoublants} redoublent`}</b>
+      </p>
       <Note>{error}</Note>
       <Note kind="ok">{ok}</Note>
-      <ul className="rows" style={{ marginTop: 14 }}>
-        {eleves.map((e) => (
-          <li key={e.id} style={{ padding: '12px 14px', borderTop: '1px solid var(--line)' }}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <b style={{ width: 34, color: 'var(--muted)' }}>{e.rang ? `${e.rang}e` : '—'}</b>
-              <div className="row-main">
-                <div className="row-title">
-                  {e.nom} {e.prenom}
-                </div>
-                <div className="row-sub">T1 {n2(e.trimestres[0])} · T2 {n2(e.trimestres[1])} · T3 {n2(e.trimestres[2])}</div>
-              </div>
-              <b style={{ color: e.annuelle >= 10 ? 'var(--ok)' : e.annuelle ? 'var(--danger)' : 'var(--muted)' }}>{n2(e.annuelle)}</b>
-            </div>
-            {modifiable ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                <select className="input" style={{ padding: '8px 10px' }} value={dec[e.id]?.decision || ''} onChange={(ev) => setDec((x) => ({ ...x, [e.id]: { ...x[e.id], decision: ev.target.value } }))}>
-                  <option value="">Décision…</option>
-                  {Object.entries(decisions).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-                <input className="input" style={{ padding: '8px 10px' }} placeholder="Observation" value={dec[e.id]?.observation || ''} onChange={(ev) => setDec((x) => ({ ...x, [e.id]: { ...x[e.id], observation: ev.target.value } }))} />
-              </div>
-            ) : (
-              e.decision && <div className="row-sub" style={{ marginTop: 6 }}>{decisions[e.decision]}</div>
-            )}
-          </li>
-        ))}
-      </ul>
+      {/* tableau facon tableur : une ligne par eleve, decision et observation saisies dans les cellules */}
+      <div className="grille-cadre">
+        <table className="grille">
+          <thead>
+            <tr>
+              <th>Rang</th>
+              <th className="g-nom">Nom et prénom</th>
+              <th>Matricule</th>
+              <th>T1</th>
+              <th>T2</th>
+              <th>T3</th>
+              <th>Moy. annuelle</th>
+              <th>Décision</th>
+              <th>Observation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {eleves.map((e) => (
+              <tr key={e.id}>
+                <td className="g-num">{e.rang ?? '—'}</td>
+                <td className="g-nom" data-brut>{`${e.nom} ${e.prenom}`}</td>
+                <td data-brut>{e.matricule || '—'}</td>
+                {e.trimestres.map((t, i) => (
+                  <td key={i} className="g-num">{n2(t)}</td>
+                ))}
+                <td className="g-num" style={{ fontWeight: 800, color: e.annuelle >= 10 ? 'var(--ok)' : e.annuelle ? 'var(--danger)' : 'var(--muted)' }}>{n2(e.annuelle)}</td>
+                <td className="g-saisie">
+                  {modifiable ? (
+                    <select aria-label={`Décision ${e.nom}`} value={dec[e.id]?.decision || ''} onChange={(ev) => setDec((x) => ({ ...x, [e.id]: { ...x[e.id], decision: ev.target.value } }))}>
+                      <option value="">—</option>
+                      {Object.entries(decisions).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    decisions[e.decision] || '—'
+                  )}
+                </td>
+                <td className="g-saisie">
+                  {modifiable ? (
+                    <input aria-label={`Observation ${e.nom}`} value={dec[e.id]?.observation || ''} onChange={(ev) => setDec((x) => ({ ...x, [e.id]: { ...x[e.id], observation: ev.target.value } }))} />
+                  ) : (
+                    e.observation || ''
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {modifiable && (
-        <button type="button" className="btn btn-block" style={{ marginTop: 14 }} disabled={busy} onClick={enregistrer}>
+        <button type="button" className="btn btn-block grille-enregistrer" disabled={busy} onClick={enregistrer}>
           {busy ? 'Enregistrement…' : 'Enregistrer les décisions'}
         </button>
       )}
