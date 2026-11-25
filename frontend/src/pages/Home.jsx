@@ -8,7 +8,7 @@ import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcSac, IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcBillets, IcSac, IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -175,7 +175,7 @@ const lireEntete = () => {
   }
 }
 
-function EnteteEtablissement({ d, ecole, onChange, children }) {
+function EnteteEtablissement({ d, ecole, onChange }) {
   const champ = useRef(null)
   const [busy, setBusy] = useState(false)
   const [aRecadrer, setARecadrer] = useState(null)
@@ -213,38 +213,21 @@ function EnteteEtablissement({ d, ecole, onChange, children }) {
     }
     setBusy(false)
   }
+  // bandeau fin : vignette de la photo (touchee pour la changer), annee et nom
   return (
-    <section
-      className="hero-card"
-      style={{
-        marginTop: 4,
-        minHeight: 210,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'flex-end',
-        backgroundImage: photo ? `linear-gradient(180deg, rgba(15,26,60,0.05) 25%, rgba(15,26,60,0.88)), url(${photo})` : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        position: 'relative',
-      }}
-    >
-      <button
-        type="button"
-        className="icon-btn"
-        aria-label={photo ? 'Changer la photo' : 'Ajouter une photo'}
-        style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.9)', border: 0 }}
-        onClick={() => champ.current?.click()}
-        disabled={busy}
-      >
-        <IcPhoto />
+    <section className="ent-ecole">
+      <button type="button" className="ent-photo" aria-label={photo ? 'Changer la photo' : 'Ajouter une photo'} onClick={() => champ.current?.click()} disabled={busy}>
+        {photo ? <img src={photo} alt="" /> : <span>{String(nom || '?').charAt(0)}</span>}
+        <i>
+          <IcPhoto size={12} />
+        </i>
       </button>
       <input ref={champ} type="file" accept="image/*" hidden onChange={choisir} />
       {aRecadrer && <Recadreur fichier={aRecadrer} ratio={2} sortie={1000} onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
-      <span className="badge" style={{ alignSelf: 'flex-start' }}>
-        {d.annee?.name ? `Année ${d.annee.name}` : 'Établissement'}
-      </span>
-      <h2 style={{ marginTop: 8 }}>{nom || 'Mon établissement'}</h2>
-      {children}
+      <div>
+        <small>{d.annee?.name ? `Année ${d.annee.name}` : 'Établissement'}</small>
+        <b data-brut>{nom || 'Mon établissement'}</b>
+      </div>
     </section>
   )
 }
@@ -278,8 +261,6 @@ function EspaceEtablissement() {
   ]
   const faites = etapes.filter((e) => e[0]).length
   const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
-  // part de l'abonnement deja remboursee par les frais de service
-  const rembourse = d.abonnement > 0 ? Math.min(100, Math.round(((d.gain_service || 0) / d.abonnement) * 100)) : null
   const taches = [
     d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`, 'Vérifiez et validez leurs comptes'],
     demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`, 'Demandes de suivi d’un élève'],
@@ -296,22 +277,39 @@ function EspaceEtablissement() {
           </button>
         </div>
       )}
-      <EnteteEtablissement d={d} ecole={user.schoolId} onChange={() => t.reload()}>
-        <div className="hero-stats">
-          <a href="#/absences" className={abs.data?.absents ? 'alerte' : ''}>
-            <b>{abs.data ? abs.data.absents : '…'}</b>
-            <span>absents</span>
+      <EnteteEtablissement d={d} ecole={user.schoolId} onChange={() => t.reload()} />
+
+      {/* le chiffre du jour, comme le solde d'une appli bancaire */}
+      <section className="banque">
+        <span className="banque-libelle">Encaissé aujourd’hui</span>
+        <b className="banque-montant">{t.data ? fcfa(d.encaisse_jour) : '…'}</b>
+        <span className="banque-sous">
+          {`${d.paiements_jour || 0} paiement(s)`}
+          {d.gain_service > 0 && ` · ${fcfa(d.gain_service)} rapportés par Sùkûl cette année`}
+        </span>
+        <div className="banque-actions">
+          <a href="#/encaisser">
+            <IcBillets size={18} /> Encaisser
           </a>
-          <a href="#/presence-enseignants">
-            <b>{aVerifier ?? '…'}</b>
-            <span>cours à vérifier</span>
-          </a>
-          <a href="#/scolarite?onglet=confirmer" className={aConfirmer ? 'alerte' : ''}>
-            <b>{aConfirmer ?? '…'}</b>
-            <span>à confirmer</span>
+          <a href="#/verifier">
+            <IcScan size={18} /> Vérifier un reçu
           </a>
         </div>
-      </EnteteEtablissement>
+      </section>
+
+      <div className="raccourcis">
+        {[
+          ['#/eleves', IcEleves, 'Élèves'],
+          ['#/presence-enseignants', IcProf, 'Enseignants'],
+          ['#/scolarite', IcCarte, 'Scolarité'],
+          ['#/boutique-gestion', IcSac, 'Boutique'],
+        ].map(([href, Icone, titre]) => (
+          <a key={href} href={href} className="raccourci">
+            <Icone size={22} />
+            <span>{titre}</span>
+          </a>
+        ))}
+      </div>
 
       {t.data && faites < etapes.length && (
         <>
@@ -332,47 +330,26 @@ function EspaceEtablissement() {
         </>
       )}
 
-      {taches.length > 0 && (
-        <>
-          <h2 className="section-title">À faire</h2>
-          {taches.map(([href, titre, texte]) => (
-            <Action key={href} href={href} Icone={IcCoche} titre={titre} texte={texte} urgent />
-          ))}
-        </>
-      )}
-
-      {t.data && (d.abonnement > 0 || d.gain_service > 0) && (
-        <a className="gain-carte" href="#/scolarite">
-          <span className="gain-titre">Ce que Sùkûl vous a rapporté</span>
-          <b className="gain-chiffre">{fcfa(d.gain_service)}</b>
-          {rembourse !== null && (
-            <>
-              <span className="gain-barre" aria-hidden="true">
-                <i style={{ width: `${Math.max(rembourse, 2)}%` }} />
-              </span>
-              <span className="gain-texte">{rembourse >= 100 ? 'Votre abonnement est remboursé.' : `${rembourse} % de votre abonnement (${fcfa(d.abonnement)}) déjà remboursé`}</span>
-            </>
-          )}
-          {d.gain_boutique > 0 && <span className="gain-texte">{`Boutique : ${fcfa(d.gain_boutique)} de ventes`}</span>}
-        </a>
-      )}
-
-      <div className="raccourcis">
+      <h2 className="section-title">Aujourd’hui</h2>
+      <ul className="activite">
         {[
-          ['#/eleves', IcEleves, 'Élèves'],
-          ['#/presence-enseignants', IcProf, 'Enseignants'],
-          ['#/scolarite', IcCarte, 'Scolarité'],
-          ['#/verifier', IcScan, 'Vérifier'],
-          ['#/boutique-gestion', IcSac, 'Boutique'],
-        ].map(([href, Icone, titre]) => (
-          <a key={href} href={href} className="raccourci">
-            <span className="raccourci-ico">
-              <Icone size={22} />
-            </span>
-            <span>{titre}</span>
-          </a>
+          ['#/absences', IcEleves, 'Élèves absents', abs.data?.absents, abs.data?.absents > 0],
+          ['#/presence-enseignants', IcProf, 'Cours à vérifier', aVerifier, false],
+          ['#/scolarite?onglet=confirmer', IcBillets, 'Paiements à confirmer', aConfirmer, aConfirmer > 0],
+          ...taches.map(([href, titre]) => [href, IcCoche, titre, null, true]),
+        ].map(([href, Icone, titre, valeur, alerte]) => (
+          <li key={titre}>
+            <a href={href} className={alerte ? 'alerte' : ''}>
+              <span className="activite-ico">
+                <Icone size={18} />
+              </span>
+              <span className="activite-titre">{titre}</span>
+              {valeur !== null && <b>{valeur ?? '…'}</b>}
+              <IcChevron size={16} />
+            </a>
+          </li>
         ))}
-      </div>
+      </ul>
     </>
   )
 }

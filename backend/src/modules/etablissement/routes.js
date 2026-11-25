@@ -60,7 +60,12 @@ router.get("/tableau", async (req, res, next) => {
            AND confirme_le >= COALESCE((SELECT start_date FROM academic_years WHERE id = $2), date_trunc('year', NOW()))) AS gain_service,
         (SELECT COALESCE(SUM(montant), 0)::int FROM boutique_commandes WHERE school_id = $1 AND payee_le IS NOT NULL AND statut <> 'annulee'
            AND payee_le >= COALESCE((SELECT start_date FROM academic_years WHERE id = $2), date_trunc('year', NOW()))) AS gain_boutique,
-        (SELECT CASE WHEN gratuit THEN 0 ELSE montant END FROM abonnements WHERE school_id = $1 ORDER BY id DESC LIMIT 1) AS abonnement`,
+        (SELECT CASE WHEN gratuit THEN 0 ELSE montant END FROM abonnements WHERE school_id = $1 ORDER BY id DESC LIMIT 1) AS abonnement,
+        -- encaisse aujourd'hui (heure du Cameroun) : guichet et Mobile Money confirmes
+        (SELECT COALESCE(SUM(montant), 0)::int FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi'
+           AND (COALESCE(confirme_le, created_at) + INTERVAL '1 hour')::date = (NOW() + INTERVAL '1 hour')::date) AS encaisse_jour,
+        (SELECT COUNT(*)::int FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi'
+           AND (COALESCE(confirme_le, created_at) + INTERVAL '1 hour')::date = (NOW() + INTERVAL '1 hour')::date) AS paiements_jour`,
       [ecole, annee?.id || null]
     );
     res.json({ success: true, data: { ...rows[0], annee } });
