@@ -8,7 +8,7 @@ import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcBillets, IcSac, IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcBillets, IcSac, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -215,22 +215,17 @@ function EnteteEtablissement({ d, ecole, prenom, onChange }) {
     }
     setBusy(false)
   }
-  // bandeau fin : vignette de la photo (touchee pour la changer), annee et nom
+  // grande photo de l'etablissement, comme avant : nom et annee en bas, sur un degrade ; l'appareil photo en haut a droite
   return (
-    <section className="ent-ecole">
-      <button type="button" className="ent-photo" aria-label={photo ? 'Changer la photo' : 'Ajouter une photo'} onClick={() => champ.current?.click()} disabled={busy}>
-        {photo ? <img src={photo} alt="" /> : <span>{String(nom || '?').charAt(0)}</span>}
-        <i>
-          <IcPhoto size={12} />
-        </i>
+    <section className={`ent-banniere ${photo ? '' : 'sans-photo'}`} style={photo ? { backgroundImage: `linear-gradient(180deg, rgba(8, 12, 28, 0) 35%, rgba(8, 12, 28, 0.86)), url(${photo})` } : undefined}>
+      <button type="button" className="ent-banniere-photo" aria-label={photo ? 'Changer la photo' : 'Ajouter une photo'} onClick={() => champ.current?.click()} disabled={busy}>
+        <IcPhoto size={18} />
       </button>
       <input ref={champ} type="file" accept="image/*" hidden onChange={choisir} />
       {aRecadrer && <Recadreur fichier={aRecadrer} ratio={2} sortie={1000} onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
-      <div>
-        <small>{prenom ? `Bonjour, ${prenom}` : 'Établissement'}</small>
-        <b data-brut>{nom || 'Mon établissement'}</b>
-        {d.annee?.name && <small>{`Année ${d.annee.name}`}</small>}
-      </div>
+      {prenom && <small>{`Bonjour, ${prenom}`}</small>}
+      <b data-brut>{nom || 'Mon établissement'}</b>
+      {d.annee?.name && <span>{`Année ${d.annee.name}`}</span>}
     </section>
   )
 }
@@ -330,15 +325,8 @@ function EspaceEtablissement() {
   const ordi = document.documentElement.classList.contains('ordi')
   const st = useApi(ordi ? '/api/etablissement/statistiques' : null)
   const abs = useApi(`/api/notes/absences?date=${aujourdhuiLocal()}`)
-  const prof = useApi(`/api/presence-enseignants?date=${aujourdhuiLocal()}`)
-  const ordres = useApi('/api/scolarite/ordres?statut=paye,litige')
-  const demandes = useApi('/api/familles/demandes')
-  const boutique = useApi('/api/boutique/gestion')
   const d = t.data || {}
   const s = st.data
-  const aPreparer = boutique.data ? boutique.data.commandes.filter((c) => c.statut === 'payee').length : 0
-  const aVerifier = prof.data ? prof.data.cours.filter((c) => c.etat === 'a_verifier').length : null
-  const aConfirmer = ordres.data?.length ?? null
   // Mise en route : les 5 etapes qui rendent l'etablissement operationnel (affichees tant qu'il en reste)
   const etapes = [
     [d.eleves > 0, '#/dossier', 'Ajouter les élèves', 'Photo, Excel ou PDF des listes de classes : tout est reconnu'],
@@ -348,12 +336,6 @@ function EspaceEtablissement() {
     [d.creneaux > 0, '#/import-emplois', 'Emplois du temps', 'Une photo par classe suffit'],
   ]
   const faites = etapes.filter((e) => e[0]).length
-  const taches = [
-    d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`],
-    demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`],
-    aPreparer > 0 && ['#/boutique-gestion', `${aPreparer} commande(s) de la boutique à préparer`],
-    d.eleves_sans_classe > 0 && ['#/eleves', `${d.eleves_sans_classe} élève(s) sans classe`],
-  ].filter(Boolean)
   // chiffres du mois et tendance face au mois precedent
   const ceMois = t.data ? Number(d.encaisse_mois) : null
   const avant = Number(d.encaisse_mois_avant || 0)
@@ -452,7 +434,7 @@ function EspaceEtablissement() {
             </ul>
           </section>
 
-          <section className="db-panneau db-moitie">
+          <section className="db-panneau db-plein">
             <div className="db-titre">
               <b>Derniers paiements</b>
               <a href="#/scolarite">Tout voir</a>
@@ -478,30 +460,6 @@ function EspaceEtablissement() {
           </>
         )}
 
-          <section className="db-panneau db-moitie db-toujours">
-            <div className="db-titre">
-              <b>À traiter</b>
-            </div>
-            <ul className="activite">
-              {[
-                ['#/absences', IcEleves, 'Élèves absents', abs.data?.absents, abs.data?.absents > 0],
-                ['#/presence-enseignants', IcProf, 'Cours à vérifier', aVerifier, false],
-                ['#/scolarite?onglet=confirmer', IcBillets, 'Paiements à confirmer', aConfirmer, aConfirmer > 0],
-                ...taches.map(([href, titre]) => [href, IcCoche, titre, null, true]),
-              ].map(([href, Icone, titre, valeur, alerte]) => (
-                <li key={titre}>
-                  <a href={href} className={alerte ? 'alerte' : ''}>
-                    <span className="activite-ico">
-                      <Icone size={18} />
-                    </span>
-                    <span className="activite-titre">{titre}</span>
-                    {valeur !== null && <b>{valeur ?? '…'}</b>}
-                    <IcChevron size={16} />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
       </div>
 
       {/* raccourcis sans doublon : eleves, enseignants et scolarite s'ouvrent deja depuis les chiffres */}

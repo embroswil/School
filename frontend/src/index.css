@@ -3284,15 +3284,13 @@ html.ordi .bq-gestion-grille { grid-template-columns: repeat(6, minmax(0, 1fr));
 .bq-photo .bq-visuel { width: 84px; height: 84px; border-radius: 16px; flex: none; }
 .bq-photo > div { display: grid; gap: 6px; }
 
-/* Accueil de l'etablissement : bandeau fin, tableau de bord, raccourcis, activite */
-.ent-ecole { display: flex; align-items: center; gap: 12px; margin: 6px 0 14px; }
-.ent-ecole small { display: block; color: var(--muted); font-size: 13px; }
-.ent-ecole > div { min-width: 0; }
-.ent-ecole b { display: block; font: 800 20px/1.2 var(--font-display); color: var(--text); }
-.ent-photo { position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 16px; background: var(--primary); color: #fff; cursor: pointer; }
-.ent-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; display: block; }
-.ent-photo > span { font: 800 22px/52px var(--font-display); }
-.ent-photo i { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--card); color: var(--text); border: 2px solid var(--bg); font-style: normal; }
+/* Accueil de l'etablissement : grande photo, chiffres cles, raccourcis (graphiques sur ordinateur) */
+.ent-banniere { position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; aspect-ratio: 2; min-height: 160px; max-height: 300px; margin: 4px 0 12px; padding: 18px; border-radius: 24px; overflow: hidden; color: #fff; background: linear-gradient(135deg, #2446d8, #5b3df5) center / cover no-repeat; }
+.ent-banniere small { font-size: 13.5px; opacity: 0.85; }
+.ent-banniere b { font: 800 24px/1.15 var(--font-display); letter-spacing: -0.02em; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25); }
+.ent-banniere > span { font-size: 13px; opacity: 0.85; }
+.ent-banniere-photo { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.92); color: #1a2f9c; cursor: pointer; }
+html.ordi .ent-banniere { aspect-ratio: auto; height: 220px; }
 .raccourcis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .raccourci { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 84px; padding: 10px 4px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: var(--lien); }
 .raccourci span { color: var(--text); font: 600 12.5px/1.2 var(--font-body); text-align: center; white-space: nowrap; }
@@ -3310,7 +3308,7 @@ html.ordi .bq-gestion-grille { grid-template-columns: repeat(6, minmax(0, 1fr));
 .conseils a { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: var(--text); }
 .conseils b { font: 700 15px/1.25 var(--font-display); }
 .conseils small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
-html.ordi .ent-ecole { max-width: 760px; }
+
 
 /* Tableau facon tableur (conseil de fin d'annee) : cellules bordees, colonne des noms fixe au defilement */
 .grille-cadre { overflow: auto; max-height: calc(100dvh - 230px); border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
@@ -3415,19 +3413,17 @@ html.ordi .db-grille { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 html.ordi .db-grille > * { grid-column: span 2; }
 html.ordi .db-grille > .db-large { grid-column: span 4; }
 html.ordi .db-grille > .db-moitie { grid-column: span 3; }
+html.ordi .db-grille > .db-plein { grid-column: 1 / -1; }
 html.ordi .db-grille > .db-large:has(+ .db-moitie) { grid-column: 1 / -1; }
 @media (min-width: 640px) { html:not(.ordi) .db-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } html:not(.ordi) .db-grille { grid-template-columns: 1fr 1fr; } html:not(.ordi) .db-large { grid-column: 1 / -1; } }
 /* accueil etablissement sur telephone : tout sur un ecran (graphiques reserves a l'ordinateur) */
-html:not(.ordi) .db-grille > :not(.db-toujours) { display: none; }
 .db-raccourcis { margin-top: 12px; }
 .db-raccourcis .raccourci span { white-space: normal; }
-html:not(.ordi) .db-kpis { gap: 8px; margin-bottom: 8px; }
+html:not(.ordi) .db-kpis { gap: 8px; margin-bottom: 0; }
+html:not(.ordi) .db-grille { display: none; }
 html:not(.ordi) .db-kpis .kpi { padding: 12px; }
 html:not(.ordi) .db-kpis .kpi-ico { margin-bottom: 4px; }
 html:not(.ordi) .db-kpis .kpi b { font-size: 22px; }
-html:not(.ordi) .db-toujours .activite a { min-height: 50px; padding: 8px 14px; }
-html:not(.ordi) .db-toujours { padding-top: 12px; }
-html:not(.ordi) .db-toujours .db-titre { margin-bottom: 8px; }
 html:not(.ordi) .db-kpis .kpi-ico { display: none; }
 html:not(.ordi) .db-kpis .kpi-tendance { position: static; align-self: flex-start; margin-bottom: 4px; }
 html:not(.ordi) .db-raccourcis { grid-template-columns: 1fr 1fr; }
