@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../api.js'
+import { api, apiBase } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { langue } from '../i18n.jsx'
 import { useApi } from '../hooks.js'
@@ -8,7 +8,7 @@ import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcBillets, IcSac, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcBillets, IcSac, IcFamille, IcActus, IcCarte, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcPhoto, IcPlus, IcProf, IcProfil, IcBouclier, IcMegaphone, IcTableau } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -26,18 +26,16 @@ function Bientot() {
 const TYPES_ECOLE = { maternelle: 'Maternelle', primaire: 'Primaire', college: 'Collège', lycee: 'Lycée' }
 const nombre = (n) => (n === undefined || n === null ? '…' : Number(n).toLocaleString('fr-FR'))
 
-function Kpi({ Icone, valeur, libelle, detail, href, tendance }) {
-  const Tag = href ? 'a' : 'div'
+function Kpi({ Icone, valeur, libelle, detail }) {
   return (
-    <Tag className="kpi" href={href}>
+    <div className="kpi">
       <span className="kpi-ico">
         <Icone size={18} />
       </span>
-      {tendance != null && <em className={`kpi-tendance ${tendance < 0 ? 'baisse' : ''}`}>{`${tendance > 0 ? '+' : ''}${tendance} %`}</em>}
       <b>{valeur}</b>
       <span>{libelle}</span>
       {detail && <small>{detail}</small>}
-    </Tag>
+    </div>
   )
 }
 
@@ -215,17 +213,24 @@ function EnteteEtablissement({ d, ecole, prenom, onChange }) {
     }
     setBusy(false)
   }
-  // grande photo de l'etablissement, comme avant : nom et annee en bas, sur un degrade ; l'appareil photo en haut a droite
+  // en-tete : le nom a gauche, la photo de l'etablissement a droite qui se fond dans le fond de la page
   return (
-    <section className={`ent-banniere ${photo ? '' : 'sans-photo'}`} style={photo ? { backgroundImage: `linear-gradient(180deg, rgba(8, 12, 28, 0) 35%, rgba(8, 12, 28, 0.86)), url(${photo})` } : undefined}>
-      <button type="button" className="ent-banniere-photo" aria-label={photo ? 'Changer la photo' : 'Ajouter une photo'} onClick={() => champ.current?.click()} disabled={busy}>
-        <IcPhoto size={18} />
-      </button>
+    <section className="ent-hero">
+      <div className="ent-hero-photo" style={photo ? { backgroundImage: `url(${photo})` } : undefined}>
+        <button type="button" aria-label={photo ? 'Changer la photo' : 'Ajouter une photo'} onClick={() => champ.current?.click()} disabled={busy}>
+          <IcPhoto size={16} />
+        </button>
+      </div>
       <input ref={champ} type="file" accept="image/*" hidden onChange={choisir} />
       {aRecadrer && <Recadreur fichier={aRecadrer} ratio={2} sortie={1000} onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
-      {prenom && <small>{`Bonjour, ${prenom}`}</small>}
-      <b data-brut>{nom || 'Mon établissement'}</b>
-      {d.annee?.name && <span>{`Année ${d.annee.name}`}</span>}
+      <div className="ent-hero-texte">
+        <span className="ent-hero-badge">
+          <IcEcole size={15} /> Établissement
+        </span>
+        <b data-brut>{nom || 'Mon établissement'}</b>
+        {d.annee?.name && <span>{`Année scolaire ${d.annee.name}`}</span>}
+        {prenom && <small>{`Bonjour, ${prenom}`}</small>}
+      </div>
     </section>
   )
 }
@@ -316,14 +321,51 @@ function RepartitionEleves({ s }) {
   )
 }
 
-// Accueil de l'etablissement, facon tableau de bord : 4 chiffres cles, graphiques de l'annee, puis ce qui attend.
-// Messages, Informer et Abonnement ne sont pas repetes ici : ils sont dans la barre du bas, le bouton « + » et le Profil.
+// Un chiffre cle de l'accueil : icone (ou anneau) a gauche, valeur et libelle, petit graphique a droite
+function Chiffre({ href, Icone, teinte, valeur, libelle, detail, tendance, visuel, children }) {
+  return (
+    <a className={`chiffre ${teinte}`} href={href}>
+      {visuel || (
+        <span className="chiffre-ico">
+          <Icone size={26} />
+        </span>
+      )}
+      <span className="chiffre-texte">
+        {valeur != null && <b>{valeur}</b>}
+        <span>{libelle}</span>
+        <small>
+          {tendance != null && <i className={tendance < 0 ? 'baisse' : 'hausse'} title="Par rapport au mois dernier">{`${tendance > 0 ? '+' : ''}${tendance} %`}</i>}
+          {detail}
+        </small>
+      </span>
+      {children}
+    </a>
+  )
+}
+
+// Courbe des 6 derniers mois, sans axe (tendance seulement)
+function Tendance({ valeurs }) {
+  const max = Math.max(1, ...valeurs)
+  const pts = valeurs.map((v, i) => `${(i * 100) / (valeurs.length - 1)},${36 - (v / max) * 32}`).join(' ')
+  return (
+    <svg className="chiffre-courbe" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+      <polyline points={pts} />
+    </svg>
+  )
+}
+
+const ilYa = (sec) => (sec < 3600 ? `Il y a ${Math.max(1, Math.round(sec / 60))} min` : sec < 86400 ? `Il y a ${Math.round(sec / 3600)} h` : `Il y a ${Math.round(sec / 86400)} jours`)
+const ACTIVITES = {
+  paiement: [IcBillets, 'vert', 'Paiement reçu', () => '#/scolarite'],
+  commande: [IcSac, 'bleu', 'Commande de la boutique', (a) => `#/boutique/commandes/${a.lien}`],
+  document: [IcDocument, 'violet', 'Nouveau document', (a) => `#/infos/${a.lien}`],
+  information: [IcActus, 'bleu', 'Nouvelle information', (a) => `#/infos/${a.lien}`],
+}
+
 function EspaceEtablissement() {
   const { user } = useAuth()
   const t = useApi('/api/etablissement/tableau')
-  // graphiques : seulement sur ordinateur (sur telephone, l'accueil tient sur un ecran)
-  const ordi = document.documentElement.classList.contains('ordi')
-  const st = useApi(ordi ? '/api/etablissement/statistiques' : null)
+  const st = useApi('/api/etablissement/statistiques')
   const abs = useApi(`/api/notes/absences?date=${aujourdhuiLocal()}`)
   const d = t.data || {}
   const s = st.data
@@ -377,23 +419,96 @@ function EspaceEtablissement() {
         </>
       )}
 
-      <div className="kpis db-kpis">
-        <Kpi href="#/eleves" Icone={IcEleves} valeur={nombre(d.eleves)} libelle="Élèves" detail={t.data && `${nombre(d.classes)} classe(s)`} />
-        <Kpi
+      {/* acces directs, en tuiles defilantes */}
+      <nav className="ent-actions" aria-label="Accès directs">
+        {[
+          ['#/eleves', IcEleves, 'Élèves'],
+          ['#/presence-enseignants', IcProf, 'Enseignants'],
+          ['#/scolarite', IcCarte, 'Scolarité'],
+          ['#/actualites', IcDocument, 'Documents'],
+          ['#/boutique-gestion', IcSac, 'Boutique'],
+          ['#/conseil-classe', IcClasses, 'Conseil de classe'],
+          ['#/conseil-enseignement', IcTableau, 'Conseil d’enseignement'],
+        ].map(([href, Icone, titre]) => (
+          <a key={href} href={href}>
+            <Icone size={24} />
+            <span>{titre}</span>
+          </a>
+        ))}
+      </nav>
+
+      <div className="chiffres">
+        <Chiffre href="#/eleves" Icone={IcEleves} teinte="bleu" valeur={nombre(d.eleves)} libelle="Élèves" detail={t.data && `${nombre(d.classes)} classe(s)`} />
+        <Chiffre
           href="#/presence-enseignants"
           Icone={IcProf}
+          teinte="violet"
           valeur={nombre(d.enseignants)}
           libelle="Enseignants"
           detail={t.data && (d.enseignants_attente > 0 ? `${d.enseignants_attente} à valider` : 'comptes validés')}
         />
-        <Kpi href="#/scolarite" Icone={IcBillets} valeur={nombre(ceMois)} libelle="FCFA ce mois" detail={t.data && `${nombre(d.encaisse_jour)} aujourd’hui`} tendance={tendance} />
-        <Kpi href="#/absences" Icone={IcCalendrier} valeur={presence == null ? '…' : pct(presence)} libelle="Présence aujourd’hui" detail={abs.data && `${abs.data.absents} absent(s)`} />
+        <Chiffre href="#/scolarite" Icone={IcBillets} teinte="vert" valeur={nombre(ceMois)} libelle="FCFA ce mois" tendance={tendance}>
+          {s?.mois && <Tendance valeurs={s.mois.map((m) => Number(m.total))} />}
+        </Chiffre>
+        <Chiffre
+          href="#/absences"
+          teinte="bleu"
+          libelle="Présence aujourd’hui"
+          detail={abs.data && `${abs.data.absents} absent(s)`}
+          visuel={
+            <span className="chiffre-anneau">
+              <svg viewBox="0 0 44 44" aria-hidden="true">
+                <circle cx="22" cy="22" r="19" />
+                <circle cx="22" cy="22" r="19" strokeDasharray={`${(presence || 0) * 119.4} 119.4`} transform="rotate(-90 22 22)" />
+              </svg>
+              <b>{presence == null ? '…' : pct(presence).replace(' %', '%')}</b>
+            </span>
+          }
+        />
       </div>
 
+      <div className="ent-duo">
+        <section className="db-panneau ent-activites">
+          <div className="db-titre">
+            <b>Activités récentes</b>
+          </div>
+          {s && !s.activite?.length && <p className="muted">Rien pour le moment.</p>}
+          <ol>
+            {(s?.activite || []).map((x, i) => {
+              const [Icone, teinte, titre, lien] = ACTIVITES[x.genre] || ACTIVITES.information
+              return (
+                <li key={i}>
+                  <a href={lien(x)}>
+                    <span className={`ent-activite-ico ${teinte}`}>
+                      <Icone size={18} />
+                    </span>
+                    <span className="ent-activite-texte">
+                      <b>{titre}</b>
+                      <small data-brut>{x.montant != null ? `${fcfa(x.montant)} · ${x.titre}` : x.titre}</small>
+                    </span>
+                    <em>{ilYa(x.il_y_a)}</em>
+                  </a>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+        <a className="ent-verifier" href="#/verifier">
+          <IcBouclier size={34} />
+          <b>Vérifier un reçu</b>
+          <small>Scannez le code d’un reçu pour savoir s’il est authentique.</small>
+          <span>
+            Scanner <IcChevron size={14} />
+          </span>
+        </a>
+      </div>
+
+      {s?.communication && <Communication p={s.communication} photo={d.photo} />}
+
+      {/* sur ordinateur : graphiques de l'annee */}
       {st.error && <p className="muted">{st.error}</p>}
-      <div className="db-grille">
-        {s && (
-          <>
+      {s && (
+        <div className="db-grille">
           <CourbeEncaissements mois={s.mois} />
           {s.sexes.g + s.sexes.f > 0 && <RepartitionEleves s={s.sexes} />}
 
@@ -433,50 +548,28 @@ function EspaceEtablissement() {
               ))}
             </ul>
           </section>
-
-          <section className="db-panneau db-plein">
-            <div className="db-titre">
-              <b>Derniers paiements</b>
-              <a href="#/scolarite">Tout voir</a>
-            </div>
-            {!s.activite?.length && <p className="muted">Aucun paiement pour le moment.</p>}
-            <ul className="activite">
-              {(s.activite || []).map((p, i) => (
-                <li key={i}>
-                  <a href="#/scolarite">
-                    <span className="activite-ico">
-                      <IcBillets size={18} />
-                    </span>
-                    <span className="activite-titre">
-                      <span data-brut>{p.eleve}</span>
-                      <small>{p.frais || 'Paiement'}</small>
-                    </span>
-                    <b className="db-montant">{fcfa(p.montant)}</b>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-          </>
-        )}
-
-      </div>
-
-      {/* raccourcis sans doublon : eleves, enseignants et scolarite s'ouvrent deja depuis les chiffres */}
-      <div className="raccourcis db-raccourcis">
-        {[
-          ['#/boutique-gestion', IcSac, 'Boutique'],
-          ['#/conseil-classe', IcClasses, 'Conseil de classe'],
-          ['#/conseil-enseignement', IcDocument, 'Conseil d’enseignement'],
-          ['#/verifier', IcScan, 'Vérifier un reçu'],
-        ].map(([href, Icone, titre]) => (
-          <a key={href} href={href} className="raccourci">
-            <Icone size={22} />
-            <span>{titre}</span>
-          </a>
-        ))}
-      </div>
+        </div>
+      )}
     </>
+  )
+}
+
+// La communication du moment (evenement a venir ou derniere annonce), avec sa photo ou celle de l'etablissement
+function Communication({ p, photo }) {
+  const media = (p.medias || []).find((m) => m.type === 'image')?.url || (p.image ? `${apiBase()}${p.image}` : photo)
+  const quand = p.event_date && new Date(p.event_date).toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+  return (
+    <a className="ent-com" href={`#/infos/${p.id}`}>
+      <span className="ent-com-photo" style={media ? { backgroundImage: `url(${media})` } : undefined} />
+      <span className="ent-com-texte">
+        <em>
+          <IcMegaphone size={14} /> {p.type === 'evenement' ? 'Événement' : 'Annonce'}
+        </em>
+        <b data-brut>{p.title}</b>
+        <small data-brut>{[quand, p.event_place].filter(Boolean).join(' · ') || (p.body || '').slice(0, 90)}</small>
+      </span>
+      <IcChevron size={18} />
+    </a>
   )
 }
 
