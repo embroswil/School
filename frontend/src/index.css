@@ -3382,3 +3382,14 @@ html:not(.ordi):not(.espace-parent) .espace-flottant { bottom: calc(66px + env(s
 html:not(.ordi):not(.espace-parent) .grille-enregistrer { bottom: calc(70px + env(safe-area-inset-bottom)); }
 body:has(.espace-flottant) .app { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
 html.ordi body:has(.espace-flottant) .app { padding-bottom: 72px; }
+
+/* Choix d'une classe : niveaux en onglets, puis les classes du niveau en cartes */
+.niveaux-barre { display: flex; gap: 6px; overflow-x: auto; padding: 4px; margin-bottom: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); scrollbar-width: none; }
+.niveaux-barre::-webkit-scrollbar { display: none; }
+.niveaux-barre button { flex: 1 0 auto; min-width: 40px; min-height: 40px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: var(--muted); font: 700 15px/1 var(--font-body); cursor: pointer; }
+.niveaux-barre button[aria-selected='true'] { background: var(--primary); color: #fff; }
+.choix-classes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.choix-classes a { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--text); }
+.choix-classes b { font: 700 16px/1.2 var(--font-display); }
+.choix-classes small { color: var(--muted); font-size: 13px; }
+html.ordi .choix-classes, html.ordi .niveaux-barre { max-width: 760px; }

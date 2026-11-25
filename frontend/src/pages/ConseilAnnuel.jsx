@@ -3,7 +3,7 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { BoutonExcel, exporterExcel } from '../export.jsx'
-import { trierClasses } from '../classes.js'
+import { niveauClasse, trierClasses } from '../classes.js'
 
 const n2 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
 
@@ -137,21 +137,35 @@ export default function ConseilAnnuel({ id }) {
   )
 }
 
-// Depuis l'accueil : choisir la classe dont on tient le conseil de fin d'annee
+// Depuis l'accueil : choisir la classe dont on tient le conseil de fin d'annee (niveau, puis classe)
 export function ChoixClasseConseil() {
   const c = useApi('/api/etablissement/classes')
+  const classes = trierClasses(c.data)
+  const niveaux = [...new Set(classes.map((k) => niveauClasse(k.name)))]
+  const [choix, setChoix] = useState(null)
+  const niveau = choix || niveaux[0]
   return (
     <>
       <h1 className="page-title">Conseil de classe</h1>
-      <p className="muted" style={{ marginBottom: 12 }}>Choisissez la classe : moyennes annuelles, rangs et décisions de fin d’année.</p>
+      <p className="muted" style={{ marginBottom: 12 }}>Choisissez le niveau puis la classe.</p>
       <Note>{c.error}</Note>
       {!c.data && !c.error && <p className="muted">Chargement…</p>}
-      <div className="chips">
-        {trierClasses(c.data).map((k) => (
-          <a key={k.id} className="chip" href={`#/classes/${k.id}/annuel`} data-brut>
-            {k.name}
-          </a>
+      <div className="niveaux-barre" role="tablist" aria-label="Niveau">
+        {niveaux.map((n) => (
+          <button key={n} type="button" role="tab" aria-selected={n === niveau} onClick={() => setChoix(n)} data-brut>
+            {n}
+          </button>
         ))}
+      </div>
+      <div className="choix-classes">
+        {classes
+          .filter((k) => niveauClasse(k.name) === niveau)
+          .map((k) => (
+            <a key={k.id} href={`#/classes/${k.id}/annuel`}>
+              <b data-brut>{k.name}</b>
+              <small>{`${k.eleves} élèves`}</small>
+            </a>
+          ))}
       </div>
     </>
   )

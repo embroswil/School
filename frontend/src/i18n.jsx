@@ -1597,12 +1597,12 @@ const EN = {
   "Mon enfant": "My child",
   "Mon profil": "My profile",
   "Mon établissement": "My school",
+  "Choisissez le niveau puis la classe.": "Choose the level, then the class.",
   "Espace établissement": "School space",
   "Espace enseignant": "Teacher space",
   "Conseil de classe": "Class council",
   "Moyennes, rangs et décisions de fin d’année": "Averages, ranks and end-of-year decisions",
   "Rapport du trimestre par matière": "Term report by subject",
-  "Choisissez la classe : moyennes annuelles, rangs et décisions de fin d’année.": "Choose the class: annual averages, ranks and end-of-year decisions.",
   "Séq.": "Seq.",
   "Coefficient": "Coefficient",
   "Consigne": "Instructions",
@@ -2529,6 +2529,7 @@ const MORCEAUX_NIVEAU = [
   [/^(\d+) à vérifier$/, '$1 to check'],
 ]
 const FORMULES = [
+  [/^(\d+) élèves$/, '$1 students'],
   [/^Moyenne ([\d,—]+) · (\d+) % au-dessus de 10 · meilleure ([\d,—]+) · plus basse ([\d,—]+)$/, 'Average $1 · $2% above 10 · highest $3 · lowest $4'],
   [/^Moyenne de la classe ([\d,—]+) · $/, 'Class average $1 · '],
   [/^(\d+) paiement\(s\)$/, '$1 payment(s)'],
