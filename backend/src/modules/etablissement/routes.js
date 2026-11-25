@@ -74,6 +74,49 @@ router.get("/tableau", async (req, res, next) => {
   }
 });
 
+// Graphiques de l'accueil (a part pour garder /tableau rapide). Heure du Cameroun = UTC+1.
+router.get("/statistiques", async (req, res, next) => {
+  try {
+    const ecole = ecoleDe(req);
+    const annee = await anneeCourante(ecole);
+    const { rows } = await db.query(
+      `SELECT
+        (SELECT json_build_object('g', COUNT(*) FILTER (WHERE sr.gender = 'male'), 'f', COUNT(*) FILTER (WHERE sr.gender = 'female'))
+           FROM users u LEFT JOIN student_records sr ON sr.student_id = u.id
+          WHERE u.school_id = $1 AND u.role = 'student' AND u.is_active) AS sexes,
+        (SELECT json_agg(x ORDER BY x.mois) FROM (
+           SELECT to_char(m, 'YYYY-MM') AS mois, COALESCE(SUM(ps.montant), 0)::bigint AS total
+             FROM generate_series(date_trunc('month', NOW() + INTERVAL '1 hour') - INTERVAL '5 months', date_trunc('month', NOW() + INTERVAL '1 hour'), '1 month') m
+             LEFT JOIN paiements_scolaires ps ON ps.school_id = $1 AND ps.statut = 'reussi'
+                  AND date_trunc('month', COALESCE(ps.confirme_le, ps.created_at) + INTERVAL '1 hour') = m
+            GROUP BY m) x) AS mois,
+        (SELECT json_agg(x ORDER BY x.jour) FROM (
+           SELECT d::date AS jour,
+                  COUNT(a.*)::int AS appels,
+                  COUNT(DISTINCT a.student_id) FILTER (WHERE a.status = 'absent')::int AS absents
+             FROM generate_series((NOW() + INTERVAL '1 hour')::date - 6, (NOW() + INTERVAL '1 hour')::date, '1 day') d
+             LEFT JOIN classes c ON c.academic_year_id = $2
+             LEFT JOIN attendance a ON a.class_id = c.id AND a.date = d::date
+            WHERE EXTRACT(ISODOW FROM d) < 7
+            GROUP BY d) x) AS semaine,
+        (SELECT json_agg(x) FROM (
+           SELECT s.name AS matiere, ROUND(AVG(n.note * 20 / e.bareme)::numeric, 2) AS moyenne
+             FROM notes_eleves n JOIN evaluations e ON e.id = n.evaluation_id JOIN subjects s ON s.id = e.subject_id
+            WHERE e.school_id = $1 AND e.academic_year_id = $2 AND n.note IS NOT NULL
+            GROUP BY s.name ORDER BY COUNT(*) DESC LIMIT 6) x) AS matieres,
+        (SELECT json_agg(x) FROM (
+           SELECT u.first_name || ' ' || u.last_name AS eleve, ps.montant, f.nom AS frais, COALESCE(ps.confirme_le, ps.created_at) AS quand
+             FROM paiements_scolaires ps JOIN users u ON u.id = ps.student_id LEFT JOIN frais_scolaires f ON f.id = ps.frais_id
+            WHERE ps.school_id = $1 AND ps.statut = 'reussi'
+            ORDER BY COALESCE(ps.confirme_le, ps.created_at) DESC LIMIT 5) x) AS activite`,
+      [ecole, annee?.id || null]
+    );
+    res.json({ success: true, data: rows[0] });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // Eleves de l'etablissement, avec la classe declaree a l'inscription et la classe reelle
 router.get("/eleves", async (req, res, next) => {
   try {

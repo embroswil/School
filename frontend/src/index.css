@@ -3314,20 +3314,15 @@ html.ordi .bq-gestion-grille { grid-template-columns: repeat(6, minmax(0, 1fr));
 .bq-photo .bq-visuel { width: 84px; height: 84px; border-radius: 16px; flex: none; }
 .bq-photo > div { display: grid; gap: 6px; }
 
-/* Accueil de l'etablissement, facon appli bancaire : bandeau fin, chiffre du jour, raccourcis, activite */
+/* Accueil de l'etablissement : bandeau fin, tableau de bord, raccourcis, activite */
 .ent-ecole { display: flex; align-items: center; gap: 12px; margin: 6px 0 14px; }
 .ent-ecole small { display: block; color: var(--muted); font-size: 13px; }
+.ent-ecole > div { min-width: 0; }
 .ent-ecole b { display: block; font: 800 20px/1.2 var(--font-display); color: var(--text); }
 .ent-photo { position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 16px; background: var(--primary); color: #fff; cursor: pointer; }
 .ent-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; display: block; }
 .ent-photo > span { font: 800 22px/52px var(--font-display); }
 .ent-photo i { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--card); color: var(--text); border: 2px solid var(--bg); font-style: normal; }
-.banque { display: grid; gap: 4px; padding: 20px; border-radius: 24px; color: #fff; background: linear-gradient(135deg, #2446d8 0%, #1a2f9c 60%, #121f6b 100%); box-shadow: 0 16px 36px rgba(36, 70, 216, 0.3); }
-.banque-libelle { font-size: 14px; opacity: 0.8; }
-.banque-montant { font: 800 clamp(32px, 9vw, 40px)/1.1 var(--font-display); letter-spacing: -0.02em; }
-.banque-sous { font-size: 13px; opacity: 0.8; }
-.banque-actions { display: grid; gap: 10px; margin-top: 14px; }
-.banque-actions a { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border-radius: 14px; background: #fff; color: #1a2f9c; font: 700 15px/1 var(--font-body); }
 .raccourcis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .raccourci { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 84px; padding: 10px 4px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: var(--lien); }
 .raccourci span { color: var(--text); font: 600 12.5px/1.2 var(--font-body); text-align: center; white-space: nowrap; }
@@ -3340,12 +3335,12 @@ html.ordi .bq-gestion-grille { grid-template-columns: repeat(6, minmax(0, 1fr));
 .activite a > svg:last-child { color: var(--muted); }
 .activite a.alerte b, .activite a.alerte .activite-ico { color: var(--danger); }
 .activite a.alerte .activite-ico { background: var(--danger-soft); }
-@media (max-width: 360px) { .raccourci span { font-size: 11px; } .banque-actions a { font-size: 14px; } }
+@media (max-width: 360px) { .raccourci span { font-size: 11px; } }
 .conseils { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .conseils a { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: var(--text); }
 .conseils b { font: 700 15px/1.25 var(--font-display); }
 .conseils small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
-html.ordi .banque, html.ordi .raccourcis, html.ordi .activite, html.ordi .ent-ecole, html.ordi .conseils { max-width: 760px; }
+html.ordi .ent-ecole { max-width: 760px; }
 
 /* Tableau facon tableur (conseil de fin d'annee) : cellules bordees, colonne des noms fixe au defilement */
 .grille-cadre { overflow: auto; max-height: calc(100dvh - 230px); border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
@@ -3393,3 +3388,65 @@ html.ordi body:has(.espace-flottant) .app { padding-bottom: 72px; }
 .choix-classes b { font: 700 16px/1.2 var(--font-display); }
 .choix-classes small { color: var(--muted); font-size: 13px; }
 html.ordi .choix-classes, html.ordi .niveaux-barre { max-width: 760px; }
+
+/* Tableau de bord de l'etablissement : 4 chiffres cles puis des panneaux (2 a 3 par ligne sur ordinateur) */
+:root { --serie-1: #5b8cff; --serie-2: #d9822b; }
+:root[data-theme='light'] { --serie-1: #2f6bff; --serie-2: #e0882a; }
+.db-kpis { margin-bottom: 12px; }
+a.kpi { position: relative; color: var(--text); }
+a.kpi:hover { border-color: var(--lien); }
+.kpi-tendance { position: absolute; top: 14px; right: 14px; padding: 3px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--vert); font: 700 12px/1.2 var(--font-body); font-style: normal; }
+.kpi-tendance.baisse { background: var(--danger-soft); color: var(--rouge-texte); }
+.db-grille { display: grid; gap: 12px; }
+.db-panneau { min-width: 0; padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.db-titre { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; margin-bottom: 12px; }
+.db-titre > :last-child:not(:first-child) { margin-left: auto; }
+.db-titre b { font: 700 16px/1.25 var(--font-display); }
+.db-titre small, .db-titre a { font-size: 13px; text-align: right; }
+.db-titre small { color: var(--muted); }
+.db-titre a { font-weight: 700; white-space: nowrap; }
+.db-courbe { position: relative; }
+.db-courbe svg { display: block; width: 100%; height: auto; overflow: visible; }
+.db-repere { stroke: var(--line); stroke-width: 1; }
+.db-aire { fill: var(--serie-1); opacity: 0.14; }
+.db-ligne { fill: none; stroke: var(--serie-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.db-curseur { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.db-point { fill: var(--serie-1); stroke: var(--card); stroke-width: 2; }
+.db-axe { position: absolute; inset: 0 0 -26px; display: flex; }
+.db-axe button { flex: 1; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 4px; border: 0; background: none; color: var(--muted); font: 600 12px/1 var(--font-body); text-transform: capitalize; cursor: pointer; }
+.db-axe button[aria-pressed='true'] { color: var(--text); }
+.db-large .db-courbe { margin-bottom: 26px; }
+.db-anneau { position: relative; width: 150px; margin: 4px auto 12px; }
+.db-anneau svg { display: block; width: 100%; }
+.db-anneau circle { fill: none; stroke-width: 12; stroke-linecap: butt; }
+.db-anneau > span { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.db-anneau b { font: 800 22px/1.1 var(--font-display); }
+.db-anneau small { color: var(--muted); font-size: 12px; }
+circle.db-serie-1 { stroke: var(--serie-1); }
+circle.db-serie-2 { stroke: var(--serie-2); }
+.db-legende { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.db-legende li { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.db-legende i { width: 10px; height: 10px; border-radius: 3px; }
+.db-legende i.db-serie-1 { background: var(--serie-1); }
+.db-legende i.db-serie-2 { background: var(--serie-2); }
+.db-legende span { flex: 1; color: var(--muted); }
+.db-colonnes { height: 150px; }
+.db-colonnes b { font: 700 12px/1 var(--font-body); color: var(--text); }
+.cpt-barres i.db-barre { width: min(28px, 60%); background: var(--serie-1); }
+.db-matieres { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.db-matieres li { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; font-size: 14px; }
+.db-matieres li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-matieres b { font-variant-numeric: tabular-nums; }
+.db-matieres .suivi-barre { grid-column: 1 / -1; display: block; width: 100%; height: 8px; }
+.db-panneau .activite { border: 0; border-radius: 0; background: none; margin: 0 -16px -16px; }
+.db-panneau .activite a { padding: 10px 16px; }
+.db-panneau .activite li:first-child { border-top: 1px solid var(--line); }
+.activite-titre small { display: block; color: var(--muted); font: 400 12.5px/1.3 var(--font-body); }
+.activite b.db-montant { font: 700 14px/1.2 var(--font-body); white-space: nowrap; }
+html.ordi .db-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+html.ordi .db-grille { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+html.ordi .db-grille > * { grid-column: span 2; }
+html.ordi .db-grille > .db-large { grid-column: span 4; }
+html.ordi .db-grille > .db-moitie { grid-column: span 3; }
+html.ordi .db-grille > .db-large:has(+ .db-moitie) { grid-column: 1 / -1; }
+@media (min-width: 640px) { html:not(.ordi) .db-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } html:not(.ordi) .db-grille { grid-template-columns: 1fr 1fr; } html:not(.ordi) .db-large { grid-column: 1 / -1; } }

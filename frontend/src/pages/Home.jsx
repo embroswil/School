@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
+import { langue } from '../i18n.jsx'
 import { useApi } from '../hooks.js'
 import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
@@ -8,7 +9,7 @@ import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
 import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcBillets, IcSac, IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcBillets, IcSac, IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -26,16 +27,18 @@ function Bientot() {
 const TYPES_ECOLE = { maternelle: 'Maternelle', primaire: 'Primaire', college: 'Collège', lycee: 'Lycée' }
 const nombre = (n) => (n === undefined || n === null ? '…' : Number(n).toLocaleString('fr-FR'))
 
-function Kpi({ Icone, valeur, libelle, detail }) {
+function Kpi({ Icone, valeur, libelle, detail, href, tendance }) {
+  const Tag = href ? 'a' : 'div'
   return (
-    <div className="kpi">
+    <Tag className="kpi" href={href}>
       <span className="kpi-ico">
         <Icone size={18} />
       </span>
+      {tendance != null && <em className={`kpi-tendance ${tendance < 0 ? 'baisse' : ''}`}>{`${tendance > 0 ? '+' : ''}${tendance} %`}</em>}
       <b>{valeur}</b>
       <span>{libelle}</span>
       {detail && <small>{detail}</small>}
-    </div>
+    </Tag>
   )
 }
 
@@ -175,7 +178,7 @@ const lireEntete = () => {
   }
 }
 
-function EnteteEtablissement({ d, ecole, onChange }) {
+function EnteteEtablissement({ d, ecole, prenom, onChange }) {
   const champ = useRef(null)
   const [busy, setBusy] = useState(false)
   const [aRecadrer, setARecadrer] = useState(null)
@@ -225,8 +228,9 @@ function EnteteEtablissement({ d, ecole, onChange }) {
       <input ref={champ} type="file" accept="image/*" hidden onChange={choisir} />
       {aRecadrer && <Recadreur fichier={aRecadrer} ratio={2} sortie={1000} onValider={envoyerPhoto} onAnnuler={() => setARecadrer(null)} />}
       <div>
-        <small>{d.annee?.name ? `Année ${d.annee.name}` : 'Établissement'}</small>
+        <small>{prenom ? `Bonjour, ${prenom}` : 'Établissement'}</small>
         <b data-brut>{nom || 'Mon établissement'}</b>
+        {d.annee?.name && <small>{`Année ${d.annee.name}`}</small>}
       </div>
     </section>
   )
@@ -236,18 +240,101 @@ const aujourdhuiLocal = () => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+const LOCALE = langue === 'en' ? 'en-GB' : 'fr-FR'
+const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
+const leMois = (m, format) => new Date(`${m}-15T12:00:00`).toLocaleDateString(LOCALE, { month: format })
 
-// Accueil de l'etablissement : la journee en 3 chiffres, ce qui attend, puis 3 portes d'entree.
+// Encaissements des 6 derniers mois : courbe, chaque colonne se touche (ou se survole) pour lire son montant
+function CourbeEncaissements({ mois }) {
+  const [sel, setSel] = useState(mois.length - 1)
+  const W = 320
+  const H = 120
+  const max = Math.max(1, ...mois.map((m) => Number(m.total)))
+  const y = (v) => H - 6 - (v / max) * (H - 20)
+  const pts = mois.map((m, i) => [((i + 0.5) * W) / mois.length, y(Number(m.total))])
+  const ligne = pts.map((p) => p.join(',')).join(' ')
+  const m = mois[sel]
+  return (
+    <section className="db-panneau db-large">
+      <div className="db-titre">
+        <b>Encaissements · 6 mois</b>
+        <small data-brut>{`${leMois(m.mois, 'long')} : ${fcfa(m.total)}`}</small>
+      </div>
+      <div className="db-courbe">
+        <svg viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+          {[0.5, 1].map((f) => (
+            <line key={f} x1="0" x2={W} y1={y(max * f)} y2={y(max * f)} className="db-repere" />
+          ))}
+          <line x1="0" x2={W} y1={y(0)} y2={y(0)} className="db-repere" />
+          <polygon points={`${pts[0][0]},${y(0)} ${ligne} ${pts[pts.length - 1][0]},${y(0)}`} className="db-aire" />
+          <polyline points={ligne} className="db-ligne" />
+          <line x1={pts[sel][0]} x2={pts[sel][0]} y1="0" y2={y(0)} className="db-curseur" />
+          {pts.map(([x, py], i) => (
+            <circle key={i} cx={x} cy={py} r={i === sel ? 5 : 3.5} className="db-point" />
+          ))}
+        </svg>
+        <div className="db-axe">
+          {mois.map((x, i) => (
+            <button key={x.mois} type="button" aria-pressed={i === sel} aria-label={`${leMois(x.mois, 'long')} : ${fcfa(x.total)}`} onClick={() => setSel(i)} onMouseEnter={() => setSel(i)} data-brut>
+              {leMois(x.mois, 'short').replace('.', '')}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// Garcons et filles : anneau, chaque part nommee avec son nombre (la couleur n'est jamais seule)
+function RepartitionEleves({ s }) {
+  const total = s.g + s.f
+  const C = 2 * Math.PI * 40
+  const ecart = total && s.g && s.f ? 2 : 0
+  const pg = total ? (s.g / total) * C : 0
+  return (
+    <section className="db-panneau">
+      <div className="db-titre">
+        <b>Élèves</b>
+      </div>
+      <div className="db-anneau">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="40" className="db-serie-2" strokeDasharray={`${Math.max(0, C - pg - ecart)} ${C}`} transform={`rotate(${-90 + (pg * 360) / C + ecart} 50 50)`} />
+          <circle cx="50" cy="50" r="40" className="db-serie-1" strokeDasharray={`${Math.max(0, pg - ecart)} ${C}`} transform="rotate(-90 50 50)" />
+        </svg>
+        <span>
+          <b>{nombre(total)}</b>
+          <small>élèves</small>
+        </span>
+      </div>
+      <ul className="db-legende">
+        {[
+          ['db-serie-1', 'Garçons', s.g],
+          ['db-serie-2', 'Filles', s.f],
+        ].map(([c, nom, n]) => (
+          <li key={nom}>
+            <i className={c} />
+            <span>{nom}</span>
+            <b>{`${nombre(n)} · ${total ? Math.round((n / total) * 100) : 0} %`}</b>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+// Accueil de l'etablissement, facon tableau de bord : 4 chiffres cles, graphiques de l'annee, puis ce qui attend.
 // Messages, Informer et Abonnement ne sont pas repetes ici : ils sont dans la barre du bas, le bouton « + » et le Profil.
 function EspaceEtablissement() {
   const { user } = useAuth()
   const t = useApi('/api/etablissement/tableau')
+  const st = useApi('/api/etablissement/statistiques')
   const abs = useApi(`/api/notes/absences?date=${aujourdhuiLocal()}`)
   const prof = useApi(`/api/presence-enseignants?date=${aujourdhuiLocal()}`)
   const ordres = useApi('/api/scolarite/ordres?statut=paye,litige')
   const demandes = useApi('/api/familles/demandes')
   const boutique = useApi('/api/boutique/gestion')
   const d = t.data || {}
+  const s = st.data
   const aPreparer = boutique.data ? boutique.data.commandes.filter((c) => c.statut === 'payee').length : 0
   const aVerifier = prof.data ? prof.data.cours.filter((c) => c.etat === 'a_verifier').length : null
   const aConfirmer = ordres.data?.length ?? null
@@ -260,13 +347,22 @@ function EspaceEtablissement() {
     [d.creneaux > 0, '#/import-emplois', 'Emplois du temps', 'Une photo par classe suffit'],
   ]
   const faites = etapes.filter((e) => e[0]).length
-  const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
   const taches = [
-    d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`, 'Vérifiez et validez leurs comptes'],
-    demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`, 'Demandes de suivi d’un élève'],
-    aPreparer > 0 && ['#/boutique-gestion', `${aPreparer} commande(s) de la boutique à préparer`, 'Payées par les parents, à préparer puis à remettre'],
-    d.eleves_sans_classe > 0 && ['#/eleves', `${d.eleves_sans_classe} élève(s) sans classe`, 'À placer dans leur classe'],
+    d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`],
+    demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`],
+    aPreparer > 0 && ['#/boutique-gestion', `${aPreparer} commande(s) de la boutique à préparer`],
+    d.eleves_sans_classe > 0 && ['#/eleves', `${d.eleves_sans_classe} élève(s) sans classe`],
   ].filter(Boolean)
+  // chiffres du mois et tendance face au mois precedent
+  const ceMois = s?.mois ? Number(s.mois[s.mois.length - 1].total) : null
+  const avant = s?.mois ? Number(s.mois[s.mois.length - 2].total) : 0
+  const tendance = ceMois != null && avant > 0 ? Math.round(((ceMois - avant) / avant) * 100) : null
+  const presence = d.eleves > 0 && abs.data ? Math.max(0, 1 - abs.data.absents / d.eleves) : null
+  const pct = (x) => `${(Math.round(x * 1000) / 10).toLocaleString(LOCALE)} %`
+  // semaine : jours de classe (le samedi seulement s'il y a eu un appel)
+  const jours = (s?.semaine || []).filter((j) => j.appels > 0 || new Date(`${j.jour}T12:00:00`).getDay() !== 6)
+  const maxAbs = Math.max(1, ...jours.map((j) => j.absents))
+  const presenceSemaine = d.eleves > 0 && jours.length ? 1 - jours.reduce((x, j) => x + j.absents, 0) / jours.length / d.eleves : null
   return (
     <>
       {t.error && (
@@ -277,7 +373,7 @@ function EspaceEtablissement() {
           </button>
         </div>
       )}
-      <EnteteEtablissement d={d} ecole={user.schoolId} onChange={() => t.reload()} />
+      <EnteteEtablissement d={d} ecole={user.schoolId} prenom={user.firstName} onChange={() => t.reload()} />
 
       {t.data && faites < etapes.length && (
         <>
@@ -298,41 +394,113 @@ function EspaceEtablissement() {
         </>
       )}
 
-      {/* le chiffre du jour, comme le solde d'une appli bancaire (encaisser : barre du bas) */}
-      <section className="banque">
-        <span className="banque-libelle">Encaissé aujourd’hui</span>
-        <b className="banque-montant">{t.data ? fcfa(d.encaisse_jour) : '…'}</b>
-        <span className="banque-sous">
-          {`${d.paiements_jour || 0} paiement(s)`}
-          {d.gain_service > 0 && ` · ${fcfa(d.gain_service)} rapportés par Sùkûl cette année`}
-        </span>
-        <div className="banque-actions">
-          <a href="#/verifier">
-            <IcScan size={18} /> Vérifier un reçu
-          </a>
-        </div>
-      </section>
+      <div className="kpis db-kpis">
+        <Kpi href="#/eleves" Icone={IcEleves} valeur={nombre(d.eleves)} libelle="Élèves" detail={t.data && `${nombre(d.classes)} classe(s)`} />
+        <Kpi
+          href="#/presence-enseignants"
+          Icone={IcProf}
+          valeur={nombre(d.enseignants)}
+          libelle="Enseignants"
+          detail={t.data && (d.enseignants_attente > 0 ? `${d.enseignants_attente} à valider` : 'comptes validés')}
+        />
+        <Kpi href="#/scolarite" Icone={IcBillets} valeur={nombre(ceMois)} libelle="FCFA encaissés ce mois" detail={t.data && `dont ${fcfa(d.encaisse_jour)} aujourd’hui`} tendance={tendance} />
+        <Kpi href="#/absences" Icone={IcCalendrier} valeur={presence == null ? '…' : pct(presence)} libelle="Présence aujourd’hui" detail={abs.data && `${abs.data.absents} absent(s)`} />
+      </div>
 
-      <h2 className="section-title">Aujourd’hui</h2>
-      <ul className="activite">
-        {[
-          ['#/absences', IcEleves, 'Élèves absents', abs.data?.absents, abs.data?.absents > 0],
-          ['#/presence-enseignants', IcProf, 'Cours à vérifier', aVerifier, false],
-          ['#/scolarite?onglet=confirmer', IcBillets, 'Paiements à confirmer', aConfirmer, aConfirmer > 0],
-          ...taches.map(([href, titre]) => [href, IcCoche, titre, null, true]),
-        ].map(([href, Icone, titre, valeur, alerte]) => (
-          <li key={titre}>
-            <a href={href} className={alerte ? 'alerte' : ''}>
-              <span className="activite-ico">
-                <Icone size={18} />
-              </span>
-              <span className="activite-titre">{titre}</span>
-              {valeur !== null && <b>{valeur ?? '…'}</b>}
-              <IcChevron size={16} />
-            </a>
-          </li>
-        ))}
-      </ul>
+      {st.error && <p className="muted">{st.error}</p>}
+      {s && (
+        <div className="db-grille">
+          <CourbeEncaissements mois={s.mois} />
+          {s.sexes.g + s.sexes.f > 0 && <RepartitionEleves s={s.sexes} />}
+
+          <section className="db-panneau db-moitie">
+            <div className="db-titre">
+              <b>Absences de la semaine</b>
+              {presenceSemaine != null && <small>{`Présence moyenne ${pct(presenceSemaine)}`}</small>}
+            </div>
+            <div className="cpt-colonnes db-colonnes">
+              {jours.map((j) => (
+                <div key={j.jour} title={`${j.absents} absent(s)`}>
+                  <b>{j.absents}</b>
+                  <span className="cpt-barres">
+                    <i className="db-barre" style={{ height: `${(j.absents / maxAbs) * 100}%` }} />
+                  </span>
+                  <small data-brut>{new Date(`${j.jour}T12:00:00`).toLocaleDateString(LOCALE, { weekday: 'short' }).replace('.', '')}</small>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="db-panneau db-moitie">
+            <div className="db-titre">
+              <b>Moyennes par matière</b>
+              <a href="#/conseil-enseignement">Rapport</a>
+            </div>
+            {!s.matieres?.length && <p className="muted">Aucune note cette année.</p>}
+            <ul className="db-matieres">
+              {(s.matieres || []).map((m) => (
+                <li key={m.matiere}>
+                  <span>{m.matiere}</span>
+                  <b>{`${n20p(m.moyenne)}/20`}</b>
+                  <span className="suivi-barre">
+                    <i style={{ width: `${m.moyenne * 5}%` }} className={m.moyenne >= 12 ? '' : m.moyenne >= 10 ? 'moyen' : 'faible'} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="db-panneau db-moitie">
+            <div className="db-titre">
+              <b>Derniers paiements</b>
+              <a href="#/scolarite">Tout voir</a>
+            </div>
+            {!s.activite?.length && <p className="muted">Aucun paiement pour le moment.</p>}
+            <ul className="activite">
+              {(s.activite || []).map((p, i) => (
+                <li key={i}>
+                  <a href="#/scolarite">
+                    <span className="activite-ico">
+                      <IcBillets size={18} />
+                    </span>
+                    <span className="activite-titre">
+                      <span data-brut>{p.eleve}</span>
+                      <small>{p.frais || 'Paiement'}</small>
+                    </span>
+                    <b className="db-montant">{fcfa(p.montant)}</b>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="db-panneau db-moitie">
+            <div className="db-titre">
+              <b>À traiter</b>
+              <a href="#/verifier">Vérifier un reçu</a>
+            </div>
+            <ul className="activite">
+              {[
+                ['#/absences', IcEleves, 'Élèves absents', abs.data?.absents, abs.data?.absents > 0],
+                ['#/presence-enseignants', IcProf, 'Cours à vérifier', aVerifier, false],
+                ['#/scolarite?onglet=confirmer', IcBillets, 'Paiements à confirmer', aConfirmer, aConfirmer > 0],
+                ...taches.map(([href, titre]) => [href, IcCoche, titre, null, true]),
+              ].map(([href, Icone, titre, valeur, alerte]) => (
+                <li key={titre}>
+                  <a href={href} className={alerte ? 'alerte' : ''}>
+                    <span className="activite-ico">
+                      <Icone size={18} />
+                    </span>
+                    <span className="activite-titre">{titre}</span>
+                    {valeur !== null && <b>{valeur ?? '…'}</b>}
+                    <IcChevron size={16} />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      )}
 
       <h2 className="section-title">Mon établissement</h2>
       <div className="raccourcis">
