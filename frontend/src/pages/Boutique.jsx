@@ -5,10 +5,9 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { fraisPaiementDirect } from '../fraisPaiement.js'
-import { ApercuEnvoi } from './Scolarite.jsx'
 import { LogoEcole } from './OrdrePaiement.jsx'
 import { VisuelArticle, visuelDe } from '../boutique-visuels.jsx'
-import { IcSac } from '../icones.jsx'
+import { IcClasses, IcCoche, IcSac } from '../icones.jsx'
 
 export const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
 const prixCourt = (n) => `${Number(n || 0).toLocaleString('fr-FR')} F`
@@ -226,24 +225,19 @@ function Catalogue({ id, enfants, commandes }) {
 
   return (
     <>
-      {/* ------------------------------ vitrine de l'etablissement */}
-      <header className="bq-vitrine">
-        <div className="bq-vitrine-fond">
-          <small className="bq-officiel">Boutique officielle</small>
-        </div>
-        <div className="bq-vitrine-corps">
-          <LogoEcole id={eleve.schoolId} nom={eleve.ecole} taille={58} />
-          <div>
-            <h1 data-brut>{eleve.ecole}</h1>
-            <p>Tenues et fournitures · retrait à l’établissement</p>
-          </div>
-        </div>
-        <div className="bq-pour" data-brut>
-          <span>{`Pour ${eleve.prenom} ${eleve.nom}`}</span>
-          <b>{eleve.classe || 'Classe non précisée'}</b>
+      {/* ------------------------------ en-tete : l'etablissement, l'enfant concerne */}
+      <header className="bq-tete">
+        <LogoEcole id={eleve.schoolId} nom={eleve.ecole} taille={46} />
+        <div>
+          <small>Boutique officielle</small>
+          <h1 data-brut>{eleve.ecole}</h1>
         </div>
       </header>
-      {enfants}
+      {enfants || (
+        <p className="bq-pour">
+          {`Pour ${eleve.prenom} · ${eleve.classe || 'classe non précisée'}`}
+        </p>
+      )}
       <CommandesEnCours commandes={commandes} />
 
       {!ouverte && (
@@ -253,54 +247,65 @@ function Catalogue({ id, enfants, commandes }) {
         </div>
       )}
 
-      {/* ------------------------------ packs de la classe */}
-      {ouverte && kits.length > 0 && (
+      {/* ------------------------------ categories en ronds */}
+      {ouverte && d.data.articles.length > 0 && (
         <>
-          <div className="bq-section empile">
-            <h2>Packs de la rentrée</h2>
-            <small data-brut>{`Choisis par l’établissement pour la ${eleve.classe || 'classe'}`}</small>
+          <div className="bq-section">
+            <h2>Catégories</h2>
           </div>
-          <div className="bq-defile bq-packs">
-            {kits.map((k) => {
-              const n = k.articles.reduce((s, x) => s + x.quantite, 0)
-              const prix = k.articles.reduce((s, x) => s + x.quantite * (articles.get(x.articleId)?.prix || 0), 0)
-              const vitrine = collage(k.articles.map((x) => articles.get(x.articleId)))
+          <div className="bq-cats">
+            {[['tout', 'Tout'], ...presentes].map(([c, t]) => {
+              const exemple = d.data.articles.find((a) => a.categorie === c)
               return (
-                <article className="bq-pack" key={k.id}>
-                  <button type="button" className="bq-pack-collage" onClick={() => setPack(k)} aria-label={`Voir ${k.nom}`}>
-                    {vitrine.map((a) => (
-                      <VisuelArticle key={a.id} article={a} />
-                    ))}
-                    <span className="bq-pack-nb">{`${n} articles`}</span>
-                  </button>
-                  <div className="bq-pack-pied">
-                    <div>
-                      <b data-brut>{k.nom.replace(/^Liste de fournitures /, 'Fournitures ')}</b>
-                      <span data-brut>{fcfa(prix)}</span>
-                    </div>
-                    <button type="button" className="bq-pack-ajout" onClick={() => ajouterKit(k)}>
-                      Ajouter
-                    </button>
-                  </div>
-                </article>
+                <button key={c} type="button" aria-pressed={categorie === c} onClick={() => setCategorie(c)}>
+                  <span className="bq-cat-rond">{exemple ? <VisuelArticle article={exemple} /> : <IcClasses size={22} />}</span>
+                  <span>{t}</span>
+                </button>
               )
             })}
           </div>
         </>
       )}
 
+      {/* ------------------------------ packs de la classe, en bannieres */}
+      {ouverte && kits.length > 0 && categorie === 'tout' && (
+        <div className="bq-defile bq-bannieres">
+          {kits.map((k, i) => {
+            const n = k.articles.reduce((s, x) => s + x.quantite, 0)
+            const prix = k.articles.reduce((s, x) => s + x.quantite * (articles.get(x.articleId)?.prix || 0), 0)
+            const vitrine = collage(k.articles.map((x) => articles.get(x.articleId))).slice(0, 2)
+            return (
+              <article className={`bq-banniere teinte-${i % 3}`} key={k.id}>
+                <div className="bq-banniere-texte">
+                  <small>{`Pack de la rentrée · ${n} articles`}</small>
+                  <b data-brut>{k.nom.replace(/^Liste de fournitures /, 'Fournitures ')}</b>
+                  <span data-brut>{fcfa(prix)}</span>
+                  <span className="bq-banniere-actions">
+                    <button type="button" onClick={() => ajouterKit(k)}>
+                      Ajouter
+                    </button>
+                    <button type="button" className="lien" onClick={() => setPack(k)}>
+                      Voir le contenu
+                    </button>
+                  </span>
+                </div>
+                <div className="bq-banniere-images" aria-hidden="true">
+                  {vitrine.map((a) => (
+                    <VisuelArticle key={a.id} article={a} />
+                  ))}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+
       {/* ------------------------------ articles en grille */}
       {ouverte && d.data.articles.length > 0 && (
         <>
           <div className="bq-section">
-            <h2>Articles</h2>
-          </div>
-          <div className="bq-filtres">
-            {[['tout', 'Tout'], ...presentes].map(([c, t]) => (
-              <button key={c} type="button" aria-pressed={categorie === c} onClick={() => setCategorie(c)}>
-                {t}
-              </button>
-            ))}
+            <h2>{categorie === 'tout' ? 'Articles' : presentes.find(([c]) => c === categorie)?.[1]}</h2>
+            <small>{`${visibles.length} article(s)`}</small>
           </div>
           <div className="bq-grille">
             {visibles.map((a) => {
@@ -312,15 +317,17 @@ function Catalogue({ id, enfants, commandes }) {
                       <VisuelArticle article={a} />
                     </button>
                     {q > 0 && <span className="bq-carte-nb">{q}</span>}
+                  </div>
+                  <button type="button" className="bq-carte-texte" onClick={() => setFiche(a)}>
+                    <span data-brut>{a.nom}</span>
+                    {a.tailles.length > 0 && <small data-brut>{`Tailles ${plage(a.tailles)}`}</small>}
+                  </button>
+                  <div className="bq-carte-pied">
+                    <b data-brut>{prixCourt(a.prix)}</b>
                     <button type="button" className="bq-carte-plus" onClick={() => ajoutRapide(a)} aria-label={`Ajouter ${a.nom}`}>
                       +
                     </button>
                   </div>
-                  <button type="button" className="bq-carte-texte" onClick={() => setFiche(a)}>
-                    <b data-brut>{prixCourt(a.prix)}</b>
-                    <span data-brut>{a.nom}</span>
-                    {a.tailles.length > 0 && <small data-brut>{`Tailles ${plage(a.tailles)}`}</small>}
-                  </button>
                 </article>
               )
             })}
@@ -491,6 +498,7 @@ function Panier({ eleve, lignes, total, moyens, onFermer, ajouter, changerTaille
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const sansTaille = lignes.some((l) => l.a.tailles.length && !l.taille)
+  const calcul = fraisPaiementDirect(total)
 
   async function commander() {
     setError('')
@@ -516,7 +524,8 @@ function Panier({ eleve, lignes, total, moyens, onFermer, ajouter, changerTaille
       <div className="feuille bq-feuille" onClick={(e) => e.stopPropagation()}>
         <div className="feuille-poignee" />
         <p className="feuille-titre" data-brut>{`Panier · ${eleve.prenom}`}</p>
-        <ul className="bq-panier">
+        <p className="bq-etape">Détails de la commande</p>
+        <ul className="bq-panier bq-bloc">
           {lignes.map((l) => (
             <li key={l.k}>
               <VisuelArticle article={l.a} className="mini" />
@@ -538,24 +547,49 @@ function Panier({ eleve, lignes, total, moyens, onFermer, ajouter, changerTaille
             </li>
           ))}
         </ul>
+        <p className="bq-etape">Retrait</p>
+        <div className="bq-bloc bq-retrait">
+          <LogoEcole id={eleve.schoolId} nom={eleve.ecole} taille={36} />
+          <span>
+            <b data-brut>{eleve.ecole}</b>
+            <small>Retrait à l’établissement quand la commande est prête</small>
+          </span>
+        </div>
+        <p className="bq-etape">Récapitulatif</p>
+        <dl className="bq-bloc bq-recap">
+          <dt>Articles</dt>
+          <dd data-brut>{fcfa(calcul.montant)}</dd>
+          <dt>Frais de retrait</dt>
+          <dd data-brut>{fcfa(calcul.fraisRetrait)}</dd>
+          {calcul.fraisService > 0 && (
+            <>
+              <dt>Frais de service</dt>
+              <dd data-brut>{fcfa(calcul.fraisService)}</dd>
+            </>
+          )}
+          <dt className="total">Total à envoyer</dt>
+          <dd className="total" data-brut>{fcfa(calcul.total)}</dd>
+        </dl>
+        <p className="bq-etape">Moyen de paiement</p>
+        <div className="bq-moyens">
+          {[
+            ['orange_money', moyens.orange, '/paiement/orange-money.png', 'Orange Money'],
+            ['mtn_momo', moyens.mtn, '/paiement/mtn-momo.png', 'MTN MoMo'],
+          ]
+            .filter((m) => m[1])
+            .map(([cle, , logo, nom]) => (
+              <button key={cle} type="button" aria-pressed={moyen === cle} onClick={() => setMoyen(cle)}>
+                <img className="moyen-logo petit" src={logo} alt="" />
+                <span>{nom}</span>
+                <i>{moyen === cle && <IcCoche size={14} />}</i>
+              </button>
+            ))}
+        </div>
+        {!moyens.orange && !moyens.mtn && <Note>L’établissement n’a pas encore de numéro de paiement.</Note>}
         <div className="bq-paiement">
-          <div className="chips" style={{ margin: 0 }}>
-            {moyens.orange && (
-              <button type="button" className="chip" aria-pressed={moyen === 'orange_money'} onClick={() => setMoyen('orange_money')}>
-                <img className="moyen-logo petit" src="/paiement/orange-money.png" alt="" /> Orange Money
-              </button>
-            )}
-            {moyens.mtn && (
-              <button type="button" className="chip" aria-pressed={moyen === 'mtn_momo'} onClick={() => setMoyen('mtn_momo')}>
-                <img className="moyen-logo petit" src="/paiement/mtn-momo.png" alt="" /> MTN MoMo
-              </button>
-            )}
-          </div>
-          {!moyens.orange && !moyens.mtn && <Note>L’établissement n’a pas encore de numéro de paiement.</Note>}
-          <ApercuEnvoi calcul={fraisPaiementDirect(total)} libelle="Articles" />
           <Note>{error}</Note>
           <button type="button" className="btn btn-block" disabled={busy || (!moyens.orange && !moyens.mtn)} onClick={commander}>
-            {busy ? 'Un instant…' : 'Commander et payer'}
+            {busy ? 'Un instant…' : `Commander et payer · ${fcfa(calcul.total)}`}
           </button>
           <button type="button" className="op-annuler" onClick={onVider}>
             Vider le panier

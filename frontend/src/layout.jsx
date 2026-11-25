@@ -4,6 +4,7 @@ import { useAuth } from './auth.jsx'
 import { BandeauInstallation } from './installation.jsx'
 import { EncartPush, SynchroPush } from './push.jsx'
 import { DrapeauLangue, langue, traduire } from './i18n.jsx'
+import { ChoixEspace } from './espace.jsx'
 import { DepotGlobal } from './depot.jsx'
 import TravauxEnCours from './TravauxEnCours.jsx'
 import { precharger } from './prechargement.js'
@@ -361,6 +362,7 @@ export default function Shell({ path, children }) {
           </div>
         )}
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {accueil && <ChoixEspace />}
           <DrapeauLangue />
         <a href="#/notifications" className="icon-btn" aria-label="Notifications">
           <IcCloche />

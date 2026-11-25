@@ -7,9 +7,8 @@ import { Publication } from './Actualites.jsx'
 import { CarteEleve } from './Suivi.jsx'
 import { BandeauAbonnement } from './Abonnement.jsx'
 import Fil from './Fil.jsx'
-import { ChoixEspace } from '../espace.jsx'
 import Recadreur from '../Recadreur.jsx'
-import { IcBillets, IcSac, IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
+import { IcBillets, IcSac, IcMessages as IcMessagesHome, IcFamille, IcCalendrier, IcScan, IcActus, IcCarte, IcCasquette, IcChevron, IcClasses, IcCoche, IcDocument, IcEcole, IcEleves, IcFichier, IcImport, IcMegaphone, IcPhoto, IcPlus, IcProf, IcProfil } from '../icones.jsx'
 import { confirmable, confirmerCours } from './MesCours.jsx'
 
 const ROLES = {
@@ -327,7 +326,9 @@ function RepartitionEleves({ s }) {
 function EspaceEtablissement() {
   const { user } = useAuth()
   const t = useApi('/api/etablissement/tableau')
-  const st = useApi('/api/etablissement/statistiques')
+  // graphiques : seulement sur ordinateur (sur telephone, l'accueil tient sur un ecran)
+  const ordi = document.documentElement.classList.contains('ordi')
+  const st = useApi(ordi ? '/api/etablissement/statistiques' : null)
   const abs = useApi(`/api/notes/absences?date=${aujourdhuiLocal()}`)
   const prof = useApi(`/api/presence-enseignants?date=${aujourdhuiLocal()}`)
   const ordres = useApi('/api/scolarite/ordres?statut=paye,litige')
@@ -354,8 +355,8 @@ function EspaceEtablissement() {
     d.eleves_sans_classe > 0 && ['#/eleves', `${d.eleves_sans_classe} élève(s) sans classe`],
   ].filter(Boolean)
   // chiffres du mois et tendance face au mois precedent
-  const ceMois = s?.mois ? Number(s.mois[s.mois.length - 1].total) : null
-  const avant = s?.mois ? Number(s.mois[s.mois.length - 2].total) : 0
+  const ceMois = t.data ? Number(d.encaisse_mois) : null
+  const avant = Number(d.encaisse_mois_avant || 0)
   const tendance = ceMois != null && avant > 0 ? Math.round(((ceMois - avant) / avant) * 100) : null
   const presence = d.eleves > 0 && abs.data ? Math.max(0, 1 - abs.data.absents / d.eleves) : null
   const pct = (x) => `${(Math.round(x * 1000) / 10).toLocaleString(LOCALE)} %`
@@ -403,13 +404,14 @@ function EspaceEtablissement() {
           libelle="Enseignants"
           detail={t.data && (d.enseignants_attente > 0 ? `${d.enseignants_attente} à valider` : 'comptes validés')}
         />
-        <Kpi href="#/scolarite" Icone={IcBillets} valeur={nombre(ceMois)} libelle="FCFA encaissés ce mois" detail={t.data && `dont ${fcfa(d.encaisse_jour)} aujourd’hui`} tendance={tendance} />
+        <Kpi href="#/scolarite" Icone={IcBillets} valeur={nombre(ceMois)} libelle="FCFA ce mois" detail={t.data && `${nombre(d.encaisse_jour)} aujourd’hui`} tendance={tendance} />
         <Kpi href="#/absences" Icone={IcCalendrier} valeur={presence == null ? '…' : pct(presence)} libelle="Présence aujourd’hui" detail={abs.data && `${abs.data.absents} absent(s)`} />
       </div>
 
       {st.error && <p className="muted">{st.error}</p>}
-      {s && (
-        <div className="db-grille">
+      <div className="db-grille">
+        {s && (
+          <>
           <CourbeEncaissements mois={s.mois} />
           {s.sexes.g + s.sexes.f > 0 && <RepartitionEleves s={s.sexes} />}
 
@@ -473,11 +475,12 @@ function EspaceEtablissement() {
               ))}
             </ul>
           </section>
+          </>
+        )}
 
-          <section className="db-panneau db-moitie">
+          <section className="db-panneau db-moitie db-toujours">
             <div className="db-titre">
               <b>À traiter</b>
-              <a href="#/verifier">Vérifier un reçu</a>
             </div>
             <ul className="activite">
               {[
@@ -499,40 +502,21 @@ function EspaceEtablissement() {
               ))}
             </ul>
           </section>
-        </div>
-      )}
+      </div>
 
-      <h2 className="section-title">Mon établissement</h2>
-      <div className="raccourcis">
+      {/* raccourcis sans doublon : eleves, enseignants et scolarite s'ouvrent deja depuis les chiffres */}
+      <div className="raccourcis db-raccourcis">
         {[
-          ['#/eleves', IcEleves, 'Élèves'],
-          ['#/presence-enseignants', IcProf, 'Enseignants'],
-          ['#/scolarite', IcCarte, 'Scolarité'],
           ['#/boutique-gestion', IcSac, 'Boutique'],
+          ['#/conseil-classe', IcClasses, 'Conseil de classe'],
+          ['#/conseil-enseignement', IcDocument, 'Conseil d’enseignement'],
+          ['#/verifier', IcScan, 'Vérifier un reçu'],
         ].map(([href, Icone, titre]) => (
           <a key={href} href={href} className="raccourci">
             <Icone size={22} />
             <span>{titre}</span>
           </a>
         ))}
-      </div>
-
-      <h2 className="section-title">Conseils</h2>
-      <div className="conseils">
-        <a href="#/conseil-classe">
-          <span className="activite-ico">
-            <IcClasses size={18} />
-          </span>
-          <b>Conseil de classe</b>
-          <small>Moyennes, rangs et décisions de fin d’année</small>
-        </a>
-        <a href="#/conseil-enseignement">
-          <span className="activite-ico">
-            <IcDocument size={18} />
-          </span>
-          <b>Conseil d’enseignement</b>
-          <small>Rapport du trimestre par matière</small>
-        </a>
       </div>
     </>
   )
@@ -577,9 +561,27 @@ function CarteEnfant({ e, i }) {
           <small>{e.absencesMois > 1 ? 'Absences ce mois' : 'Absence ce mois'}</small>
         </span>
       </span>
-      {e.devoirs > 0 && <span className="par-devoirs">{e.devoirs > 1 ? `${e.devoirs} devoirs à faire` : '1 devoir à faire'}</span>}
     </a>
   )
+}
+
+// Devoirs d'un enfant : cartes de couleur, comme des fiches
+function DevoirsEnfant({ e, plusieurs, decalage }) {
+  const d = useApi(`/api/suivi/eleves/${e.id}/devoirs`)
+  const pour = (iso) => new Date(`${String(iso).slice(0, 10)}T12:00:00`).toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')
+  return (d.data || [])
+    .filter((x) => !x.pour_le || String(x.pour_le).slice(0, 10) >= aujourdhuiLocal())
+    .slice(0, 6)
+    .map((x, k) => {
+      const [c1, c2] = TEINTES[(k + decalage * 2) % TEINTES.length]
+      return (
+        <a key={x.id} className="par-devoir" href={`#/suivi/${e.id}`} style={{ '--c1': c1, '--c2': c2 }}>
+          <small data-brut>{plusieurs ? `${e.prenom} · ${x.matiere}` : x.matiere}</small>
+          <b data-brut>{x.titre}</b>
+          {x.pour_le && <span data-brut>{`${langue === 'en' ? 'Due' : 'Pour le'} ${pour(x.pour_le)}`}</span>}
+        </a>
+      )
+    })
 }
 
 function EspaceParent() {
@@ -615,31 +617,43 @@ function EspaceParent() {
         )}
       </section>
 
+      {liste.some((e) => e.devoirs > 0) && (
+        <section>
+          <div className="par-titre">
+            <h2>Devoirs à faire</h2>
+          </div>
+          <div className="par-defile">
+            {liste.map((e, i) => e.devoirs > 0 && <DevoirsEnfant key={e.id} e={e} plusieurs={liste.length > 1} decalage={i} />)}
+          </div>
+        </section>
+      )}
+
       {notes.length > 0 && (
         <section>
           <div className="par-titre">
             <h2>Dernières notes</h2>
           </div>
-          <ul className="par-notes">
+          <div className="par-defile">
             {notes.map((x, k) => {
-              const [c1] = TEINTES[x.i % TEINTES.length]
               const sur = Number(x.bareme)
+              const p = x.absent ? 0 : Math.min(100, (Number(x.note) / sur) * 100)
               return (
-                <li key={k}>
-                  <a href={`#/suivi/${x.enfant.id}`}>
-                    <span className="par-pastille" style={{ background: c1 }}>
-                      {(x.enfant.prenom || '?')[0]}
+                <a key={k} className="par-resultat" href={`#/suivi/${x.enfant.id}`}>
+                  <span className="par-pastille" style={{ background: TEINTES[x.i % TEINTES.length][0] }}>
+                    {(x.enfant.prenom || '?')[0]}
+                  </span>
+                  <b data-brut>{x.matiere}</b>
+                  <small data-brut>{liste.length > 1 ? `${x.enfant.prenom} · ${x.titre}` : x.titre}</small>
+                  <span className="par-resultat-pied">
+                    <span className="suivi-barre">
+                      <i style={{ width: `${p}%` }} className={x.absent ? '' : p >= 60 ? '' : p >= 50 ? 'moyen' : 'faible'} />
                     </span>
-                    <span className="par-note-texte">
-                      <b data-brut>{x.matiere}</b>
-                      <small data-brut>{liste.length > 1 ? `${x.enfant.prenom} · ${x.titre}` : x.titre}</small>
-                    </span>
-                    <b className={`par-note ${x.absent ? '' : Number(x.note) >= sur / 2 ? 'ok' : 'ko'}`}>{x.absent ? 'Abs.' : `${Number(x.note).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}/${sur}`}</b>
-                  </a>
-                </li>
+                    <em>{x.absent ? 'Abs.' : `${Number(x.note).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}/${sur}`}</em>
+                  </span>
+                </a>
               )
             })}
-          </ul>
+          </div>
         </section>
       )}
 
@@ -718,7 +732,7 @@ function PointFrise({ c, v, onMaj }) {
       <span className="fr-point" aria-hidden="true">
         {etat === 'fait' && <IcCoche size={12} />}
       </span>
-      <div className="fr-carte">
+      <div className="fr-carte couleur" style={{ '--c1': TEINTES[c.class_id % TEINTES.length][0], '--c2': TEINTES[c.class_id % TEINTES.length][1] }}>
         <b>{c.classe}</b>
         <small>{[c.matiere, c.salle ? `Salle ${c.salle}` : ''].filter(Boolean).join(' · ')}</small>
         {etat === 'maintenant' && <em className="fr-badge">En cours</em>}
@@ -746,49 +760,46 @@ function PointFrise({ c, v, onMaj }) {
   )
 }
 
-// Enseignant : ses etablissements (changer, en rejoindre un autre) et son espace parent, en tete de l'accueil
-function EnTeteEnseignant() {
-  const { user, changerEspace, changerEtablissement } = useAuth()
+// Enseignant : carte d'en-tete (nom, etablissement ouvert, chiffres du jour) ; l'etablissement se change en touchant son nom.
+// L'espace parent se trouve dans la barre du haut.
+function EnTeteEnseignant({ cours }) {
+  const { user, changerEtablissement } = useAuth()
   const d = useApi('/api/inscriptions/mes-etablissements')
+  const r = useApi('/api/notes/mon-resume')
   const [feuille, setFeuille] = useState(false)
   const [busy, setBusy] = useState(null)
   const membres = d.data?.membres || []
   const attente = (d.data?.demandes || []).filter((x) => x.status === 'pending')
   const actuel = membres.find((m) => m.ouvert)
-  // meme barre que dans l'espace parent (Enseignant | Parent) ; la liste des etablissements s'ouvre juste dessous
+  const assures = (cours || []).filter(fait).length
   return (
     <div className="ens-entete-zone">
-      <div className="espaces ens-espaces" role="tablist" aria-label="Changer d’espace">
-        <button type="button" role="tab" aria-selected="true" aria-expanded={feuille} onClick={() => setFeuille((x) => !x)}>
-          <IcEcole size={18} />
-          <span>
-            <b>Enseignant</b>
-            <small data-brut>{actuel?.ecole || user.schoolName || '—'}</small>
+      <section className="par-enfant ens-hero" style={{ '--c1': TEINTES[0][0], '--c2': TEINTES[0][1] }}>
+        <span className="par-enfant-tete">
+          <span className="par-avatar">{`${(user.firstName || '?')[0]}${(user.lastName || '')[0] || ''}`}</span>
+          <span className="par-enfant-nom">
+            <b data-brut>{`${user.firstName || ''} ${user.lastName || ''}`.trim()}</b>
+            <button type="button" className="ens-hero-etab" aria-expanded={feuille} onClick={() => setFeuille((x) => !x)}>
+              <span data-brut>{actuel?.ecole || user.schoolName || '—'}</span>
+              <IcChevron size={14} style={{ transform: feuille ? 'rotate(-90deg)' : 'rotate(90deg)', flex: 'none' }} />
+            </button>
           </span>
-          <IcChevron size={14} style={{ transform: feuille ? 'rotate(-90deg)' : 'rotate(90deg)', marginLeft: 'auto', flex: 'none' }} />
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected="false"
-          disabled={busy === 'parent'}
-          onClick={async () => {
-            setBusy('parent')
-            try {
-              await changerEspace('parent')
-            } catch {
-              // l'espace actuel reste affiche
-            }
-            setBusy(null)
-          }}
-        >
-          <IcProfil size={18} />
+        </span>
+        <span className="par-chiffres">
           <span>
-            <b>Parent</b>
-            <small>{busy === 'parent' ? '…' : 'Mes enfants'}</small>
+            <b>{cours ? `${assures}/${cours.length}` : '…'}</b>
+            <small>Cours assurés</small>
           </span>
-        </button>
-      </div>
+          <a href="#/mes-classes">
+            <b>{r.data ? r.data.classes : '…'}</b>
+            <small>Classes</small>
+          </a>
+          <span>
+            <b>{r.data ? r.data.eleves : '…'}</b>
+            <small>Élèves</small>
+          </span>
+        </span>
+      </section>
 
       {feuille && (
         <>
@@ -842,56 +853,6 @@ function EnTeteEnseignant() {
   )
 }
 
-// Accueil de l'enseignant, en bas les jours ou il a peu de cours : sa semaine en un coup d'oeil
-const duree = (m) => (m % 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m / 60} h`)
-const NOMS_JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
-function MaSemaine({ auj }) {
-  const r = useApi('/api/notes/mon-resume')
-  const semaine = r.data?.semaine || []
-  const total = semaine.reduce((s, j) => s + j.cours, 0)
-  if (!total) return null
-  const minutes = semaine.reduce((s, j) => s + j.minutes, 0)
-  const max = Math.max(...semaine.map((j) => j.minutes), 1)
-  const ajd = ((new Date(`${auj}T12:00:00`).getDay() + 6) % 7) + 1
-  return (
-    <section className="ens-suivre ens-sem">
-      <h2>Ma semaine</h2>
-      <div className="ens-sem-carte">
-        <div className="ens-sem-chiffres">
-          <div>
-            <b>{total}</b>
-            <small>Cours</small>
-          </div>
-          <div>
-            <b>{duree(minutes)}</b>
-            <small>Heures</small>
-          </div>
-          <a href="#/mes-classes">
-            <b>{r.data.classes}</b>
-            <small>Classes</small>
-          </a>
-          <div>
-            <b>{r.data.eleves}</b>
-            <small>Élèves</small>
-          </div>
-        </div>
-        <ul className="ens-sem-jours">
-          {semaine.map((j) => (
-            <li key={j.jour} className={j.jour === ajd ? 'auj' : ''}>
-              <span>{NOMS_JOURS[j.jour - 1]}</span>
-              <i style={{ '--p': `${Math.round((j.minutes / max) * 100)}%` }} />
-              <small>{j.cours ? `${j.cours} cours · ${duree(j.minutes)}` : 'Libre'}</small>
-            </li>
-          ))}
-        </ul>
-        <a className="ens-sem-pied" href="#/emploi">
-          Voir l’emploi du temps <IcChevron size={14} />
-        </a>
-      </div>
-    </section>
-  )
-}
-
 function EspaceEnseignant() {
   const jour = useApi('/api/presence-enseignants/mes-cours')
   const v = jour.data
@@ -911,14 +872,13 @@ function EspaceEnseignant() {
   const autre = useApi(sel ? `/api/presence-enseignants/mes-cours?date=${sel}` : null)
   const vue = sel ? autre.data : v
   const date = (iso, o) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', o)
-  const assures = (v?.cours || []).filter(fait).length
   // la frise : cours de l'emploi du temps et cours supplementaires, dans l'ordre des heures
   const elements = vue ? [...vue.cours.map((c) => ({ h: c.debut, c })), ...(vue.supplementaires || []).map((x) => ({ h: x.heure, x }))].sort((a, b) => a.h.localeCompare(b.h)) : []
 
 
   return (
     <div className="ens-accueil">
-      <EnTeteEnseignant />
+      <EnTeteEnseignant cours={v?.cours} />
       <section className="ens-agenda">
         {joursCours.length > 0 && (
           <div className="ens-semaine" role="tablist" aria-label="Choisir un jour">
@@ -933,7 +893,6 @@ function EspaceEnseignant() {
         <div className="ens-agenda-tete">
           <h2>
             {sel ? date(sel, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Aujourd’hui'}
-            {!sel && v?.cours.length > 0 && <small>{`${assures}/${v.cours.length} assurés`}</small>}
           </h2>
         </div>
         {!vue && <p className="muted">Chargement…</p>}
@@ -956,7 +915,6 @@ function EspaceEnseignant() {
           </ol>
         )}
       </section>
-      {vue && elements.length < 4 && <MaSemaine auj={auj} />}
     </div>
   )
 }
@@ -983,7 +941,6 @@ export default function Home() {
   const { user } = useAuth()
   return (
     <>
-      {user.role !== 'teacher' && <ChoixEspace />}
       {user.role !== 'admin' && user.schoolId && <BandeauAbonnement role={user.role} />}
       {user.role === 'admin' && <EspaceAdmin />}
       {user.role === 'principal' && <EspaceEtablissement />}

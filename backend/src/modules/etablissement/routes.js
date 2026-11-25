@@ -65,7 +65,12 @@ router.get("/tableau", async (req, res, next) => {
         (SELECT COALESCE(SUM(montant), 0)::int FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi'
            AND (COALESCE(confirme_le, created_at) + INTERVAL '1 hour')::date = (NOW() + INTERVAL '1 hour')::date) AS encaisse_jour,
         (SELECT COUNT(*)::int FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi'
-           AND (COALESCE(confirme_le, created_at) + INTERVAL '1 hour')::date = (NOW() + INTERVAL '1 hour')::date) AS paiements_jour`,
+           AND (COALESCE(confirme_le, created_at) + INTERVAL '1 hour')::date = (NOW() + INTERVAL '1 hour')::date) AS paiements_jour,
+        -- encaisse ce mois et le mois precedent (tendance)
+        (SELECT COALESCE(SUM(montant), 0)::bigint FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi'
+           AND date_trunc('month', COALESCE(confirme_le, created_at) + INTERVAL '1 hour') = date_trunc('month', NOW() + INTERVAL '1 hour')) AS encaisse_mois,
+        (SELECT COALESCE(SUM(montant), 0)::bigint FROM paiements_scolaires WHERE school_id = $1 AND statut = 'reussi'
+           AND date_trunc('month', COALESCE(confirme_le, created_at) + INTERVAL '1 hour') = date_trunc('month', NOW() + INTERVAL '1 hour') - INTERVAL '1 month') AS encaisse_mois_avant`,
       [ecole, annee?.id || null]
     );
     res.json({ success: true, data: { ...rows[0], annee } });
