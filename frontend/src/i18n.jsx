@@ -1597,6 +1597,9 @@ const EN = {
   "Mon enfant": "My child",
   "Mon profil": "My profile",
   "Mon établissement": "My school",
+    "à confirmer": "to confirm",
+  "Ce que Sùkûl vous a rapporté": "What Sùkûl has earned you",
+  "Votre abonnement est remboursé.": "Your subscription is paid for.",
   "Conseil d’enseignement": "Department meeting report",
   "Rapport de fin de trimestre par matière": "End-of-term report by subject",
   "Le tableau du rapport de fin de trimestre, calculé à partir de l’appel, de la présence des enseignants et des notes. Les leçons prévues (LP) restent à compléter à la main.": "The end-of-term report table, calculated from roll calls, teacher attendance and marks. Planned lessons (LP) must still be filled in by hand.",
@@ -2515,6 +2518,8 @@ const MORCEAUX_NIVEAU = [
   [/^(\d+) à vérifier$/, '$1 to check'],
 ]
 const FORMULES = [
+  [/^(\d+) % de votre abonnement \(([\d\s\u202f]+ FCFA)\) déjà remboursé$/, '$1% of your subscription ($2) already paid for'],
+  [/^Boutique : ([\d\s\u202f]+ FCFA) de ventes$/, 'Shop: $1 in sales'],
   [/^Mise en route · (\d+)\/(\d+)$/, 'Getting started · $1/$2'],
   [/^Encore ([\d\s\u202f]+ FCFA) de frais de service et votre abonnement est remboursé\.$/, '$1 more in service fees and your subscription is paid for.'],
   [/^Bonjour, (.+)$/, 'Hello, $1'],

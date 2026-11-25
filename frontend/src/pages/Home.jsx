@@ -175,7 +175,7 @@ const lireEntete = () => {
   }
 }
 
-function EnteteEtablissement({ d, ecole, onChange }) {
+function EnteteEtablissement({ d, ecole, onChange, children }) {
   const champ = useRef(null)
   const [busy, setBusy] = useState(false)
   const [aRecadrer, setARecadrer] = useState(null)
@@ -218,7 +218,7 @@ function EnteteEtablissement({ d, ecole, onChange }) {
       className="hero-card"
       style={{
         marginTop: 4,
-        minHeight: 150,
+        minHeight: 210,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-end',
@@ -244,21 +244,8 @@ function EnteteEtablissement({ d, ecole, onChange }) {
         {d.annee?.name ? `Année ${d.annee.name}` : 'Établissement'}
       </span>
       <h2 style={{ marginTop: 8 }}>{nom || 'Mon établissement'}</h2>
+      {children}
     </section>
-  )
-}
-
-// Grande tuile de l'accueil (etablissement et enseignant)
-function Tuile({ href, Icone, titre, texte, chiffre, alerte }) {
-  return (
-    <a className={`grande-tuile ${alerte ? 'alerte' : ''}`} href={href}>
-      <span className="gt-ico">
-        <Icone size={22} />
-      </span>
-      {chiffre !== undefined && <b className="gt-chiffre">{chiffre}</b>}
-      <b className="gt-titre">{titre}</b>
-      <span className="gt-texte">{texte}</span>
-    </a>
   )
 }
 
@@ -291,7 +278,8 @@ function EspaceEtablissement() {
   ]
   const faites = etapes.filter((e) => e[0]).length
   const fcfa = (n) => `${Number(n || 0).toLocaleString('fr-FR')} FCFA`
-  const resteARembourser = Math.max(0, (d.abonnement || 0) - (d.gain_service || 0))
+  // part de l'abonnement deja remboursee par les frais de service
+  const rembourse = d.abonnement > 0 ? Math.min(100, Math.round(((d.gain_service || 0) / d.abonnement) * 100)) : null
   const taches = [
     d.enseignants_attente > 0 && ['#/enseignants', `${d.enseignants_attente} enseignant(s) à valider`, 'Vérifiez et validez leurs comptes'],
     demandes.data?.length > 0 && ['#/rattachements', `${demandes.data.length} parent(s) à valider`, 'Demandes de suivi d’un élève'],
@@ -308,7 +296,22 @@ function EspaceEtablissement() {
           </button>
         </div>
       )}
-      <EnteteEtablissement d={d} ecole={user.schoolId} onChange={() => t.reload()} />
+      <EnteteEtablissement d={d} ecole={user.schoolId} onChange={() => t.reload()}>
+        <div className="hero-stats">
+          <a href="#/absences" className={abs.data?.absents ? 'alerte' : ''}>
+            <b>{abs.data ? abs.data.absents : '…'}</b>
+            <span>absents</span>
+          </a>
+          <a href="#/presence-enseignants">
+            <b>{aVerifier ?? '…'}</b>
+            <span>cours à vérifier</span>
+          </a>
+          <a href="#/scolarite?onglet=confirmer" className={aConfirmer ? 'alerte' : ''}>
+            <b>{aConfirmer ?? '…'}</b>
+            <span>à confirmer</span>
+          </a>
+        </div>
+      </EnteteEtablissement>
 
       {t.data && faites < etapes.length && (
         <>
@@ -329,47 +332,6 @@ function EspaceEtablissement() {
         </>
       )}
 
-      <h2 className="section-title">Aujourd’hui</h2>
-      <div className="jour-chiffres">
-        <a href="#/absences">
-          <b className={abs.data?.absents ? 'rouge' : ''}>{abs.data ? abs.data.absents : '…'}</b>
-          <span>élève(s) absent(s)</span>
-        </a>
-        <a href="#/presence-enseignants">
-          <b>{aVerifier ?? '…'}</b>
-          <span>cours à vérifier</span>
-        </a>
-        <a href="#/scolarite?onglet=confirmer">
-          <b className={aConfirmer ? 'rouge' : ''}>{aConfirmer ?? '…'}</b>
-          <span>paiement(s) à confirmer</span>
-        </a>
-      </div>
-
-      {t.data && (d.abonnement > 0 || d.gain_service > 0 || d.gain_boutique > 0) && (
-        <>
-          <h2 className="section-title">Ce que Sùkûl vous rapporte cette année</h2>
-          <div className="jour-chiffres">
-            <a href="#/scolarite">
-              <b style={{ fontSize: 'clamp(16px, 4.4vw, 24px)', color: 'var(--ok)' }}>{fcfa(d.gain_service)}</b>
-              <span>frais de service encaissés</span>
-            </a>
-            <a href="#/boutique-gestion">
-              <b style={{ fontSize: 'clamp(16px, 4.4vw, 24px)' }}>{fcfa(d.gain_boutique)}</b>
-              <span>ventes de la boutique</span>
-            </a>
-            <a href="#/abonnement">
-              <b style={{ fontSize: 'clamp(16px, 4.4vw, 24px)' }}>{fcfa(d.abonnement)}</b>
-              <span>abonnement Sùkûl par an</span>
-            </a>
-          </div>
-          {d.abonnement > 0 && (
-            <p className="muted" style={{ fontSize: 14, margin: '8px 2px 0' }}>
-              {resteARembourser ? `Encore ${fcfa(resteARembourser)} de frais de service et votre abonnement est remboursé.` : 'Les frais de service ont déjà remboursé votre abonnement.'}
-            </p>
-          )}
-        </>
-      )}
-
       {taches.length > 0 && (
         <>
           <h2 className="section-title">À faire</h2>
@@ -379,13 +341,37 @@ function EspaceEtablissement() {
         </>
       )}
 
-      <h2 className="section-title">Mon établissement</h2>
-      <div className="grille-tuiles quatre cinq">
-        <Tuile href="#/eleves" Icone={IcEleves} titre="Élèves" texte="Listes, classes, fiches" chiffre={d.eleves ?? '…'} />
-        <Tuile href="#/presence-enseignants" Icone={IcProf} titre="Enseignants" texte="Présence et cours du jour" chiffre={d.enseignants ?? '…'} />
-        <Tuile href="#/scolarite" Icone={IcCarte} titre="Scolarité" texte="Frais, paiements, guichet" />
-        <Tuile href="#/verifier" Icone={IcScan} titre="Vérifier un paiement" texte="Par le matricule de l’élève" />
-        <Tuile href="#/boutique-gestion" Icone={IcSac} titre="Boutique" texte="Tenues, fournitures, commandes" />
+      {t.data && (d.abonnement > 0 || d.gain_service > 0) && (
+        <a className="gain-carte" href="#/scolarite">
+          <span className="gain-titre">Ce que Sùkûl vous a rapporté</span>
+          <b className="gain-chiffre">{fcfa(d.gain_service)}</b>
+          {rembourse !== null && (
+            <>
+              <span className="gain-barre" aria-hidden="true">
+                <i style={{ width: `${Math.max(rembourse, 2)}%` }} />
+              </span>
+              <span className="gain-texte">{rembourse >= 100 ? 'Votre abonnement est remboursé.' : `${rembourse} % de votre abonnement (${fcfa(d.abonnement)}) déjà remboursé`}</span>
+            </>
+          )}
+          {d.gain_boutique > 0 && <span className="gain-texte">{`Boutique : ${fcfa(d.gain_boutique)} de ventes`}</span>}
+        </a>
+      )}
+
+      <div className="raccourcis">
+        {[
+          ['#/eleves', IcEleves, 'Élèves'],
+          ['#/presence-enseignants', IcProf, 'Enseignants'],
+          ['#/scolarite', IcCarte, 'Scolarité'],
+          ['#/verifier', IcScan, 'Vérifier'],
+          ['#/boutique-gestion', IcSac, 'Boutique'],
+        ].map(([href, Icone, titre]) => (
+          <a key={href} href={href} className="raccourci">
+            <span className="raccourci-ico">
+              <Icone size={22} />
+            </span>
+            <span>{titre}</span>
+          </a>
+        ))}
       </div>
     </>
   )

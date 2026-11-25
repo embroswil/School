@@ -2860,7 +2860,7 @@ html.espace-parent:not(.ordi) .nav a .ico { background: none; }
 .sv-page { max-width: 760px; }
 .sv-enfants { display: flex; gap: 14px; overflow-x: auto; scrollbar-width: none; margin: 2px -16px 10px; padding: 2px 16px 4px; }
 .sv-enfants::-webkit-scrollbar { display: none; }
-.sv-enfants a { flex: none; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 62px; color: var(--muted); text-decoration: none; font: 600 12px/1.2 var(--font-body); text-align: center; }
+.sv-enfants a { flex: none; display: flex; flex-direction: column; align-items: center; gap: 5px; width: 62px; color: var(--muted); text-decoration: none; font: 600 11.5px/1.2 var(--font-body); text-align: center; white-space: nowrap; letter-spacing: -0.01em; }
 .sv-enfants a > span:last-child { max-width: 62px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sv-avatar { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 700 16px/1 var(--font-body); background: linear-gradient(135deg, #4b5563, #374151); border: 2px solid transparent; }
 .sv-enfants a[aria-current='page'] { color: var(--text); }
@@ -3333,3 +3333,23 @@ html.ordi .bq-gestion-grille { grid-template-columns: repeat(6, minmax(0, 1fr));
 .bq-photo { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .bq-photo .bq-visuel { width: 84px; height: 84px; border-radius: 16px; flex: none; }
 .bq-photo > div { display: grid; gap: 6px; }
+
+/* Accueil de l'etablissement : chiffres du jour sur la photo, carte des gains, raccourcis */
+.hero-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.hero-stats a { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; border: 1px solid rgba(255, 255, 255, 0.16); }
+.hero-stats b { font: 800 24px/1 var(--font-display); }
+.hero-stats span { font-size: 12px; opacity: 0.85; line-height: 1.25; }
+.hero-stats a.alerte b { color: #ff8a8a; }
+.gain-carte { display: grid; gap: 6px; margin-top: 18px; padding: 18px; border-radius: 20px; color: var(--text); background: linear-gradient(135deg, rgba(19, 138, 82, 0.16), rgba(36, 70, 216, 0.10)); border: 1px solid var(--line); }
+.gain-titre { font: 700 14px/1.2 var(--font-body); color: var(--muted); }
+.gain-chiffre { font: 800 clamp(28px, 8vw, 36px)/1.05 var(--font-display); color: var(--ok); }
+.gain-barre { display: block; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.gain-barre i { display: block; height: 100%; border-radius: 99px; background: var(--ok); }
+.gain-texte { font-size: 13px; color: var(--muted); }
+.raccourcis { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 6px 2px; margin: 22px 0 8px; }
+.raccourci { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 6px 0; color: var(--text); font: 600 11.5px/1.2 var(--font-body); text-align: center; white-space: nowrap; letter-spacing: -0.01em; }
+.raccourci-ico { width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center; background: var(--card); border: 1px solid var(--line); color: var(--lien); }
+.raccourci:active .raccourci-ico { transform: scale(0.95); }
+@media (max-width: 380px) { .raccourci { font-size: 11px; } .raccourci-ico { width: 48px; height: 48px; border-radius: 16px; } .hero-stats b { font-size: 21px; } }
+html.ordi .raccourcis { gap: 12px; max-width: 640px; }
+html.ordi .raccourci-ico { width: 64px; height: 64px; }
