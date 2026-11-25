@@ -106,7 +106,6 @@ const NAV_ORDI = {
     ['/absences', IcEleves, 'Absences du jour'],
     ['/conseil-enseignement', IcDocument, 'Conseil d’enseignement'],
     ['/document', IcActus, 'Documents'],
-    ['/abonnement', IcCarte, 'Abonnement'],
   ],
   teacher: [
     ['/mes-cours', IcCoche, 'Mes cours'],
