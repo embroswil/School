@@ -4,6 +4,7 @@ import { envoyerOuGarder } from '../horsligne.js'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
 import { IcPlus, IcPoubelle } from '../icones.jsx'
+import { TableauTriable } from '../export.jsx'
 
 const jour = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : 'sans date')
 
@@ -81,14 +82,6 @@ export default function Devoirs({ id }) {
 
   const peutDonner = droits?.saisie
   const devoirs = liste.data || []
-  // devoirs regroupes par date a rendre
-  const groupes = []
-  for (const x of devoirs) {
-    const k = String(x.pour_le || '').slice(0, 10)
-    const g = groupes[groupes.length - 1]
-    if (g && g.k === k) g.liste.push(x)
-    else groupes.push({ k, liste: [x] })
-  }
   const auj = new Date().toISOString().slice(0, 10)
 
   return (
@@ -142,18 +135,21 @@ export default function Devoirs({ id }) {
       )}
       {!liste.data && <p className="muted">Chargement…</p>}
       {liste.data && !devoirs.length && <p className="cn-vide">Aucun devoir à faire pour le moment.</p>}
-      {groupes.map((g) => (
-        <section key={g.k} className="dv-groupe">
-          <h2 className="dv-date">{g.k ? `Pour ${jour(g.k)}` : 'Sans date'}</h2>
-          <ul className="dv-liste">
-            {g.liste.map((x) => (
-              <li key={x.id}>
-                <div className="dv-texte">
-                  <b data-brut>{x.titre}</b>
-                  {x.consigne && <p data-brut>{x.consigne}</p>}
-                  <small data-brut>{[x.matiere, x.last_name ? `${x.first_name} ${x.last_name}` : ''].filter(Boolean).join(' · ')}</small>
-                </div>
-                {x.mien && (
+      {devoirs.length > 0 && (
+        <TableauTriable
+          tableur
+          lignes={devoirs}
+          colonnes={[
+            { cle: 'pour_le', titre: 'Pour le', rendu: (x) => (x.pour_le ? new Date(`${String(x.pour_le).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '—') },
+            { cle: 'matiere', titre: 'Matière', classe: 'g-nom' },
+            { cle: 'titre', titre: 'Devoir', rendu: (x) => <span data-brut>{x.titre}</span> },
+            { cle: 'consigne', titre: 'Consigne', rendu: (x) => <span data-brut>{x.consigne || ''}</span> },
+            { cle: 'last_name', titre: 'Enseignant', rendu: (x) => (x.last_name ? `${x.first_name} ${x.last_name}` : '') },
+            {
+              cle: 'mien',
+              titre: '',
+              rendu: (x) =>
+                x.mien && (
                   <button
                     type="button"
                     className="dv-retirer"
@@ -166,12 +162,11 @@ export default function Devoirs({ id }) {
                   >
                     <IcPoubelle size={16} />
                   </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+                ),
+            },
+          ]}
+        />
+      )}
     </div>
   )
 }

@@ -3,11 +3,32 @@ import { api } from '../api.js'
 import { useAuth } from '../auth.jsx'
 import { useApi } from '../hooks.js'
 import { Field, Note } from '../ui.jsx'
-import { IcChevron, IcPlus } from '../icones.jsx'
+import { IcPlus } from '../icones.jsx'
+import { TableauTriable } from '../export.jsx'
 
 const SEQUENCES = [1, 2, 3, 4, 5, 6]
 const jour = (d) => (d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '')
 const note20 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
+
+// Les evaluations de la classe en tableau ; une ligne ouvre la saisie des notes
+function TableauEvaluations({ evaluations, eleves }) {
+  return (
+    <TableauTriable
+      tableur
+      lignes={evaluations}
+      onLigne={(e) => (window.location.hash = `/evaluations/${e.id}`)}
+      colonnes={[
+        { cle: 'sequence', titre: 'Séq.', classe: 'g-num' },
+        { cle: 'matiere', titre: 'Matière', classe: 'g-nom' },
+        { cle: 'titre', titre: 'Intitulé', rendu: (e) => e.titre || 'Évaluation' },
+        { cle: 'date_eval', titre: 'Date', rendu: (e) => jour(e.date_eval) },
+        { cle: 'saisies', titre: 'Notes', classe: 'g-num', rendu: (e) => `${e.saisies}/${eleves}` },
+        { cle: 'moyenne', titre: 'Moyenne', classe: 'g-num', tri: (e) => e.moyenne ?? -1, rendu: (e) => note20(e.moyenne) },
+        { cle: 'publiee', titre: 'État', rendu: (e) => (e.publiee ? <span className="tag tag-now">Publiée</span> : <span className="tag tag-wait">Brouillon</span>) },
+      ]}
+    />
+  )
+}
 
 function NouvelleEvaluation({ classId, matieres, onAnnuler }) {
   const [f, setF] = useState({ subjectId: matieres.length === 1 ? String(matieres[0].id) : '', sequence: '1', titre: 'Devoir', date: new Date().toISOString().slice(0, 10), bareme: '20' })
@@ -77,8 +98,6 @@ function Resultats({ classId, matieres }) {
   const [periode, setPeriode] = useState('sequence=1')
   const r = useApi(`/api/notes/classes/${classId}/resultats?${periode}`)
   const d = r.data
-  const nomMatiere = Object.fromEntries(matieres.map((m) => [m.id, m.name]))
-  const [ouvert, setOuvert] = useState(null)
   return (
     <>
       <div className="chips">
@@ -100,54 +119,31 @@ function Resultats({ classId, matieres }) {
       {d && d.statistiques.classes === 0 && <p className="muted">Aucune note saisie pour cette période.</p>}
       {d && d.statistiques.classes > 0 && (
         <>
-          <div className="stats" style={{ marginTop: 0, marginBottom: 14 }}>
-            <div className="stat">
-              <b>{note20(d.statistiques.moyenneClasse)}</b>
-              <span>moyenne</span>
-            </div>
-            <div className="stat">
-              <b>{d.statistiques.reussite}%</b>
-              <span>≥ 10/20</span>
-            </div>
-            <div className="stat">
-              <b>{note20(d.statistiques.plusHaute)}</b>
-              <span>meilleure</span>
-            </div>
-            <div className="stat">
-              <b>{note20(d.statistiques.plusBasse)}</b>
-              <span>plus basse</span>
-            </div>
-          </div>
-          <ul className="rows">
-            {d.eleves.map((e) => (
-              <li key={e.id} style={{ borderTop: '1px solid var(--line)' }}>
-                <button
-                  type="button"
-                  className="row"
-                  style={{ width: '100%', border: 0, background: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
-                  onClick={() => setOuvert(ouvert === e.id ? null : e.id)}
-                >
-                  <span style={{ width: 34, fontWeight: 800, color: e.rang <= 3 ? 'var(--primary)' : 'var(--muted)' }}>{e.rang ? `${e.rang}e` : '—'}</span>
-                  <div className="row-main">
-                    <div className="row-title">
-                      {e.nom} {e.prenom}
-                    </div>
-                  </div>
-                  <b style={{ color: e.moyenne === null ? 'var(--muted)' : e.moyenne >= 10 ? 'var(--ok)' : 'var(--danger)' }}>{note20(e.moyenne)}</b>
-                </button>
-                {ouvert === e.id && (
-                  <div style={{ padding: '0 16px 12px 62px', fontSize: 14 }}>
-                    {Object.entries(e.matieres).map(([sid, m]) => (
-                      <div key={sid} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span className="muted">{nomMatiere[sid] || 'Matière'}</span>
-                        <b>{note20(m)}</b>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+          <p className="muted" style={{ margin: '0 0 10px' }}>
+            {`Moyenne ${note20(d.statistiques.moyenneClasse)} · ${d.statistiques.reussite} % au-dessus de 10 · meilleure ${note20(d.statistiques.plusHaute)} · plus basse ${note20(d.statistiques.plusBasse)}`}
+          </p>
+          <TableauTriable
+            tableur
+            lignes={d.eleves}
+            colonnes={[
+              { cle: 'rang', titre: 'Rang', classe: 'g-num', tri: (e) => e.rang ?? 9999 },
+              { cle: 'nom', titre: 'Nom et prénom', classe: 'g-nom', rendu: (e) => `${e.nom} ${e.prenom}` },
+              ...[...new Set(d.eleves.flatMap((e) => Object.keys(e.matieres)))].map((sid) => ({
+                cle: `m${sid}`,
+                titre: matieres.find((m) => String(m.id) === sid)?.name || 'Matière',
+                classe: 'g-num',
+                tri: (e) => e.matieres[sid] ?? -1,
+                rendu: (e) => note20(e.matieres[sid]),
+              })),
+              {
+                cle: 'moyenne',
+                titre: 'Moyenne',
+                classe: 'g-num',
+                tri: (e) => e.moyenne ?? -1,
+                rendu: (e) => <b style={{ color: e.moyenne === null ? 'var(--muted)' : e.moyenne >= 10 ? 'var(--ok)' : 'var(--danger)' }}>{note20(e.moyenne)}</b>,
+              },
+            ]}
+          />
         </>
       )}
     </>
@@ -171,26 +167,24 @@ function Coefficients({ classId, matieres, onDone, modifiable }) {
       <p className="muted" style={{ marginBottom: 10 }}>
         Les coefficients servent au calcul de la moyenne générale et du rang.
       </p>
-      <ul className="rows">
-        {matieres.map((m) => (
-          <li className="row" key={m.id}>
-            <div className="row-main">
-              <div className="row-title">{m.name}</div>
-            </div>
-            {modifiable ? (
-              <input
-                className="input"
-                style={{ width: 70, padding: '8px 10px', textAlign: 'center' }}
-                inputMode="decimal"
-                value={v[m.id] ?? '2'}
-                onChange={(e) => setV((x) => ({ ...x, [m.id]: e.target.value }))}
-              />
-            ) : (
-              <b>coef. {String(m.coefficient).replace('.0', '')}</b>
-            )}
-          </li>
-        ))}
-      </ul>
+      <TableauTriable
+        tableur
+        lignes={matieres}
+        colonnes={[
+          { cle: 'name', titre: 'Matière', classe: 'g-nom' },
+          {
+            cle: 'coefficient',
+            titre: 'Coefficient',
+            classe: modifiable ? 'g-saisie' : 'g-num',
+            rendu: (m) =>
+              modifiable ? (
+                <input aria-label={`Coefficient ${m.name}`} inputMode="decimal" value={v[m.id] ?? '2'} onChange={(e) => setV((x) => ({ ...x, [m.id]: e.target.value }))} />
+              ) : (
+                String(m.coefficient).replace('.0', '')
+              ),
+          },
+        ]}
+      />
       <Note kind="ok">{ok}</Note>
       {modifiable ? (
         <button type="button" className="btn btn-block" style={{ marginTop: 12 }} disabled={busy} onClick={enregistrer}>
@@ -256,32 +250,7 @@ export default function ClassNotes({ id }) {
               )}
             </div>
             {evaluations.length === 0 && <p className="cn-vide">Aucune évaluation pour le moment. Créez la première pour saisir les notes de la classe.</p>}
-            {evaluations.length > 0 && (
-              <ul className="cn-liste">
-                {evaluations.map((e) => {
-                  const p = classe.eleves ? Math.min(100, Math.round((e.saisies / classe.eleves) * 100)) : 0
-                  return (
-                    <li key={e.id}>
-                      <a href={`#/evaluations/${e.id}`}>
-                        <span className="cn-texte">
-                          <span className="cn-haut">
-                            <b data-brut>{e.titre || 'Évaluation'}</b>
-                            <em className={e.publiee ? 'publiee' : ''}>{e.publiee ? 'Publiée' : 'Brouillon'}</em>
-                          </span>
-                          <small>{[`Séquence ${e.sequence}`, jour(e.date_eval), e.matiere].filter(Boolean).join(' · ')}</small>
-                          <span className="cn-bas">
-                            <i style={{ '--p': `${p}%` }} />
-                            <small>{`${e.saisies}/${classe.eleves} notes`}</small>
-                            <small className="cn-moy">{e.moyenne !== null ? `Moy. ${note20(e.moyenne)}` : 'Moy. —'}</small>
-                          </span>
-                        </span>
-                        <IcChevron size={15} />
-                      </a>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+            {evaluations.length > 0 && <TableauEvaluations evaluations={evaluations} eleves={classe.eleves} />}
           </>
         )}
         {onglet === 'resultats' && <Resultats classId={id} matieres={matieres} />}
@@ -319,25 +288,7 @@ export default function ClassNotes({ id }) {
               </button>
             ))}
           {evaluations.length === 0 && <p className="muted">Aucune évaluation pour le moment.</p>}
-          {evaluations.length > 0 && (
-            <ul className="rows">
-              {evaluations.map((e) => (
-                <a className="row" key={e.id} href={`#/evaluations/${e.id}`}>
-                  <span className="tag" style={{ minWidth: 52, textAlign: 'center' }}>
-                    Séq. {e.sequence}
-                  </span>
-                  <div className="row-main">
-                    <div className="row-title">{e.matiere}</div>
-                    <div className="row-sub">
-                      {e.titre} · {jour(e.date_eval)} · {e.saisies}/{classe.eleves} notes
-                      {e.moyenne !== null ? ` · moy. ${note20(e.moyenne)}` : ''}
-                    </div>
-                  </div>
-                  {e.publiee ? <span className="tag tag-now">Publiée</span> : <span className="tag tag-wait">Brouillon</span>}
-                </a>
-              ))}
-            </ul>
-          )}
+          {evaluations.length > 0 && <TableauEvaluations evaluations={evaluations} eleves={classe.eleves} />}
         </>
       )}
       {onglet === 'resultats' && (

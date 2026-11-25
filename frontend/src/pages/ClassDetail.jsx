@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
+import { TableauTriable } from '../export.jsx'
 import { IcActus, IcCarte, IcChevron, IcClasses, IcEcole, IcEleves } from '../icones.jsx'
 
 // Ligne d'action (meme style que le tableau de bord)
@@ -106,26 +107,18 @@ export default function ClassDetail({ id }) {
               Aucun élève. <a href="#/import-eleves">Importer une liste</a>
             </p>
           ) : (
-            <ul className="rows">
-              {visibles.map((e) => (
-                <a className="row" key={e.id} href={`#/eleves/${e.id}`} style={{ padding: '11px 14px' }}>
-                  <span className="muted" style={{ width: 26, fontSize: 13 }}>
-                    {eleves.indexOf(e) + 1}
-                  </span>
-                  <div className="row-main">
-                    <div className="row-title" style={{ fontSize: 15 }}>
-                      {e.last_name} {e.first_name}
-                    </div>
-                    <div className="row-sub" style={{ fontSize: 13 }}>
-                      {e.gender === 'female' ? 'Fille' : e.gender === 'male' ? 'Garçon' : ''}
-                      {e.parents > 0 ? ` · ${e.parents} parent(s)` : ''}
-                      {e.a_un_compte ? ' · compte créé' : ''}
-                    </div>
-                  </div>
-                  <span className="row-end">›</span>
-                </a>
-              ))}
-            </ul>
+            <TableauTriable
+              tableur
+              lignes={visibles}
+              onLigne={(e) => (window.location.hash = `/eleves/${e.id}`)}
+              colonnes={[
+                { cle: 'n', titre: 'N°', classe: 'g-num', rendu: (e) => eleves.indexOf(e) + 1, tri: (e) => eleves.indexOf(e) },
+                { cle: 'last_name', titre: 'Nom et prénom', classe: 'g-nom', rendu: (e) => `${e.last_name} ${e.first_name}` },
+                { cle: 'gender', titre: 'Sexe', rendu: (e) => ({ female: 'F', male: 'M' })[e.gender] || '—' },
+                { cle: 'parents', titre: 'Parents', classe: 'g-num' },
+                { cle: 'a_un_compte', titre: 'Compte', rendu: (e) => (e.a_un_compte ? 'Oui' : 'Non') },
+              ]}
+            />
           )}
         </div>
       )}
@@ -145,19 +138,16 @@ export default function ClassDetail({ id }) {
               Aucun enseignant affecté. <a href="#/enseignants">Affecter des enseignants</a>
             </p>
           ) : (
-            <ul className="rows">
-              {enseignants.map((t) => (
-                <li className="row" key={t.id}>
-                  <div className="row-main">
-                    <div className="row-title">{t.matiere}</div>
-                    <div className="row-sub">
-                      {t.first_name} {t.last_name}
-                    </div>
-                  </div>
-                  {t.phone && <a href={`tel:${t.phone}`}>📞</a>}
-                </li>
-              ))}
-            </ul>
+            <TableauTriable
+              tableur
+              lignes={enseignants}
+              cleLigne={(t) => `${t.id}-${t.matiere}`}
+              colonnes={[
+                { cle: 'matiere', titre: 'Matière', classe: 'g-nom' },
+                { cle: 'last_name', titre: 'Enseignant', rendu: (t) => `${t.first_name} ${t.last_name}` },
+                { cle: 'phone', titre: 'Téléphone', rendu: (t) => (t.phone ? <a href={`tel:${t.phone}`}>{t.phone}</a> : '—') },
+              ]}
+            />
           )}
         </div>
       )}

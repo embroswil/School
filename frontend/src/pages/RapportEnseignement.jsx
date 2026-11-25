@@ -91,11 +91,11 @@ export default function RapportEnseignement() {
           {r.lignes.length === 0 ? (
             <p className="muted">Aucune classe n’a cette matière cette année.</p>
           ) : (
-            <div className="tableau-ordi-cadre" style={{ overflowX: 'auto' }}>
-              <table className="tableau-ordi">
+            <div className="grille-cadre">
+              <table className="grille">
                 <thead>
                   <tr>
-                    <th>Classe</th>
+                    <th className="g-nom">Classe</th>
                     {COLONNES.map(([t]) => (
                       <th key={t}>{t}</th>
                     ))}
@@ -104,9 +104,9 @@ export default function RapportEnseignement() {
                 <tbody>
                   {r.lignes.map((l) => (
                     <tr key={l.classe}>
-                      <td data-brut>{l.classe}</td>
+                      <td className="g-nom" data-brut>{l.classe}</td>
                       {COLONNES.map(([t, k, s]) => (
-                        <td key={t}>{v(l[k], s)}</td>
+                        <td key={t} className="g-num">{v(l[k], s)}</td>
                       ))}
                     </tr>
                   ))}

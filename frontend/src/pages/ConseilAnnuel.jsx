@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { BoutonExcel, exporterExcel } from '../export.jsx'
+import { trierClasses } from '../classes.js'
 
 const n2 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
 
@@ -132,6 +133,26 @@ export default function ConseilAnnuel({ id }) {
           {busy ? 'Enregistrement…' : 'Enregistrer les décisions'}
         </button>
       )}
+    </>
+  )
+}
+
+// Depuis l'accueil : choisir la classe dont on tient le conseil de fin d'annee
+export function ChoixClasseConseil() {
+  const c = useApi('/api/etablissement/classes')
+  return (
+    <>
+      <h1 className="page-title">Conseil de classe</h1>
+      <p className="muted" style={{ marginBottom: 12 }}>Choisissez la classe : moyennes annuelles, rangs et décisions de fin d’année.</p>
+      <Note>{c.error}</Note>
+      {!c.data && !c.error && <p className="muted">Chargement…</p>}
+      <div className="chips">
+        {trierClasses(c.data).map((k) => (
+          <a key={k.id} className="chip" href={`#/classes/${k.id}/annuel`} data-brut>
+            {k.name}
+          </a>
+        ))}
+      </div>
     </>
   )
 }

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { nomEcole } from './i18n.jsx'
 import { useAuth } from './auth.jsx'
 import { IcEcole, IcProfil } from './icones.jsx'
 
@@ -20,23 +19,11 @@ export function ChoixEspace() {
     }
     setBusy(false)
   }
+  // bouton flottant en bas de l'ecran : passe a l'autre espace
   return (
-    <div className={`espaces ${busy ? 'occupe' : ''}`} role="tablist" aria-label="Changer d’espace">
-      <button type="button" role="tab" aria-selected={!parent} onClick={() => aller('etablissement')}>
-        <IcEcole size={18} />
-        <span>
-          <b>{user.roleReel === 'teacher' ? 'Enseignant' : 'Établissement'}</b>
-          <small data-brut>{nomEcole(user.etablissement) || '—'}</small>
-        </span>
-      </button>
-      <button type="button" role="tab" aria-selected={parent} onClick={() => aller('parent')}>
-        <IcProfil size={18} />
-        <span>
-          <b>Parent</b>
-          <small>Mes enfants</small>
-        </span>
-      </button>
-    </div>
+    <button type="button" className={`espace-flottant ${busy ? 'occupe' : ''}`} onClick={() => aller(parent ? 'etablissement' : 'parent')}>
+      {parent ? <IcEcole size={18} /> : <IcProfil size={18} />}
+      <span>{parent ? (user.roleReel === 'teacher' ? 'Espace enseignant' : 'Espace établissement') : 'Espace parent'}</span>
+    </button>
   )
 }
-

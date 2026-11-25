@@ -27,6 +27,7 @@ const versDataUrl = (blob) =>
     r.readAsDataURL(blob)
   })
 
+// Le cours supplementaire est programme par l'enseignant (pas par l'etablissement)
 const GENRES = [
   ['info', 'Information', 'Changement de salle, rappel, consigne…'],
   ['cours', 'Cours supplémentaire', 'Un cours hors emploi du temps'],
@@ -39,7 +40,7 @@ export default function InfoPublier() {
   const enseignant = user.role === 'teacher'
   const classes = useApi(user.role === 'teacher' ? '/api/notes/mes-classes' : '/api/etablissement/classes')
   const champ = useRef(null)
-  const [f, setF] = useState({ genre: /genre=cours/.test(window.location.hash) ? 'cours' : 'info', classeId: '', titre: '', texte: '', date: '', heure: '', lieu: '' })
+  const [f, setF] = useState({ genre: enseignant && /genre=cours/.test(window.location.hash) ? 'cours' : 'info', classeId: '', titre: '', texte: '', date: '', heure: '', lieu: '' })
   const [photos, setPhotos] = useState([])
   const [etat, setEtat] = useState('')
   const [error, setError] = useState('')
@@ -145,7 +146,7 @@ export default function InfoPublier() {
       {zoneDepot}
       <h1 className="page-title">Faire passer une information</h1>
       <div className="genres">
-        {GENRES.map(([k, t, d]) => (
+        {GENRES.filter(([k]) => k !== 'cours' || enseignant).map(([k, t, d]) => (
           <button key={k} type="button" className="genre" aria-pressed={f.genre === k} onClick={() => setF({ ...f, genre: k })}>
             <b>{t}</b>
             <span>{d}</span>

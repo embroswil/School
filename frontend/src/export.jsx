@@ -27,9 +27,10 @@ export function BoutonExcel({ onClick, texte = 'Excel' }) {
   )
 }
 
-// Tableau triable (version ordinateur) : colonnes [{ cle, titre, rendu?, tri? }]
+// Tableau triable : colonnes [{ cle, titre, rendu?, tri?, classe? }].
+// tableur : presentation facon Excel (cellules bordees, en-tete et colonne « g-nom » fixes), sur telephone aussi.
 import { useState } from 'react'
-export function TableauTriable({ colonnes, lignes, onLigne, cleLigne = (l) => l.id }) {
+export function TableauTriable({ colonnes, lignes, onLigne, cleLigne = (l) => l.id, tableur = false }) {
   const [tri, setTri] = useState({ cle: null, sens: 1 })
   const valeur = (l, c) => (c.tri ? c.tri(l) : l[c.cle])
   const triees = tri.cle
@@ -42,12 +43,12 @@ export function TableauTriable({ colonnes, lignes, onLigne, cleLigne = (l) => l.
       })
     : lignes
   return (
-    <div className="tableau-ordi-cadre">
-      <table className="tableau-ordi">
+    <div className={tableur ? 'grille-cadre' : 'tableau-ordi-cadre'}>
+      <table className={tableur ? 'grille' : 'tableau-ordi'}>
         <thead>
           <tr>
             {colonnes.map((c) => (
-              <th key={c.cle} onClick={() => setTri((t) => ({ cle: c.cle, sens: t.cle === c.cle ? -t.sens : 1 }))} style={c.style}>
+              <th key={c.cle} className={c.classe} onClick={() => setTri((t) => ({ cle: c.cle, sens: t.cle === c.cle ? -t.sens : 1 }))} style={c.style}>
                 {c.titre}
                 <span className="tri">{tri.cle === c.cle ? (tri.sens === 1 ? ' ▲' : ' ▼') : ''}</span>
               </th>
@@ -58,7 +59,7 @@ export function TableauTriable({ colonnes, lignes, onLigne, cleLigne = (l) => l.
           {triees.map((l) => (
             <tr key={cleLigne(l)} onClick={onLigne ? () => onLigne(l) : undefined} className={onLigne ? 'cliquable' : ''}>
               {colonnes.map((c) => (
-                <td key={c.cle} style={c.style}>
+                <td key={c.cle} className={c.classe} style={c.style}>
                   {c.rendu ? c.rendu(l) : l[c.cle]}
                 </td>
               ))}

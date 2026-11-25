@@ -706,6 +706,10 @@ html.ordi .grille-tuiles > .grande-tuile:last-child:nth-child(odd) { grid-column
 .espaces button[aria-selected='true'] { background: var(--primary); color: #fff; cursor: default; }
 .espaces button[aria-selected='true'] small { color: rgba(255, 255, 255, 0.8); }
 .espaces.occupe { opacity: 0.6; pointer-events: none; }
+.espace-flottant { position: fixed; z-index: 25; right: calc(16px + env(safe-area-inset-right)); bottom: calc(74px + env(safe-area-inset-bottom)); display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--text); font: 700 14px/1 var(--font-body); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28); cursor: pointer; }
+.espace-flottant svg { color: var(--lien); }
+.espace-flottant.occupe { opacity: 0.6; pointer-events: none; }
+html.ordi .espace-flottant { bottom: 24px; right: 24px; }
 .import-zone small { color: var(--muted); font-size: 13px; line-height: 1.4; }
 .import-zone:disabled { opacity: 0.7; cursor: progress; }
 .bouton-icone { display: inline-flex; align-items: center; gap: 6px; padding: 10px 12px; font-size: 14px; white-space: nowrap; }
@@ -1132,7 +1136,7 @@ html[data-theme='light'], html[data-theme='light'] body { background: var(--bg);
 [data-theme='light'] .pastille, [data-theme='light'] .count { color: #fff !important; }
 
 /* surfaces : cartes blanches, ombre legere */
-[data-theme='light'] :is(.card, .rows, .ecole-carte, .kpi, .atout, .public-carte, .liste-reglages, .action-row, .stat, .ordre-tete, .etapes, .liste-simple, .tuile, .eleves-classes > *, .eleves-chiffres, .vide, .bandeau-install, .grille-tuiles > *, .jour-chiffres > *, .enfant-carte, .icon-btn, .espaces) {
+[data-theme='light'] :is(.card, .rows, .ecole-carte, .kpi, .atout, .public-carte, .liste-reglages, .action-row, .stat, .ordre-tete, .etapes, .liste-simple, .tuile, .eleves-classes > *, .eleves-chiffres, .vide, .bandeau-install, .grille-tuiles > *, .jour-chiffres > *, .enfant-carte, .icon-btn, .espaces, .espace-flottant) {
   box-shadow: var(--shadow);
 }
 [data-theme='light'] .rows .row { box-shadow: none; }
@@ -2593,21 +2597,6 @@ html.ordi .mcl-actions a:hover { background: var(--card-2, var(--bg)); }
 .cn-form-tete { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .cn-form-tete b { font: 700 15px/1.2 var(--font-body); }
 .cn-vide { padding: 16px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); font-size: 14px; margin: 0; }
-.cn-liste { list-style: none; margin: 0 0 14px; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
-.cn-liste li + li { border-top: 1px solid var(--line); }
-.cn-liste a { display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: var(--text); text-decoration: none; }
-.cn-liste a > svg { flex: none; color: var(--muted); }
-.cn-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.cn-haut { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cn-haut b { font: 600 15px/1.3 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cn-haut em { flex: none; font: 600 11.5px/1 var(--font-body); font-style: normal; padding: 4px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.14); color: #d97706; }
-.cn-haut em.publiee { background: var(--ok-soft); color: var(--ok); }
-.cn-texte > small { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cn-bas { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; margin-top: 4px; }
-.cn-bas i { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--primary) var(--p), var(--card-2, var(--bg)) var(--p)); }
-.cn-bas small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.cn-bas .cn-moy { color: var(--text); font-weight: 600; }
-html.ordi .cn-liste a:hover { background: var(--card-2, var(--bg)); }
 
 /* ---------------------------------------------------------------- Saisie des notes d'une evaluation */
 .ev-statut { flex: none; align-self: flex-start; margin-top: 6px; font: 600 12px/1 var(--font-body); font-style: normal; padding: 5px 9px; border-radius: 6px; background: rgba(245, 158, 11, 0.14); color: #d97706; }
@@ -2671,15 +2660,6 @@ html.ordi .ap-page { max-width: 760px; }
 
 /* ---------------------------------------------------------------- Devoirs d'une classe (enseignant) */
 .dv-form { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 16px; }
-.dv-groupe { margin-bottom: 14px; }
-.dv-date { margin: 0 0 8px 2px; font: 700 12px/1.2 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
-.dv-liste { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
-.dv-liste li { display: flex; align-items: flex-start; gap: 10px; padding: 12px 10px 12px 14px; }
-.dv-liste li + li { border-top: 1px solid var(--line); }
-.dv-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.dv-texte b { font: 600 15px/1.35 var(--font-body); }
-.dv-texte p { margin: 0; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; color: var(--texte-doux, var(--text)); }
-.dv-texte small { font-size: 12.5px; color: var(--muted); }
 .dv-retirer { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--muted); cursor: pointer; }
 .dv-retirer:hover, .dv-retirer:active { background: var(--danger-soft); color: var(--danger); }
 html.ordi .dv-page { max-width: 760px; }
@@ -3346,10 +3326,9 @@ html.ordi .bq-gestion-grille { grid-template-columns: repeat(6, minmax(0, 1fr));
 .banque-libelle { font-size: 14px; opacity: 0.8; }
 .banque-montant { font: 800 clamp(32px, 9vw, 40px)/1.1 var(--font-display); letter-spacing: -0.02em; }
 .banque-sous { font-size: 13px; opacity: 0.8; }
-.banque-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.banque-actions { display: grid; gap: 10px; margin-top: 14px; }
 .banque-actions a { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border-radius: 14px; background: #fff; color: #1a2f9c; font: 700 15px/1 var(--font-body); }
-.banque-actions a + a { background: rgba(255, 255, 255, 0.16); color: #fff; }
-.raccourcis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 6px; }
+.raccourcis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .raccourci { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 84px; padding: 10px 4px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: var(--lien); }
 .raccourci span { color: var(--text); font: 600 12.5px/1.2 var(--font-body); text-align: center; white-space: nowrap; }
 .activite { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
@@ -3362,7 +3341,11 @@ html.ordi .bq-gestion-grille { grid-template-columns: repeat(6, minmax(0, 1fr));
 .activite a.alerte b, .activite a.alerte .activite-ico { color: var(--danger); }
 .activite a.alerte .activite-ico { background: var(--danger-soft); }
 @media (max-width: 360px) { .raccourci span { font-size: 11px; } .banque-actions a { font-size: 14px; } }
-html.ordi .banque, html.ordi .raccourcis, html.ordi .activite, html.ordi .ent-ecole { max-width: 760px; }
+.conseils { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.conseils a { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: var(--text); }
+.conseils b { font: 700 15px/1.25 var(--font-display); }
+.conseils small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+html.ordi .banque, html.ordi .raccourcis, html.ordi .activite, html.ordi .ent-ecole, html.ordi .conseils { max-width: 760px; }
 
 /* Tableau facon tableur (conseil de fin d'annee) : cellules bordees, colonne des noms fixe au defilement */
 .grille-cadre { overflow: auto; max-height: calc(100dvh - 230px); border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
@@ -3381,3 +3364,21 @@ html.ordi .banque, html.ordi .raccourcis, html.ordi .activite, html.ordi .ent-ec
 .grille-enregistrer { position: sticky; bottom: calc(90px + env(safe-area-inset-bottom)); margin-top: 12px; z-index: 4; }
 html.ordi .grille-enregistrer { bottom: 16px; }
 html.ordi .grille-cadre { max-height: calc(100vh - 210px); }
+.grille th { cursor: pointer; user-select: none; }
+.grille th .tri { color: var(--lien); }
+.grille tr.cliquable { cursor: pointer; }
+.grille tr.cliquable:hover td { background: color-mix(in srgb, var(--card) 85%, var(--lien) 15%); }
+.grille .g-saisie input[inputmode='decimal'] { text-align: center; width: 90px; }
+
+/* Barre du bas plus fine, collee au bas de l'ecran sur tous les telephones (hors espace parent et ordinateur) */
+html:not(.ordi):not(.espace-parent) .nav { align-items: flex-end; padding: 4px calc(4px + env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left)); }
+html:not(.ordi):not(.espace-parent) .nav a { flex: 1; min-width: 0; gap: 2px; padding: 6px 2px 4px; font-size: 10.5px; }
+html:not(.ordi):not(.espace-parent) .nav a .ico { height: 24px; background: none; }
+html:not(.ordi):not(.espace-parent) .nav a .ico svg { width: 22px; height: 22px; }
+html:not(.ordi):not(.espace-parent) .nav a[aria-current='page']::after { top: 0; }
+html:not(.ordi):not(.espace-parent) .nav-plus { flex: none; width: 48px; height: 48px; margin: 0 6px 4px; border-radius: 16px; align-self: center; }
+html:not(.ordi):not(.espace-parent) .app { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+html:not(.ordi):not(.espace-parent) .espace-flottant { bottom: calc(66px + env(safe-area-inset-bottom)); }
+html:not(.ordi):not(.espace-parent) .grille-enregistrer { bottom: calc(70px + env(safe-area-inset-bottom)); }
+body:has(.espace-flottant) .app { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
+html.ordi body:has(.espace-flottant) .app { padding-bottom: 72px; }

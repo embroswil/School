@@ -162,6 +162,7 @@ const TITRES = {
   '/suivi': 'Suivi scolaire',
   '/bulletins': 'Bulletins',
   '/conseil-enseignement': 'Conseil d’enseignement',
+  '/conseil-classe': 'Conseil de classe',
   '/devoirs': 'Devoirs',
   '/emploi': 'Emploi du temps',
   '/discipline': 'Discipline',
@@ -186,7 +187,7 @@ const TITRES = {
 }
 
 const ACTIONS = [
-  ['/info', IcMegaphone, 'Informer', 'Info, cours, photos'],
+  ['/info', IcMegaphone, 'Informer', 'Info, événement, photos'],
   ['/document', IcFichier, 'Document', 'PDF, photo, Excel…'],
   ['/absences', IcAppel, 'Absences', 'Élèves du jour'],
   ['/discipline', IcBouclier, 'Discipline', 'Procès-verbal, sanctions'],

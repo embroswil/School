@@ -279,38 +279,6 @@ function EspaceEtablissement() {
       )}
       <EnteteEtablissement d={d} ecole={user.schoolId} onChange={() => t.reload()} />
 
-      {/* le chiffre du jour, comme le solde d'une appli bancaire */}
-      <section className="banque">
-        <span className="banque-libelle">Encaissé aujourd’hui</span>
-        <b className="banque-montant">{t.data ? fcfa(d.encaisse_jour) : '…'}</b>
-        <span className="banque-sous">
-          {`${d.paiements_jour || 0} paiement(s)`}
-          {d.gain_service > 0 && ` · ${fcfa(d.gain_service)} rapportés par Sùkûl cette année`}
-        </span>
-        <div className="banque-actions">
-          <a href="#/encaisser">
-            <IcBillets size={18} /> Encaisser
-          </a>
-          <a href="#/verifier">
-            <IcScan size={18} /> Vérifier un reçu
-          </a>
-        </div>
-      </section>
-
-      <div className="raccourcis">
-        {[
-          ['#/eleves', IcEleves, 'Élèves'],
-          ['#/presence-enseignants', IcProf, 'Enseignants'],
-          ['#/scolarite', IcCarte, 'Scolarité'],
-          ['#/boutique-gestion', IcSac, 'Boutique'],
-        ].map(([href, Icone, titre]) => (
-          <a key={href} href={href} className="raccourci">
-            <Icone size={22} />
-            <span>{titre}</span>
-          </a>
-        ))}
-      </div>
-
       {t.data && faites < etapes.length && (
         <>
           <h2 className="section-title">{`Mise en route · ${faites}/${etapes.length}`}</h2>
@@ -329,6 +297,21 @@ function EspaceEtablissement() {
           </ol>
         </>
       )}
+
+      {/* le chiffre du jour, comme le solde d'une appli bancaire (encaisser : barre du bas) */}
+      <section className="banque">
+        <span className="banque-libelle">Encaissé aujourd’hui</span>
+        <b className="banque-montant">{t.data ? fcfa(d.encaisse_jour) : '…'}</b>
+        <span className="banque-sous">
+          {`${d.paiements_jour || 0} paiement(s)`}
+          {d.gain_service > 0 && ` · ${fcfa(d.gain_service)} rapportés par Sùkûl cette année`}
+        </span>
+        <div className="banque-actions">
+          <a href="#/verifier">
+            <IcScan size={18} /> Vérifier un reçu
+          </a>
+        </div>
+      </section>
 
       <h2 className="section-title">Aujourd’hui</h2>
       <ul className="activite">
@@ -350,6 +333,39 @@ function EspaceEtablissement() {
           </li>
         ))}
       </ul>
+
+      <h2 className="section-title">Mon établissement</h2>
+      <div className="raccourcis">
+        {[
+          ['#/eleves', IcEleves, 'Élèves'],
+          ['#/presence-enseignants', IcProf, 'Enseignants'],
+          ['#/scolarite', IcCarte, 'Scolarité'],
+          ['#/boutique-gestion', IcSac, 'Boutique'],
+        ].map(([href, Icone, titre]) => (
+          <a key={href} href={href} className="raccourci">
+            <Icone size={22} />
+            <span>{titre}</span>
+          </a>
+        ))}
+      </div>
+
+      <h2 className="section-title">Conseils</h2>
+      <div className="conseils">
+        <a href="#/conseil-classe">
+          <span className="activite-ico">
+            <IcClasses size={18} />
+          </span>
+          <b>Conseil de classe</b>
+          <small>Moyennes, rangs et décisions de fin d’année</small>
+        </a>
+        <a href="#/conseil-enseignement">
+          <span className="activite-ico">
+            <IcDocument size={18} />
+          </span>
+          <b>Conseil d’enseignement</b>
+          <small>Rapport du trimestre par matière</small>
+        </a>
+      </div>
     </>
   )
 }
