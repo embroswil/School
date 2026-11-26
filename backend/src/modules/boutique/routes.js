@@ -358,6 +358,44 @@ router.get("/gestion", async (req, res, next) => {
 });
 
 // PUT /api/boutique/gestion/ouverte { ouverte }
+// POST /api/boutique/gestion/modele : remplit une boutique vide avec le catalogue type (tenues, fournitures, listes)
+router.post("/gestion/modele", async (req, res, next) => {
+  const ecole = req.user.role === "principal" ? req.user.schoolId : null;
+  if (!ecole) return next(new ApiError(403, "Réservé à l’établissement"));
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    const deja = (await client.query("SELECT COUNT(*)::int AS n FROM boutique_articles WHERE school_id = $1", [ecole])).rows[0].n;
+    if (deja) throw new ApiError(400, "La boutique contient déjà des articles");
+    const { ARTICLES, LISTES } = require("./modele");
+    const ids = {};
+    for (const [i, [cle, categorie, nom, description, prix, tailles, niveaux]] of ARTICLES.entries()) {
+      ids[cle] = (
+        await client.query(
+          `INSERT INTO boutique_articles (school_id, categorie, nom, description, prix, tailles, niveaux, ordre)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+          [ecole, categorie, nom, description, prix, tailles, niveaux, i + 1]
+        )
+      ).rows[0].id;
+    }
+    for (const [i, [nom, description, niveaux, contenu]] of LISTES.entries()) {
+      const kit = (
+        await client.query("INSERT INTO boutique_kits (school_id, nom, description, niveaux, ordre) VALUES ($1, $2, $3, $4, $5) RETURNING id", [ecole, nom, description, niveaux, i + 1])
+      ).rows[0].id;
+      for (const [cle, quantite] of Object.entries(contenu)) {
+        if (ids[cle]) await client.query("INSERT INTO boutique_kit_articles (kit_id, article_id, quantite) VALUES ($1, $2, $3)", [kit, ids[cle], quantite]);
+      }
+    }
+    await client.query("COMMIT");
+    res.status(201).json({ success: true, data: { articles: ARTICLES.length, listes: LISTES.length } });
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
 router.put("/gestion/ouverte", async (req, res, next) => {
   try {
     const ecole = exigerGestion(req.user);

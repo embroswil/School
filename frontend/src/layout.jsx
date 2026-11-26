@@ -65,6 +65,7 @@ const NAV = {
   admin: [
     ['/', IcAccueil, 'Accueil'],
     ['/etablissements', IcEcole, 'Écoles'],
+    ['/abonnements', IcCarte, 'Abonnements'],
     ['/utilisateurs', IcEleves, 'Comptes'],
     ['/compte', IcProfil, 'Profil'],
   ],
@@ -106,6 +107,7 @@ const NAV_ORDI = {
     ['/absences', IcEleves, 'Absences du jour'],
     ['/conseil-enseignement', IcDocument, 'Conseil d’enseignement'],
     ['/document', IcActus, 'Documents'],
+    ['/abonnement', IcCarte, 'Abonnement'],
   ],
   teacher: [
     ['/mes-cours', IcCoche, 'Mes cours'],
@@ -118,10 +120,7 @@ const NAV_ORDI = {
     ['/mes-etablissements', IcEcole, 'Mes établissements'],
   ],
   parent: [['/trouver-eleve', IcEleves, 'Trouver un élève'], ['/messages', IcMessages, 'Messages']],
-  admin: [
-    ['/abonnements', IcCarte, 'Abonnements'],
-    ['/litiges', IcActus, 'Litiges'],
-  ],
+  admin: [['/litiges', IcActus, 'Litiges']],
 }
 
 // Titre affiche en haut selon la page
@@ -303,7 +302,7 @@ export default function Shell({ path, children }) {
   // espace enseignant : sa propre couleur (voir index.css)
   useEffect(() => {
     document.documentElement.classList.toggle('espace-enseignant', user.role === 'teacher')
-    document.documentElement.classList.toggle('espace-parent', user.role === 'parent')
+    document.documentElement.classList.toggle('espace-parent', ['parent', 'admin'].includes(user.role))
     return () => document.documentElement.classList.remove('espace-enseignant', 'espace-parent')
   }, [user.role])
   // travail sans reseau : pages utiles gardees sur l'appareil des l'ouverture

@@ -31,12 +31,6 @@ const env = {
     email: process.env.ADMIN_EMAIL,
     password: process.env.ADMIN_PASSWORD,
   },
-
-  paystack: {
-    secretKey: process.env.PAYSTACK_SECRET_KEY,
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY,
-    callbackUrl: process.env.PAYSTACK_CALLBACK_URL,
-  },
 };
 
 // Appelée par server.js : on échoue tôt avec un message clair.

@@ -22,7 +22,6 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.2",
     "minimist": "^1.2.8",
-    "paystack-node": "*",
     "pg": "^8.19.0"
   },
   "devDependencies": {

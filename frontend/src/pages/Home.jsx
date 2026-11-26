@@ -74,7 +74,7 @@ function EspaceAdmin() {
         <Chiffre href="#/utilisateurs" Icone={IcEleves} teinte="bleu" valeur={nombre(d.eleves)} libelle="Élèves" detail={d.eleves_avec_compte != null && `${nombre(d.eleves_avec_compte)} avec compte`} />
         <Chiffre href="#/utilisateurs" Icone={IcProf} teinte="violet" valeur={nombre(d.enseignants)} libelle="Enseignants" detail="comptes validés" />
         <Chiffre href="#/utilisateurs" Icone={IcFamille} teinte="bleu" valeur={nombre(d.parents)} libelle="Parents" detail="inscrits" />
-        <Chiffre href="#/abonnements" Icone={IcBillets} teinte="vert" valeur={nombre(d.paiements_total)} libelle="FCFA payés en ligne" detail="à reverser" />
+        <Chiffre href="#/abonnements" Icone={IcBillets} teinte="vert" valeur={nombre(d.paiements_total)} libelle="FCFA encaissés" detail="par les établissements" />
       </div>
 
       <nav className="ent-actions" aria-label="Accès directs">

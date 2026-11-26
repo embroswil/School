@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { api } from '../api.js'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
 import { BoutonExcel, exporterExcel } from '../export.jsx'
+import Classeur from '../Classeur.jsx'
 import { niveauClasse, trierClasses } from '../classes.js'
 
 const n2 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).replace('.', ','))
@@ -10,13 +11,7 @@ const n2 = (n) => (n === null || n === undefined ? '—' : Number(n).toFixed(2).
 // Conseil de classe de fin d'annee : moyenne annuelle, rang, decisions
 export default function ConseilAnnuel({ id }) {
   const d = useApi(`/api/notes/classes/${id}/annuel`)
-  const [dec, setDec] = useState({})
-  const [error, setError] = useState('')
   const [ok, setOk] = useState('')
-  const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    if (d.data) setDec(Object.fromEntries(d.data.eleves.map((e) => [e.id, { decision: e.decision || e.proposition || '', observation: e.observation || '' }])))
-  }, [d.data])
 
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Calcul…</p>
@@ -39,27 +34,45 @@ export default function ConseilAnnuel({ id }) {
           'Moyenne T3': e.trimestres[2],
           'Moyenne annuelle': e.annuelle,
           Rang: e.rang,
-          Décision: decisions[dec[e.id]?.decision || e.decision || e.proposition] || '',
-          Observation: dec[e.id]?.observation ?? e.observation,
+          Décision: decisions[e.decision || e.proposition] || '',
+          Observation: e.observation,
         })),
       },
     ])
   }
 
-  async function enregistrer() {
-    setError('')
-    setOk('')
-    setBusy(true)
-    try {
-      const r = await api.put(`/api/notes/classes/${id}/decisions`, {
-        decisions: Object.entries(dec).map(([studentId, v]) => ({ studentId: Number(studentId), ...v })),
-      })
-      setOk(`${r.data.enregistrees} décision(s) enregistrée(s). Elles apparaissent chez les parents.`)
-      d.reload()
-    } catch (err) {
-      setError(err.message)
-    }
-    setBusy(false)
+  const colonnes = [
+    { id: 'nom', titre: 'Nom et prénom', nom: true },
+    { id: 'rang', titre: 'Rang', num: true },
+    { id: 'matricule', titre: 'Matricule' },
+    { id: 't1', titre: 'T1', num: true },
+    { id: 't2', titre: 'T2', num: true },
+    { id: 't3', titre: 'T3', num: true },
+    { id: 'annuelle', titre: 'Moy. annuelle', num: true },
+    { id: 'decision', titre: 'Décision', type: 'choix', options: Object.entries(decisions) },
+    { id: 'observation', titre: 'Observation' },
+  ]
+  const lignes = eleves.map((e) => ({
+    id: `e${e.id}`,
+    cells: {
+      rang: e.rang ?? '',
+      nom: `${e.nom} ${e.prenom}`,
+      matricule: e.matricule || '',
+      t1: n2(e.trimestres[0]),
+      t2: n2(e.trimestres[1]),
+      t3: n2(e.trimestres[2]),
+      annuelle: n2(e.annuelle),
+      decision: e.decision || e.proposition || '',
+      observation: e.observation || '',
+    },
+  }))
+  // les decisions et observations des eleves partent aussi dans leur dossier (visibles chez les parents)
+  async function enregistrerDecisions({ rows }) {
+    if (!modifiable) return
+    const r = await api.put(`/api/notes/classes/${id}/decisions`, {
+      decisions: rows.filter((l) => /^e\d+$/.test(l.id)).map((l) => ({ studentId: Number(l.id.slice(1)), decision: l.cells.decision || '', observation: l.cells.observation || '' })),
+    })
+    setOk(`${r.data.enregistrees} décision(s) transmise(s) aux parents.`)
   }
 
   return (
@@ -74,65 +87,8 @@ export default function ConseilAnnuel({ id }) {
         {' · '}
         <b style={{ color: 'var(--danger)' }}>{`${stats.redoublants} redoublent`}</b>
       </p>
-      <Note>{error}</Note>
+      <Classeur key={id} cle={`conseil-annuel:${id}`} nom={`Conseil ${d.data.classe}`} colonnes={colonnes} lignes={lignes} lectureSeule={!modifiable} onEnregistre={enregistrerDecisions} />
       <Note kind="ok">{ok}</Note>
-      {/* tableau facon tableur : une ligne par eleve, decision et observation saisies dans les cellules */}
-      <div className="grille-cadre">
-        <table className="grille">
-          <thead>
-            <tr>
-              <th>Rang</th>
-              <th className="g-nom">Nom et prénom</th>
-              <th>Matricule</th>
-              <th>T1</th>
-              <th>T2</th>
-              <th>T3</th>
-              <th>Moy. annuelle</th>
-              <th>Décision</th>
-              <th>Observation</th>
-            </tr>
-          </thead>
-          <tbody>
-            {eleves.map((e) => (
-              <tr key={e.id}>
-                <td className="g-num">{e.rang ?? '—'}</td>
-                <td className="g-nom" data-brut>{`${e.nom} ${e.prenom}`}</td>
-                <td data-brut>{e.matricule || '—'}</td>
-                {e.trimestres.map((t, i) => (
-                  <td key={i} className="g-num">{n2(t)}</td>
-                ))}
-                <td className="g-num" style={{ fontWeight: 800, color: e.annuelle >= 10 ? 'var(--ok)' : e.annuelle ? 'var(--danger)' : 'var(--muted)' }}>{n2(e.annuelle)}</td>
-                <td className="g-saisie">
-                  {modifiable ? (
-                    <select aria-label={`Décision ${e.nom}`} value={dec[e.id]?.decision || ''} onChange={(ev) => setDec((x) => ({ ...x, [e.id]: { ...x[e.id], decision: ev.target.value } }))}>
-                      <option value="">—</option>
-                      {Object.entries(decisions).map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    decisions[e.decision] || '—'
-                  )}
-                </td>
-                <td className="g-saisie">
-                  {modifiable ? (
-                    <input aria-label={`Observation ${e.nom}`} value={dec[e.id]?.observation || ''} onChange={(ev) => setDec((x) => ({ ...x, [e.id]: { ...x[e.id], observation: ev.target.value } }))} />
-                  ) : (
-                    e.observation || ''
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {modifiable && (
-        <button type="button" className="btn btn-block grille-enregistrer" disabled={busy} onClick={enregistrer}>
-          {busy ? 'Enregistrement…' : 'Enregistrer les décisions'}
-        </button>
-      )}
     </>
   )
 }

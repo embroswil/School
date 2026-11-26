@@ -9,6 +9,17 @@ const app = express();
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1); // derrière le proxy de Render : req.ip = vraie IP du client
+// En-tetes de securite (l'API ne sert que du JSON)
+app.use((req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+  });
+  next();
+});
 
 const allowedOrigins = env.frontendUrl
   ? env.frontendUrl.split(",").map((o) => o.trim()).filter(Boolean)
@@ -72,6 +83,7 @@ app.use("/api/familles", require("./modules/familles/routes"));
 app.use("/api/verifier", require("./modules/scolarite/verifier"));
 app.use("/api/scolarite/ordres", require("./modules/scolarite/ordres"));
 app.use("/api/boutique", require("./modules/boutique/routes"));
+app.use("/api/classeurs", require("./modules/classeurs/routes"));
 app.use("/api/scolarite", require("./modules/scolarite/routes"));
 app.use("/api/comptabilite", require("./modules/comptabilite/routes"));
 app.use("/api/travaux", require("./modules/travaux/routes"));

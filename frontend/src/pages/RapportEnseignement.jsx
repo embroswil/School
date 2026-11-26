@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useApi } from '../hooks.js'
 import { Note } from '../ui.jsx'
-import { BoutonExcel, exporterExcel } from '../export.jsx'
-import { esc, imprimer } from '../impression.js'
+import Classeur from '../Classeur.jsx'
+import { esc } from '../impression.js'
 
 const v = (x, suffixe = '') => (x === null || x === undefined ? '—' : `${String(x).replace('.', ',')}${suffixe}`)
 // colonnes du formulaire officiel : [titre, cle, suffixe]
@@ -28,18 +28,21 @@ const COLONNES = [
   ['MGC', 'mgc'],
 ]
 
-function rapportHtml(d) {
-  const tete = COLONNES.map(([t]) => `<th>${esc(t)}</th>`).join('')
-  const corps = d.lignes.map((l) => `<tr><td>${esc(l.classe)}</td>${COLONNES.map(([, k, s]) => `<td>${esc(v(l[k], s))}</td>`).join('')}</tr>`).join('')
-  const zone = (titre) => `<p class="rce-zone"><b>${esc(titre)}</b></p>`
+const ZONES = ['Conditions de travail', 'Analyse des résultats', 'Difficultés rencontrées', 'Suggestions']
+
+// impression du classeur tel que l'etablissement l'a complete (cellules, colonnes, analyses)
+function rapportHtml(d, { cols, rows, textes }) {
+  const tete = cols.map((c) => `<th>${esc(c.titre)}</th>`).join('')
+  const corps = rows.map((l) => `<tr>${cols.map((c) => `<td>${esc(l[c.titre])}</td>`).join('')}</tr>`).join('')
+  const zone = (titre) => `<p class="rce-zone"><b>${esc(titre)}</b>${esc(textes[titre] || '')}</p>`
   return `<article class="bc rce">
   <header class="bc-tete">
     <div><b>${esc(d.ecole?.name || '')}</b><small>${esc(d.ecole?.city || '')}</small></div>
     <div class="bc-titre"><b>RAPPORT DE CONSEIL D’ENSEIGNEMENT DE FIN DE TRIMESTRE</b><span>${esc(`${d.matiere} · Trimestre ${d.trimestre} · ${d.annee}`)}</span></div>
   </header>
-  <table class="bc-table rce-table"><thead><tr><th>Classe</th>${tete}</tr></thead><tbody>${corps}</tbody></table>
+  <table class="bc-table rce-table"><thead><tr>${tete}</tr></thead><tbody>${corps}</tbody></table>
   <p class="rce-legende">(b) nombre d’heures du trimestre ; (c) heures totales ; (d) heures d’absence ; LP / LF : leçons prévues / faites ; HD / HF : heures dues / faites ; TG / TF / TR : taux de réussite garçons / filles / général ; MGC : moyenne générale de la classe.</p>
-  ${zone('Conditions de travail')}${zone('Analyse des résultats')}${zone('Difficultés rencontrées')}${zone('Suggestions')}
+  ${ZONES.map(zone).join('')}
   <div class="bc-signatures"><span>L’animateur pédagogique</span><span>Le chef d’établissement</span></div>
 </article>`
 }
@@ -51,16 +54,13 @@ export default function RapportEnseignement() {
   const matieres = d.data?.matieres || []
   const r = d.data?.lignes ? d.data : null
 
-  function excel() {
-    exporterExcel(`Conseil-enseignement-${r.matiere}-T${r.trimestre}`, [
-      { nom: r.matiere, lignes: r.lignes.map((l) => Object.fromEntries([['Classe', l.classe], ...COLONNES.map(([t, k]) => [t, l[k] ?? ''])])) },
-    ])
-  }
+  const colonnes = r ? [{ id: 'classe', titre: 'Classe', nom: true }, ...COLONNES.map(([t, k]) => ({ id: k, titre: t, num: true }))] : []
+  const lignes = r ? r.lignes.map((l) => ({ id: `k${l.classe}`, cells: Object.fromEntries([['classe', l.classe], ...COLONNES.map(([, k, sx]) => [k, v(l[k], sx)])]) })) : []
 
   return (
     <>
       <h1 className="page-title">Conseil d’enseignement</h1>
-      <p className="lede">Le tableau du rapport de fin de trimestre, calculé à partir de l’appel, de la présence des enseignants et des notes. Les leçons prévues (LP) restent à compléter à la main.</p>
+      <p className="lede">Le tableau du rapport de fin de trimestre, calculé à partir de l’appel, de la présence des enseignants et des notes. Modifiez-le comme un tableur : cellules, lignes et colonnes. Les leçons prévues (LP) et l’analyse restent à compléter.</p>
       <Note>{d.error}</Note>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <select className="input" style={{ flex: '1 1 220px', maxWidth: 360 }} value={matiere} onChange={(e) => setMatiere(e.target.value)} aria-label="Matière">
@@ -82,36 +82,11 @@ export default function RapportEnseignement() {
       {matiere && !r && !d.error && <p className="muted">Calcul…</p>}
       {r && (
         <>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '14px 0 8px' }}>
-            <button type="button" className="btn" onClick={() => imprimer(rapportHtml(r), 'a4-paysage')}>
-              Imprimer le rapport
-            </button>
-            <BoutonExcel onClick={excel} />
-          </div>
           {r.lignes.length === 0 ? (
             <p className="muted">Aucune classe n’a cette matière cette année.</p>
           ) : (
-            <div className="grille-cadre">
-              <table className="grille">
-                <thead>
-                  <tr>
-                    <th className="g-nom">Classe</th>
-                    {COLONNES.map(([t]) => (
-                      <th key={t}>{t}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {r.lignes.map((l) => (
-                    <tr key={l.classe}>
-                      <td className="g-nom" data-brut>{l.classe}</td>
-                      {COLONNES.map(([t, k, s]) => (
-                        <td key={t} className="g-num">{v(l[k], s)}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ marginTop: 14 }}>
+              <Classeur key={`${matiere}:${tri}`} cle={`rapport-ens:${matiere}:${tri}`} nom={`Conseil-enseignement-${r.matiere}-T${r.trimestre}`} colonnes={colonnes} lignes={lignes} zonesTexte={ZONES} imprimerHtml={(t) => rapportHtml(r, t)} />
             </div>
           )}
         </>

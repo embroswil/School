@@ -6,6 +6,7 @@ import { Field, Note } from '../ui.jsx'
 import { CATEGORIES, ListeCommandes, fcfa } from './Boutique.jsx'
 import { VisuelArticle } from '../boutique-visuels.jsx'
 import Recadreur from '../Recadreur.jsx'
+import { IcPlus, IcSac } from '../icones.jsx'
 
 // Photo d'article : envoyee au stockage ; s'il n'est pas active, gardee dans l'article (image legere)
 async function envoyerPhoto(dataUrl) {
@@ -30,49 +31,124 @@ const FILTRES = [
 
 export default function BoutiqueGestion() {
   const d = useApi('/api/boutique/gestion')
-  const [onglet, setOnglet] = useState('commandes')
+  const [onglet, setOnglet] = useState(null)
+  const [article, setArticle] = useState(null)
+  const [liste, setListe] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   if (d.error) return <Note>{d.error}</Note>
   if (!d.data) return <p className="muted">Chargement…</p>
   const { ouverte, articles, kits, commandes } = d.data
   const aPreparer = commandes.filter((c) => c.statut === 'payee').length
+  const ventes = commandes.filter((c) => ['payee', 'prete', 'remise'].includes(c.statut)).reduce((s, c) => s + c.montant, 0)
+  const vue = onglet || (aPreparer ? 'commandes' : 'articles')
+  const nouvelArticle = () => setArticle({ ...VIDE })
+  const nouvelleListe = () => setListe({ nom: '', description: '', niveaux: '', actif: true, articles: [] })
 
-  async function basculer() {
+  async function action(fn) {
     setBusy(true)
+    setError('')
     try {
-      await api.put('/api/boutique/gestion/ouverte', { ouverte: !ouverte })
+      await fn()
       d.reload()
-    } catch (_) {}
+    } catch (err) {
+      setError(err.message)
+    }
     setBusy(false)
   }
 
   return (
     <div className="bq-page">
       <h1 className="page-title">Boutique</h1>
-      <div className="bq-ouverture">
-        <div>
-          <b>{ouverte ? 'Ouverte aux parents' : 'Fermée'}</b>
-          <small>{ouverte ? 'Les parents commandent depuis leur espace' : 'Les parents ne voient pas encore la boutique'}</small>
-        </div>
-        <button type="button" className={`btn bq-petit ${ouverte ? 'btn-quiet' : ''}`} disabled={busy} onClick={basculer}>
-          {ouverte ? 'Fermer' : 'Ouvrir'}
-        </button>
-      </div>
-      <div className="segments" role="tablist">
-        {[
-          ['commandes', 'Commandes'],
-          ['articles', 'Articles'],
-          ['listes', 'Listes'],
-        ].map(([k, t]) => (
-          <button key={k} type="button" role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)}>
-            {t}
-            {k === 'commandes' && aPreparer > 0 && <span className="segment-nb">{aPreparer}</span>}
+      <section className="bqg-tete">
+        <div className="bqg-etat">
+          <span className={`bqg-voyant ${ouverte ? 'on' : ''}`} />
+          <div>
+            <b>{ouverte ? 'Boutique ouverte' : 'Boutique fermée'}</b>
+            <small>{ouverte ? 'Les parents commandent depuis leur espace' : 'Les parents ne la voient pas encore'}</small>
+          </div>
+          <button type="button" className={`btn bq-petit ${ouverte ? 'btn-quiet' : ''}`} disabled={busy || (!ouverte && !articles.length)} onClick={() => action(() => api.put('/api/boutique/gestion/ouverte', { ouverte: !ouverte }))}>
+            {ouverte ? 'Fermer' : 'Ouvrir'}
           </button>
-        ))}
-      </div>
-      {onglet === 'commandes' && <Commandes commandes={commandes} />}
-      {onglet === 'articles' && <Articles articles={articles} onChange={() => d.reload()} />}
-      {onglet === 'listes' && <Listes kits={kits} articles={articles} onChange={() => d.reload()} />}
+        </div>
+        <div className="bqg-chiffres">
+          <div>
+            <b>{articles.filter((a) => a.actif).length}</b>
+            <small>articles en vente</small>
+          </div>
+          <div>
+            <b>{kits.length}</b>
+            <small>listes par classe</small>
+          </div>
+          <div className={aPreparer ? 'alerte' : ''}>
+            <b>{aPreparer}</b>
+            <small>à préparer</small>
+          </div>
+          <div>
+            <b data-brut>{fcfa(ventes)}</b>
+            <small>ventes (60 jours)</small>
+          </div>
+        </div>
+      </section>
+      <Note>{error}</Note>
+
+      {!articles.length ? (
+        <section className="bqg-demarrage">
+          <span className="bqg-demarrage-ico">
+            <IcSac size={30} />
+          </span>
+          <h2>Votre boutique est vide</h2>
+          <p>Ajoutez vos tenues et vos fournitures : les parents les commanderont depuis leur espace et paieront par Orange Money ou MTN MoMo.</p>
+          <button type="button" className="btn" onClick={nouvelArticle}>
+            <IcPlus size={18} /> Ajouter un premier article
+          </button>
+          <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => action(() => api.post('/api/boutique/gestion/modele'))}>
+            {busy ? 'Un instant…' : 'Utiliser le catalogue type'}
+          </button>
+          <ol className="bqg-etapes">
+            <li>
+              <b>Ajoutez vos articles</b>
+              <span>Prix, tailles, photo</span>
+            </li>
+            <li>
+              <b>Créez les listes par classe</b>
+              <span>Le parent ajoute tout en un geste</span>
+            </li>
+            <li>
+              <b>Ouvrez la boutique</b>
+              <span>Les commandes payées arrivent ici</span>
+            </li>
+          </ol>
+        </section>
+      ) : (
+        <>
+          <div className="bqg-actions">
+            <button type="button" className="btn" onClick={nouvelArticle}>
+              <IcPlus size={18} /> Ajouter un article
+            </button>
+            <button type="button" className="btn btn-quiet" onClick={nouvelleListe}>
+              <IcPlus size={18} /> Créer une liste
+            </button>
+          </div>
+          <div className="segments" role="tablist">
+            {[
+              ['commandes', 'Commandes', aPreparer],
+              ['articles', 'Articles', 0],
+              ['listes', 'Listes', 0],
+            ].map(([k, t, nb]) => (
+              <button key={k} type="button" role="tab" aria-selected={vue === k} onClick={() => setOnglet(k)}>
+                {t}
+                {nb > 0 && <span className="segment-nb">{nb}</span>}
+              </button>
+            ))}
+          </div>
+          {vue === 'commandes' && <Commandes commandes={commandes} />}
+          {vue === 'articles' && <Articles articles={articles} onEditer={setArticle} onAjouter={nouvelArticle} />}
+          {vue === 'listes' && <Listes kits={kits} articles={articles} onEditer={setListe} />}
+        </>
+      )}
+      {article && <FormArticle valeur={article} onFermer={() => setArticle(null)} onChange={() => d.reload()} />}
+      {liste && <FormListe valeur={liste} articles={articles} onFermer={() => setListe(null)} onChange={() => d.reload()} />}
     </div>
   )
 }
@@ -84,17 +160,26 @@ function Commandes({ commandes }) {
   const liste = commandes.filter((c) => c.statut === filtre)
   return (
     <>
-      <div className="chips">
+      <div className="segments petit" role="tablist">
         {FILTRES.map(([k, t]) => {
           const n = commandes.filter((c) => c.statut === k).length
           return (
-            <button key={k} type="button" className="chip" aria-pressed={filtre === k} onClick={() => setFiltre(k)}>
-              {n ? `${t} · ${n}` : t}
+            <button key={k} type="button" role="tab" aria-selected={filtre === k} onClick={() => setFiltre(k)}>
+              {t}
+              {n > 0 && <span className="segment-nb">{n}</span>}
             </button>
           )
         })}
       </div>
-      {liste.length ? <ListeCommandes commandes={liste} ecole /> : <p className="muted">Aucune commande.</p>}
+      {liste.length ? (
+        <ListeCommandes commandes={liste} ecole />
+      ) : (
+        <div className="bqg-vide">
+          <IcSac size={26} />
+          <b>Aucune commande ici</b>
+          <small>Les commandes payées par les parents arrivent dans « À préparer », puis passent à « Prêtes » et « Remises ».</small>
+        </div>
+      )}
     </>
   )
 }
@@ -103,17 +188,22 @@ function Commandes({ commandes }) {
 
 const VIDE = { categorie: 'fournitures', nom: '', description: '', prix: '', tailles: '', niveaux: '', actif: true, image: null }
 
-function Articles({ articles, onChange }) {
-  const [edition, setEdition] = useState(null)
+function Articles({ articles, onEditer, onAjouter }) {
   return (
     <>
-      <button type="button" className="btn btn-block" style={{ marginBottom: 14 }} onClick={() => setEdition({ ...VIDE })}>
-        Ajouter un article
-      </button>
-      {CATEGORIES.filter(([c]) => articles.some((a) => a.categorie === c)).map(([c, t]) => (
+      {CATEGORIES.filter(([c]) => articles.some((a) => a.categorie === c)).map(([c, t], i) => (
         <div key={c}>
           <h2 className="section-title">{t}</h2>
           <div className="bq-gestion-grille">
+            {i === 0 && (
+              <button type="button" className="bq-gestion-carte bqg-ajout" onClick={onAjouter}>
+                <span className="bq-visuel">
+                  <IcPlus size={28} />
+                </span>
+                <b>Ajouter</b>
+                <span>un article</span>
+              </button>
+            )}
             {articles
               .filter((a) => a.categorie === c)
               .map((a) => (
@@ -121,7 +211,7 @@ function Articles({ articles, onChange }) {
                   type="button"
                   key={a.id}
                   className={`bq-gestion-carte ${a.actif ? '' : 'masque'}`}
-                  onClick={() => setEdition({ ...a, tailles: a.tailles.join(', '), niveaux: a.niveaux.join(', '), description: a.description || '' })}
+                  onClick={() => onEditer({ ...a, tailles: a.tailles.join(', '), niveaux: a.niveaux.join(', '), description: a.description || '' })}
                 >
                   <VisuelArticle article={a} />
                   {!a.actif && <span className="tag">Masqué</span>}
@@ -132,7 +222,6 @@ function Articles({ articles, onChange }) {
           </div>
         </div>
       ))}
-      {edition && <FormArticle valeur={edition} onFermer={() => setEdition(null)} onChange={onChange} />}
     </>
   )
 }
@@ -261,21 +350,25 @@ function FormArticle({ valeur, onFermer, onChange }) {
 
 // ---------------------------------------------------------------- listes (kits)
 
-function Listes({ kits, articles, onChange }) {
-  const [edition, setEdition] = useState(null)
+function Listes({ kits, articles, onEditer }) {
   const prix = new Map(articles.map((a) => [a.id, a.prix]))
+  if (!kits.length)
+    return (
+      <div className="bqg-vide">
+        <IcSac size={26} />
+        <b>Aucune liste pour le moment</b>
+        <small>Une liste regroupe les fournitures d’une classe : le parent l’ajoute au panier en un geste.</small>
+      </div>
+    )
   return (
     <>
-      <button type="button" className="btn btn-block" style={{ marginBottom: 14 }} onClick={() => setEdition({ nom: '', description: '', niveaux: '', actif: true, articles: [] })}>
-        Ajouter une liste
-      </button>
       <ul className="rows">
         {kits.map((k) => {
           const n = k.articles.reduce((s, x) => s + x.quantite, 0)
           const total = k.articles.reduce((s, x) => s + x.quantite * (prix.get(x.articleId) || 0), 0)
           return (
             <li className="row" key={k.id}>
-              <button type="button" className="row-main bq-row-bouton" onClick={() => setEdition({ ...k, niveaux: k.niveaux.join(', '), description: k.description || '' })}>
+              <button type="button" className="row-main bq-row-bouton" onClick={() => onEditer({ ...k, niveaux: k.niveaux.join(', '), description: k.description || '' })}>
                 <div className="row-title" data-brut>{k.nom}</div>
                 <div className="row-sub" data-brut>{`${k.niveaux.length ? k.niveaux.join(', ') : 'Toutes les classes'} · ${n} articles`}</div>
               </button>
@@ -287,7 +380,6 @@ function Listes({ kits, articles, onChange }) {
           )
         })}
       </ul>
-      {edition && <FormListe valeur={edition} articles={articles} onFermer={() => setEdition(null)} onChange={onChange} />}
     </>
   )
 }
